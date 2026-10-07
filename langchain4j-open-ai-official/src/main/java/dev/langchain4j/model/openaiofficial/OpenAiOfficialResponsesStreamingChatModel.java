@@ -43,6 +43,7 @@ import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputFile;
+import com.openai.models.responses.ResponseInputFileContent;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputImageContent;
 import com.openai.models.responses.ResponseInputItem;
@@ -613,10 +614,22 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                                 .imageUrl(buildImageUrl(imageContent.image()))
                                 .detail(toResponsesImageDetail(imageContent.detailLevel()))
                                 .build()));
+                    } else if (content instanceof PdfFileContent pdfFileContent) {
+                        ResponseInputFileContent.Builder pdfInput = ResponseInputFileContent.builder();
+                        if (pdfFileContent.pdfFile().url() != null) {
+                            pdfInput.fileUrl(pdfFileContent.pdfFile().url().toString());
+                        } else if (pdfFileContent.pdfFile().base64Data() != null) {
+                            pdfInput.filename("document.pdf");
+                            pdfInput.fileData("data:" + pdfFileContent.pdfFile().mimeType() + ";base64,"
+                                    + pdfFileContent.pdfFile().base64Data());
+                        } else {
+                            throw new IllegalArgumentException("PDF must have either url or base64Data");
+                        }
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputFile(pdfInput.build()));
                     } else {
                         throw new UnsupportedFeatureException("Unsupported content type in tool result: "
                                 + content.getClass().getName()
-                                + ". Only TextContent and ImageContent are supported.");
+                                + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
                     }
                 }
                 if (promptCacheBreakpoint) {
@@ -705,9 +718,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                             .build())
                     .build());
         }
+        if (item.isInputFile()) {
+            return ResponseFunctionCallOutputItem.ofInputFile(item.asInputFile().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputFileContent.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
         throw new UnsupportedFeatureException("OpenAI does not support a \""
                 + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
-                + "\" on this content block. Supported content blocks: input_text and input_image.");
+                + "\" on this content block. Supported content blocks: input_text, input_image and input_file.");
     }
 
     private static ResponseInputItem createTextMessage(EasyInputMessage.Role role, String text) {
