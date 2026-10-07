@@ -128,10 +128,14 @@ class InternalOpenAiOfficialDecisionHelper {
                     .build());
         } else if (question instanceof ScaleQuestion scale) {
             List<DecisionCreateParams.Question.Score.Level> levels = new ArrayList<>();
-            scale.levels()
-                    .forEach(label -> levels.add(DecisionCreateParams.Question.Score.Level.builder()
-                            .label(label)
-                            .build()));
+            for (int i = 0; i < scale.levels().size(); i++) {
+                DecisionCreateParams.Question.Score.Level.Builder level =
+                        DecisionCreateParams.Question.Score.Level.builder().label(scale.levels().get(i));
+                if (scale.levelDescriptions().get(i) != null) {
+                    level.description(scale.levelDescriptions().get(i));
+                }
+                levels.add(level.build());
+            }
             params.addQuestion(DecisionCreateParams.Question.Score.builder()
                     .name(name)
                     .instructions(scale.text())

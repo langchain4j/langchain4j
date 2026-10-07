@@ -162,6 +162,17 @@ ChoiceQuestion team = ChoiceQuestion.builder()
         .build();
 ```
 
+Levels can be described the same way, in addition to their label:
+
+```java
+ScaleQuestion severity = ScaleQuestion.builder()
+        .text("How severe is the incident?")
+        .level("Minor", "No customer is affected")
+        .level("Major", "Some customers are affected")
+        .level("Critical", "No customer can use the product")
+        .build();
+```
+
 ## Describing the input (state)
 
 The input is either text or a `Map` of named values.

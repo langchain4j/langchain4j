@@ -223,6 +223,35 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
+    void should_send_levels_with_descriptions_as_objects() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "jev-1.13.0", "answers": {"severity": {"type": "score", "score": 1.0}}}
+                """));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .input("The whole product is down.")
+                .question(
+                        "severity",
+                        ScaleQuestion.builder()
+                                .text("How severe is the incident?")
+                                .level("Minor")
+                                .level("Critical", "No customer can use the product")
+                                .build())
+                .build());
+
+        // then
+        Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
+        assertThat(((Map<?, ?>) ((Map<?, ?>) body.get("questions")).get("severity")).get("criteria"))
+                .isEqualTo(List.of(
+                        "Minor", Map.of("label", "Critical", "description", "No customer can use the product")));
+    }
+
+    @Test
     void should_keep_null_values_in_state() {
 
         // given

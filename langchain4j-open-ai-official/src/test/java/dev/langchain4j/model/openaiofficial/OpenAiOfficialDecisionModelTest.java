@@ -140,6 +140,41 @@ class OpenAiOfficialDecisionModelTest {
     }
 
     @Test
+    void should_send_level_descriptions() throws Exception {
+
+        // given
+        httpClient.enqueue(
+                "decisions",
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "score", "name": "severity", "score": 1.0,
+                 "probabilities": [], "confidence": 1.0}]}
+                """);
+
+        // when
+        model().decide(DecisionRequest.builder()
+                .input("The whole product is down.")
+                .question(
+                        "severity",
+                        ScaleQuestion.builder()
+                                .text("How severe is the incident?")
+                                .level("Minor")
+                                .level("Critical", "No customer can use the product")
+                                .build())
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER
+                        .readTree(httpClient.requestTo("decisions").body())
+                        .get("questions")
+                        .get(0)
+                        .get("levels"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{"label": "Minor"}, {"label": "Critical", "description": "No customer can use the product"}]
+                        """));
+    }
+
+    @Test
     void should_decide_asynchronously() {
 
         // given

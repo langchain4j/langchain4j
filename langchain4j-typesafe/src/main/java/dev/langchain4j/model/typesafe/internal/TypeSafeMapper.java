@@ -84,12 +84,28 @@ public final class TypeSafeMapper {
             result.criteria = choice.options();
         } else if (question instanceof ScaleQuestion scale) {
             result.type = "score";
-            result.criteria = scale.levels();
+            result.criteria = levels(scale);
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
         }
         return result;
+    }
+
+    private static List<Object> levels(ScaleQuestion scale) {
+        List<Object> levels = new ArrayList<>();
+        for (int i = 0; i < scale.levels().size(); i++) {
+            String description = scale.levelDescriptions().get(i);
+            if (description == null) {
+                levels.add(scale.levels().get(i));
+            } else {
+                Map<String, String> level = new LinkedHashMap<>();
+                level.put("label", scale.levels().get(i));
+                level.put("description", description);
+                levels.add(level);
+            }
+        }
+        return levels;
     }
 
     public static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {

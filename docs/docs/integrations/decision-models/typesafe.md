@@ -82,7 +82,8 @@ Both `decide()` and `decideAsync()` are supported.
 
 The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` question types.
 In the TypeSafe documentation, yes/no questions are called "noul" questions, scale questions are called "score"
-questions, and the input is called the "state".
+questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
+sent as an object with a `label` and a `description`.
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not

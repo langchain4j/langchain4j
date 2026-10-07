@@ -126,11 +126,12 @@ public final class DecisionMapper {
             result.type = "score";
             result.instructions = scale.text();
             result.levels = new ArrayList<>();
-            scale.levels().forEach(label -> {
+            for (int i = 0; i < scale.levels().size(); i++) {
                 DecisionCreateRequest.Level level = new DecisionCreateRequest.Level();
-                level.label = label;
+                level.label = scale.levels().get(i);
+                level.description = scale.levelDescriptions().get(i);
                 result.levels.add(level);
-            });
+            }
         } else {
             throw new UnsupportedFeatureException(
                     "The OpenAI Decisions API does not support " + question.getClass().getName() + " questions");
