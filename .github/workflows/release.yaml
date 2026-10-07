@@ -36,7 +36,7 @@ jobs:
 
       - name: release
         run: |
-          mvn -B -U --fail-at-end \
+          ./mvnw -B -U --fail-at-end \
             -DskipTests -DskipITs -DskipAnthropicITs \
             -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs \
             -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs \
