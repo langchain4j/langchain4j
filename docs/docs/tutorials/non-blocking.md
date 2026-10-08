@@ -363,7 +363,12 @@ executor rather than its default one:
 langchain4j.executor.use-spring-task-executor=true
 ```
 
-Spring's task executor propagates tracing spans, MDC and security context when a `TaskDecorator` is installed
-(Micrometer context propagation and Spring Security both install one), and its pool follows
-`spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one
-application context.
+LangChain4j then captures the context when an AI Service method is called, and restores it in every task that the
+invocation offloads, even when that task is submitted later from another thread (for example the tools called after
+the model has answered). It captures the context with the application's `TaskDecorator` beans, the ones Spring Boot
+applies to its task executor (on Spring Boot 3, only when there is exactly one), such as a
+`ContextPropagatingTaskDecorator` bean. Without a `TaskDecorator`, it uses Micrometer context propagation if
+`io.micrometer:context-propagation` is on the classpath. So tracing spans, MDC and the security context follow as far
+as that decorator or Micrometer propagates them. The executor's pool follows `spring.task.execution.*`.
+
+It is off by default because the setting is process-wide, not scoped to one application context.
