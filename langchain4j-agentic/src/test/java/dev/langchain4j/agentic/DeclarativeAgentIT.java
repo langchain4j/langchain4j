@@ -1104,8 +1104,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void parallel_mapper_with_ambigous_items_provider_throws_tests() {
-        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
-                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
+        assertThrows(AgenticSystemConfigurationException.class, () ->
+                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel()));
     }
 
     private static String PROVIDED_SYSTEM_MESSAGE;

@@ -449,7 +449,12 @@ public class StreamingIT {
                     .outputKey("story")
                     .build();
 
-            assertThat(writer.writeStory("session-1", "dragons and wizards", "fantasy"));
+            TokenStream tokenStream = writer.writeStory("session-1", "dragons and wizards", "fantasy");
+
+            StringBuilder answerBuilder = new StringBuilder();
+            waitCompleteResponse(tokenStream, answerBuilder);
+
+            assertThat(answerBuilder.toString()).isNotBlank();
         } finally {
             AgenticScopePersister.setStore(null);
         }
