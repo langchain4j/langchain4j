@@ -286,6 +286,35 @@ That module also provides `Mono<T>` and `Flux<AiServiceStreamingEvent>` for the
 Spring's own task executor with `langchain4j.executor.use-spring-task-executor=true` so that tracing, MDC and
 security context follow an asynchronous invocation.
 
+The OpenAI, Mistral AI and Ollama starters send requests with Spring's HTTP clients: `RestClient` for blocking
+calls and `WebClient` for the non-blocking modes. So when you use the non-blocking modes with a provider that
+supports them (see [Provider support](/tutorials/non-blocking#provider-support)), `WebClient` has to be on the
+classpath. `Flux<String>` and `TokenStream` do not need it.
+
+- **Spring Boot 4:** add `spring-boot-starter-webclient`.
+- **Spring Boot 3:** add `org.springframework:spring-webflux`. If your application is not a web application (no
+  `spring-boot-starter-web`), also set `spring.main.web-application-type=none`, because Spring Boot treats an
+  application with `spring-webflux` on the classpath as a reactive web application.
+
+Avoid `spring-boot-starter-webflux` for this purpose unless your application is a WebFlux application: it also
+brings a web server. Without `WebClient`, a non-blocking call fails with an `AsyncNotSupportedException` that says
+what to add.
+
+Non-blocking requests are built from the application's `WebClient.Builder`, just as blocking requests are built
+from its `RestClient.Builder`. So the filters, default headers and observability configured on each builder apply,
+and a filter that adds credentials for your own services also runs for requests to the model provider. The two
+builders are configured separately: a customization of one does not apply to the other. For the non-blocking
+requests, the connector that Spring Boot is configured to use, including its connector customizers, is combined
+with the timeouts configured in LangChain4j; Spring Boot's other HTTP client settings, such as SSL bundles, are not
+applied. To give LangChain4j a dedicated builder, declare a `WebClientBuilderHolder` bean:
+
+```java
+@Bean
+WebClientBuilderHolder langchain4jWebClientBuilder() {
+    return WebClientBuilderHolder.of(WebClient.builder());
+}
+```
+
 
 ## Observability
 

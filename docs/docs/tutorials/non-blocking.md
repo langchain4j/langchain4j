@@ -351,6 +351,11 @@ public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailReque
 `Mono<T>` and `Flux<AiServiceStreamingEvent>` come from the `langchain4j-reactor` module and carry the same
 provider constraint as the JDK types — see [Third-party reactive types](#third-party-reactive-types) above.
 
+With the OpenAI starter, the non-blocking modes are sent with Spring's `WebClient`, so they need it on the classpath
+(`spring-boot-starter-webclient` on Spring Boot 4, `spring-webflux` on Spring Boot 3). See
+[Spring Boot Integration](/tutorials/spring-boot-integration) for which dependency to add and which customizations
+apply.
+
 To make ambient context follow an asynchronous invocation, let LangChain4j offload to the application's own
 executor rather than its default one:
 
