@@ -44,10 +44,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 public class DefaultMcpClientTest {
@@ -1161,6 +1167,564 @@ public class DefaultMcpClientTest {
 
         // 4 calls: discover, first tool call, retry
         verify(transport, times(3)).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void async_mrtr_requestState_only_should_retry_and_succeed() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        ObjectNode complete = buildToolCompleteResponse("done");
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult())) // discover
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)) // first tool call -> input_required
+                .thenReturn(CompletableFuture.completedFuture(complete)); // retry -> complete
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .get();
+        assertThat(result.resultText()).isEqualTo("done");
+
+        verify(transport, times(3)).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void async_mrtr_initial_timeout_should_own_terminal_before_result_conversion() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<String> response = new CompletableFuture<>();
+        AtomicReference<Long> operationId = new AtomicReference<>();
+        CountDownLatch converting = new CountDownLatch(1);
+        CountDownLatch releaseConverter = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenAnswer(invocation -> {
+                    McpCallContext context = invocation.getArgument(0);
+                    operationId.set(context.message().getId());
+                    handlerRef.get().expectResponse(operationId.get(), response);
+                    return response;
+                });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .listener(listener)
+                .toolResultConverter((content, isError) -> {
+                    converting.countDown();
+                    try {
+                        assertThat(releaseConverter.await(5, TimeUnit.SECONDS)).isTrue();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(e);
+                    }
+                    return new DefaultMcpToolResultConverter().convert(content, isError);
+                })
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+        CompletableFuture<ToolExecutionResult> result = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> completion = executor.submit(() -> response.completeExceptionally(new TimeoutException()));
+            assertThat(converting.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(result.cancel(true)).isTrue();
+            releaseConverter.countDown();
+            completion.get(5, TimeUnit.SECONDS);
+
+            assertThat(result).isCancelled();
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport, times(1)).sendMessage(cancellationCaptor.capture());
+            McpCancellationParams params =
+                    (McpCancellationParams) ((McpCancellationNotification) cancellationCaptor.getValue()).getParams();
+            assertThat(params.getRequestId()).isEqualTo(operationId.get());
+            assertThat(params.getReason()).isEqualTo("Timeout");
+            assertThat(getPendingOperations(client)).isEmpty();
+            verify(listener, times(1)).onExecuteToolError(any(), any());
+            verify(listener).onExecuteToolError(any(), any(TimeoutException.class));
+            verify(listener, never()).afterExecuteTool(any(), any(), any());
+            verify(transport, times(2)).sendRequest(any(McpCallContext.class));
+        } finally {
+            releaseConverter.countDown();
+            executor.shutdownNow();
+            client.close();
+        }
+    }
+
+    @ParameterizedTest(name = "retry={0}, failMeta={1}, callerCancels={2}")
+    @CsvSource({
+        "false, false, false", "false, true, false", "true, false, false", "true, true, false",
+        "false, false, true", "false, true, true", "true, false, true", "true, true, true"
+    })
+    public void async_mrtr_terminal_should_survive_cancellation_notification_failure(
+            boolean retry, boolean failMeta, boolean callerCancels) throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<String> response = new CompletableFuture<>();
+        AtomicReference<Long> operationId = new AtomicReference<>();
+        AtomicInteger toolCalls = new AtomicInteger();
+        AtomicInteger notificationMetaCalls = new AtomicInteger();
+        AtomicBoolean failNotification = new AtomicBoolean();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (!(context.message() instanceof McpCallToolRequest)) {
+                return CompletableFuture.completedFuture(getDiscoverResult().toString());
+            }
+            if (retry && toolCalls.getAndIncrement() == 0) {
+                return CompletableFuture.completedFuture(
+                        buildInputRequiredResponse(true, false).toString());
+            }
+            operationId.set(context.message().getId());
+            handlerRef.get().expectResponse(operationId.get(), response);
+            return response;
+        });
+        if (!failMeta) {
+            doThrow(new IllegalStateException("notification send failed"))
+                    .when(transport)
+                    .sendMessage(any(McpClientMessage.class));
+        }
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .listener(listener)
+                .metaSupplier(context -> {
+                    if (context == null && failNotification.get()) {
+                        notificationMetaCalls.incrementAndGet();
+                        if (failMeta) {
+                            throw new IllegalStateException("notification metadata failed");
+                        }
+                    }
+                    return Map.of();
+                })
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+        try {
+            failNotification.set(true);
+            CompletableFuture<ToolExecutionResult> result = client.executeToolAsync(
+                    ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+            if (callerCancels) {
+                assertThat(result.cancel(true)).isTrue();
+                assertThat(response).isCancelled();
+                assertThat(response.completeExceptionally(new TimeoutException()))
+                        .isFalse();
+                assertThat(result).isCancelled();
+            } else {
+                assertThat(response.completeExceptionally(new TimeoutException()))
+                        .isTrue();
+                assertThat(result)
+                        .as("notification failure must not strand the public future")
+                        .isDone();
+                assertThat(result.get(5, TimeUnit.SECONDS).resultText())
+                        .isEqualTo("There was a timeout executing the tool");
+                assertThat(result.cancel(true)).isFalse();
+            }
+            assertThat(getPendingOperations(client)).isEmpty();
+            assertThat(notificationMetaCalls).hasValue(1);
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport, times(failMeta ? 0 : 1)).sendMessage(cancellationCaptor.capture());
+            if (!failMeta) {
+                McpCancellationParams params = (McpCancellationParams)
+                        ((McpCancellationNotification) cancellationCaptor.getValue()).getParams();
+                assertThat(params.getRequestId()).isEqualTo(operationId.get());
+                assertThat(params.getReason()).isEqualTo(callerCancels ? "Cancelled" : "Timeout");
+            }
+            verify(listener).beforeExecuteTool(any());
+            verify(listener, times(1)).onExecuteToolError(any(), any());
+            if (callerCancels) {
+                verify(listener).onExecuteToolError(any(), any(CancellationException.class));
+            } else {
+                verify(listener).onExecuteToolError(any(), any(TimeoutException.class));
+            }
+            verify(listener, never()).afterExecuteTool(any(), any(), any());
+            verify(transport, times(retry ? 3 : 2)).sendRequest(any(McpCallContext.class));
+        } finally {
+            failNotification.set(false);
+            client.close();
+        }
+    }
+
+    @Test
+    public void async_mrtr_retry_timeout_should_cancel_retry_request() throws Exception {
+        final McpTransport transport = getModernStdioTransportMock();
+        CompletableFuture<JsonNode> retryNeverCompletes = new CompletableFuture<>();
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult())) // discover
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false)))
+                .thenReturn(retryNeverCompletes); // retry
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .get();
+
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+        assertThat(retryNeverCompletes).isCancelled();
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(requestCaptor.capture());
+        long retryOperationId = requestCaptor.getAllValues().get(2).message().getId();
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+        assertThat(params.getRequestId()).isEqualTo(retryOperationId);
+    }
+
+    @Test
+    public void async_mrtr_retry_timeout_should_survive_caller_cancellation_before_driver_drain() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<String> initialToolResponse = new CompletableFuture<>();
+        CountDownLatch driverPaused = new CountDownLatch(1);
+        CountDownLatch releaseDriver = new CountDownLatch(1);
+        CompletableFuture<String> retryResponse = new CompletableFuture<>() {
+            @Override
+            public CompletableFuture<String> orTimeout(long timeout, TimeUnit unit) {
+                // The test completes this future with TimeoutException instead of using a timer.
+                return this;
+            }
+
+            @Override
+            public <U> CompletableFuture<U> newIncompleteFuture() {
+                // Pause after the driver callback is attached to the timeout-observation stage.
+                return new CompletableFuture<>() {
+                    @Override
+                    public CompletableFuture<U> whenComplete(BiConsumer<? super U, ? super Throwable> action) {
+                        CompletableFuture<U> dependent = super.whenComplete(action);
+                        driverPaused.countDown();
+                        try {
+                            assertThat(releaseDriver.await(5, TimeUnit.SECONDS)).isTrue();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new AssertionError(e);
+                        }
+                        return dependent;
+                    }
+                };
+            }
+        };
+        AtomicReference<Long> retryOperationId = new AtomicReference<>();
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(initialToolResponse)
+                .thenAnswer(invocation -> {
+                    McpCallContext retryContext = invocation.getArgument(0);
+                    long id = retryContext.message().getId();
+                    retryOperationId.set(id);
+                    handlerRef.get().expectResponse(id, retryResponse);
+                    return retryResponse;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .listener(listener)
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> initialCompletion = executor.submit(() -> initialToolResponse.complete(
+                    buildInputRequiredResponse(true, false).toString()));
+            assertThat(driverPaused.await(5, TimeUnit.SECONDS)).isTrue();
+
+            // The callback enqueues timeout processing while the driver is still draining the initial response.
+            assertThat(retryResponse.completeExceptionally(new TimeoutException("retry timed out")))
+                    .isTrue();
+            assertThat(resultFuture.cancel(true)).isTrue();
+            assertThat(resultFuture).isCancelled();
+            releaseDriver.countDown();
+            initialCompletion.get(5, TimeUnit.SECONDS);
+
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport, times(1)).sendMessage(cancellationCaptor.capture());
+            McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+            McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryOperationId.get());
+            assertThat(params.getReason()).isEqualTo("Timeout");
+            assertThat(getPendingOperations(client)).doesNotContainKey(retryOperationId.get());
+            verify(transport, times(3)).sendRequest(any(McpCallContext.class));
+            verify(listener).beforeExecuteTool(any(McpCallContext.class));
+            verify(listener, times(1)).onExecuteToolError(any(McpCallContext.class), any(TimeoutException.class));
+            verify(listener, never()).afterExecuteTool(any(), any(), any());
+        } finally {
+            releaseDriver.countDown();
+            executor.shutdownNow();
+            client.close();
+        }
+    }
+
+    @Test
+    public void cancelling_async_mrtr_during_retry_should_cancel_retry_request() throws Exception {
+        final McpTransport transport = getModernStdioTransportMock();
+        CompletableFuture<JsonNode> retryNeverCompletes = new CompletableFuture<>();
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult())) // discover
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false)))
+                .thenReturn(retryNeverCompletes); // retry
+
+        DefaultMcpClient client = createMcpClient(transport);
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThat(resultFuture.cancel(true)).isTrue();
+        assertThat(retryNeverCompletes).isCancelled();
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(requestCaptor.capture());
+        long retryOperationId = requestCaptor.getAllValues().get(2).message().getId();
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+        assertThat(params.getRequestId()).isEqualTo(retryOperationId);
+    }
+
+    @Test
+    public void cancelling_async_mrtr_during_retry_activation_should_cancel_new_retry() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<String> initialToolResponse = new CompletableFuture<>();
+        CompletableFuture<String> retryResponse = new CompletableFuture<>();
+        CountDownLatch retryEntered = new CountDownLatch(1);
+        CountDownLatch releaseRetry = new CountDownLatch(1);
+        AtomicReference<Long> retryOperationId = new AtomicReference<>();
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(initialToolResponse)
+                .thenAnswer(invocation -> {
+                    McpCallContext retryContext = invocation.getArgument(0);
+                    long id = retryContext.message().getId();
+                    retryOperationId.set(id);
+                    handlerRef.get().expectResponse(id, retryResponse);
+                    retryEntered.countDown();
+                    assertThat(releaseRetry.await(5, TimeUnit.SECONDS)).isTrue();
+                    return retryResponse;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .listener(listener)
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> initialCompletion = executor.submit(() -> initialToolResponse.complete(
+                    buildInputRequiredResponse(true, false).toString()));
+            assertThat(retryEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThat(resultFuture.cancel(true)).isTrue();
+            releaseRetry.countDown();
+            initialCompletion.get(5, TimeUnit.SECONDS);
+
+            assertThat(resultFuture).isCancelled();
+            assertThat(retryResponse)
+                    .as("the retry sent before activation must still be cancelled")
+                    .isCancelled();
+            assertThat(retryOperationId.get()).isNotNull();
+            verify(transport, times(3)).sendRequest(any(McpCallContext.class));
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport).sendMessage(cancellationCaptor.capture());
+            McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+            McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryOperationId.get());
+            assertThat(getPendingOperations(client)).doesNotContainKey(retryOperationId.get());
+            verify(listener).beforeExecuteTool(any(McpCallContext.class));
+            verify(listener).onExecuteToolError(any(McpCallContext.class), any(CancellationException.class));
+            verify(listener, never()).afterExecuteTool(any(), any(), any());
+        } finally {
+            releaseRetry.countDown();
+            executor.shutdownNow();
+            client.close();
+        }
+    }
+
+    @Test
+    public void cancelling_async_mrtr_should_notify_listener_when_activation_claims_cancellation_first()
+            throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        McpClientListener listener = mock(McpClientListener.class);
+        AtomicReference<BiConsumer<? super String, ? super Throwable>> timeoutObserver = new AtomicReference<>();
+        CompletableFuture<String> initialResponse = new CompletableFuture<>() {
+            @Override
+            public CompletableFuture<String> orTimeout(long timeout, TimeUnit unit) {
+                return this;
+            }
+
+            @Override
+            public CompletableFuture<String> whenComplete(BiConsumer<? super String, ? super Throwable> action) {
+                timeoutObserver.set(action);
+                return super.whenComplete(action);
+            }
+        };
+        CompletableFuture<String> retryResponse = new CompletableFuture<>();
+        CountDownLatch retryEntered = new CountDownLatch(1);
+        CountDownLatch releaseRetry = new CountDownLatch(1);
+        CountDownLatch cancellationPublished = new CountDownLatch(1);
+        CountDownLatch releaseCaller = new CountDownLatch(1);
+        AtomicReference<Long> retryOperationId = new AtomicReference<>();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(initialResponse)
+                .thenAnswer(invocation -> {
+                    McpCallContext context = invocation.getArgument(0);
+                    retryOperationId.set(context.message().getId());
+                    handlerRef.get().expectResponse(retryOperationId.get(), retryResponse);
+                    retryEntered.countDown();
+                    assertThat(releaseRetry.await(5, TimeUnit.SECONDS)).isTrue();
+                    return retryResponse;
+                });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .listener(listener)
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            CompletableFuture<ToolExecutionResult> result = client.executeToolAsync(
+                    ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+            // Transport hooks cannot pause between publishing callerCancelled and claiming the active request.
+            // Intercept just that flag write, without adding a production test hook.
+            var operationField = Stream.of(timeoutObserver.get().getClass().getDeclaredFields())
+                    .filter(field -> field.getType().getSimpleName().equals("AsyncToolOperation"))
+                    .findFirst()
+                    .orElseThrow();
+            operationField.setAccessible(true);
+            Object asyncOperation = operationField.get(timeoutObserver.get());
+            var cancelledField = asyncOperation.getClass().getDeclaredField("callerCancelled");
+            cancelledField.setAccessible(true);
+            AtomicBoolean durableCancelled = new AtomicBoolean();
+            AtomicBoolean pausedCancellation = mock(AtomicBoolean.class);
+            when(pausedCancellation.get()).thenAnswer(invocation -> durableCancelled.get());
+            doAnswer(invocation -> {
+                        durableCancelled.set(true);
+                        cancellationPublished.countDown();
+                        assertThat(releaseCaller.await(5, TimeUnit.SECONDS)).isTrue();
+                        return null;
+                    })
+                    .when(pausedCancellation)
+                    .set(true);
+            cancelledField.set(asyncOperation, pausedCancellation);
+
+            Future<?> initialCompletion = executor.submit(() -> initialResponse.complete(
+                    buildInputRequiredResponse(true, false).toString()));
+            assertThat(retryEntered.await(5, TimeUnit.SECONDS)).isTrue();
+            Future<Boolean> cancellation = executor.submit(() -> result.cancel(true));
+            assertThat(cancellationPublished.await(5, TimeUnit.SECONDS)).isTrue();
+            releaseRetry.countDown();
+            initialCompletion.get(5, TimeUnit.SECONDS);
+            // Activation now owns CALLER_CANCEL and has cancelled the retry before the caller resumes.
+            assertThat(retryResponse).isCancelled();
+            releaseCaller.countDown();
+            assertThat(cancellation.get(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThat(result).isCancelled();
+            assertThat(getPendingOperations(client)).isEmpty();
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport, times(1)).sendMessage(cancellationCaptor.capture());
+            McpCancellationParams params =
+                    (McpCancellationParams) ((McpCancellationNotification) cancellationCaptor.getValue()).getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryOperationId.get());
+            assertThat(params.getReason()).isEqualTo("Cancelled");
+            verify(listener, times(1)).onExecuteToolError(any(), any());
+            verify(listener).onExecuteToolError(any(), any(CancellationException.class));
+            verify(listener, never()).afterExecuteTool(any(), any(), any());
+            verify(transport, times(3)).sendRequest(any(McpCallContext.class));
+        } finally {
+            releaseRetry.countDown();
+            releaseCaller.countDown();
+            executor.shutdownNow();
+            client.close();
+        }
+    }
+
+    @Test
+    public void async_mrtr_immediate_retries_should_not_overflow_stack() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        int retryCount = 10_000;
+        AtomicInteger toolCallCount = new AtomicInteger();
+
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (context.message() instanceof McpCallToolRequest) {
+                int toolCall = toolCallCount.incrementAndGet();
+                return CompletableFuture.completedFuture((toolCall <= retryCount
+                                ? buildInputRequiredResponse(true, false)
+                                : buildToolCompleteResponse("done"))
+                        .toString());
+            }
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
+        });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .multiRoundTripMaxRetries(retryCount)
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        try {
+            ToolExecutionResult result = client.executeToolAsync(
+                            ToolExecutionRequest.builder()
+                                    .name("test")
+                                    .arguments("{}")
+                                    .build(),
+                            null)
+                    .get(10, TimeUnit.SECONDS);
+            assertThat(result.resultText()).isEqualTo("done");
+            assertThat(toolCallCount).hasValue(retryCount + 1);
+        } finally {
+            client.close();
+        }
     }
 
     @Test
@@ -2421,6 +2985,13 @@ public class DefaultMcpClientTest {
     @SuppressWarnings("unchecked")
     private static Map<Long, ?> getPendingSubscriptionAcks(DefaultMcpClient client) throws Exception {
         java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("pendingSubscriptionAcks");
+        field.setAccessible(true);
+        return (Map<Long, ?>) field.get(client);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Long, ?> getPendingOperations(DefaultMcpClient client) throws Exception {
+        java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("pendingOperations");
         field.setAccessible(true);
         return (Map<Long, ?>) field.get(client);
     }
