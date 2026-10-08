@@ -212,6 +212,35 @@ interface OllamaAssistant {
 In this case, you must explicitly specify **all** components.
 :::
 
+#### Choosing Components via Configuration
+
+Instead of hard-coding bean names, you can use property placeholders,
+so that the component wired into an AI Service can be changed via configuration (e.g., per environment or profile):
+```properties
+my-app.assistant.chat-model-bean=ollamaChatModel
+my-app.assistant.tool-beans=weatherTools,calendarTools
+```
+
+```java
+@AiService(
+        wiringMode = EXPLICIT,
+        chatModel = "${my-app.assistant.chat-model-bean:openAiChatModel}",
+        tools = "${my-app.assistant.tool-beans}"
+)
+interface Assistant {
+
+    String chat(String userMessage);
+}
+```
+
+A few things to keep in mind:
+- A placeholder must resolve to a **bean name** (e.g., `ollamaChatModel`), not to the name of an LLM model (e.g., `llama3.1`).
+The model name is configured on the `ChatModel` bean itself (e.g., `langchain4j.ollama.chat-model.model-name`).
+- A default value can be specified after a colon: `${my-app.assistant.chat-model-bean:openAiChatModel}`.
+- If a placeholder cannot be resolved and has no default value, the application fails to start.
+- If a placeholder resolves to an empty value, the attribute is treated as if it was not set.
+- For `tools`, a placeholder can resolve to several comma-separated bean names.
+
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java)
 (same API for the Spring Boot 4 variant).
 
