@@ -31,9 +31,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -143,14 +145,31 @@ class AiServicesContextPropagationTest {
             String submitterRequestId = REQUEST_ID.get();
             executor.execute(() -> runWithRequestId(submitterRequestId, task));
         });
+        // and: a model that answers only once the invocation has returned, so the answer is delivered from the
+        // model's own thread rather than continued on the caller's thread
+        CountDownLatch invocationReturned = new CountDownLatch(1);
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModelMock chatModel = new ChatModelMock(request -> {
+            if (modelCalls.incrementAndGet() > 1) {
+                return AiMessage.from("Berlin");
+            }
+            try {
+                invocationReturned.await(10, SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return toolCall("1");
+        });
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(toolCall("1"), AiMessage.from("Berlin")))
+                .chatModel(chatModel)
                 .tools(tools)
                 .build();
 
         // when
-        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        CompletableFuture<String> future = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE));
+        invocationReturned.countDown();
+        String answer = future.get(10, SECONDS);
 
         // then: the tool was submitted from the thread that delivered the model's answer, which has no context
         assertThat(answer).isEqualTo("Berlin");
