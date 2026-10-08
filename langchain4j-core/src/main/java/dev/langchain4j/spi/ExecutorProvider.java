@@ -3,7 +3,6 @@ package dev.langchain4j.spi;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.Executor;
-import java.util.function.UnaryOperator;
 
 /**
  * SPI for supplying the {@link Executor} that LangChain4j uses to offload blocking work and run its asynchronous
@@ -71,16 +70,21 @@ public interface ExecutorProvider {
      * <p>
      * LangChain4j calls this method once per AI Service invocation, in every mode, on the thread that calls the AI
      * Service method (for methods returning a {@code Flow.Publisher}, {@code Mono} or {@code Flux}: when the method
-     * is called, not when the result is subscribed). It applies the returned function to every task that the
-     * invocation offloads to an executor, whichever thread submits the task. Work that runs without being offloaded
-     * (guardrails, chat memory, listeners, streaming callbacks) is not wrapped.
+     * is called, not when the result is subscribed). It applies the returned {@link CapturedContext} to the tasks that the
+     * invocation offloads to an executor (tools, blocking RAG stages, moderation), whichever thread submits them.
+     * Work that runs without being offloaded (guardrails, chat memory, listeners, streaming callbacks) is not
+     * wrapped, and neither is work offloaded outside an AI Service invocation (retry backoff, threads that a model
+     * integration starts on its own, parallel and asynchronous agents of {@code langchain4j-agentic}).
+     * <p>
+     * This applies to AI Services created with {@code AiServices}. A framework that builds its own AI Service
+     * implementation decides itself how it propagates context.
      * <p>
      * Implementations must follow these rules:
      * <ul>
      *   <li>This method is called on every invocation, possibly on an event-loop thread: it must be cheap and must
      *       not block.</li>
-     *   <li>The returned function may be applied to several tasks that run concurrently, and may be kept for as
-     *       long as the invocation: it must not hold per-task state.</li>
+     *   <li>The returned {@link CapturedContext} may wrap several tasks that run concurrently, and may be kept for
+     *       as long as the invocation: it must not hold per-task state.</li>
      *   <li>A wrapped task must restore the previous context of the thread it runs on when it completes, normally
      *       or exceptionally. Tasks run on pooled threads, so a context left behind leaks into unrelated tasks,
      *       including another user's security context.</li>
@@ -89,18 +93,17 @@ public interface ExecutorProvider {
      * <pre>{@code
      * private static final ContextSnapshotFactory CONTEXT_SNAPSHOT_FACTORY = ContextSnapshotFactory.builder().build();
      *
-     * public UnaryOperator<Runnable> captureContext() {
+     * public CapturedContext captureContext() {
      *     return CONTEXT_SNAPSHOT_FACTORY.captureAll()::wrap;
      * }
      * }</pre>
-     * The default implementation captures nothing.
+     * The default implementation captures nothing and returns {@link CapturedContext#NONE}.
      *
-     * @return a function that wraps a task so that it runs with the context captured by this call. Must not be
-     *         {@code null}.
+     * @return the context captured by this call. Must not be {@code null}.
      * @since 1.23.0
      */
-    default UnaryOperator<Runnable> captureContext() {
-        return DefaultExecutorProvider.NO_CONTEXT_CAPTURE;
+    default CapturedContext captureContext() {
+        return CapturedContext.NONE;
     }
 
     /**
@@ -108,12 +111,12 @@ public interface ExecutorProvider {
      * {@code ServiceLoader}-discovered provider and the built-in default. This is a convenience for tests and
      * non-DI applications; framework integrations typically register via {@code ServiceLoader} instead.
      *
-     * <p>Example — make OpenTelemetry spans and SLF4J MDC follow every LangChain4j offload:
+     * <p>Example — run LangChain4j offloads on an application executor:
      * <pre>{@code
-     * ExecutorService base = Executors.newVirtualThreadPerTaskExecutor();
-     * Executor contextAware = Context.taskWrapping(base); // OpenTelemetry
-     * ExecutorProvider.set(() -> contextAware);
+     * ExecutorProvider.set(() -> applicationExecutor);
      * }</pre>
+     * To make the caller's context (tracing span, MDC, …) follow the offloaded work, register a provider that
+     * implements {@link #captureContext()}; a lambda cannot.
      *
      * @param provider the provider to register, or {@code null} to clear a previously-set one (falling back to
      *                 the {@code ServiceLoader} provider, then the built-in default).

@@ -4,13 +4,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.parallel.Isolated;
  */
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)
-class CapturedContextTest {
+class CapturedContextSupportTest {
 
     private static final ThreadLocal<String> REQUEST_ID = new ThreadLocal<>();
 
@@ -40,9 +40,9 @@ class CapturedContextTest {
     @Test
     void should_run_tasks_with_the_captured_context_on_another_thread() throws Exception {
         ExecutorProvider.set(new CapturingExecutorProvider());
-        InvocationContext invocationContext = withRequestId("request-42", CapturedContextTest::capturingInvocationContext);
+        InvocationContext invocationContext = withRequestId("request-42", CapturedContextSupportTest::capturingInvocationContext);
 
-        Executor restoring = CapturedContext.restoringIn(executor, invocationContext);
+        Executor restoring = CapturedContextSupport.restoringIn(executor, invocationContext);
 
         assertThat(CompletableFuture.supplyAsync(REQUEST_ID::get, restoring).get(10, SECONDS))
                 .isEqualTo("request-42");
@@ -54,11 +54,11 @@ class CapturedContextTest {
     @Test
     void should_keep_the_captured_context_when_the_invocation_context_is_copied() throws Exception {
         ExecutorProvider.set(new CapturingExecutorProvider());
-        InvocationContext invocationContext = withRequestId("request-42", CapturedContextTest::capturingInvocationContext);
+        InvocationContext invocationContext = withRequestId("request-42", CapturedContextSupportTest::capturingInvocationContext);
 
         InvocationContext copy = invocationContext.toBuilder().chatMemoryId("another").build();
 
-        Executor restoring = CapturedContext.restoringIn(executor, copy);
+        Executor restoring = CapturedContextSupport.restoringIn(executor, copy);
         assertThat(CompletableFuture.supplyAsync(REQUEST_ID::get, restoring).get(10, SECONDS))
                 .isEqualTo("request-42");
     }
@@ -68,7 +68,7 @@ class CapturedContextTest {
         ExecutorProvider.set(new CapturingExecutorProvider());
 
         InvocationContext withCapturedContext =
-                withRequestId("request-42", CapturedContextTest::capturingInvocationContext);
+                withRequestId("request-42", CapturedContextSupportTest::capturingInvocationContext);
         InvocationContext withoutCapturedContext =
                 InvocationContext.builder().invocationId(INVOCATION_ID).build();
 
@@ -82,7 +82,7 @@ class CapturedContextTest {
     void should_capture_nothing_without_an_executor_provider() {
         InvocationContext invocationContext = capturingInvocationContext();
 
-        assertThat(CapturedContext.restoringIn(executor, invocationContext)).isSameAs(executor);
+        assertThat(CapturedContextSupport.restoringIn(executor, invocationContext)).isSameAs(executor);
     }
 
     @Test
@@ -92,29 +92,29 @@ class CapturedContextTest {
 
         InvocationContext invocationContext = capturingInvocationContext();
 
-        assertThat(CapturedContext.restoringIn(executor, invocationContext)).isSameAs(executor);
+        assertThat(CapturedContextSupport.restoringIn(executor, invocationContext)).isSameAs(executor);
     }
 
     @Test
     void should_leave_the_executor_unchanged_when_nothing_was_captured() {
         InvocationContext withoutCapturedContext = InvocationContext.builder().build();
 
-        assertThat(CapturedContext.restoringIn(executor, withoutCapturedContext)).isSameAs(executor);
-        assertThat(CapturedContext.restoringIn(executor, null)).isSameAs(executor);
-        assertThat(CapturedContext.restoringIn(null, withoutCapturedContext)).isNull();
+        assertThat(CapturedContextSupport.restoringIn(executor, withoutCapturedContext)).isSameAs(executor);
+        assertThat(CapturedContextSupport.restoringIn(executor, null)).isSameAs(executor);
+        assertThat(CapturedContextSupport.restoringIn(null, withoutCapturedContext)).isNull();
     }
 
     @Test
     void should_fail_fast_when_the_provider_returns_null() {
         ExecutorProvider.set(new NullCapturingExecutorProvider());
 
-        assertThatThrownBy(CapturedContextTest::capturingInvocationContext)
+        assertThatThrownBy(CapturedContextSupportTest::capturingInvocationContext)
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(NullCapturingExecutorProvider.class.getName() + ".captureContext()");
     }
 
     private static InvocationContext capturingInvocationContext() {
-        return CapturedContext.captureInto(InvocationContext.builder().invocationId(INVOCATION_ID))
+        return CapturedContextSupport.captureInto(InvocationContext.builder().invocationId(INVOCATION_ID))
                 .build();
     }
 
@@ -135,7 +135,7 @@ class CapturedContextTest {
         }
 
         @Override
-        public UnaryOperator<Runnable> captureContext() {
+        public CapturedContext captureContext() {
             String captured = REQUEST_ID.get();
             return task -> () -> {
                 String previous = REQUEST_ID.get();
@@ -157,7 +157,7 @@ class CapturedContextTest {
         }
 
         @Override
-        public UnaryOperator<Runnable> captureContext() {
+        public CapturedContext captureContext() {
             return null;
         }
     }

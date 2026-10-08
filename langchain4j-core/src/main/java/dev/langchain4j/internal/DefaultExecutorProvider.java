@@ -4,10 +4,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.VirtualThreadUtils.createVirtualThreadExecutor;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.spi.ServiceHelper;
 import java.util.concurrent.Executor;
-import java.util.function.UnaryOperator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -78,25 +78,20 @@ public class DefaultExecutorProvider {
     }
 
     /**
-     * The default of {@link ExecutorProvider#captureContext()}: nothing to capture.
-     */
-    public static final UnaryOperator<Runnable> NO_CONTEXT_CAPTURE = task -> task;
-
-    /**
      * Captures the context of the calling thread with the registered {@link ExecutorProvider}, see
      * {@link ExecutorProvider#captureContext()}.
      *
-     * @return a function that wraps a task so that it runs with the captured context, or {@code null} if there is
-     *         nothing to capture: no {@link ExecutorProvider} is registered, or it does not capture context
+     * @return the captured context, or {@code null} if there is nothing to capture: no {@link ExecutorProvider} is
+     *         registered, or it does not capture context
      */
-    public static UnaryOperator<Runnable> captureContext() {
+    public static CapturedContext captureContext() {
         ExecutorProvider provider = resolveProvider();
         if (provider == null) {
             return null;
         }
-        UnaryOperator<Runnable> contextRestorer = ensureNotNull(
+        CapturedContext capturedContext = ensureNotNull(
                 provider.captureContext(), "%s.captureContext()", provider.getClass().getName());
-        return contextRestorer == NO_CONTEXT_CAPTURE ? null : contextRestorer;
+        return capturedContext == CapturedContext.NONE ? null : capturedContext;
     }
 
     private static Executor resolveProvidedExecutor() {

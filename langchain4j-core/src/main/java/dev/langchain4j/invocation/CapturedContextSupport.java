@@ -2,23 +2,19 @@ package dev.langchain4j.invocation;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import java.util.concurrent.Executor;
-import java.util.function.UnaryOperator;
 
 /**
- * The context of the thread that started an AI Service invocation, captured with
- * {@link ExecutorProvider#captureContext()} and carried by the {@link InvocationContext} of the invocation, so that
- * every task the invocation offloads runs with it, whichever thread submits the task.
+ * Carries the context of the thread that started an AI Service invocation, captured with
+ * {@link ExecutorProvider#captureContext()}, in the {@link InvocationContext} of the invocation, so that every task
+ * the invocation offloads runs with it, whichever thread submits the task.
  */
 @Internal
-public final class CapturedContext {
+public final class CapturedContextSupport {
 
-    private final UnaryOperator<Runnable> contextRestorer;
-
-    private CapturedContext(UnaryOperator<Runnable> contextRestorer) {
-        this.contextRestorer = contextRestorer;
-    }
+    private CapturedContextSupport() {}
 
     /**
      * Captures the context of the calling thread into the given builder, if an {@link ExecutorProvider} that
@@ -27,8 +23,7 @@ public final class CapturedContext {
      * @return the given builder
      */
     public static InvocationContext.Builder captureInto(InvocationContext.Builder builder) {
-        UnaryOperator<Runnable> contextRestorer = DefaultExecutorProvider.captureContext();
-        builder.capturedContext = contextRestorer == null ? null : new CapturedContext(contextRestorer);
+        builder.capturedContext = DefaultExecutorProvider.captureContext();
         return builder;
     }
 
@@ -42,7 +37,7 @@ public final class CapturedContext {
                 || defaultInvocationContext.capturedContext() == null) {
             return executor;
         }
-        UnaryOperator<Runnable> contextRestorer = defaultInvocationContext.capturedContext().contextRestorer;
-        return task -> executor.execute(contextRestorer.apply(task));
+        CapturedContext capturedContext = defaultInvocationContext.capturedContext();
+        return task -> executor.execute(capturedContext.wrap(task));
     }
 }

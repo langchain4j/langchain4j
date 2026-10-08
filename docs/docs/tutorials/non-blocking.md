@@ -266,8 +266,8 @@ public interface ExecutorProvider {
 
     Executor executor();
 
-    default UnaryOperator<Runnable> captureContext() {
-        return ...; // captures nothing by default
+    default CapturedContext captureContext() {
+        return CapturedContext.NONE;
     }
 }
 ```
@@ -290,12 +290,12 @@ moderation) with the captured context. A lambda registered with `ExecutorProvide
 this, so register a class instead, for example with Micrometer context propagation:
 
 ```java
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import io.micrometer.context.ContextSnapshotFactory;
 import java.util.concurrent.Executor;
-import java.util.function.UnaryOperator;
 
-class ContextPropagatingExecutorProvider implements ExecutorProvider {
+public class ContextPropagatingExecutorProvider implements ExecutorProvider {
 
     private static final ContextSnapshotFactory CONTEXT_SNAPSHOT_FACTORY = ContextSnapshotFactory.builder().build();
 
@@ -305,7 +305,7 @@ class ContextPropagatingExecutorProvider implements ExecutorProvider {
     }
 
     @Override
-    public UnaryOperator<Runnable> captureContext() {
+    public CapturedContext captureContext() {
         return CONTEXT_SNAPSHOT_FACTORY.captureAll()::wrap;
     }
 }
@@ -319,11 +319,16 @@ With OpenTelemetry, `captureContext()` is `return Context.current()::wrap;`. Wit
 Propagation:
 
 ```java
-Executor callerContext = threadContext.currentContextExecutor();
-return task -> () -> callerContext.execute(task);
+private static final ThreadContext THREAD_CONTEXT = ThreadContext.builder().build();
+
+@Override
+public CapturedContext captureContext() {
+    Executor callerContext = THREAD_CONTEXT.currentContextExecutor();
+    return task -> () -> callerContext.execute(task);
+}
 ```
 
-`captureContext()` is called on every invocation, so it must be cheap. The function it returns may be applied to
+`captureContext()` is called on every invocation, so it must be cheap. The `CapturedContext` it returns may wrap
 several tasks that run at the same time, and each wrapped task must restore the previous context of the thread it
 runs on when it completes: tasks run on pooled threads, so a context left behind would leak into unrelated tasks.
 The examples above follow these rules.
@@ -334,14 +339,22 @@ Some things to be aware of:
   `Context.taskWrapping(executor)`, …) is not enough: it captures the context of the thread that *submits* a task,
   and most offloaded work is submitted after the model has answered, from the thread that delivered the answer. It
   can be combined with `captureContext()`: tasks then run with the captured context.
-- Work that LangChain4j does not offload — guardrails, chat memory, listeners, streaming callbacks, retry backoff —
-  runs on whichever thread is current and does not get the captured context.
+- Work that LangChain4j does not offload — guardrails, chat memory, listeners, streaming callbacks — runs on
+  whichever thread is current and does not get the captured context.
+- Work offloaded outside an AI Service invocation does not get it either: retry backoff, threads that a model
+  integration starts on its own (for example to read a streaming response), and the parallel and asynchronous agents
+  of `langchain4j-agentic`. Combine `captureContext()` with a context-propagating executor if you need context
+  there.
 - For methods returning `Flow.Publisher`, `Mono` or `Flux`, the context is captured when the method is called, not
   when the result is subscribed.
-- The context is captured from the `ExecutorProvider` only: an executor passed to an AI Service for its tools does
-  not capture context.
+- The captured context is kept for as long as the invocation, so offloaded work may run with it after the request
+  that started the invocation has completed (for example with the security context of a session that has since
+  ended).
+- Only the `ExecutorProvider` captures context. Tools that run on an executor passed to an AI Service (with
+  `executeToolsConcurrently(executor)`) still run with the context it captured.
+- This applies to AI Services created with `AiServices`. A framework that builds its own AI Service implementation
+  decides itself how it propagates context.
 
-`InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local.
 `InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local.
 :::
 
@@ -417,9 +430,13 @@ langchain4j.executor.use-spring-task-executor=true
 ```
 
 LangChain4j then runs offloaded work on the application's task executor, whose pool follows
-`spring.task.execution.*`. Starting with version 1.23.0-beta33 of the Spring Boot starters, it also captures the
-caller's context, so that tracing spans, MDC and security context follow the work LangChain4j offloads (see
-[above](#controlling-the-executor-and-propagating-context)): with the application's `TaskDecorator` beans, which
-define what its task executor propagates (for example a `ContextPropagatingTaskDecorator`), or, if there are none,
-with Micrometer context propagation if it is on the classpath. It is off by default because the setting is
-process-wide, not scoped to one application context.
+`spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one application
+context.
+
+Starting with version 1.23.0-beta33 of the Spring Boot starters, the caller's context is captured as well (see
+[above](#controlling-the-executor-and-propagating-context)), so that tracing spans, MDC and security context follow
+the work LangChain4j offloads:
+
+- if the application defines `TaskDecorator` beans (for example a `ContextPropagatingTaskDecorator`), they define
+  what is captured, as for the application's own task executor;
+- otherwise, Micrometer context propagation is used if it is on the classpath.

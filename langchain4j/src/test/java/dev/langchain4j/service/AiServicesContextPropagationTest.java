@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -13,12 +14,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.mock.ModerationModelMock;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import java.util.Collection;
@@ -29,7 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -71,6 +76,12 @@ class AiServicesContextPropagationTest {
         TokenStream chatTokenStream(String userMessage);
     }
 
+    interface ModeratedAssistant {
+
+        @Moderate
+        String chat(String userMessage);
+    }
+
     static class Tools {
 
         final List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
@@ -86,7 +97,8 @@ class AiServicesContextPropagationTest {
     void should_run_tools_with_the_context_captured_when_the_invocation_started() throws Exception {
 
         // given
-        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        CapturingExecutorProvider executorProvider = new CapturingExecutorProvider(executor);
+        ExecutorProvider.set(executorProvider);
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatAlwaysResponds(toolCall("1"), toolCall("2"), AiMessage.from("Berlin")))
@@ -99,6 +111,9 @@ class AiServicesContextPropagationTest {
         // then
         assertThat(answer).isEqualTo("Berlin");
         assertThat(tools.requestIdsSeen).containsExactly("request-42", "request-42");
+        assertThat(executorProvider.capturingThreads())
+                .as("the context is captured once per invocation, on the caller's thread")
+                .containsExactly(Thread.currentThread());
     }
 
     @Test
@@ -305,6 +320,112 @@ class AiServicesContextPropagationTest {
     }
 
     @Test
+    void should_run_moderation_with_the_captured_context() {
+
+        // given: moderation is only supported for blocking methods, and runs on the executor
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
+        ModerationModelMock moderationModel = new ModerationModelMock(Moderation.notFlagged()) {
+
+            @Override
+            public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+                requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+                return super.doModerate(moderationRequest);
+            }
+        };
+        ModeratedAssistant assistant = AiServices.builder(ModeratedAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .moderationModel(moderationModel)
+                .build();
+
+        // when
+        String answer = withRequestId("request-42", () -> assistant.chat(USER_MESSAGE));
+
+        // then
+        assertThat(answer).isEqualTo("Berlin");
+        assertThat(requestIdsSeen).containsExactly("request-42");
+    }
+
+    @Test
+    void should_keep_the_context_of_each_invocation_separate() throws Exception {
+
+        // given: the model asks for the tool until it receives the tool's result, so both invocations are independent
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        Tools tools = new Tools();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(request -> request.messages().get(request.messages().size() - 1)
+                                instanceof dev.langchain4j.data.message.ToolExecutionResultMessage
+                        ? AiMessage.from("Berlin")
+                        : toolCall("1")))
+                .tools(tools)
+                .build();
+
+        // when
+        CompletableFuture<String> first = withRequestId("request-1", () -> assistant.chatAsync(USER_MESSAGE));
+        CompletableFuture<String> second = withRequestId("request-2", () -> assistant.chatAsync(USER_MESSAGE));
+        CompletableFuture.allOf(first, second).get(10, SECONDS);
+
+        // then
+        assertThat(tools.requestIdsSeen).containsExactlyInAnyOrder("request-1", "request-2");
+    }
+
+    @Test
+    void should_run_concurrent_retrieval_of_a_blocking_call_with_the_captured_context() {
+
+        // given: two retrievers, so the retrieval augmentor retrieves from both concurrently on its own executor
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
+        ContentRetriever retriever = query -> {
+            requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+            return List.of(Content.from("Berlin is the capital of Germany"));
+        };
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryRouter(query -> List.of(retriever, retriever))
+                        .executor(executor)
+                        .build())
+                .build();
+
+        // when
+        String answer = withRequestId("request-42", () -> assistant.chat(USER_MESSAGE));
+
+        // then
+        assertThat(answer).isEqualTo("Berlin");
+        assertThat(requestIdsSeen).containsExactly("request-42", "request-42");
+    }
+
+    @Test
+    void should_fail_a_non_blocking_call_through_its_future_when_the_context_cannot_be_captured() {
+
+        // given
+        ExecutorProvider.set(new FailingExecutorProvider());
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+
+        // when
+        CompletableFuture<String> answer = assistant.chatAsync(USER_MESSAGE);
+
+        // then: delivered through the future, like any other failure before the model is called
+        assertThat(answer).isCompletedExceptionally();
+        assertThatThrownBy(() -> answer.get(10, SECONDS)).hasMessageContaining("cannot capture the context");
+        assertThat(chatModel.requests()).isEmpty();
+    }
+
+    @Test
+    void should_fail_a_blocking_call_when_the_context_cannot_be_captured() {
+
+        // given
+        ExecutorProvider.set(new FailingExecutorProvider());
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+
+        // when-then
+        assertThatThrownBy(() -> assistant.chat(USER_MESSAGE)).hasMessageContaining("cannot capture the context");
+        assertThat(chatModel.requests()).isEmpty();
+    }
+
+    @Test
     void should_work_with_a_provider_that_does_not_capture_context() throws Exception {
 
         // given: a provider written before captureContext() existed
@@ -320,7 +441,7 @@ class AiServicesContextPropagationTest {
 
         // then
         assertThat(answer).isEqualTo("Berlin");
-        assertThat(tools.requestIdsSeen).hasSize(1);
+        assertThat(tools.requestIdsSeen).containsExactly("null");
     }
 
     private static AiMessage toolCall(String id) {
@@ -357,12 +478,31 @@ class AiServicesContextPropagationTest {
     /**
      * Captures {@link #REQUEST_ID}, as a context-propagation library would capture MDC or a tracing span.
      */
-    private record CapturingExecutorProvider(ExecutorService executor) implements ExecutorProvider {
+    private record CapturingExecutorProvider(ExecutorService executor, List<Thread> capturingThreads)
+            implements ExecutorProvider {
+
+        CapturingExecutorProvider(ExecutorService executor) {
+            this(executor, new CopyOnWriteArrayList<>());
+        }
 
         @Override
-        public UnaryOperator<Runnable> captureContext() {
+        public CapturedContext captureContext() {
+            capturingThreads.add(Thread.currentThread());
             String captured = REQUEST_ID.get();
             return task -> () -> runWithRequestId(captured, task);
+        }
+    }
+
+    private static class FailingExecutorProvider implements ExecutorProvider {
+
+        @Override
+        public java.util.concurrent.Executor executor() {
+            return null;
+        }
+
+        @Override
+        public CapturedContext captureContext() {
+            throw new IllegalStateException("cannot capture the context");
         }
     }
 }

@@ -21,7 +21,7 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.invocation.CapturedContext;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -385,7 +385,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                             query.metadata() != null ? query.metadata().invocationContext() : null;
                     return CompletableFuture.supplyAsync(
                             blockingCall,
-                            CapturedContext.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
+                            CapturedContextSupport.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                         + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"

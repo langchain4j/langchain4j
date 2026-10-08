@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.invocation.CapturedContext;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -296,7 +296,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 if (offloadBlocking) {
                     return supplyAsync(
                             blockingCall,
-                            CapturedContext.restoringIn(
+                            CapturedContextSupport.restoringIn(
                                     DefaultExecutorProvider.getDefaultExecutor(), invocationContextOf(query)));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
@@ -330,7 +330,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
             queries.forEach(query -> {
                 CompletableFuture<Collection<List<Content>>> futureContents =
-                        supplyAsync(() -> queryRouter.route(query), executor)
+                        supplyAsync(
+                                        () -> queryRouter.route(query),
+                                        CapturedContextSupport.restoringIn(executor, invocationContextOf(query)))
                                 .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
                 queryToFutureContents.put(query, futureContents);
             });
@@ -343,7 +345,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
-            .map(retriever -> supplyAsync(() -> retriever.retrieve(query), executor))
+            .map(retriever -> supplyAsync(
+                    () -> retriever.retrieve(query), CapturedContextSupport.restoringIn(executor, invocationContextOf(query))))
             .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))

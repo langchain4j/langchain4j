@@ -29,7 +29,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.invocation.CapturedContext;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -1796,7 +1796,7 @@ public class ToolService {
                             invocationContext,
                             null,
                             null,
-                            CapturedContext.restoringIn(effectiveToolExecutor(), invocationContext)));
+                            CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext)));
         }
         return combineToolResultsCollectingErrors(futures);
     }
@@ -2026,7 +2026,7 @@ public class ToolService {
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
                     () -> executeTool(invocationContext, toolExecutors, toolRequest),
-                    CapturedContext.restoringIn(executor, invocationContext));
+                    CapturedContextSupport.restoringIn(executor, invocationContext));
             futures.put(toolRequest, future);
         }
 
