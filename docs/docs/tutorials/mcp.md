@@ -14,7 +14,9 @@ website](https://modelcontextprotocol.io/).
 
 :::note
 Looking to build an MCP **stdio server** in Java?
-The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+The stdio server implementation lives in [LangChain4j Community](https://github.com/langchain4j/langchain4j-community/tree/main/mcp/langchain4j-community-mcp-server) 
+and Streamable HTTP is provided by [Tachyon](https://tachyonmcp.dev).
+See [Building a Java MCP server](./mcp-server).
 :::
 
 The protocol specifies two types of transport, both of these are supported:
