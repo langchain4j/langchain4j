@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -17,6 +18,7 @@ public class ToolServiceResult {
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
     private final boolean immediateToolReturn;
+    private final List<ChatMessage> messages;
 
     /**
      * @since 1.2.0
@@ -27,6 +29,7 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
         this.immediateToolReturn = builder.immediateToolReturn;
+        this.messages = copy(builder.messages);
     }
 
     /**
@@ -40,6 +43,7 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
         this.immediateToolReturn = false;
+        this.messages = List.of();
     }
 
     /**
@@ -94,6 +98,16 @@ public class ToolServiceResult {
         return immediateToolReturn;
     }
 
+    /**
+     * The conversation the tool loop ended with (the messages sent, every tool round trip and the final response),
+     * when the AI Service has no chat memory. Empty when it has one: the chat memory holds the conversation then.
+     *
+     * @since 1.23.0
+     */
+    public List<ChatMessage> messages() {
+        return messages;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -103,12 +117,19 @@ public class ToolServiceResult {
                 && Objects.equals(this.finalResponse, that.finalResponse)
                 && Objects.equals(this.toolExecutions, that.toolExecutions)
                 && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage)
-                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn);
+                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn)
+                && Objects.equals(this.messages, that.messages);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(intermediateResponses, finalResponse, toolExecutions, aggregateTokenUsage, immediateToolReturn);
+        return Objects.hash(
+                intermediateResponses,
+                finalResponse,
+                toolExecutions,
+                aggregateTokenUsage,
+                immediateToolReturn,
+                messages);
     }
 
     @Override
@@ -119,6 +140,7 @@ public class ToolServiceResult {
                 ", toolExecutions=" + toolExecutions +
                 ", aggregateTokenUsage=" + aggregateTokenUsage +
                 ", immediateToolReturn=" + immediateToolReturn +
+                ", messages=" + messages +
                 '}';
     }
 
@@ -133,6 +155,7 @@ public class ToolServiceResult {
         private List<ToolExecution> toolExecutions;
         private TokenUsage aggregateTokenUsage;
         private boolean immediateToolReturn;
+        private List<ChatMessage> messages;
 
         public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
@@ -156,6 +179,14 @@ public class ToolServiceResult {
 
         public Builder immediateToolReturn(boolean immediateToolReturn) {
             this.immediateToolReturn = immediateToolReturn;
+            return this;
+        }
+
+        /**
+         * @since 1.23.0
+         */
+        public Builder messages(List<ChatMessage> messages) {
+            this.messages = messages;
             return this;
         }
 

@@ -45,6 +45,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -1118,7 +1119,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 method,
                                 aggregateResponse,
                                 toolAwareRepromptExecutor,
-                                commonGuardrailParam);
+                                outputGuardrailParams(commonGuardrailParam, toolServiceResult));
 
                         return finishToolServiceResult(
                                 response,
@@ -1181,7 +1182,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         method,
                                         aggregateResponse,
                                         toolAwareRepromptExecutor,
-                                        commonGuardrailParam)
+                                        outputGuardrailParams(commonGuardrailParam, toolServiceResult))
                                 .thenApply(response -> finishToolServiceResult(
                                         response,
                                         invocationContext,
@@ -1481,6 +1482,21 @@ class DefaultAiServices<T> extends AiServices<T> {
      * {@link InvocationContext} carrying it, as prepared for dispatch.
      */
     private record GuardedInput(UserMessage userMessage, InvocationContext invocationContext) {}
+
+    /**
+     * Output guardrails retry and reprompt by resending the conversation they read from the chat memory. An AI Service
+     * without one gets a temporary memory holding this call's conversation, as the streaming modes already do;
+     * otherwise a retry would send no messages at all and a reprompt only the reprompt text.
+     */
+    private static GuardrailRequestParams outputGuardrailParams(
+            GuardrailRequestParams commonGuardrailParams, ToolServiceResult toolServiceResult) {
+        if (commonGuardrailParams.chatMemory() != null) {
+            return commonGuardrailParams;
+        }
+        ChatMemory temporaryMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+        temporaryMemory.add(toolServiceResult.messages());
+        return commonGuardrailParams.toBuilder().chatMemory(temporaryMemory).build();
+    }
 
     private <T> T invokeOutputGuardrails(
             GuardrailService guardrailService,
