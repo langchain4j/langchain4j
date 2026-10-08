@@ -15,6 +15,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -30,6 +33,8 @@ import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.internal.Json;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.WildcardType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -39,6 +44,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Objects;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -124,6 +131,7 @@ public final class DecisionMethod {
         this.questions = Collections.unmodifiableMap(analysis.questions);
         this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
         this.inputTypes = analysis.inputParameters.stream()
+                .filter(parameter -> !parameter.contents())
                 .map(parameter -> method.getGenericParameterTypes()[parameter.index()])
                 .toList();
     }
@@ -186,8 +194,10 @@ public final class DecisionMethod {
     }
 
     /**
-     * The types of the parameters that are sent to the model. Objects among them are converted to maps with the JSON
-     * codec, so frameworks may need to register them, and the types they contain, for native images.
+     * The types of the parameters that are sent to the model as structured values. Objects among them are converted to
+     * maps with the JSON codec, so frameworks may need to register them, and the types they contain, for native images.
+     * Parameters of {@link Content} types (such as {@link ImageContent}) and {@link Image}, which are sent as contents,
+     * are left out.
      */
     public List<Type> inputTypes() {
         return inputTypes;
@@ -200,8 +210,11 @@ public final class DecisionMethod {
         Map<String, Object> input = new LinkedHashMap<>();
         for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
-            if (value != null) {
-                input.put(parameter.name(), toInputValue(value));
+            Object inputValue = value == null
+                    ? null
+                    : parameter.contents() || isContents(value) ? toContents(value) : toInputValue(value);
+            if (inputValue != null) {
+                input.put(parameter.name(), inputValue);
             }
         }
         if (input.isEmpty()) {
@@ -215,6 +228,49 @@ public final class DecisionMethod {
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
+    }
+
+    /**
+     * Whether the argument is a {@link Content} or an {@link Image}, or a collection or array of them, also when the
+     * declared type of the parameter does not say so (for example {@code Object}).
+     */
+    private static boolean isContents(Object value) {
+        List<?> items = items(value);
+        if (items == null) {
+            return value instanceof Content || value instanceof Image;
+        }
+        List<?> nonNull = items.stream().filter(Objects::nonNull).toList();
+        return !nonNull.isEmpty() && nonNull.stream().allMatch(item -> item instanceof Content || item instanceof Image);
+    }
+
+    /**
+     * Converts a content argument into a {@link Content}, or a list of them for a collection or an array, with
+     * {@link Image}s converted to {@link ImageContent}s with the {@link ImageContent.DetailLevel#AUTO} detail level,
+     * so that the model provider chooses the detail, and {@code null}s left out. Returns {@code null} if there is
+     * no content, so that the parameter is left out like a {@code null} argument.
+     */
+    private static Object toContents(Object value) {
+        List<?> items = items(value);
+        if (items == null) {
+            return value instanceof Image image ? ImageContent.from(image, ImageContent.DetailLevel.AUTO) : value;
+        }
+        List<Object> contents = new ArrayList<>();
+        items.forEach(item -> {
+            if (item != null) {
+                contents.add(toContents(item));
+            }
+        });
+        return contents.isEmpty() ? null : contents;
+    }
+
+    private static List<?> items(Object value) {
+        if (value instanceof Collection<?> collection) {
+            return new ArrayList<>(collection);
+        }
+        if (value instanceof Object[] array) {
+            return Arrays.asList(array);
+        }
+        return null;
     }
 
     /**
@@ -413,7 +469,7 @@ public final class DecisionMethod {
                     throw illegalConfiguration(
                             "Method '%s' has several parameters named '%s'", method.getName(), name);
                 }
-                inputParameters.add(new InputParameter(name, i));
+                inputParameters.add(new InputParameter(name, i, isContentType(parameter.getParameterizedType())));
             }
             if (inputParameters.isEmpty()) {
                 throw illegalConfiguration(
@@ -544,10 +600,15 @@ public final class DecisionMethod {
             if (enumType == null) {
                 question = YesNoQuestion.of(questionText);
             } else if (kind == Kind.SCALE) {
-                List<String> levels = new ArrayList<>();
-                descriptions(name, enumType).forEach((constantName, description) ->
-                        levels.add(description == null ? constantName : constantName + ": " + description));
-                question = ScaleQuestion.of(questionText, levels);
+                ScaleQuestion.Builder scale = ScaleQuestion.builder().text(questionText);
+                descriptions(name, enumType).forEach((constantName, description) -> {
+                    if (description == null) {
+                        scale.level(constantName);
+                    } else {
+                        scale.level(constantName, description);
+                    }
+                });
+                question = scale.build();
             } else {
                 ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(questionText);
                 descriptions(name, enumType).forEach((constantName, description) -> {
@@ -602,7 +663,28 @@ public final class DecisionMethod {
         SCALE
     }
 
-    private record InputParameter(String name, int index) {}
+    /**
+     * Whether the type is a {@link Content} type (such as {@link ImageContent}) or {@link Image}, or a collection or
+     * array of them.
+     */
+    private static boolean isContentType(Type type) {
+        if (type instanceof Class<?> c) {
+            return Content.class.isAssignableFrom(c)
+                    || Image.class.isAssignableFrom(c)
+                    || (c.isArray() && isContentType(c.getComponentType()));
+        }
+        if (type instanceof ParameterizedType parameterized) {
+            return parameterized.getRawType() instanceof Class<?> raw
+                    && Collection.class.isAssignableFrom(raw)
+                    && isContentType(parameterized.getActualTypeArguments()[0]);
+        }
+        if (type instanceof WildcardType wildcard) {
+            return isContentType(wildcard.getUpperBounds()[0]);
+        }
+        return type instanceof GenericArrayType array && isContentType(array.getGenericComponentType());
+    }
+
+    private record InputParameter(String name, int index, boolean contents) {}
 
     private record QuestionMapping(String name, Question question, Kind kind, Class<?> enumType) {
 

@@ -19,7 +19,7 @@ Add one dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jackson3</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -182,7 +182,7 @@ dependency you declare, not only the first:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.20.2</version>
+    <version>1.22.0</version>
     <exclusions>
         <exclusion>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -308,11 +308,11 @@ versions.
 
 **A framework's own implementation wins.** If something already supplies one of these - Quarkus
 supplies four - adding this module does not take it away. The Jackson 3 factories declare a lower
-priority than anything else, so they apply only to the services nothing else has claimed, and
-LangChain4j logs a warning naming the implementation it chose. That means on such a framework the
-opt-in is partial by design: provider traffic and agent state move to Jackson 3 while the services
-the framework owns stay on its own codec. If you want the whole application on Jackson 3, remove
-the framework's registrations rather than relying on classpath order.
+priority than anything else, so they apply only to the services nothing else has claimed. This
+happens silently: no warning is logged, because the priority decides which implementation is used.
+That means on such a framework the opt-in is partial by design: provider traffic and agent state
+move to Jackson 3 while the services the framework owns stay on its own codec. If you want the whole
+application on Jackson 3, remove the framework's registrations.
 
 **Implement all of them, or know which you are leaving out.** Each is resolved independently, and
 one with no implementation registered falls back to Jackson 2. Answering some but not others is not

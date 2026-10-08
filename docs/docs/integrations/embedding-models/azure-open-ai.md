@@ -26,7 +26,7 @@ that can be used to transforms text or images into a dimensional vector space.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.20.2</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -35,7 +35,7 @@ that can be used to transforms text or images into a dimensional vector space.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot4-starter</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

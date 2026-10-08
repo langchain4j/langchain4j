@@ -38,7 +38,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -529,8 +529,7 @@ metadata.serviceTier();      // Service tier used for the request
 
 `OpenAiOfficialBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
 asynchronously via the [OpenAI Batch API](https://platform.openai.com/docs/guides/batch), at 50% of the
-standard per-token price. See [Batch Processing](/tutorials/batch-processing) for how batching works in
-LangChain4j.
+standard per-token price.
 
 Requests are written to a JSONL file, uploaded through the Files API with the `batch` purpose, and run
 against the `/v1/chat/completions` endpoint. All requests in a batch must resolve to the same model. Results

@@ -22,7 +22,7 @@ The `langchain4j-community-model-router`library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-model-router</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 ## FailoverStrategy

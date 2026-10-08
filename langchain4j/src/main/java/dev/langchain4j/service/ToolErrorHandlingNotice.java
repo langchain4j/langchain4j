@@ -1,16 +1,10 @@
 package dev.langchain4j.service;
 
-import static java.lang.reflect.Modifier.isStatic;
-
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolService;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +23,6 @@ class ToolErrorHandlingNotice {
 
     private static final Logger log = LoggerFactory.getLogger(ToolErrorHandlingNotice.class);
 
-
     /**
      * Package-private so that tests can log the notice more than once per JVM.
      */
@@ -37,11 +30,11 @@ class ToolErrorHandlingNotice {
 
     private ToolErrorHandlingNotice() {}
 
-    static void logOnceIfNeeded(AiServiceContext context, Predicate<Type> asynchronousOrReactive) {
+    static void logOnceIfNeeded(AiServiceContext context, BooleanSupplier hasBlockingMethod) {
         if (ALREADY_LOGGED.get()) {
             return;
         }
-        List<Default> unconfirmedDefaults = unconfirmedDefaults(context, asynchronousOrReactive);
+        List<Default> unconfirmedDefaults = unconfirmedDefaults(context, hasBlockingMethod);
         if (unconfirmedDefaults.isEmpty()) {
             return;
         }
@@ -54,11 +47,11 @@ class ToolErrorHandlingNotice {
     /**
      * The defaults this AI Service relies on without having chosen them explicitly.
      */
-    static List<Default> unconfirmedDefaults(AiServiceContext context, Predicate<Type> asynchronousOrReactive) {
+    static List<Default> unconfirmedDefaults(AiServiceContext context, BooleanSupplier hasBlockingMethod) {
         ToolService toolService = context.toolService;
         boolean hasTools =
                 !toolService.toolSpecifications().isEmpty() || !toolService.toolProviders().isEmpty();
-        if (!hasTools || !hasBlockingMethod(context.aiServiceClass, asynchronousOrReactive)) {
+        if (!hasTools || !hasBlockingMethod.getAsBoolean()) {
             return List.of();
         }
 
@@ -71,22 +64,6 @@ class ToolErrorHandlingNotice {
         }
         return defaults;
     }
-
-    private static boolean hasBlockingMethod(Class<?> aiServiceClass, Predicate<Type> asynchronousOrReactive) {
-        for (Method method : aiServiceClass.getMethods()) {
-            if (isStatic(method.getModifiers())
-                    || method.isDefault()
-                    || method.getDeclaringClass() == Object.class
-                    || method.getDeclaringClass() == ChatMemoryAccess.class) {
-                continue;
-            }
-            if (!asynchronousOrReactive.test(method.getGenericReturnType())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
     static String message(Class<?> aiServiceClass, List<Default> unconfirmedDefaults) {
         StringBuilder message = new StringBuilder()

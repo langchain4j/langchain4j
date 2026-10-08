@@ -12,6 +12,8 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.internal.image.EditImageRequest;
@@ -68,6 +70,10 @@ public abstract class OpenAiClient {
 
     public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
         throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<DecisionCreateResponse> decision(DecisionCreateRequest request) {
+        throw new UnsupportedOperationException("Decisions are not supported by this client implementation");
     }
 
     public SyncOrAsync<ModelsListResponse> listModels() {

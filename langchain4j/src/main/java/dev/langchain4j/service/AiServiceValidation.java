@@ -57,7 +57,20 @@ class AiServiceValidation {
         validateContextMemory(serviceClass, context.hasChatMemory());
         validateClass(serviceClass);
         Stream.of(serviceClass.getMethods())
+                .filter(AiServiceValidation::isImplementedByModel)
                 .forEach(m -> validateMethod(serviceClass, m, context.hasChatMemory(), context.hasModerationModel()));
+    }
+
+    /**
+     * Whether the AI Service implements this method by calling the model.
+     * Static and default methods run as written, {@link Object} and {@link ChatMemoryAccess} methods
+     * are handled by the proxy itself.
+     */
+    static boolean isImplementedByModel(Method method) {
+        return !isStatic(method.getModifiers())
+                && !method.isDefault()
+                && method.getDeclaringClass() != Object.class
+                && method.getDeclaringClass() != ChatMemoryAccess.class;
     }
 
     private static void validateContextMemory(Class<?> serviceClass, boolean hasChatMemory) {
@@ -77,10 +90,6 @@ class AiServiceValidation {
 
     private static void validateMethod(
             Class<?> serviceClass, Method method, boolean hasChatMemory, boolean hasModerationModel) {
-        if (isStatic(method.getModifiers()) || method.isDefault()) {
-            return; // static and default methods are not implemented by the AI Service, they are invoked as-is
-        }
-
         if (!hasModerationModel && method.isAnnotationPresent(Moderate.class)) {
             throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. "
                     + "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");

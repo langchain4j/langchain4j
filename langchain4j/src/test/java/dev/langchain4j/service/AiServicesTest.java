@@ -4,14 +4,19 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.junit.jupiter.api.Test;
 
 class AiServicesTest {
@@ -63,6 +68,34 @@ class AiServicesTest {
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessage("oops");
         verifyNoInteractions(chatModel);
+    }
+
+    interface AssistantWithMemoryAccess extends ChatMemoryAccess {
+
+        String chat(@MemoryId String memoryId, @UserMessage String message);
+    }
+
+    @Test
+    void should_not_call_chatModel_when_ChatMemoryAccess_methods_are_called() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+        AssistantWithMemoryAccess assistant = AiServices.builder(AssistantWithMemoryAccess.class)
+                .chatModel(chatModel)
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+        assistant.chat("known", "Hello");
+
+        // when
+        ChatMemory knownMemory = assistant.getChatMemory("known");
+        boolean knownEvicted = assistant.evictChatMemory("known");
+
+        // then
+        assertThat(knownMemory.messages()).hasSize(2);
+        assertThat(knownEvicted).isTrue();
+        assertThat(assistant.getChatMemory("known")).isNull();
+        assertThat(assistant.evictChatMemory("unknown")).isFalse();
+        verify(chatModel, times(1)).chat(any(ChatRequest.class));
     }
 
     @Test

@@ -31,7 +31,8 @@ import java.util.Map;
  * }</pre>
  * A rejected response fails with a fatal result or, if {@link Builder#reprompt(String)} is set, the model is asked
  * again with that instruction. Responses without text (for example, only tool calls) are not checked. If the decision
- * model fails, the exception is propagated, so the request fails.
+ * model fails, the exception is propagated, so the request fails. A check that the decision model refuses to answer
+ * fails, so the response is rejected.
  *
  * @since 1.21.0
  */
