@@ -3,12 +3,12 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.List;
-import java.util.Objects;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import java.util.Objects;
 
 @Internal
 public class ToolServiceResult {
@@ -36,8 +36,7 @@ public class ToolServiceResult {
      * @deprecated Please use {@link #ToolServiceResult(Builder)} instead
      */
     @Deprecated(since = "1.2.0")
-    public ToolServiceResult(ChatResponse chatResponse,
-                             List<ToolExecution> toolExecutions) {
+    public ToolServiceResult(ChatResponse chatResponse, List<ToolExecution> toolExecutions) {
         this.intermediateResponses = List.of();
         this.finalResponse = ensureNotNull(chatResponse, "chatResponse");
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
@@ -134,14 +133,13 @@ public class ToolServiceResult {
 
     @Override
     public String toString() {
-        return "ToolServiceResult{" +
-                "intermediateResponses=" + intermediateResponses +
-                ", finalResponse=" + finalResponse +
-                ", toolExecutions=" + toolExecutions +
-                ", aggregateTokenUsage=" + aggregateTokenUsage +
-                ", immediateToolReturn=" + immediateToolReturn +
-                ", messages=" + messages +
-                '}';
+        return "ToolServiceResult{" + "intermediateResponses="
+                + intermediateResponses + ", finalResponse="
+                + finalResponse + ", toolExecutions="
+                + toolExecutions + ", aggregateTokenUsage="
+                + aggregateTokenUsage + ", immediateToolReturn="
+                + immediateToolReturn + ", messages="
+                + messages + '}';
     }
 
     public static Builder builder() {
