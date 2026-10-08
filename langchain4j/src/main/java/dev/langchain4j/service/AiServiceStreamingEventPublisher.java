@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.CapturedContext;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -256,7 +257,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private ChatExecutor chatExecutor;
-        private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
+        private final Executor toolExecutor =
+                CapturedContext.restoringIn(context.toolService.effectiveToolExecutor(), invocationContext);
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 

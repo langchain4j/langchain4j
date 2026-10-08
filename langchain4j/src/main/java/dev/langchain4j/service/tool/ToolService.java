@@ -29,6 +29,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.CapturedContext;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -1789,7 +1790,13 @@ public class ToolService {
         for (ToolExecutionRequest toolRequest : toolRequests) {
             futures.put(
                     toolRequest,
-                    startTool(toolRequest, toolExecutors, invocationContext, null, null, effectiveToolExecutor()));
+                    startTool(
+                            toolRequest,
+                            toolExecutors,
+                            invocationContext,
+                            null,
+                            null,
+                            CapturedContext.restoringIn(effectiveToolExecutor(), invocationContext)));
         }
         return combineToolResultsCollectingErrors(futures);
     }
@@ -2018,7 +2025,8 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest),
+                    CapturedContext.restoringIn(executor, invocationContext));
             futures.put(toolRequest, future);
         }
 

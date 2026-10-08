@@ -21,6 +21,8 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.invocation.CapturedContext;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -335,7 +337,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
         CompletableFuture<List<Content>> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
-        chain.track(nativeOrOffload(() -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
+        chain.track(nativeOrOffload(
+                        query, () -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
                 .thenCompose(embedding -> {
                     EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                             .query(query.text())
@@ -345,6 +348,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                             .filter(filterProvider.apply(query))
                             .build();
                     return chain.track(nativeOrOffload(
+                            query,
                             () -> embeddingStore.searchAsync(searchRequest),
                             () -> embeddingStore.search(searchRequest)));
                 })
@@ -365,7 +369,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
      * default executor (virtual threads on Java 21+, platform threads on 17-20) (when {@code offloadBlocking}) or fail with an actionable message. Any other error
      * propagates unchanged. No reflection: the (un)availability of async is discovered by calling it.
      */
-    private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
+    private <T> CompletableFuture<T> nativeOrOffload(
+            Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
         CompletableFuture<T> async;
         try {
             async = asyncCall.get();
@@ -376,7 +381,11 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
-                    return CompletableFuture.supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
+                    InvocationContext invocationContext =
+                            query.metadata() != null ? query.metadata().invocationContext() : null;
+                    return CompletableFuture.supplyAsync(
+                            blockingCall,
+                            CapturedContext.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                         + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"

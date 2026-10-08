@@ -3,6 +3,7 @@ package dev.langchain4j.spi;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.Executor;
+import java.util.function.UnaryOperator;
 
 /**
  * SPI for supplying the {@link Executor} that LangChain4j uses to offload blocking work and run its asynchronous
@@ -11,15 +12,15 @@ import java.util.concurrent.Executor;
  *
  * <h2>Why implement this</h2>
  * LangChain4j hops threads at these offload points and does <b>not</b> propagate thread-local context
- * (tracing spans, SLF4J MDC, security, CDI / request scope, …) across them by default. Registering an
- * {@code ExecutorProvider} that returns a <em>context-propagating</em> executor makes that context follow the
- * work. Typical wrappers:
- * <ul>
- *   <li>Quarkus / MicroProfile — a {@code ManagedExecutor}</li>
- *   <li>Spring — an {@code Executor} wrapped with a {@code TaskDecorator}, or a {@code ContextExecutorService}</li>
- *   <li>OpenTelemetry — {@code Context.taskWrapping(executor)}</li>
- *   <li>Micrometer — {@code ContextSnapshot.wrap(executor)}</li>
- * </ul>
+ * (tracing spans, SLF4J MDC, security, CDI / request scope, …) across them by default. To make the context of the
+ * thread that calls an AI Service follow the work that the call offloads, implement {@link #captureContext()}.
+ * <p>
+ * A <em>context-propagating</em> executor (a MicroProfile {@code ManagedExecutor}, a Spring {@code TaskDecorator},
+ * OpenTelemetry {@code Context.taskWrapping(executor)}, Micrometer {@code ContextSnapshot.wrap(executor)}, …) is
+ * not enough on its own: it captures the context of the thread that <em>submits</em> a task, and in a
+ * non-blocking AI Service call most work is submitted after the model has answered, from the thread that delivered
+ * the answer. Both can be combined: a task then runs with the context captured by {@link #captureContext()},
+ * applied inside whatever the executor sets up.
  *
  * <h2>{@code Executor}, not {@code ExecutorService}</h2>
  * The return type is the minimal {@link Executor}: LangChain4j only needs to <em>run</em> tasks and never owns
@@ -46,7 +47,7 @@ import java.util.concurrent.Executor;
  *
  * <h2>Contract</h2>
  * {@link #executor()} is called at each offload, so it must return a <b>shared, long-lived</b> executor rather
- * than create a new one per call.
+ * than create a new one per call. {@link #captureContext()} has its own rules, see there.
  *
  * <p>This SPI intentionally exposes a single, global executor. Should per-purpose executors (e.g. separate pools
  * for CPU-bound vs. blocking work) ever be needed, they can be added here as {@code default} methods that fall
@@ -59,9 +60,48 @@ public interface ExecutorProvider {
 
     /**
      * @return the shared {@link Executor} LangChain4j should offload blocking work and asynchronous
-     *         continuations onto. Must not be {@code null}.
+     *         continuations onto, or {@code null} to keep the built-in default (for a provider that only
+     *         implements {@link #captureContext()}).
      */
     Executor executor();
+
+    /**
+     * Captures the context of the calling thread (tracing span, SLF4J MDC, security context, …), so that it can be
+     * restored in tasks that are submitted later, possibly from another thread.
+     * <p>
+     * LangChain4j calls this method once per AI Service invocation, in every mode, on the thread that calls the AI
+     * Service method (for methods returning a {@code Flow.Publisher}, {@code Mono} or {@code Flux}: when the method
+     * is called, not when the result is subscribed). It applies the returned function to every task that the
+     * invocation offloads to an executor, whichever thread submits the task. Work that runs without being offloaded
+     * (guardrails, chat memory, listeners, streaming callbacks) is not wrapped.
+     * <p>
+     * Implementations must follow these rules:
+     * <ul>
+     *   <li>This method is called on every invocation, possibly on an event-loop thread: it must be cheap and must
+     *       not block.</li>
+     *   <li>The returned function may be applied to several tasks that run concurrently, and may be kept for as
+     *       long as the invocation: it must not hold per-task state.</li>
+     *   <li>A wrapped task must restore the previous context of the thread it runs on when it completes, normally
+     *       or exceptionally. Tasks run on pooled threads, so a context left behind leaks into unrelated tasks,
+     *       including another user's security context.</li>
+     * </ul>
+     * For example, with Micrometer context propagation, whose {@code ContextSnapshot} follows these rules:
+     * <pre>{@code
+     * private static final ContextSnapshotFactory CONTEXT_SNAPSHOT_FACTORY = ContextSnapshotFactory.builder().build();
+     *
+     * public UnaryOperator<Runnable> captureContext() {
+     *     return CONTEXT_SNAPSHOT_FACTORY.captureAll()::wrap;
+     * }
+     * }</pre>
+     * The default implementation captures nothing.
+     *
+     * @return a function that wraps a task so that it runs with the context captured by this call. Must not be
+     *         {@code null}.
+     * @since 1.23.0
+     */
+    default UnaryOperator<Runnable> captureContext() {
+        return DefaultExecutorProvider.NO_CONTEXT_CAPTURE;
+    }
 
     /**
      * Registers a process-wide {@code ExecutorProvider} programmatically, taking precedence over any

@@ -1,11 +1,13 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.VirtualThreadUtils.createVirtualThreadExecutor;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.spi.ServiceHelper;
 import java.util.concurrent.Executor;
+import java.util.function.UnaryOperator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -75,12 +77,36 @@ public class DefaultExecutorProvider {
         return BuiltInHolder.EXECUTOR_SERVICE;
     }
 
-    private static Executor resolveProvidedExecutor() {
-        ExecutorProvider provider = programmaticProvider;
+    /**
+     * The default of {@link ExecutorProvider#captureContext()}: nothing to capture.
+     */
+    public static final UnaryOperator<Runnable> NO_CONTEXT_CAPTURE = task -> task;
+
+    /**
+     * Captures the context of the calling thread with the registered {@link ExecutorProvider}, see
+     * {@link ExecutorProvider#captureContext()}.
+     *
+     * @return a function that wraps a task so that it runs with the captured context, or {@code null} if there is
+     *         nothing to capture: no {@link ExecutorProvider} is registered, or it does not capture context
+     */
+    public static UnaryOperator<Runnable> captureContext() {
+        ExecutorProvider provider = resolveProvider();
         if (provider == null) {
-            provider = SpiHolder.PROVIDER;
+            return null;
         }
+        UnaryOperator<Runnable> contextRestorer = ensureNotNull(
+                provider.captureContext(), "%s.captureContext()", provider.getClass().getName());
+        return contextRestorer == NO_CONTEXT_CAPTURE ? null : contextRestorer;
+    }
+
+    private static Executor resolveProvidedExecutor() {
+        ExecutorProvider provider = resolveProvider();
         return provider != null ? provider.executor() : null;
+    }
+
+    private static ExecutorProvider resolveProvider() {
+        ExecutorProvider provider = programmaticProvider;
+        return provider != null ? provider : SpiHolder.PROVIDER;
     }
 
     private static final class SpiHolder {

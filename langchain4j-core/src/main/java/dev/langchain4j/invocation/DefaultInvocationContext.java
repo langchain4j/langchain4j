@@ -27,6 +27,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
+    private final CapturedContext capturedContext;
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
@@ -41,6 +42,11 @@ public class DefaultInvocationContext implements InvocationContext {
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
+        this.capturedContext = builder.capturedContext;
+    }
+
+    CapturedContext capturedContext() {
+        return capturedContext;
     }
 
     @Override
