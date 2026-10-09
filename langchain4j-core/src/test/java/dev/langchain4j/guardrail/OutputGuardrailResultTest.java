@@ -1,11 +1,10 @@
 package dev.langchain4j.guardrail;
 
-import dev.langchain4j.data.message.AiMessage;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.message.AiMessage;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class OutputGuardrailResultTest {
 
