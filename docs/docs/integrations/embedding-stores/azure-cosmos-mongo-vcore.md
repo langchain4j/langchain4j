@@ -6,8 +6,22 @@ sidebar_position: 4
 
 https://azure.microsoft.com/en-us/products/cosmos-db/
 
+:::warning Deprecated — renamed to Azure DocumentDB
+Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
+**Azure DocumentDB** (see https://learn.microsoft.com/en-us/azure/documentdb/).
+
+This module is deprecated in favor of the
+[Azure DocumentDB](./azure-documentdb.md) integration.
+The legacy module and its Spring Boot starters remain available for backwards compatibility.
+New projects should use the DocumentDB integration; existing projects can
+follow the [migration guide](./azure-documentdb.md#migrating-from-azure-cosmosdb-mongo-vcore).
+:::
 
 ## Maven Dependency
+
+You can use Azure CosmosDB Mongo vCore with LangChain4j in plain Java or Spring Boot applications.
+
+### Plain Java
 
 ```xml
 <dependency>
@@ -15,6 +29,43 @@ https://azure.microsoft.com/en-us/products/cosmos-db/
     <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
     <version>1.22.0-beta32</version>
 </dependency>
+```
+
+### Spring Boot
+
+**Spring Boot 3:**
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-azure-cosmos-mongo-vcore-spring-boot-starter</artifactId>
+    <version>${latest version here}</version>
+</dependency>
+```
+
+For **Spring Boot 4**, use `langchain4j-azure-cosmos-mongo-vcore-spring-boot4-starter`
+instead, with the same configuration properties below.
+
+Then configure the embedding store in your `application.properties` or `application.yml`:
+
+```properties
+langchain4j.azure.cosmos-mongo-vcore.connection-string=${AZURE_COSMOS_CONNECTION_STRING}
+langchain4j.azure.cosmos-mongo-vcore.database-name=my-database
+langchain4j.azure.cosmos-mongo-vcore.collection-name=my-collection
+langchain4j.azure.cosmos-mongo-vcore.index-name=my-index
+langchain4j.azure.cosmos-mongo-vcore.create-index=true
+langchain4j.azure.cosmos-mongo-vcore.dimensions=1536
+langchain4j.azure.cosmos-mongo-vcore.kind=vector-hnsw
+langchain4j.azure.cosmos-mongo-vcore.m=16
+langchain4j.azure.cosmos-mongo-vcore.ef-construction=64
+langchain4j.azure.cosmos-mongo-vcore.ef-search=40
+```
+
+The `AzureCosmosDbMongoVCoreEmbeddingStore` bean will be created automatically and can be injected:
+
+```java
+@Autowired
+AzureCosmosDbMongoVCoreEmbeddingStore embeddingStore;
 ```
 
 ## APIs

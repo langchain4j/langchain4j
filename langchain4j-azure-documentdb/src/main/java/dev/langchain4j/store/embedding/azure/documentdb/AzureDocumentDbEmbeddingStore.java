@@ -1,14 +1,16 @@
-package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
+package dev.langchain4j.store.embedding.azure.documentdb;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZeroIfNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toEmbeddingMatch;
+import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.mongodb.ConnectionString;
@@ -28,13 +30,12 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.bson.BsonArray;
@@ -42,25 +43,23 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 
 /**
- * Represents an Azure CosmosDB Mongo vCore as an embedding store.
+ * Stores embeddings in Azure DocumentDB.
  * <p>
- * More <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search">info</a>
- * to set up MongoDb as vectorDatabase.
- *
- * @deprecated Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
- * <a href="https://learn.microsoft.com/en-us/azure/documentdb/">Azure DocumentDB</a>.
- * Use {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbEmbeddingStore}
- * from the {@code langchain4j-azure-documentdb} module instead. This class is kept
- * for backwards compatibility and will be removed in a future release.
+ * See the <a href="https://learn.microsoft.com/en-us/azure/documentdb/vector-search">vector search documentation</a>
+ * for supported index types and cluster tiers.
+ * <p>
+ * When configured with a connection string, this store owns its MongoClient and must be closed
+ * when no longer needed. A supplied MongoClient remains caller-owned and is never closed by this store.
  */
-@Deprecated(forRemoval = true)
-public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment>, AutoCloseable {
 
-    private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
+    private final MongoClient mongoClient;
+    private final boolean ownsMongoClient;
+    private final AtomicBoolean closed = new AtomicBoolean();
+    private final MongoCollection<AzureDocumentDbDocument> collection;
     private final String indexName;
     private final VectorIndexType kind;
     private final Integer numLists;
@@ -70,26 +69,21 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     private final Integer efSearch;
 
     /**
-     * @param mongoClient             - mongoClient for the Azure CosmosDB Mongo vCore
-     * @param connectionString        - connection string required to connect to Azure Cosmos Mongo vCore
-     * @param databaseName            - databaseName for the mongoDb vCore
-     * @param collectionName          - collection name for the mongoDB vCore
-     * @param indexName               - index name for the mongoDB vCore collection
+     * @param mongoClient             - caller-owned MongoClient for Azure DocumentDB; never closed by this store
+     * @param connectionString        - connection string used to create an owned client when mongoClient is not provided
+     * @param databaseName            - database name in Azure DocumentDB
+     * @param collectionName          - collection name in Azure DocumentDB
+     * @param indexName               - vector index name for the collection
      * @param applicationName         - application name for the client for tracking and logging
      * @param createCollectionOptions - options for creating a collection
      * @param createIndex             - set to true if you want the application to create an index, or false if you want to create
      *                                it manually.
-     * @param kind                    - Type of vector index to create.
-     *                                Possible options are:
-     *                                - vector-ivf
-     *                                - vector-hnsw: available as a preview feature only, to enable visit
-     *                                https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features
+     * @param kind                    - required vector index type for index creation and search
      * @param numLists                - This integer is the number of clusters that the inverted file (IVF) index uses to group the
      *                                vector data. We recommend that numLists is set to documentCount/1000 for up to 1 million
      *                                documents and to sqrt(documentCount) for more than 1 million documents. Using a numLists value
      *                                of 1 is akin to performing brute-force search, which has limited performance.
-     * @param dimensions              - Number of dimensions for vector similarity. The maximum number of supported dimensions
-     *                                is 2000.
+     * @param dimensions              - embedding dimensions; required when createIndex is true and must match the embedding model
      * @param m                       - used only for vector -hnsw. The max number of connections per layer (16 by default, minimum value is 2, maximum
      *                                value is 100). Higher m is suitable for datasets with high dimensionality and/or high
      *                                accuracy requirements.
@@ -100,7 +94,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
      * @param efSearch                - used only for vector -hnsw. The size of the dynamic candidate list for search (40 by default). A higher value provides
      *                                better recall at the cost of speed.
      */
-    public AzureCosmosDbMongoVCoreEmbeddingStore(
+    private AzureDocumentDbEmbeddingStore(
             MongoClient mongoClient,
             String connectionString,
             String databaseName,
@@ -109,7 +103,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             String applicationName,
             CreateCollectionOptions createCollectionOptions,
             Boolean createIndex,
-            String kind,
+            VectorIndexType kind,
             Integer numLists,
             Integer dimensions,
             Integer m,
@@ -117,7 +111,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer efSearch) {
         if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or "
-                    + "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
+                    + "the connectionString required for connecting to Azure DocumentDB");
         }
 
         if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
@@ -126,44 +120,66 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
         applicationName = getOrDefault(applicationName, "LangChain4j");
-        this.kind = VectorIndexType.fromString(kind);
+        this.kind = ensureNotNull(kind, "kind");
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4j only
-        //  supports other similarity types other than Cosine.
-        this.dimensions = getOrDefault(dimensions, 1536);
+        if (Boolean.TRUE.equals(createIndex) && dimensions == null) {
+            throw new IllegalArgumentException("dimensions must be provided when createIndex is true");
+        }
+        this.dimensions = ensureGreaterThanZeroIfNotNull(dimensions, "dimensions");
         this.m = getOrDefault(m, 16);
         this.efConstruction = getOrDefault(efConstruction, 64);
         this.efSearch = getOrDefault(efSearch, 40);
 
-        CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureCosmosDbMongoVCoreDocument.class, BsonDocument.class)
-                .build());
-        CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+        CodecRegistry codecRegistry = fromRegistries(
+                MongoClientSettings.getDefaultCodecRegistry(), fromCodecs(new AzureDocumentDbDocumentCodec()));
 
-        if (mongoClient == null) {
-            mongoClient = MongoClients.create(MongoClientSettings.builder()
-                    .applyConnectionString(new ConnectionString(connectionString))
-                    .applicationName(applicationName)
-                    .build());
-        }
+        this.ownsMongoClient = mongoClient == null;
+        this.mongoClient = ownsMongoClient
+                ? MongoClients.create(MongoClientSettings.builder()
+                        .applyConnectionString(new ConnectionString(connectionString))
+                        .applicationName(applicationName)
+                        .build())
+                : mongoClient;
 
-        MongoDatabase database = mongoClient.getDatabase(databaseName);
-        // create collection if not exist
-        if (!isCollectionExist(database, collectionName)) {
-            createCollection(
-                    database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
-        }
-        this.collection = database.getCollection(collectionName, AzureCosmosDbMongoVCoreDocument.class)
-                .withCodecRegistry(codecRegistry);
+        try {
+            MongoDatabase database = this.mongoClient.getDatabase(databaseName);
+            // create collection if not exist
+            if (!collectionExists(database, collectionName)) {
+                createCollection(
+                        database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
+            }
+            this.collection = database.getCollection(collectionName, AzureDocumentDbDocument.class)
+                    .withCodecRegistry(codecRegistry);
 
-        // create index if not exist
-        if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
-            createIndex(this.indexName, collectionName, database);
+            // create index if not exist
+            if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
+                createIndex(this.indexName, collectionName, database);
+            }
+        } catch (RuntimeException | Error e) {
+            if (ownsMongoClient) {
+                try {
+                    this.mongoClient.close();
+                } catch (RuntimeException | Error closeException) {
+                    e.addSuppressed(closeException);
+                }
+            }
+            throw e;
         }
     }
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * Closes the internally created MongoClient, releasing its connection pools and threads.
+     * Repeated calls have no effect. A caller-supplied MongoClient is never closed.
+     */
+    @Override
+    public void close() {
+        if (ownsMongoClient && closed.compareAndSet(false, true)) {
+            mongoClient.close();
+        }
     }
 
     @Override
@@ -203,7 +219,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         return new EmbeddingSearchResult<>(matches);
     }
 
-    public List<EmbeddingMatch<TextSegment>> findRelevant(
+    private List<EmbeddingMatch<TextSegment>> findRelevant(
             Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();
@@ -224,13 +240,13 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                     .filter(doc -> RelevanceScore.fromCosineSimilarity(
                                     doc.getDouble("similarityScore").getValue())
                             >= minScore)
-                    .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+                    .map(doc -> toEmbeddingMatch(mapBsonToAzureDocumentDbMatchedDocument(
                             doc.getDocument("document"),
                             doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
         } catch (MongoCommandException e) {
-            throw new RuntimeException("Error in AzureCosmosDbMongoVCoreEmbeddingStore.findRelevant", e);
+            throw new RuntimeException("Error in AzureDocumentDbEmbeddingStore.findRelevant", e);
         }
     }
 
@@ -280,9 +296,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         return pipeline;
     }
 
-    private AzureCosmosDbMongoVCoreMatchedDocument mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+    private AzureDocumentDbMatchedDocument mapBsonToAzureDocumentDbMatchedDocument(
             BsonDocument bsonDocument, Double score) {
-        AzureCosmosDbMongoVCoreMatchedDocument document = new AzureCosmosDbMongoVCoreMatchedDocument();
+        AzureDocumentDbMatchedDocument document = new AzureDocumentDbMatchedDocument();
 
         // Extract id
         document.setId(bsonDocument.getString("_id").getValue());
@@ -327,44 +343,22 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return;
         }
 
-        List<AzureCosmosDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
+        List<AzureDocumentDbDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            AzureCosmosDbMongoVCoreDocument document =
+            AzureDocumentDbDocument document =
                     toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg = String.format(
-                    "[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
-            throw new RuntimeException(errMsg);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    static Iterable<String> listCollectionNames(MongoDatabase database) {
-        try {
-            Method m = MongoDatabase.class.getMethod("listCollectionNames");
-            Object result = m.invoke(database);
-            if (result instanceof Iterable) {
-                return (Iterable<String>) result;
-            }
-            throw new IllegalStateException("MongoDatabase.listCollectionNames() returned non-Iterable: " + result);
-        } catch (NoSuchMethodException e) {
-            throw new IllegalStateException("MongoDatabase.listCollectionNames() not found", e);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException("Failed to invoke MongoDatabase.listCollectionNames()", e);
+            throw new RuntimeException("Failed to add embeddings to Azure DocumentDB: the insert was not acknowledged");
         }
     }
 
     static boolean collectionExists(MongoDatabase database, String collectionName) {
-        return StreamSupport.stream(listCollectionNames(database).spliterator(), false)
+        return StreamSupport.stream(database.listCollectionNames().spliterator(), false)
                 .anyMatch(collectionName::equals);
-    }
-
-    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
-        return collectionExists(database, collectionName);
     }
 
     private void createCollection(
@@ -447,7 +441,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         private String applicationName;
         private CreateCollectionOptions createCollectionOptions;
         private Boolean createIndex;
-        private String kind;
+        private VectorIndexType kind;
         private Integer numLists;
         private Integer dimensions;
         private Integer m;
@@ -455,8 +449,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         private Integer efSearch;
 
         /**
-         * Build Mongo Client, Please close the client to release resources after usage.
-         * This is a mandatory parameter if not providing the connectionString.
+         * Sets a caller-owned MongoClient. The caller is responsible for closing it;
+         * closing the store does not close this client.
+         * Takes precedence over connectionString when both are provided.
          */
         public Builder mongoClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
@@ -464,9 +459,10 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         /**
-         * Sets the Azure CosmosDB Mongo vCore connectionString. This is a mandatory parameter if not providing the Mongo Client.
+         * Sets the Azure DocumentDB connectionString. This is a mandatory parameter if not providing the Mongo Client.
+         * The store owns the client created from this connection string. Close the store to release its resources.
          *
-         * @param connectionString The Azure CosmosDB Mongo vCore connectionString.
+         * @param connectionString The Azure DocumentDB connectionString.
          * @return builder
          */
         public Builder connectionString(String connectionString) {
@@ -504,7 +500,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *
          * <p>default value is false</p>
          *
-         * @param createIndex whether in production mode
+         * When true, {@link #dimensions(Integer)} must also be configured.
+         *
+         * @param createIndex whether to create the vector index if it is missing
          * @return builder
          */
         public Builder createIndex(Boolean createIndex) {
@@ -513,13 +511,23 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         /**
-         * @param kind - Type of vector index to create.
-         *             Possible options are:
-         *             - vector-ivf
-         *             - vector-hnsw: available as a preview feature only, to enable visit
-         *             https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/preview-feature
+         * Sets the required vector index type for index creation and search.
+         *
+         * @param kind {@code vector-ivf} or {@code vector-hnsw}
+         * @return builder
          */
         public Builder kind(String kind) {
+            return kind(VectorIndexType.fromString(kind));
+        }
+
+        /**
+         * Sets the required vector index type for index creation and search.
+         * HNSW requires an M30 or higher Azure DocumentDB cluster tier.
+         *
+         * @param kind the vector index type
+         * @return builder
+         */
+        public Builder kind(VectorIndexType kind) {
             this.kind = kind;
             return this;
         }
@@ -529,7 +537,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                 vector data. We recommend that numLists is set to documentCount/1000 for up to 1 million
          *                 documents and to sqrt(documentCount) for more than 1 million documents. Using a numLists value
          *                 of 1 is akin to performing brute-force search, which has limited performance.
-         * @return
+         * @return builder
          */
         public Builder numLists(Integer numLists) {
             this.numLists = numLists;
@@ -537,9 +545,10 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         /**
-         * @param dimensions - Number of dimensions for vector similarity. The maximum number of supported dimensions
-         *                   is 2000.
-         * @return
+         * Sets the number of embedding dimensions. Required when {@link #createIndex(Boolean)} is true.
+         *
+         * @param dimensions a positive value matching the embedding model's output dimensions
+         * @return builder
          */
         public Builder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
@@ -550,7 +559,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          * @param m - The max number of connections per layer (16 by default, minimum value is 2, maximum
          *          value is 100). Higher m is suitable for datasets with high dimensionality and/or high
          *          accuracy requirements.
-         * @return
+         * @return builder
          */
         public Builder m(Integer m) {
             this.m = m;
@@ -562,7 +571,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                       value is 4, maximum value is 1000). Higher ef_construction will result in better index
          *                       quality and higher accuracy, but it will also increase the time required to build the index.
          *                       ef_construction has to be at least 2 * m.
-         * @return
+         * @return builder
          */
         public Builder efConstruction(Integer efConstruction) {
             this.efConstruction = efConstruction;
@@ -572,15 +581,15 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         /**
          * @param efSearch - The size of the dynamic candidate list for search (40 by default). A higher value provides
          *                 better recall at the cost of speed.
-         * @return
+         * @return builder
          */
         public Builder efSearch(Integer efSearch) {
             this.efSearch = efSearch;
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreEmbeddingStore build() {
-            return new AzureCosmosDbMongoVCoreEmbeddingStore(
+        public AzureDocumentDbEmbeddingStore build() {
+            return new AzureDocumentDbEmbeddingStore(
                     mongoClient,
                     connectionString,
                     databaseName,
@@ -598,7 +607,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
     }
 
-    public enum SimilarityMetric {
+    private enum SimilarityMetric {
         COS("COS");
 
         private final String value;
@@ -635,6 +644,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         public static VectorIndexType fromString(String kindString) {
+            ensureNotNull(kindString, "kind");
             return Arrays.stream(VectorIndexType.values())
                     .filter(k -> k.getValue().equals(kindString))
                     .findFirst()
