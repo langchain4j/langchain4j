@@ -8,6 +8,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import java.io.InputStream;
 import java.util.Map;
+import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.AutoDetectParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,8 +42,9 @@ class ApacheTikaDocumentParserTest {
 
         final Map<String, Object> metadata = document.metadata().toMap();
         assertThat(metadata).isNotEmpty();
-        assertThat(metadata.get("X-TIKA:Parsed-By")).isNotNull();
-        assertThat(metadata.get("X-TIKA:Parsed-By-Full-Set")).isNotNull();
+        assertThat(metadata.get(TikaCoreProperties.TIKA_PARSED_BY.getName())).isNotNull();
+        assertThat(metadata.get(TikaCoreProperties.TIKA_PARSED_BY_FULL_SET.getName()))
+                .isNotNull();
     }
 
     @ParameterizedTest
