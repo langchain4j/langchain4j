@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -119,6 +120,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
+        // HITL / SuspendedResponse writes an incomplete deferred value into scope, then notifies the
+        // planner via onSubagentInvoked. Sequential planners must still advance their cursor here;
+        // the supervisor must not call the LLM with lastResponse="<pending:?>" ? that burns a turn,
+        // pollutes chat memory, and commonly re-selects the same ask-user agent after resume.
+        if (hasIncompleteSuspendedResponse(planningContext.agenticScope())) {
+            return suspend();
+        }
         String lastResponse = planningContext.previousAgentInvocation() == null
                         || planningContext.previousAgentInvocation().output() == null
                 ? ""
@@ -127,6 +135,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             return doneAction(planningContext.agenticScope(), lastResponse, null);
         }
         return nextSubagent(planningContext.agenticScope(), lastResponse);
+    }
+
+    private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {
+        return agenticScope.state().values().stream()
+                .anyMatch(v -> v instanceof SuspendedResponse<?> sr && !sr.isDone());
     }
 
     private static String toCard(AgentInstance agent) {
