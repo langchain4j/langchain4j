@@ -176,8 +176,8 @@ Streaming uses the same configuration structure and parameters as the non-stream
 
 ```java
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
 import com.ibm.watsonx.ai.CloudRegion;
 
@@ -247,8 +247,8 @@ System.out.println(answer);
 
 ```java
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.watsonx.WatsonxDeploymentStreamingChatModel;
 import com.ibm.watsonx.ai.CloudRegion;
 
@@ -317,8 +317,8 @@ as `WatsonxGatewayChatModel`. Responses are delivered incrementally through a ha
 
 ```java
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.watsonx.WatsonxGatewayStreamingChatModel;
 import com.ibm.watsonx.ai.CloudRegion;
 
