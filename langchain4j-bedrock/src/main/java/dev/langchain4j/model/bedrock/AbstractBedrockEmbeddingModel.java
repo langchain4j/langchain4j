@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-
 import static dev.langchain4j.internal.Utils.copy;
 
 import dev.langchain4j.Internal;
@@ -12,7 +11,6 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +66,8 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
         final List<Map<String, Object>> requestParameters = getRequestParameters(textSegments);
         final List<T> responses = requestParameters.stream()
                 .map(Json::toJson)
-                .map(body -> withRetryMappingExceptions(() -> invoke(body), maxRetries, BedrockExceptionMapper.INSTANCE))
+                .map(body ->
+                        withRetryMappingExceptions(() -> invoke(body), maxRetries, BedrockExceptionMapper.INSTANCE))
                 .map(invokeModelResponse -> invokeModelResponse.body().asUtf8String())
                 .map(response -> Json.fromJson(response, getResponseClassType()))
                 .collect(Collectors.toList());
@@ -141,7 +140,7 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
 
         InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(getModelId())
-                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
+                .body(SdkBytes.fromUtf8String(body))
                 .build();
         return getClient().invokeModel(invokeModelRequest);
     }
