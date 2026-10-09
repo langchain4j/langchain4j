@@ -1119,7 +1119,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 method,
                                 aggregateResponse,
                                 toolAwareRepromptExecutor,
-                                outputGuardrailParams(commonGuardrailParam, toolServiceResult));
+                                outputGuardrailParams(
+                                        context.guardrailService(), method, commonGuardrailParam, toolServiceResult));
 
                         return finishToolServiceResult(
                                 response,
@@ -1182,7 +1183,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         method,
                                         aggregateResponse,
                                         toolAwareRepromptExecutor,
-                                        outputGuardrailParams(commonGuardrailParam, toolServiceResult))
+                                        outputGuardrailParams(
+                                                context.guardrailService(),
+                                                method,
+                                                commonGuardrailParam,
+                                                toolServiceResult))
                                 .thenApply(response -> finishToolServiceResult(
                                         response,
                                         invocationContext,
@@ -1484,13 +1489,15 @@ class DefaultAiServices<T> extends AiServices<T> {
     private record GuardedInput(UserMessage userMessage, InvocationContext invocationContext) {}
 
     /**
-     * Output guardrails retry and reprompt by resending the conversation they read from the chat memory. An AI Service
-     * without one gets a temporary memory holding this call's conversation, as the streaming modes already do;
-     * otherwise a retry would send no messages at all and a reprompt only the reprompt text.
+     * Output guardrails retry and reprompt from the chat memory, so without one they get a temporary memory holding
+     * this call's conversation.
      */
     private static GuardrailRequestParams outputGuardrailParams(
-            GuardrailRequestParams commonGuardrailParams, ToolServiceResult toolServiceResult) {
-        if (commonGuardrailParams.chatMemory() != null) {
+            GuardrailService guardrailService,
+            Method method,
+            GuardrailRequestParams commonGuardrailParams,
+            ToolServiceResult toolServiceResult) {
+        if (commonGuardrailParams.chatMemory() != null || !guardrailService.hasOutputGuardrails(method)) {
             return commonGuardrailParams;
         }
         ChatMemory temporaryMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);

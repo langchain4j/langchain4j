@@ -27,9 +27,9 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
@@ -100,28 +100,17 @@ class OutputGuardrailWithoutChatMemoryTest {
         assertThat(texts(requests.get(1))).containsExactlyElementsOf(expectedSecondRequest(outcome));
     }
 
-    @Test
-    void without_chat_memory_a_reprompt_after_a_tool_call_carries_the_tool_round_trip() {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(value = Mode.class, names = {"SYNC", "ASYNC"})
+    void without_chat_memory_a_reprompt_after_a_tool_call_carries_the_tool_round_trip(Mode mode) throws Exception {
         var toolCall = AiMessage.from(ToolExecutionRequest.builder()
                 .id("call-1")
                 .name("lookup")
                 .arguments("{}")
                 .build());
         var model = ChatModelMock.thatAlwaysResponds(toolCall, AiMessage.from(REJECTED), AiMessage.from("good"));
-        var tools = new Object() {
-            @Tool("looks something up")
-            public String lookup() {
-                return "looked up";
-            }
-        };
 
-        var assistant = AiServices.builder(SyncAssistant.class)
-                .chatModel(model)
-                .tools(tools)
-                .outputGuardrails(new RejectFirstAnswer(Outcome.REPROMPT))
-                .build();
-
-        assertThat(assistant.chat(USER)).isEqualTo("good");
+        assertThat(chat(mode, model, new RejectFirstAnswer(Outcome.REPROMPT))).isEqualTo("good");
         assertThat(model.requests()).hasSize(3);
         assertThat(texts(model.requests().get(2)))
                 .containsExactly(
@@ -131,6 +120,33 @@ class OutputGuardrailWithoutChatMemoryTest {
                         "TOOL_EXECUTION_RESULT:looked up",
                         "AI:" + REJECTED,
                         "USER:" + REPROMPT);
+    }
+
+    private static String chat(Mode mode, ChatModelMock model, OutputGuardrail guardrail) throws Exception {
+        return switch (mode) {
+            case SYNC -> AiServices.builder(SyncAssistant.class)
+                    .chatModel(model)
+                    .tools(new Tools())
+                    .outputGuardrails(guardrail)
+                    .build()
+                    .chat(USER);
+            case ASYNC -> AiServices.builder(AsyncAssistant.class)
+                    .chatModel(model)
+                    .tools(new Tools())
+                    .outputGuardrails(guardrail)
+                    .build()
+                    .chat(USER)
+                    .get(10, SECONDS);
+            default -> throw new IllegalArgumentException(mode.name());
+        };
+    }
+
+    public static class Tools {
+
+        @Tool("looks something up")
+        public String lookup() {
+            return "looked up";
+        }
     }
 
     private static List<String> expectedSecondRequest(Outcome outcome) {
