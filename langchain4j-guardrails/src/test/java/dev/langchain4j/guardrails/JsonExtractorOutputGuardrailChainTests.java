@@ -66,7 +66,8 @@ class JsonExtractorOutputGuardrailChainTests {
         var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
-        var result = executor(new JsonExtractorOutputGuardrail<>(Email.class), new AlwaysSuccess()).execute(request);
+        var result = executor(new JsonExtractorOutputGuardrail<>(Email.class), new AlwaysSuccess())
+                .execute(request);
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.hasRewrittenResult()).isFalse();
@@ -102,8 +103,9 @@ class JsonExtractorOutputGuardrailChainTests {
                 .build();
 
         return OutputGuardrailRequest.builder()
-                .responseFromLLM(
-                        ChatResponse.builder().aiMessage(AiMessage.from(response)).build())
+                .responseFromLLM(ChatResponse.builder()
+                        .aiMessage(AiMessage.from(response))
+                        .build())
                 .chatExecutor(chatExecutor)
                 .requestParams(GuardrailRequestParams.builder()
                         .userMessageTemplate("")
