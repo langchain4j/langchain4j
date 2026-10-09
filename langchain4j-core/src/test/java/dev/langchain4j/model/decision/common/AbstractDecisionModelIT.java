@@ -170,6 +170,26 @@ public abstract class AbstractDecisionModelIT {
     }
 
     @Test
+    void should_take_level_descriptions_into_account() {
+
+        // the labels carry no meaning: only the descriptions say what each level is
+        ScaleQuestion severity = ScaleQuestion.builder()
+                .text("How severe is the incident?")
+                .level("A", "Minor: no customer is affected")
+                .level("B", "Major: some customers are affected")
+                .level("C", "Critical: no customer can use the product")
+                .build();
+
+        ScaleAnswer answer = model().decide(DecisionRequest.builder()
+                        .input("Since 10 minutes, no customer can log in, the whole product is down.")
+                        .question("severity", severity)
+                        .build())
+                .scale("severity");
+
+        assertThat(answer.mean()).isGreaterThan(1.5);
+    }
+
+    @Test
     void should_take_criteria_into_account() {
 
         String ticket = "Hi, could you send me a copy of last month's invoice when you have a moment?";

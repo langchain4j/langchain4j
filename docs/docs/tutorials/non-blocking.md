@@ -263,7 +263,12 @@ Everywhere LangChain4j runs work off the caller thread — concurrent tool calls
 
 ```java
 public interface ExecutorProvider {
+
     Executor executor();
+
+    default CapturedContext captureContext() {
+        return CapturedContext.NONE;
+    }
 }
 ```
 
@@ -277,12 +282,78 @@ Without one, LangChain4j uses a virtual-thread-per-task executor on Java 21 or l
 platform-thread pool on Java 17-20.
 
 :::note
-A single invocation now crosses several threads, so ambient `ThreadLocal` state — MDC logging context, tracing
-spans, security context — is **not** automatically propagated the way it is in the fully synchronous mode. Return a
-context-propagating executor from your provider to make it follow the work: a `ManagedExecutor` on
-Quarkus/MicroProfile, a `TaskDecorator`-wrapped executor on Spring, `Context.taskWrapping(executor)` for
-OpenTelemetry, or `ContextSnapshot.wrap(executor)` for Micrometer. On Spring Boot you can point LangChain4j at
-the application's executor with one property instead — see [Spring Boot](#spring-boot) below.
+A single invocation crosses several threads, so ambient `ThreadLocal` state — MDC logging context, tracing spans,
+security context — is **not** automatically propagated the way it is in the fully synchronous mode. To make it
+follow the work, implement `captureContext()`. LangChain4j calls it once per invocation, on the thread that calls
+the AI Service method, and runs every task that the invocation offloads to the executor (tools, blocking RAG stages,
+moderation) with the captured context. A lambda registered with `ExecutorProvider.set(() -> myExecutor)` cannot do
+this, so register a class instead, for example with Micrometer context propagation:
+
+```java
+import dev.langchain4j.spi.CapturedContext;
+import dev.langchain4j.spi.ExecutorProvider;
+import io.micrometer.context.ContextSnapshotFactory;
+import java.util.concurrent.Executor;
+
+public class ContextPropagatingExecutorProvider implements ExecutorProvider {
+
+    private static final ContextSnapshotFactory CONTEXT_SNAPSHOT_FACTORY = ContextSnapshotFactory.builder().build();
+
+    @Override
+    public Executor executor() {
+        return null; // keeps the built-in default
+    }
+
+    @Override
+    public CapturedContext captureContext() {
+        return CONTEXT_SNAPSHOT_FACTORY.captureAll()::wrap;
+    }
+}
+```
+
+```java
+ExecutorProvider.set(new ContextPropagatingExecutorProvider());
+```
+
+With OpenTelemetry, `captureContext()` is `return Context.current()::wrap;`. With MicroProfile Context
+Propagation:
+
+```java
+private static final ThreadContext THREAD_CONTEXT = ThreadContext.builder().build();
+
+@Override
+public CapturedContext captureContext() {
+    Executor callerContext = THREAD_CONTEXT.currentContextExecutor();
+    return task -> () -> callerContext.execute(task);
+}
+```
+
+`captureContext()` is called on every invocation, so it must be cheap. The `CapturedContext` it returns may wrap
+several tasks that run at the same time, and each wrapped task must restore the previous context of the thread it
+runs on when it completes: tasks run on pooled threads, so a context left behind would leak into unrelated tasks.
+The examples above follow these rules.
+
+Some things to be aware of:
+
+- A context-propagating executor alone (a `ManagedExecutor`, a `TaskDecorator`-wrapped executor,
+  `Context.taskWrapping(executor)`, …) is not enough: it captures the context of the thread that *submits* a task,
+  and most offloaded work is submitted after the model has answered, from the thread that delivered the answer. It
+  can be combined with `captureContext()`: tasks then run with the captured context.
+- Work that LangChain4j does not offload — guardrails, chat memory, listeners, streaming callbacks — runs on
+  whichever thread is current and does not get the captured context.
+- Work offloaded outside an AI Service invocation does not get it either: retry backoff, threads that a model
+  integration starts on its own (for example to read a streaming response), and the parallel and asynchronous agents
+  of `langchain4j-agentic`. Combine `captureContext()` with a context-propagating executor if you need context
+  there.
+- For methods returning `Flow.Publisher`, `Mono` or `Flux`, the context is captured when the method is called, not
+  when the result is subscribed.
+- The captured context is kept for as long as the invocation, so offloaded work may run with it after the request
+  that started the invocation has completed (for example with the security context of a session that has since
+  ended).
+- Only the `ExecutorProvider` captures context. Tools that run on an executor passed to an AI Service (with
+  `executeToolsConcurrently(executor)`) still run with the context it captured.
+- This applies to AI Services created with `AiServices`. A framework that builds its own AI Service implementation
+  decides itself how it propagates context.
 
 `InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local.
 :::
@@ -351,6 +422,11 @@ public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailReque
 `Mono<T>` and `Flux<AiServiceStreamingEvent>` come from the `langchain4j-reactor` module and carry the same
 provider constraint as the JDK types — see [Third-party reactive types](#third-party-reactive-types) above.
 
+With the OpenAI starter, the non-blocking modes are sent with Spring's `WebClient`, so they need it on the classpath
+(`spring-boot-starter-webclient` on Spring Boot 4, `spring-webflux` on Spring Boot 3). See
+[Spring Boot Integration](/tutorials/spring-boot-integration) for which dependency to add and which customizations
+apply.
+
 To make ambient context follow an asynchronous invocation, let LangChain4j offload to the application's own
 executor rather than its default one:
 
@@ -358,7 +434,14 @@ executor rather than its default one:
 langchain4j.executor.use-spring-task-executor=true
 ```
 
-Spring's task executor propagates tracing spans, MDC and security context when a `TaskDecorator` is installed
-(Micrometer context propagation and Spring Security both install one), and its pool follows
-`spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one
-application context.
+LangChain4j then runs offloaded work on the application's task executor, whose pool follows
+`spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one application
+context.
+
+Starting with version 1.23.0-beta33 of the Spring Boot starters, the caller's context is captured as well (see
+[above](#controlling-the-executor-and-propagating-context)), so that tracing spans, MDC and security context follow
+the work LangChain4j offloads:
+
+- if the application defines `TaskDecorator` beans (for example a `ContextPropagatingTaskDecorator`), they define
+  what is captured, as for the application's own task executor (on Spring Boot 3, only when there is exactly one);
+- otherwise, Micrometer context propagation is used if it is on the classpath.

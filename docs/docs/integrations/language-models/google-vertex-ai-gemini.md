@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>1.21.0-beta31</version>
+  <version>1.22.0-beta32</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.21.0-beta31'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:1.22.0-beta32'
 ```
 
 ### Try out an example code:

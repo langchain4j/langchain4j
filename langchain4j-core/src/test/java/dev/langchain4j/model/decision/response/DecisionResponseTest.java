@@ -3,6 +3,7 @@ package dev.langchain4j.model.decision.response;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -297,5 +298,27 @@ class DecisionResponseTest {
         assertThat(ScaleAnswer.builder().mean(1.0).build())
                 .isEqualTo(ScaleAnswer.builder().mean(1.0).build())
                 .isNotEqualTo(ScaleAnswer.builder().mean(2.0).build());
+    }
+
+    @Test
+    void should_throw_content_filtered_exception_when_accessing_refused_answer() {
+
+        DecisionResponse response = DecisionResponse.builder()
+                .answer("spam", RefusalAnswer.of())
+                .answer("urgent", YesNoAnswer.of(0.2))
+                .build();
+
+        assertThat(response.isRefused("spam")).isTrue();
+        assertThat(response.isRefused("urgent")).isFalse();
+        assertThat(response.answer("spam", RefusalAnswer.class)).isSameAs(RefusalAnswer.of());
+        assertThat(response.yesNo("urgent").probability()).isEqualTo(0.2);
+        assertThatThrownBy(() -> response.yesNo("spam"))
+                .isExactlyInstanceOf(ContentFilteredException.class)
+                .hasMessage("The decision model refused to answer the question 'spam'");
+        assertThatThrownBy(() -> response.choice("spam")).isInstanceOf(ContentFilteredException.class);
+        assertThatThrownBy(() -> response.scale("spam")).isInstanceOf(ContentFilteredException.class);
+        assertThatThrownBy(() -> response.isRefused("unknown"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("There is no answer to a question named 'unknown'");
     }
 }
