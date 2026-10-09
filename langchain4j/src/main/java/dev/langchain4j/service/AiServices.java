@@ -1354,7 +1354,10 @@ public abstract class AiServices<T> {
         if (moderationFuture != null) {
             try {
                 verifyModeration(moderationFuture.get());
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
                 throw new RuntimeException(e);
             }
         }
