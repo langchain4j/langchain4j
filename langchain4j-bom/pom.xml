@@ -697,6 +697,18 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-mongo-vcore-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-nosql-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-documentdb-spring-boot-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -741,6 +753,18 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-ai-search-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-mongo-vcore-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-nosql-spring-boot4-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

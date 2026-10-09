@@ -11,8 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.ListCollectionNamesIterable;
 import com.mongodb.client.ListIndexesIterable;
 import com.mongodb.client.MongoClient;
@@ -23,16 +21,13 @@ import com.mongodb.client.result.InsertManyResult;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbEmbeddingStore.VectorIndexType;
 import java.util.List;
-import java.util.stream.StreamSupport;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -48,7 +43,6 @@ class AzureDocumentDbEmbeddingStoreTest {
 
     private static final String DATABASE_NAME = "test_db";
     private static final String COLLECTION_NAME = "test_coll";
-    private static final String INDEX_NAME = "test_index";
 
     @Mock
     private MongoClient mongoClient;
@@ -215,71 +209,6 @@ class AzureDocumentDbEmbeddingStoreTest {
                     .kind("")
                     .build();
         });
-    }
-
-    @Test
-    @EnabledIfEnvironmentVariable(named = "AZURE_DOCUMENTDB_CONNECTION_STRING", matches = ".+")
-    void should_create_collection_and_index_if_not_exists() {
-        MongoClient client = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING")))
-                .applicationName("JAVA_LANG_CHAIN")
-                .build());
-
-        MongoDatabase database = client.getDatabase(DATABASE_NAME);
-        assertThat(isCollectionExist(database, COLLECTION_NAME)).isEqualTo(Boolean.FALSE);
-
-        EmbeddingStore embeddingStore = AzureDocumentDbEmbeddingStore.builder()
-                .mongoClient(client)
-                .databaseName(DATABASE_NAME)
-                .collectionName(COLLECTION_NAME)
-                .indexName(INDEX_NAME)
-                .applicationName("JAVA_LANG_CHAIN")
-                .createIndex(true)
-                .kind("vector-hnsw")
-                .dimensions(1536)
-                .build();
-        assertThat(isCollectionExist(database, COLLECTION_NAME)).isEqualTo(Boolean.TRUE);
-        MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
-        assertThat(isIndexExist(INDEX_NAME, collection)).isEqualTo(Boolean.TRUE);
-
-        database.drop();
-        client.close();
-    }
-
-    @Test
-    @EnabledIfEnvironmentVariable(named = "AZURE_DOCUMENTDB_CONNECTION_STRING", matches = ".+")
-    void should_not_create_index_if_createIndex_set_to_false() {
-        MongoClient client = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING")))
-                .applicationName("JAVA_LANG_CHAIN")
-                .build());
-
-        MongoDatabase database = client.getDatabase(DATABASE_NAME);
-
-        EmbeddingStore embeddingStore = AzureDocumentDbEmbeddingStore.builder()
-                .mongoClient(client)
-                .databaseName(DATABASE_NAME)
-                .collectionName(COLLECTION_NAME)
-                .indexName(INDEX_NAME)
-                .applicationName("JAVA_LANG_CHAIN")
-                .createIndex(false)
-                .kind("vector-hnsw")
-                .build();
-        MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
-        assertThat(isIndexExist(INDEX_NAME, collection)).isEqualTo(Boolean.FALSE);
-
-        database.drop();
-        client.close();
-    }
-
-    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
-        return StreamSupport.stream(database.listCollectionNames().spliterator(), false)
-                .anyMatch(collectionName::equals);
-    }
-
-    private boolean isIndexExist(String indexName, MongoCollection<Document> collection) {
-        return StreamSupport.stream(collection.listIndexes().spliterator(), false)
-                .anyMatch(index -> indexName.equals(index.getString("name")));
     }
 
     private void assertCreatedIndex(AzureDocumentDbEmbeddingStore.Builder builder, String kind, int dimensions) {

@@ -537,7 +537,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
          *                 vector data. We recommend that numLists is set to documentCount/1000 for up to 1 million
          *                 documents and to sqrt(documentCount) for more than 1 million documents. Using a numLists value
          *                 of 1 is akin to performing brute-force search, which has limited performance.
-         * @return
+         * @return builder
          */
         public Builder numLists(Integer numLists) {
             this.numLists = numLists;
@@ -559,7 +559,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
          * @param m - The max number of connections per layer (16 by default, minimum value is 2, maximum
          *          value is 100). Higher m is suitable for datasets with high dimensionality and/or high
          *          accuracy requirements.
-         * @return
+         * @return builder
          */
         public Builder m(Integer m) {
             this.m = m;
@@ -571,7 +571,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
          *                       value is 4, maximum value is 1000). Higher ef_construction will result in better index
          *                       quality and higher accuracy, but it will also increase the time required to build the index.
          *                       ef_construction has to be at least 2 * m.
-         * @return
+         * @return builder
          */
         public Builder efConstruction(Integer efConstruction) {
             this.efConstruction = efConstruction;
@@ -581,7 +581,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         /**
          * @param efSearch - The size of the dynamic candidate list for search (40 by default). A higher value provides
          *                 better recall at the cost of speed.
-         * @return
+         * @return builder
          */
         public Builder efSearch(Integer efSearch) {
             this.efSearch = efSearch;

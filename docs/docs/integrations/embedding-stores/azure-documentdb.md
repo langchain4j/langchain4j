@@ -23,8 +23,6 @@ You can use Azure DocumentDB with LangChain4j in plain Java or Spring Boot appli
 </dependency>
 ```
 
-Replace `${latest version here}` with the version of this module you are using.
-
 ## Configuration
 
 The vector index `kind` is required, including when you use an existing index.
