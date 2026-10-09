@@ -176,6 +176,9 @@ and returned inside `AiMessage.thinking()`.
 When the `returnThinking` parameter is enabled for `OpenAiStreamingChatModel`,
 the `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
 callbacks will be invoked when the DeepSeek API streams `reasoning_content`.
+If a Chat Completions chunk contains both `reasoning_content` and `content`, the thinking callback
+is invoked before the response callback. The reactive publisher emits `PartialThinking` before
+`PartialResponse` for the same chunk.
 
 Here is an example of how to configure thinking:
 ```java
