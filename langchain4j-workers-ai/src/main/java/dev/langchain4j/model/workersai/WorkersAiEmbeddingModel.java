@@ -199,7 +199,10 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                 result.addAll(future.get());
             }
             return new Response<>(result);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         } finally {
             executor.shutdown();
@@ -208,6 +211,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                     executor.shutdownNow();
                 }
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 executor.shutdownNow();
             }
         }
