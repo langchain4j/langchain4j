@@ -117,12 +117,13 @@ plain Java builder: `application-name=LangChain4j`, `num-lists=1`, `m=16`,
 `ef-construction=64`, and `ef-search=40`.
 
 The starter creates an `AzureDocumentDbEmbeddingStore` bean and closes it when
-the application context shuts down. A user-provided `MongoClient` bean takes
-precedence over `connection-string`. The store never closes that client;
-its owner, including Spring when managing the client bean, handles its lifecycle.
-Multiple client beans require an unambiguous candidate, such as one marked
-`@Primary`. A default client from Spring Boot's MongoDB auto-configuration does
-not replace a missing DocumentDB connection string.
+the application context shuts down. When `connection-string` is set, the store
+creates and owns its own client, even if a `MongoClient` bean exists. Otherwise,
+the store uses your `MongoClient` bean and never closes it; the bean's owner,
+typically Spring, handles its lifecycle. Multiple client beans require an
+unambiguous candidate, such as one marked `@Primary`. The default client created
+by Spring Boot's MongoDB auto-configuration is never used, so set
+`connection-string` unless you define your own `MongoClient` bean.
 
 Set `langchain4j.azure.documentdb.enabled=false` to disable auto-configuration.
 Defining your own `AzureDocumentDbEmbeddingStore` bean also takes precedence.
