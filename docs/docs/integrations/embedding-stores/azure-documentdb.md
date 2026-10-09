@@ -34,6 +34,11 @@ When `createIndex(true)` is set, `dimensions(...)` is required and must match
 your embedding model's output dimensions. There is no default dimension.
 HNSW requires an M30 or higher Azure DocumentDB cluster tier.
 
+The store creates indexes with cosine similarity and converts search scores
+assuming cosine similarity. If you use an existing index, it must have been
+created with `"similarity": "COS"`; otherwise relevance scores and `minScore`
+filtering are incorrect.
+
 ## Client lifecycle
 
 `AzureDocumentDbEmbeddingStore` implements `AutoCloseable`. When configured with
@@ -62,14 +67,6 @@ If initialization fails after the store creates a client, that client is closed
 automatically. Repeated calls to `close()` have no effect.
 
 ## Spring Boot
-
-:::note Starter availability
-The starters below require a release of
-[`langchain4j-spring`](https://github.com/langchain4j/langchain4j-spring)
-that includes Azure DocumentDB support. They are not available in earlier releases.
-Until the artifacts are published, build the matching snapshots locally or use
-the [manual bean configuration](#manual-bean-configuration).
-:::
 
 Choose the starter matching your Spring Boot version.
 
@@ -168,8 +165,7 @@ migration consists of:
    the dimensions to match your embedding model.
 4. Managing the client lifecycle as described above.
 
-For Spring Boot applications, use the matching replacement starter once it is
-available:
+For Spring Boot applications, use the matching replacement starter:
 
 | Spring Boot version | Legacy artifact | Replacement artifact |
 |---------------------|-----------------|----------------------|
@@ -178,13 +174,17 @@ available:
 
 Rename the property prefix from `langchain4j.azure.cosmos-mongo-vcore` to
 `langchain4j.azure.documentdb`, preserving your connection, database, collection,
-and custom index settings. Explicitly configure `kind`. When creating an index,
-set `dimensions` or provide an `EmbeddingModel` bean; do not rely on the legacy
-dimension default.
+and custom index settings. Explicitly configure `kind`: the legacy starter defaulted
+to `vector-ivf`, so set `langchain4j.azure.documentdb.kind=vector-ivf` if you never
+configured it, to keep using your existing index. When creating an index, set
+`dimensions` or provide an `EmbeddingModel` bean; the legacy default of 1536 no
+longer applies.
+
+Remove the legacy starter when adding the new one. Otherwise, both register an
+embedding store bean.
 
 If you previously registered a DocumentDB store bean manually, remove that bean
 to let the starter configure it, or keep it to continue using your own configuration.
-Until a starter release is available, the manual configuration remains supported.
 
 The connection string, database, collection, stored document shape, and default
 index name (`defaultIndexAzureCosmos`) remain unchanged. Existing data and indexes
