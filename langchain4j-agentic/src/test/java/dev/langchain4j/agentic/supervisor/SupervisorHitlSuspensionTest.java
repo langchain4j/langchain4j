@@ -96,14 +96,11 @@ class SupervisorHitlSuspensionTest {
     void supervisor_does_not_plan_again_while_hitl_is_suspended() {
         AgenticScopePersister.setStore(new InMemoryAgenticScopeStore());
 
-        CountingScriptedChatModel plannerModel = new CountingScriptedChatModel(
-                """
+        CountingScriptedChatModel plannerModel = new CountingScriptedChatModel("""
                 {"agentName": "askUser", "arguments": {"question": "What is your name?"}}
-                """,
-                """
+                """, """
                 {"agentName": "query", "arguments": {}}
-                """,
-                """
+                """, """
                 {"agentName": "done", "arguments": {"response": "Hello Alice"}}
                 """);
 
@@ -138,8 +135,7 @@ class SupervisorHitlSuspensionTest {
         // A second call here would mean we planned against a still-pending SuspendedResponse.
         assertThat(plannerModel.calls()).isEqualTo(1);
 
-        ResultWithAgenticScope<String> result =
-                suspended.completePendingResponse("user-name", "Alice");
+        ResultWithAgenticScope<String> result = suspended.completePendingResponse("user-name", "Alice");
 
         assertThat(result.suspended()).isFalse();
         assertThat(result.agenticScope().readState("userAnswer", "")).isEqualTo("Alice");
