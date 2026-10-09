@@ -138,7 +138,14 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             if (segmentBuilder.isNotEmpty()) {
                 // The part won't fit in the current segment, so we flush the current segment.
                 String segmentText = segmentBuilder.toString();
-                if (!segmentText.equals(overlap)) {
+                if (segmentText.isEmpty()) {
+                    // The buffer holds only whitespace, which is trimmed away, so there is nothing to flush.
+                    segmentBuilder.reset();
+                    if (segmentBuilder.hasSpaceFor(partSize)) {
+                        segmentBuilder.append(part);
+                        continue;
+                    }
+                } else if (!segmentText.equals(overlap)) {
                     segments.add(createSegment(segmentText, document, index.getAndIncrement()));
 
                     overlap = overlapFrom(segmentText);
