@@ -9,6 +9,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import dev.langchain4j.data.document.Metadata;
 import java.lang.reflect.Field;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class TablestoreEmbeddingStoreTest {
@@ -33,11 +34,12 @@ class TablestoreEmbeddingStoreTest {
         field.setAccessible(true);
         @SuppressWarnings("unchecked")
         Set<Class<?>> supportedValueTypes = (Set<Class<?>>) field.get(new Metadata());
-        assertThat(supportedValueTypes.size())
+        assertThat(supportedValueTypes)
                 .as("when Metadata#SUPPORTED_VALUE_TYPES add new types, we should modify:\n"
                         + "1. write logic: innerAdd.\n"
                         + "2. read logic: rowToMetadata")
-                .isEqualTo(10);
+                .containsExactlyInAnyOrder(
+                        String.class, UUID.class, Integer.class, Long.class, Float.class, Double.class);
     }
 
     @Test
