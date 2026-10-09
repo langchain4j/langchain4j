@@ -102,7 +102,6 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
                 startNanos,
                 OTelGenAiProviderName.fromModelProvider(errorContext.modelProvider()),
                 getOrDefault(errorContext.chatRequest().parameters().modelName(), "unknown"),
-                // a failed call has no response, so the response model is unknown
                 "unknown",
                 OUTCOME_ERROR,
                 error != null ? error.getClass().getName() : "unknown");
@@ -119,13 +118,6 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
         return startTime instanceof Long startNanos ? startNanos : null;
     }
 
-    /**
-     * Records the duration of one chat operation.
-     * <p>
-     * Every duration carries the exact same set of tag keys whatever the outcome, because some registries
-     * (e.g., Prometheus) drop any meter whose tag keys differ from an existing meter with the same name. The
-     * {@code outcome} tag distinguishes success from failure, so no tag has to be omitted on either path.
-     */
     private void recordDuration(
             long startNanos,
             String providerName,

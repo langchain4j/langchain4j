@@ -582,9 +582,9 @@ The following metrics are currently collected:
 
 | Tag                     | Description | Example Values                              |
 |-------------------------|-------------|---------------------------------------------|
-| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.operation.name` | The operation being performed | `chat`, `embeddings`                        |
 | `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
-| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
 | `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `gpt-4-0613`, `unknown`       |
 | `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
 | `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.util.concurrent.TimeoutException` |
