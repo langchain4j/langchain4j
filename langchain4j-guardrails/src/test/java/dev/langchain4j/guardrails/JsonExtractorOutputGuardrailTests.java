@@ -8,18 +8,17 @@ import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
-import java.util.Map;
-import java.util.stream.Stream;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class JsonExtractorOutputGuardrailTests {
-    private static final String JSON =
-            """
+    private static final String JSON = """
             {
                 "name": "MyObject",
                 "description": "Description of MyObject"
@@ -36,13 +35,12 @@ class JsonExtractorOutputGuardrailTests {
         var guardrailSpy = spy(guardrail);
         var result = guardrailSpy.validate(AiMessage.from(json));
 
+        // Clean JSON is a plain success, not a rewrite, so later guardrails in a chain can still reprompt
         assertThat(result)
                 .isNotNull()
-                .extracting(
-                        OutputGuardrailResult::result,
-                        OutputGuardrailResult::successfulText,
-                        OutputGuardrailResult::successfulResult)
-                .containsExactly(GuardrailResult.Result.SUCCESS_WITH_RESULT, json, expectedResult);
+                .extracting(OutputGuardrailResult::result, OutputGuardrailResult::successfulResult)
+                .containsExactly(GuardrailResult.Result.SUCCESS, expectedResult);
+        assertThat(result.hasRewrittenResult()).isFalse();
 
         verify(guardrailSpy).deserialize(json);
     }

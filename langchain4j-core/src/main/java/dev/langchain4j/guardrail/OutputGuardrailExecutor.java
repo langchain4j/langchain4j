@@ -150,8 +150,8 @@ public non-sealed class OutputGuardrailExecutor
 
             if (!result.isRetry()) {
                 return removeViolatingMessageIfRequestedAsync(result, request)
-                        .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                                new OutputGuardrailException(
+                        .thenCompose(ignored ->
+                                CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                         result.toString(), result.getFirstFailureException(), result)));
             }
 
@@ -182,8 +182,8 @@ public non-sealed class OutputGuardrailExecutor
                     .collect(Collectors.joining(System.lineSeparator()));
 
             return removeViolatingMessageIfRequestedAsync(result, request)
-                    .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                            new OutputGuardrailException(
+                    .thenCompose(ignored ->
+                            CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                     MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result)));
         });
     }
@@ -249,7 +249,9 @@ public non-sealed class OutputGuardrailExecutor
             if (!originalText.equals(validatedText)) {
                 // The text validated by the output guardrail is different form the original one because of a
                 // successful reprompt, so we need to create a new success result with the new text
-                return successWith(originalRequest.responseFromLLM().aiMessage().withText(validatedText));
+                return successWith(
+                        originalRequest.responseFromLLM().aiMessage().withText(validatedText),
+                        result.successfulResult());
             }
         }
         return result;
@@ -277,6 +279,24 @@ public non-sealed class OutputGuardrailExecutor
     @Override
     protected OutputGuardrailException createGuardrailException(String message, Throwable cause) {
         return new OutputGuardrailException(message, cause);
+    }
+
+    /**
+     * Composes the results like {@link AbstractGuardrailExecutor#composeResult(GuardrailResult, GuardrailResult)},
+     * additionally keeping the result object when the newer result succeeded without a rewrite: the object
+     * attached by the newer result wins, otherwise the one attached by the older result is preserved.
+     */
+    @Override
+    protected OutputGuardrailResult composeResult(OutputGuardrailResult oldResult, OutputGuardrailResult newResult) {
+        var composedResult = super.composeResult(oldResult, newResult);
+
+        if (oldResult.isSuccess() && newResult.isSuccess() && !newResult.hasRewrittenResult()) {
+            var successfulResult =
+                    Optional.ofNullable(newResult.successfulResult()).orElseGet(oldResult::successfulResult);
+            return composedResult.withSuccessfulResult(successfulResult);
+        }
+
+        return composedResult;
     }
 
     @Override

@@ -1,11 +1,10 @@
 package dev.langchain4j.guardrail;
 
-import dev.langchain4j.data.message.AiMessage;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.message.AiMessage;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class OutputGuardrailResultTest {
 
@@ -59,6 +58,17 @@ class OutputGuardrailResultTest {
 
         assertThat(result.result()).isEqualTo(OutputGuardrailResult.Result.SUCCESS_WITH_RESULT);
         assertThat(result.successfulText()).isEqualTo(text);
+        assertThat(result.successfulResult()).isEqualTo(value);
+        assertThat(result.failures()).isEmpty();
+    }
+
+    @Test
+    void successWithResult_shouldNotMarkOutputAsRewritten() {
+        Object value = 42;
+        OutputGuardrailResult result = OutputGuardrailResult.successWithResult(value);
+
+        assertThat(result.result()).isEqualTo(OutputGuardrailResult.Result.SUCCESS);
+        assertThat(result.hasRewrittenResult()).isFalse();
         assertThat(result.successfulResult()).isEqualTo(value);
         assertThat(result.failures()).isEmpty();
     }
