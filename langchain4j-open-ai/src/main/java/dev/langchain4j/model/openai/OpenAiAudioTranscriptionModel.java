@@ -1,28 +1,33 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.audio.AudioTranscriptionModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import dev.langchain4j.model.audio.AudioTranscriptionSegment;
+import dev.langchain4j.model.audio.AudioTranscriptionWord;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
+import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
-import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionSegment;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionWord;
 import dev.langchain4j.model.openai.spi.OpenAiAudioTranscriptionModelBuilderFactory;
-import org.slf4j.Logger;
-
 import java.time.Duration;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
+import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * Represents an OpenAI audio model with a transcription interface, only gpt-4o-transcribe,
@@ -64,23 +69,58 @@ public class OpenAiAudioTranscriptionModel implements AudioTranscriptionModel {
             throw new IllegalArgumentException("Request and audio are required");
         }
 
-        OpenAiAudioTranscriptionRequest openAiRequest = requestBuilder(audioRequest).build();
+        OpenAiAudioTranscriptionRequest openAiRequest =
+                requestBuilder(audioRequest).build();
 
         ParsedAndRawResponse<OpenAiAudioTranscriptionResponse> parsedAndRawResponse = withRetryMappingExceptions(
                 () -> client.audioTranscription(openAiRequest).executeRaw(), maxRetries);
 
         OpenAiAudioTranscriptionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
-        return AudioTranscriptionResponse.from(openAiResponse.text());
+        return new AudioTranscriptionResponse(
+                openAiResponse.text(),
+                toAudioTranscriptionSegments(openAiResponse.segments()),
+                toAudioTranscriptionWords(openAiResponse.words()));
     }
 
     private OpenAiAudioTranscriptionRequest.Builder requestBuilder(AudioTranscriptionRequest request) {
-        return OpenAiAudioTranscriptionRequest.builder()
+        OpenAiAudioTranscriptionRequest.Builder builder = OpenAiAudioTranscriptionRequest.builder()
                 .model(modelName)
                 .file(AudioFile.from(request.audio()))
                 .language(request.language())
                 .prompt(request.prompt())
-                .temperature(request.temperature());
+                .temperature(request.temperature())
+                .timestampGranularities(request.timestampGranularities());
+
+        if (!isNullOrEmpty(request.timestampGranularities())) {
+            builder.responseFormat("verbose_json");
+        }
+
+        return builder;
+    }
+
+    private static List<AudioTranscriptionSegment> toAudioTranscriptionSegments(
+            List<OpenAiAudioTranscriptionSegment> segments) {
+        if (isNullOrEmpty(segments)) {
+            return List.of();
+        }
+        return segments.stream()
+                .map(segment -> new AudioTranscriptionSegment(
+                        segment.text(), toDuration(segment.start()), toDuration(segment.end())))
+                .toList();
+    }
+
+    private static List<AudioTranscriptionWord> toAudioTranscriptionWords(List<OpenAiAudioTranscriptionWord> words) {
+        if (isNullOrEmpty(words)) {
+            return List.of();
+        }
+        return words.stream()
+                .map(word -> new AudioTranscriptionWord(word.word(), toDuration(word.start()), toDuration(word.end())))
+                .toList();
+    }
+
+    private static Duration toDuration(Double seconds) {
+        return seconds == null ? null : Duration.ofNanos(Math.round(seconds * 1_000_000_000));
     }
 
     @Override
@@ -89,7 +129,8 @@ public class OpenAiAudioTranscriptionModel implements AudioTranscriptionModel {
     }
 
     public static Builder builder() {
-        for (OpenAiAudioTranscriptionModelBuilderFactory factory : loadFactories(OpenAiAudioTranscriptionModelBuilderFactory.class)) {
+        for (OpenAiAudioTranscriptionModelBuilderFactory factory :
+                loadFactories(OpenAiAudioTranscriptionModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
