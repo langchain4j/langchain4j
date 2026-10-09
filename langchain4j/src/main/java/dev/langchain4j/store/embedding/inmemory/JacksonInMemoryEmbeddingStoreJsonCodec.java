@@ -6,6 +6,8 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -25,6 +27,8 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
             .addMixIn(InMemoryEmbeddingStore.Entry.class, EntryMixIn.class)
             .addMixIn(Embedding.class, EmbeddingMixIn.class)
             .addMixIn(TextSegment.class, TextSegmentMixin.class)
+            .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+            .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
             .build();
 
     private static final TypeReference<InMemoryEmbeddingStore<TextSegment>> TYPE_REFERENCE = new TypeReference<>() {};
