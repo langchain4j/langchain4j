@@ -1,8 +1,30 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.agentic.Models.baseModel;
+import static dev.langchain4j.agentic.Models.streamingBaseModel;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.Agents.AudienceEditor;
+import dev.langchain4j.agentic.Agents.CategoryRouter;
+import dev.langchain4j.agentic.Agents.CreativeWriter;
+import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
+import dev.langchain4j.agentic.Agents.ReviewedWriter;
+import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
+import dev.langchain4j.agentic.StreamingAgents.StreamingCreativeWriter;
+import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
+import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
+import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
+import dev.langchain4j.agentic.StreamingAgents.StreamingReviewedWriter;
+import dev.langchain4j.agentic.StreamingAgents.StreamingStoryCreator;
+import dev.langchain4j.agentic.StreamingAgents.StreamingStyleEditor;
+import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.MemoryId;
@@ -10,43 +32,14 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.streamingBaseModel;
-import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
-import dev.langchain4j.agentic.Agents.CreativeWriter;
-import dev.langchain4j.agentic.Agents.ReviewedWriter;
-import dev.langchain4j.agentic.Agents.AudienceEditor;
-import dev.langchain4j.agentic.Agents.CategoryRouter;
-import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
-import dev.langchain4j.agentic.scope.AgentInvocation;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.scope.AgenticScopePersister;
-import dev.langchain4j.agentic.StreamingAgents.StreamingCreativeWriter;
-import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
-import dev.langchain4j.agentic.StreamingAgents.StreamingStyleEditor;
-import dev.langchain4j.agentic.StreamingAgents.StreamingReviewedWriter;
-import dev.langchain4j.agentic.StreamingAgents.StreamingExpertRouterAgent;
-import dev.langchain4j.agentic.StreamingAgents.StreamingMedicalExpert;
-import dev.langchain4j.agentic.StreamingAgents.StreamingLegalExpert;
-import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
-import dev.langchain4j.agentic.StreamingAgents.StreamingStoryCreator;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -237,12 +230,12 @@ public class StreamingIT {
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.MEDICAL,
                         medicalExpert)
                 .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.LEGAL,
                         legalExpert)
                 .subAgents(
                         agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
@@ -288,12 +281,12 @@ public class StreamingIT {
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                 .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.MEDICAL,
                         medicalExpert)
                 .subAgents(
-                        agenticScope ->
-                                agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
+                        agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                == Agents.RequestCategory.LEGAL,
                         legalExpert)
                 .subAgents(
                         agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
@@ -350,20 +343,27 @@ public class StreamingIT {
 
         AgentMonitor monitor = agent.agentMonitor();
         assertThat(monitor).isNotNull();
-//        generateReport(monitor, Path.of("src", "test", "resources", "streaming-agents-exection.html"));
+        //        generateReport(monitor, Path.of("src", "test", "resources", "streaming-agents-exection.html"));
     }
 
-    public record ArticleSearchDto(String keyword, Long authorId, String authorName, Long categoryId,
-                                   String categoryName, List<Long> tagIds, String startTime, String endTime,
-                                   Integer pageNum, Integer pageSize) {
-    }
+    public record ArticleSearchDto(
+            String keyword,
+            Long authorId,
+            String authorName,
+            Long categoryId,
+            String categoryName,
+            List<Long> tagIds,
+            String startTime,
+            String endTime,
+            Integer pageNum,
+            Integer pageSize) {}
 
     public interface ArticleSearchAgent {
         @UserMessage("""
             # Role
             You are a search execution agent. Your sole task is to execute a search using the provided parameters and
             format the results.
-            
+
             # Workflow
             1. **Input**: Receive `searchParameters` from the previous step.
             2. **Action**: **Directly** call the `searchArticle` tool using the provided `searchParameters` exactly as
@@ -374,7 +374,7 @@ public class StreamingIT {
                 - Include a brief summary below each title.
                 - If no results found, output: "> No articles found matching your query."
                 - Do not include JSON, code blocks, or extra explanations. Only output the formatted Markdown.
-            
+
             The search parameters are: {{searchParameters}}
             """)
         @Agent(name = "searchArticle", outputKey = "result")
@@ -391,18 +391,17 @@ public class StreamingIT {
 
         @SystemMessage("""
             Based on the user input, generate a structured query parameter object in valid JSON format.
-            
+
             Strictly follow these rules:
             - Only include the fields I have defined; do not add any extra fields.
             - For optional fields that are uncertain or not mentioned, set their value to null.
             - Do not include comments, explanations, markdown, or any text outside the JSON.
             - Output must be valid JSON and nothing else.
-            
+
             """)
         @UserMessage("{{message}}")
         @Agent(name = "generateSearchDto", outputKey = "searchParameters")
         ArticleSearchDto generateSearchDto(@V("message") String message);
-
     }
 
     public class ArticleSearchTool {
@@ -411,7 +410,6 @@ public class StreamingIT {
         public List<String> searchArticle(ArticleSearchDto articleSearchDto) {
             return List.of();
         }
-
 
         @Tool(name = "listAllCategory", value = "List all article categories")
         public List<String> listAllCategory() {
@@ -449,7 +447,12 @@ public class StreamingIT {
                     .outputKey("story")
                     .build();
 
-            assertThat(writer.writeStory("session-1", "dragons and wizards", "fantasy"));
+            TokenStream tokenStream = writer.writeStory("session-1", "dragons and wizards", "fantasy");
+
+            StringBuilder answerBuilder = new StringBuilder();
+            waitCompleteResponse(tokenStream, answerBuilder);
+
+            assertThat(answerBuilder.toString()).isNotBlank();
         } finally {
             AgenticScopePersister.setStore(null);
         }
@@ -485,12 +488,12 @@ public class StreamingIT {
 
             UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
                     .subAgents(
-                            agenticScope ->
-                                    agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
+                            agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                    == Agents.RequestCategory.MEDICAL,
                             medicalExpert)
                     .subAgents(
-                            agenticScope ->
-                                    agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
+                            agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                    == Agents.RequestCategory.LEGAL,
                             legalExpert)
                     .subAgents(
                             agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
@@ -498,7 +501,8 @@ public class StreamingIT {
                             technicalExpert)
                     .build();
 
-            ScopeAccessibleExpertRouter agentInstance = AgenticServices.sequenceBuilder(ScopeAccessibleExpertRouter.class)
+            ScopeAccessibleExpertRouter agentInstance = AgenticServices.sequenceBuilder(
+                            ScopeAccessibleExpertRouter.class)
                     .subAgents(routerAgent, expertsAgent)
                     .outputKey("response")
                     .build();
