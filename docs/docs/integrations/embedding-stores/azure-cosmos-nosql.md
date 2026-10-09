@@ -17,7 +17,7 @@ You can use Azure CosmosDB NoSQL with LangChain4j in plain Java or Spring Boot a
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-cosmos-nosql</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

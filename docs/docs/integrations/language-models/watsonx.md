@@ -16,7 +16,7 @@ This integration is built on top of the **IBM watsonx.ai Java SDK**. Every model
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

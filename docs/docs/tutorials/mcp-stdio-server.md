@@ -2,13 +2,14 @@
 sidebar_position: 17
 ---
 
-# Building a Java MCP stdio server
+# Building a Java MCP server
 
 LangChain4j provides an MCP **client** (`langchain4j-mcp`) for connecting to MCP servers.
 If you want to build a Java-based MCP **stdio server** (a local subprocess launched by an MCP client),
 use the community module: `langchain4j-community-mcp-server`.
 
 This guide shows the minimal setup for exposing existing `@Tool`-annotated methods over MCP (JSON-RPC) via stdio.
+If your server should run as a standalone service reachable over the network, see [Streamable HTTP servers](#streamable-http-servers).
 
 ## Add dependency
 
@@ -61,6 +62,24 @@ class Calculator {
 }
 ```
 
+MCP tool parameter names are taken from the Java method parameter names.
+Compile your project with the [`-parameters`](https://docs.oracle.com/en/java/javase/17/docs/specs/man/javac.html#option-parameters)
+javac option, otherwise MCP clients will see generic names such as `arg0` and `arg1`:
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+                <parameters>true</parameters>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
 ## Start the stdio server
 
 ```java
@@ -97,6 +116,22 @@ Packaging your server as a runnable (fat) JAR is a common approach, but any runn
 
 ## Configure an MCP client
 
+### .mcp.json
+
+Many MCP clients read server definitions from a `.mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "my-java-tool": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/absolute/path/to/my-java-mcp-server.jar"]
+    }
+  }
+}
+```
+
 ### Claude Desktop
 
 Add a server entry in `claude_desktop_config.json`:
@@ -113,3 +148,48 @@ Add a server entry in `claude_desktop_config.json`:
 ```
 
 Use absolute paths; on Windows, escape backslashes.
+
+## Streamable HTTP servers
+
+The stdio transport serves a single local client per process.
+If your MCP server should run as a standalone service that can be shared by several (local or remote) clients,
+use the [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http) transport.
+`langchain4j-community-mcp-server` does not provide it, but the following Java libraries do (listed alphabetically):
+
+| Library                                                                 | Description                                                                       |
+|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [Helidon MCP](https://github.com/helidon-io/helidon-mcp)                | MCP server support for Helidon applications                                       |
+| [MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk)        | The official Java SDK of the Model Context Protocol, independent of any framework |
+| [Micronaut MCP](https://github.com/micronaut-projects/micronaut-mcp)    | MCP server support for Micronaut applications                                     |
+| [Quarkus MCP Server](https://github.com/quarkiverse/quarkus-mcp-server) | MCP server support for Quarkus applications                                       |
+| [Tachyon](https://github.com/tachyonmcp/tachyon)                        | MCP server library for Java and Kotlin                                            |
+
+These are independent projects, not maintained by the LangChain4j team.
+Please refer to their documentation for setup, security (authentication, TLS) and deployment.
+
+Once your server is running, point MCP clients to its endpoint URL, for example in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-java-tool": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+Claude Desktop launches only local processes,
+so use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) to connect it to a Streamable HTTP server:
+
+```json
+{
+  "mcpServers": {
+    "my-java-tool": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8080/mcp"]
+    }
+  }
+}
+```

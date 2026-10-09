@@ -39,7 +39,7 @@ OpenAiChatModel model = OpenAiChatModel.builder()
 :::note
 An `HttpClient` implementation can also provide non-blocking counterparts: `executeAsync(...)` for a single
 response and `stream(...)` for a cold `Flow.Publisher` of parsed server-sent events. The bundled JDK, OkHttp and
-Apache clients implement both.
+Apache clients implement both, and so does `SpringRestClient` when `spring-webflux` is on the classpath.
 See [Non-blocking and Reactive](/tutorials/non-blocking).
 :::
 
@@ -58,6 +58,17 @@ OpenAiChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
+```
+
+`SpringRestClient` sends blocking requests with `RestClient` and non-blocking requests (`executeAsync(...)` and
+`stream(...)`) with `WebClient`, which needs `spring-webflux` on the classpath. Because `spring-webflux` is optional,
+the `WebClient.Builder` is passed in a `WebClientBuilderHolder`:
+
+```java
+SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
+        .restClientBuilder(RestClient.builder())
+        .webClientBuilder(WebClientBuilderHolder.of(WebClient.builder()))
+        .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.reactor()); // optional: pins the connector
 ```
 
 ## Customizing Apache's `HttpClient`

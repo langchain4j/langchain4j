@@ -9,6 +9,7 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.util.LinkedHashMap;
@@ -17,7 +18,8 @@ import java.util.Map;
 /**
  * Checks that a response matches its request, whatever the {@link DecisionModel} implementation: every question has
  * an answer of the matching type, a choice answer chooses one of the offered options, and a scale answer stays within
- * the levels. Answers to question types other than the built-in ones are not checked.
+ * the levels. Answers to question types other than the built-in ones, and refusals ({@link RefusalAnswer}), are not
+ * checked.
  * <p>
  * Choice answers are returned with the names of the offered options, so that
  * {@link ChoiceAnswer#probabilityOf(String)} can reject a misspelled option.
@@ -56,6 +58,9 @@ final class DecisionResponseValidator {
         if (answer == null) {
             throw new InvalidDecisionResponseException(
                     "The response contains no answer to question '%s'".formatted(name));
+        }
+        if (answer instanceof RefusalAnswer) {
+            return;
         }
         if (question instanceof YesNoQuestion) {
             ensureType(name, answer, YesNoAnswer.class);

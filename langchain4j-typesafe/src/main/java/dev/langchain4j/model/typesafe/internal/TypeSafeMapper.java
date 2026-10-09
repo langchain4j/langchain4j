@@ -5,6 +5,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -41,10 +43,39 @@ public final class TypeSafeMapper {
         }
         TypeSafeRequest typeSafeRequest = new TypeSafeRequest();
         typeSafeRequest.model = request.modelName();
-        typeSafeRequest.state = request.input();
+        typeSafeRequest.state = state(request.input());
         typeSafeRequest.questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> typeSafeRequest.questions.put(name, toQuestion(question)));
         return typeSafeRequest;
+    }
+
+    private static Object state(Object input) {
+        if (input instanceof Map<?, ?> map) {
+            // text contents are sent as their text, other contents (such as images) are not supported
+            Map<Object, Object> state = new LinkedHashMap<>();
+            map.forEach((name, value) -> state.put(
+                    name,
+                    value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
+                            ? text(value instanceof Content ? List.of(value) : (List<?>) value)
+                            : value));
+            return state;
+        }
+        return input instanceof List<?> contents ? text(contents) : input;
+    }
+
+    private static String text(List<?> contents) {
+        StringBuilder text = new StringBuilder();
+        for (Object content : contents) {
+            if (!(content instanceof TextContent textContent)) {
+                throw new UnsupportedFeatureException("TypeSafe supports only text input, but the input contains "
+                        + ((Content) content).type());
+            }
+            if (!text.isEmpty()) {
+                text.append("\n\n");
+            }
+            text.append(textContent.text());
+        }
+        return text.toString();
     }
 
     private static TypeSafeQuestion toQuestion(Question question) {
@@ -64,12 +95,28 @@ public final class TypeSafeMapper {
             result.criteria = choice.options();
         } else if (question instanceof ScaleQuestion scale) {
             result.type = "score";
-            result.criteria = scale.levels();
+            result.criteria = levels(scale);
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
         }
         return result;
+    }
+
+    private static List<Object> levels(ScaleQuestion scale) {
+        List<Object> levels = new ArrayList<>();
+        for (int i = 0; i < scale.levels().size(); i++) {
+            String description = scale.levelDescriptions().get(i);
+            if (description == null) {
+                levels.add(scale.levels().get(i));
+            } else {
+                Map<String, String> level = new LinkedHashMap<>();
+                level.put("label", scale.levels().get(i));
+                level.put("description", description);
+                levels.add(level);
+            }
+        }
+        return levels;
     }
 
     public static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {

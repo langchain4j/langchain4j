@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.SearchBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -159,6 +160,16 @@ class DecisionModelFilteringToolProviderTest {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(
                 allTools, DecisionModelMock.thatAlwaysThrowsException());
+
+        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+                .hasSize(4);
+    }
+
+    @Test
+    void should_fall_back_to_all_tools_when_decision_model_refuses_to_answer() {
+
+        DecisionModelMock refusing = DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of());
+        ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, refusing);
 
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
                 .hasSize(4);

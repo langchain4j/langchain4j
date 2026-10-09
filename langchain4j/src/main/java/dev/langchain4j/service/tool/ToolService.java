@@ -29,6 +29,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -721,7 +722,12 @@ public class ToolService {
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
-        return finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage);
+        return finalToolServiceResult(
+                chatResponse,
+                intermediateResponses,
+                toolExecutions,
+                aggregateTokenUsage,
+                chatMemory == null ? messages : List.of());
     }
 
     /**
@@ -883,7 +889,11 @@ public class ToolService {
                     .thenCompose(ignored -> {
                         if (!aiMessage.hasToolExecutionRequests()) {
                             return CompletableFuture.completedFuture(finalToolServiceResult(
-                                    chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    chatResponse,
+                                    intermediateResponses,
+                                    toolExecutions,
+                                    aggregateTokenUsage,
+                                    chatMemory == null ? accumulator : List.of()));
                         }
 
                         intermediateResponses.add(chatResponse);
@@ -1242,16 +1252,22 @@ public class ToolService {
                 .build();
     }
 
+    /**
+     * @param messages the conversation the loop ended with, final response included, when there is no chat memory
+     *                 to hold it (empty otherwise). Output guardrails need it to retry or reprompt.
+     */
     private static ToolServiceResult finalToolServiceResult(
             ChatResponse finalResponse,
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
-            TokenUsage aggregateTokenUsage) {
+            TokenUsage aggregateTokenUsage,
+            List<ChatMessage> messages) {
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
                 .finalResponse(finalResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .messages(messages)
                 .build();
     }
 
@@ -1789,7 +1805,13 @@ public class ToolService {
         for (ToolExecutionRequest toolRequest : toolRequests) {
             futures.put(
                     toolRequest,
-                    startTool(toolRequest, toolExecutors, invocationContext, null, null, effectiveToolExecutor()));
+                    startTool(
+                            toolRequest,
+                            toolExecutors,
+                            invocationContext,
+                            null,
+                            null,
+                            CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext)));
         }
         return combineToolResultsCollectingErrors(futures);
     }
@@ -2018,7 +2040,8 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest),
+                    CapturedContextSupport.restoringIn(executor, invocationContext));
             futures.put(toolRequest, future);
         }
 

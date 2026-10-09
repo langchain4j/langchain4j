@@ -36,6 +36,8 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.internal.image.EditImageRequest;
@@ -304,6 +306,21 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, ModerationResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<DecisionCreateResponse> decision(DecisionCreateRequest request) {
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "decisions")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, DecisionCreateResponse.class);
     }
 
     @Override
