@@ -34,6 +34,11 @@ When `createIndex(true)` is set, `dimensions(...)` is required and must match
 your embedding model's output dimensions. There is no default dimension.
 HNSW requires an M30 or higher Azure DocumentDB cluster tier.
 
+The store creates indexes with cosine similarity and converts search scores
+assuming cosine similarity. If you use an existing index, it must have been
+created with `"similarity": "COS"`; otherwise relevance scores and `minScore`
+filtering are incorrect.
+
 ## Client lifecycle
 
 `AzureDocumentDbEmbeddingStore` implements `AutoCloseable`. When configured with
@@ -61,15 +66,12 @@ precedence over a connection string.
 If initialization fails after the store creates a client, that client is closed
 automatically. Repeated calls to `close()` have no effect.
 
-## Spring Boot
+A client created from a connection string uses the MongoDB driver defaults, which
+include no read timeout. To bound how long an operation can wait, add timeout
+options to the connection string, for example
+`...&socketTimeoutMS=30000&serverSelectionTimeoutMS=10000`.
 
-:::note Starter availability
-The starters below require a release of
-[`langchain4j-spring`](https://github.com/langchain4j/langchain4j-spring)
-that includes Azure DocumentDB support. They are not available in earlier releases.
-Until the artifacts are published, build the matching snapshots locally or use
-the [manual bean configuration](#manual-bean-configuration).
-:::
+## Spring Boot
 
 Choose the starter matching your Spring Boot version.
 
@@ -117,12 +119,22 @@ plain Java builder: `application-name=LangChain4j`, `num-lists=1`, `m=16`,
 `ef-construction=64`, and `ef-search=40`.
 
 The starter creates an `AzureDocumentDbEmbeddingStore` bean and closes it when
-the application context shuts down. A user-provided `MongoClient` bean takes
-precedence over `connection-string`. The store never closes that client;
-its owner, including Spring when managing the client bean, handles its lifecycle.
-Multiple client beans require an unambiguous candidate, such as one marked
-`@Primary`. A default client from Spring Boot's MongoDB auto-configuration does
-not replace a missing DocumentDB connection string.
+the application context shuts down. When `connection-string` is set, the store
+creates and owns its own client, even if a `MongoClient` bean exists. Otherwise,
+the store uses your `MongoClient` bean and never closes it; the bean's owner,
+typically Spring, handles its lifecycle. Multiple client beans require an
+unambiguous candidate, such as one marked `@Primary`. The default client created
+by Spring Boot's MongoDB auto-configuration is never used, so set
+`connection-string` unless you define your own `MongoClient` bean.
+
+On Spring Boot 3, the MongoDB driver on the classpath also activates Spring Boot's
+own MongoDB auto-configuration, which creates a default client for `localhost:27017`.
+The store never uses that client. If your application does not use MongoDB otherwise,
+exclude it:
+
+```properties
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+```
 
 Set `langchain4j.azure.documentdb.enabled=false` to disable auto-configuration.
 Defining your own `AzureDocumentDbEmbeddingStore` bean also takes precedence.
@@ -167,8 +179,7 @@ migration consists of:
    the dimensions to match your embedding model.
 4. Managing the client lifecycle as described above.
 
-For Spring Boot applications, use the matching replacement starter once it is
-available:
+For Spring Boot applications, use the matching replacement starter:
 
 | Spring Boot version | Legacy artifact | Replacement artifact |
 |---------------------|-----------------|----------------------|
@@ -177,13 +188,17 @@ available:
 
 Rename the property prefix from `langchain4j.azure.cosmos-mongo-vcore` to
 `langchain4j.azure.documentdb`, preserving your connection, database, collection,
-and custom index settings. Explicitly configure `kind`. When creating an index,
-set `dimensions` or provide an `EmbeddingModel` bean; do not rely on the legacy
-dimension default.
+and custom index settings. Explicitly configure `kind`: the legacy starter defaulted
+to `vector-ivf`, so set `langchain4j.azure.documentdb.kind=vector-ivf` if you never
+configured it, to keep using your existing index. When creating an index, set
+`dimensions` or provide an `EmbeddingModel` bean; the legacy default of 1536 no
+longer applies.
+
+Remove the legacy starter when adding the new one. Otherwise, both register an
+embedding store bean.
 
 If you previously registered a DocumentDB store bean manually, remove that bean
 to let the starter configure it, or keep it to continue using your own configuration.
-Until a starter release is available, the manual configuration remains supported.
 
 The connection string, database, collection, stored document shape, and default
 index name (`defaultIndexAzureCosmos`) remain unchanged. Existing data and indexes
