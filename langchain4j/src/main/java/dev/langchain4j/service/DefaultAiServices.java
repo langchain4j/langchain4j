@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -33,6 +32,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -267,15 +267,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
-                        Type returnType =
-                                asyncReturnType ? resolveFirstGenericParameterType(declaredReturnType) : declaredReturnType;
+                        Type returnType = asyncReturnType
+                                ? resolveFirstGenericParameterType(declaredReturnType)
+                                : declaredReturnType;
 
                         if (asyncReturnType) {
                             CompletableFuture<Object> failed = new CompletableFuture<>();
                             completeExceptionallyAsFailure(failed, error);
-                            return Optional.of(completableFutureAdapter != null
-                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
-                                    : failed);
+                            return Optional.of(
+                                    completableFutureAdapter != null
+                                            ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
+                                            : failed);
                         }
 
                         PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
@@ -298,7 +300,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             context.guardrailService().hasOutputGuardrails(method),
                                             context.streamingBufferSize);
                             return Optional.of(
-                                    publisherAdapter != null ? publisherAdapter.fromPublisher(returnType, mapped) : mapped);
+                                    publisherAdapter != null
+                                            ? publisherAdapter.fromPublisher(returnType, mapped)
+                                            : mapped);
                         }
 
                         return Optional.empty();
@@ -335,18 +339,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? Optional.of(SystemMessage.from(transformedSystemMessage))
                                     : Optional.empty();
                         }
-                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
+                        var userMessageResult = getUserMessageTemplateAndLenient(memoryId, method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
-                                userMessageTemplate, method, args);
-                        UserMessage originalUserMessage =
-                                prepareUserMessage(method, args, userMessageTemplate, variables);
+                                userMessageResult.template(), method, args);
+                        UserMessage originalUserMessage = prepareUserMessage(
+                                method, args, userMessageResult.template(), variables, userMessageResult.lenient());
                         invocationContext = invocationContext.toBuilder()
                                 .originalUserMessage(originalUserMessage)
                                 .build();
 
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
-                        CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
+                        CompletableFutureAdapter completableFutureAdapter =
+                                findCompletableFutureAdapter(declaredReturnType);
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
@@ -435,14 +440,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     GuardrailRequestParams commonGuardrailParam = GuardrailRequestParams.builder()
                                             .chatMemory(chatMemory)
                                             .augmentationResult(augmentationResult)
-                                            .userMessageTemplate(userMessageTemplate)
+                                            .userMessageTemplate(userMessageResult.template())
                                             .invocationContext(baseInvocationContext)
                                             .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                             .variables(variables)
                                             .build();
 
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
-                                            context.guardrailService(), method, augmentedUserMessage, commonGuardrailParam);
+                                            context.guardrailService(),
+                                            method,
+                                            augmentedUserMessage,
+                                            commonGuardrailParam);
                                     propagateCancellation(result, inputGuardrails);
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
@@ -516,12 +524,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                    subscriber.onError(new IllegalStateException(
-                                            "This AI Service reactive stream cannot be subscribed to more than once "
-                                                    + "because a ChatMemory is configured: re-subscribing would re-run "
-                                                    + "the interaction and duplicate messages in the chat memory. To "
-                                                    + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
-                                                    + "Mono.retry() around the call), not re-subscribe the publisher."));
+                                    subscriber.onError(
+                                            new IllegalStateException(
+                                                    "This AI Service reactive stream cannot be subscribed to more than once "
+                                                            + "because a ChatMemory is configured: re-subscribing would re-run "
+                                                            + "the interaction and duplicate messages in the chat memory. To "
+                                                            + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
+                                                            + "Mono.retry() around the call), not re-subscribe the publisher."));
                                     return;
                                 }
 
@@ -535,7 +544,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .build());
 
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
-                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, baseInvocationContext);
+                                        reactiveChatMemory,
+                                        reactiveSystemMessage,
+                                        originalUserMessage,
+                                        baseInvocationContext);
                                 subscription.setCancelAction(() -> augmentation.cancel(true));
 
                                 augmentation.whenComplete((augmentationResult, augmentationError) -> {
@@ -558,7 +570,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         commonGuardrailParam = GuardrailRequestParams.builder()
                                                 .chatMemory(reactiveChatMemory)
                                                 .augmentationResult(augmentationResult)
-                                                .userMessageTemplate(userMessageTemplate)
+                                                .userMessageTemplate(userMessageResult.template())
                                                 .invocationContext(baseInvocationContext)
                                                 .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                                 .variables(variables)
@@ -568,7 +580,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         return;
                                     }
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
-                                            context.guardrailService(), method, reactiveInputUserMessage, commonGuardrailParam);
+                                            context.guardrailService(),
+                                            method,
+                                            reactiveInputUserMessage,
+                                            commonGuardrailParam);
                                     subscription.setCancelAction(() -> inputGuardrails.cancel(true));
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
@@ -594,7 +609,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 return;
                                                             }
                                                             if (assemblyError != null) {
-                                                                subscriber.onError(unwrapCompletionException(assemblyError));
+                                                                subscriber.onError(
+                                                                        unwrapCompletionException(assemblyError));
                                                                 return;
                                                             }
                                                             AiServiceStreamingEventPublisher publisher;
@@ -607,19 +623,27 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 var streamingEventStreamParameters =
                                                                         AiServiceTokenStreamParameters.builder()
                                                                                 .messages(assembledMessages)
-                                                                                .toolServiceContext(reactiveToolServiceContext)
-                                                                                .toolArgumentsErrorHandler(context.toolService
-                                                                                        .argumentsErrorHandler())
-                                                                                .toolExecutionErrorHandler(context.toolService
-                                                                                        .executionErrorHandler())
-                                                                                .toolExecutor(context.toolService.executor())
-                                                                                .retrievedContents(augmentationResult != null
-                                                                                        ? augmentationResult.contents()
-                                                                                        : null)
+                                                                                .toolServiceContext(
+                                                                                        reactiveToolServiceContext)
+                                                                                .toolArgumentsErrorHandler(
+                                                                                        context.toolService
+                                                                                                .argumentsErrorHandler())
+                                                                                .toolExecutionErrorHandler(
+                                                                                        context.toolService
+                                                                                                .executionErrorHandler())
+                                                                                .toolExecutor(
+                                                                                        context.toolService.executor())
+                                                                                .retrievedContents(
+                                                                                        augmentationResult != null
+                                                                                                ? augmentationResult
+                                                                                                        .contents()
+                                                                                                : null)
                                                                                 .context(context)
                                                                                 .invocationContext(
-                                                                                        guardedInput.invocationContext())
-                                                                                .commonGuardrailParams(commonGuardrailParam)
+                                                                                        guardedInput
+                                                                                                .invocationContext())
+                                                                                .commonGuardrailParams(
+                                                                                        commonGuardrailParam)
                                                                                 .methodKey(method)
                                                                                 .build();
                                                                 publisher = new AiServiceStreamingEventPublisher(
@@ -693,7 +717,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var commonGuardrailParam = GuardrailRequestParams.builder()
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
-                                .userMessageTemplate(userMessageTemplate)
+                                .userMessageTemplate(userMessageResult.template())
                                 .invocationContext(invocationContext)
                                 .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                 .variables(variables)
@@ -862,9 +886,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         if (!result.isCancelled() && !(cause instanceof CancellationException)) {
                                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                                     .invocationContext(invocationContext)
-                                                    .error(cause instanceof Exception exception
-                                                            ? exception
-                                                            : new RuntimeException(cause))
+                                                    .error(
+                                                            cause instanceof Exception exception
+                                                                    ? exception
+                                                                    : new RuntimeException(cause))
                                                     .build());
                                         }
                                         completeExceptionallyAsFailure(result, error);
@@ -990,8 +1015,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
                                     ? chatMemory.messagesAsync()
                                     : CompletableFuture.completedFuture(null);
-                            async = chatMemoryMessages.thenCompose(memoryMessages -> augmentor.augmentAsync(
-                                    augmentationRequest(
+                            async = chatMemoryMessages.thenCompose(
+                                    memoryMessages -> augmentor.augmentAsync(augmentationRequest(
                                             originalUserMessage, systemMessage, memoryMessages, invocationContext)));
                         } catch (Throwable t) {
                             async = CompletableFuture.failedFuture(t);
@@ -1048,13 +1073,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : CompletableFuture.completedFuture(null);
                             ChatMessage userMessageToStore =
                                     context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
-                            assembled = addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                            assembled = addSystem
+                                    .thenCompose(ignored -> chatMemory.messagesAsync())
                                     .thenCompose(history -> {
                                         List<ChatMessage> messages = new ArrayList<>(history);
-                                        return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
-                                            messages.add(userMessage);
-                                            return messages;
-                                        });
+                                        return chatMemory
+                                                .addAsync(List.of(userMessageToStore))
+                                                .thenApply(ignored2 -> {
+                                                    messages.add(userMessage);
+                                                    return messages;
+                                                });
                                     })
                                     .toCompletableFuture();
                         } catch (Throwable t) {
@@ -1520,52 +1548,67 @@ class DefaultAiServices<T> extends AiServices<T> {
         return CompletableFuture.completedFuture((T) responseFromLLM);
     }
 
+    private record TemplateAndLenient(String template, boolean lenient) {}
+
     private Optional<SystemMessage> prepareSystemMessage(
             InvocationContext invocationContext, Method method, Object[] args) {
-        return findSystemMessageTemplate(invocationContext, method)
-                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+        return findSystemMessageTemplateAndLenient(invocationContext, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(
+                                systemMessageTemplate.template(), systemMessageTemplate.lenient())
                         .apply(InternalReflectionVariableResolver.findTemplateVariables(
-                                systemMessageTemplate, method, args))
+                                systemMessageTemplate.template(), method, args))
                         .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
+    private Optional<TemplateAndLenient> findSystemMessageTemplateAndLenient(
+            InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            return Optional.of(getTemplate(
-                    method.getDeclaringClass(),
-                    "System",
-                    annotation.fromResource(),
-                    annotation.value(),
-                    annotation.delimiter()));
+            return Optional.of(new TemplateAndLenient(
+                    getTemplate(
+                            method.getDeclaringClass(),
+                            "System",
+                            annotation.fromResource(),
+                            annotation.value(),
+                            annotation.delimiter()),
+                    annotation.lenient()));
         }
 
-        Optional<String> templateFromClassAnnotation =
+        Optional<TemplateAndLenient> templateFromClassAnnotation =
                 findSystemMessageTemplateFromClassAnnotation(context.aiServiceClass);
         if (templateFromClassAnnotation.isPresent()) {
             return templateFromClassAnnotation;
         }
 
         if (context.systemMessageProviderWithContext != null) {
-            return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext));
+            return Optional.of(new TemplateAndLenient(
+                    context.systemMessageProviderWithContext.apply(invocationContext), context.systemMessageLenient));
         } else {
-            return context.systemMessageProvider.apply(invocationContext.chatMemoryId());
+            return context.systemMessageProvider
+                    .apply(invocationContext.chatMemoryId())
+                    .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         }
     }
 
-    private static Optional<String> findSystemMessageTemplateFromClassAnnotation(Class<?> annotatedClass) {
+    private static Optional<TemplateAndLenient> findSystemMessageTemplateFromClassAnnotation(Class<?> annotatedClass) {
         dev.langchain4j.service.SystemMessage annotation =
                 annotatedClass.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation == null) {
             return Optional.empty();
         }
-        return Optional.of(getTemplate(
-                annotatedClass, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
+        return Optional.of(new TemplateAndLenient(
+                getTemplate(
+                        annotatedClass,
+                        "System",
+                        annotation.fromResource(),
+                        annotation.value(),
+                        annotation.delimiter()),
+                annotation.lenient()));
     }
 
     private static UserMessage prepareUserMessage(
-            Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
+            Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables, boolean lenient) {
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
 
@@ -1590,46 +1633,47 @@ class DefaultAiServices<T> extends AiServices<T> {
                     "Error: The method '%s' does not have a user message defined.", method.getName());
         }
 
-        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+        Prompt prompt = PromptTemplate.from(userMessageTemplate, lenient).apply(variables);
 
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
     }
 
-    private String getUserMessageTemplate(Object memoryId, Method method, Object[] args) {
+    private TemplateAndLenient getUserMessageTemplateAndLenient(Object memoryId, Method method, Object[] args) {
 
-        Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
-        Optional<String> templateFromParameterAnnotation =
-                findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
+        Optional<TemplateAndLenient> fromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
+        Optional<TemplateAndLenient> fromParameterAnnotation =
+                findUserMessageTemplateAndLenientFromAnnotatedParameter(method.getParameters(), args);
 
-        if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
+        if (fromMethodAnnotation.isPresent() && fromParameterAnnotation.isPresent()) {
             throw illegalConfiguration(
                     "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
                     method.getName());
         }
 
-        if (templateFromMethodAnnotation.isPresent()) {
-            return templateFromMethodAnnotation.get();
+        if (fromMethodAnnotation.isPresent()) {
+            return fromMethodAnnotation.get();
         }
-        if (templateFromParameterAnnotation.isPresent()) {
-            return templateFromParameterAnnotation.get();
+        if (fromParameterAnnotation.isPresent()) {
+            return fromParameterAnnotation.get();
         }
 
         Optional<String> templateFromTheOnlyArgument =
                 findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
         if (templateFromTheOnlyArgument.isPresent()) {
-            return templateFromTheOnlyArgument.get();
+            return new TemplateAndLenient(templateFromTheOnlyArgument.get(), context.userMessageLenient);
         }
 
         if (hasContentArgument(method, args)) {
-            return "";
+            return new TemplateAndLenient("", false);
         }
 
-        return context.userMessageProvider
+        String template = context.userMessageProvider
                 .apply(memoryId)
                 .orElseThrow(() -> illegalConfiguration(
                         "Error: The method '%s' does not have a user message defined.", method.getName()));
+        return new TemplateAndLenient(template, context.userMessageLenient);
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -1648,18 +1692,23 @@ class DefaultAiServices<T> extends AiServices<T> {
         return false;
     }
 
-    private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
+    private static Optional<TemplateAndLenient> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
-                .map(a -> getTemplate(method.getDeclaringClass(), "User", a.fromResource(), a.value(), a.delimiter()));
+                .map(a -> new TemplateAndLenient(
+                        getTemplate(method.getDeclaringClass(), "User", a.fromResource(), a.value(), a.delimiter()),
+                        a.lenient()));
     }
 
-    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
+    private static Optional<TemplateAndLenient> findUserMessageTemplateAndLenientFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
                     && !(args[i] instanceof Content)
                     && !isListOfContents(args[i])) {
-                return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
+                dev.langchain4j.service.UserMessage annotation =
+                        parameters[i].getAnnotation(dev.langchain4j.service.UserMessage.class);
+                return Optional.of(new TemplateAndLenient(
+                        InternalReflectionVariableResolver.asString(args[i]), annotation.lenient()));
             }
         }
         return Optional.empty();
