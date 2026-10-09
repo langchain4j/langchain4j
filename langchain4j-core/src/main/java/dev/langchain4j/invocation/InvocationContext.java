@@ -1,15 +1,17 @@
 package dev.langchain4j.invocation;
 
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import org.jspecify.annotations.NonNull;
+
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 
 /**
  * Represents the context of a single AI Service invocation.
@@ -187,7 +189,6 @@ public interface InvocationContext {
             this.methodName = methodName;
             return this;
         }
-
         /**
          * Sets the method arguments for the builder. If the provided list of method arguments is not null,
          * they will be added to the existing list of method arguments.

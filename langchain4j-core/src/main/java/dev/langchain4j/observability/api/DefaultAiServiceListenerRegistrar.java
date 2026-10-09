@@ -1,21 +1,28 @@
 package dev.langchain4j.observability.api;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
+
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 
 /**
  * A default registrar for registering {@link AiServiceListener}s.
@@ -25,6 +32,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
 
+    // Holds the events for each invocationId
+    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
+    
     // Defaults to false to preserve backwards compatibility
     private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
 
@@ -57,13 +67,43 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
      *
      * @param <T>   The type of the event, which must be a subtype of {@link AiServiceEvent}.
      * @param event The event to be fired to the listeners. Must not be null.
+     * 
      */
     @Override
     public <T extends AiServiceEvent> void fireEvent(T event) {
         ensureNotNull(event, "event");
+
+        if (event instanceof AiServiceInteractionEvent) {
+            throw new IllegalArgumentException("AiServiceInteractionEvent is a composite event and can only be fired internally");
+        }
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
+          
+
+        // Tracks events per invocationId and emits a single AiServiceInteractionEvent
+        // when the invocation completes or errors. If invocationId is null, aggregation
+        // is skipped to preserve backward compatibility with existing events. 
+        UUID invocationId = event.invocationContext().invocationId();
+        if (invocationId != null) {
+            InvocationState state = this.invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
+            state.add(event);
+            if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
+                // Interaction is over; stop tracking it and fire the composite event
+                List<AiServiceEvent> events = state.events();
+                this.invocationStates.remove(invocationId);
+
+                AiServiceInteractionEvent interactionEvent =
+                AiServiceInteractionEvent.builder()
+                    .invocationContext(event.invocationContext())
+                    .events(events)
+                    .build();
+
+                Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
+                    .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
+                    .ifPresent(l -> l.fireEvent(interactionEvent));
+            }            
+        }
     }
 
     @Override
@@ -81,6 +121,32 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         return list;
     }
 
+    // Holds ordered events for single invocationId
+    private static final class InvocationState {
+        private final List<AiServiceEvent> events = new ArrayList<>();
+        private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+        private void add(AiServiceEvent event){
+            var writeLock = this.lock.writeLock();
+            writeLock.lock();
+
+            try{
+                this.events.add(event);
+            } finally {
+                writeLock.unlock();
+            }
+        }
+        private  List<AiServiceEvent> events(){
+            var readLock = this.lock.readLock();
+            readLock.lock();
+
+            try{
+                return this.events;
+            } finally {
+                readLock.unlock();
+            }
+        }
+    }
     private class EventListeners<T extends AiServiceEvent> {
         private final Set<@NonNull AiServiceListener<T>> listeners = new LinkedHashSet<>();
         private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
