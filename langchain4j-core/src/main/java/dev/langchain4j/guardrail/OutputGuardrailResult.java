@@ -249,6 +249,12 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
         return successfulResult;
     }
 
+    OutputGuardrailResult withSuccessfulResult(Object successfulResult) {
+        return Objects.equals(this.successfulResult, successfulResult)
+                ? this
+                : new OutputGuardrailResult(result, successfulAiMessage, successfulResult, failures);
+    }
+
     /**
      * Represents an output guardrail failure
      */

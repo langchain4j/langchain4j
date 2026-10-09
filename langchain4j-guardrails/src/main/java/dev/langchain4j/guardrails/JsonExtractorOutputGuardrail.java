@@ -122,8 +122,6 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
         LOGGER.debug("LLM output: {}", llmResponse);
 
         return deserialize(llmResponse)
-                // Clean JSON is not a rewrite: marking it as one would block every later guardrail
-                // in the chain from reprompting. Only extracted JSON differs from the original text.
                 .map(r ->
                         r.json().equals(llmResponse) ? successWithResult(r.value()) : successWith(r.json(), r.value()))
                 .orElseGet(() -> invokeInvalidJson(responseFromLLM, llmResponse));

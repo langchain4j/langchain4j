@@ -3,25 +3,26 @@ package dev.langchain4j.guardrails;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
  * Reproduces <a href="https://github.com/langchain4j/langchain4j/issues/6599">issue 6599</a>: a clean-JSON
  * response must not be marked as a rewrite, otherwise every guardrail after the
  * {@link JsonExtractorOutputGuardrail} in the chain is silently prevented from reprompting.
+ * Also checks that the deserialized object reaches the caller whatever runs after the JSON guardrail.
  */
 class JsonExtractorOutputGuardrailChainTests {
 
@@ -31,53 +32,91 @@ class JsonExtractorOutputGuardrailChainTests {
     private static final String REPROMPTED_RESPONSE = """
             {"body": "Dear Bob, hello. Best regards"}""";
 
+    private static final InvocationContext INVOCATION_CONTEXT = InvocationContext.builder()
+            .chatMemoryId("default")
+            .userMessage(UserMessage.from("Write an email to Bob"))
+            .build();
+
     @Test
     void guardrailAfterCleanJsonExtractionCanStillReprompt() {
-        var invocations = new AtomicInteger();
-        var repromptText = new AtomicReference<String>();
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var request = request(INITIAL_RESPONSE, chatModel);
 
-        var chatExecutor = new ChatExecutor() {
-            @Override
-            public ChatResponse execute() {
-                throw new UnsupportedOperationException("not used by the reprompt flow");
-            }
+        var result = executor(new StartsWithDear(), new EndsWithSignature()).execute(request);
 
-            @Override
-            public ChatResponse execute(List<ChatMessage> chatMessages) {
-                invocations.incrementAndGet();
-                repromptText.set(((UserMessage) chatMessages.get(chatMessages.size() - 1)).singleText());
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from(REPROMPTED_RESPONSE))
-                        .build();
-            }
-        };
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(repromptTexts(chatModel)).containsExactly("End the email with 'Best regards'");
+        assertThat((Object) result.response(request)).isEqualTo(new Email("Dear Bob, hello. Best regards"));
+    }
 
-        var executor = OutputGuardrailExecutor.builder()
-                .guardrails(new StartsWithDear(), new EndsWithSignature())
+    @Test
+    void deserializedObjectIsReturnedAfterRepromptingInvalidJson() {
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var request = request("Not JSON at all", chatModel);
+
+        var result = executor(new JsonExtractorOutputGuardrail<>(Email.class)).execute(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(repromptTexts(chatModel)).hasSize(1);
+        assertThat((Object) result.response(request)).isEqualTo(new Email("Dear Bob, hello. Best regards"));
+    }
+
+    @Test
+    void deserializedObjectSurvivesLaterPlainSuccess() {
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var request = request(INITIAL_RESPONSE, chatModel);
+
+        var result = executor(new JsonExtractorOutputGuardrail<>(Email.class), new AlwaysSuccess()).execute(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.hasRewrittenResult()).isFalse();
+        assertThat(repromptTexts(chatModel)).isEmpty();
+        assertThat((Object) result.response(request)).isEqualTo(new Email("Dear Bob, hello"));
+    }
+
+    @Test
+    void deserializedObjectIsKeptAlongsideEarlierRewrite() {
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var request = request("""
+                {"body": "Dear Bob, my phone is 555-1234"}""", chatModel);
+
+        var result = executor(new PhoneRedacting(), new JsonExtractorOutputGuardrail<>(Email.class))
+                .execute(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.successfulText()).isEqualTo("""
+                {"body": "Dear Bob, my phone is ***"}""");
+        assertThat((Object) result.response(request)).isEqualTo(new Email("Dear Bob, my phone is ***"));
+    }
+
+    private static OutputGuardrailExecutor executor(OutputGuardrail... guardrails) {
+        return OutputGuardrailExecutor.builder().guardrails(guardrails).build();
+    }
+
+    private static OutputGuardrailRequest request(String response, ChatModelMock chatModel) {
+        var chatExecutor = ChatExecutor.builder(chatModel)
+                .chatRequest(ChatRequest.builder()
+                        .messages(INVOCATION_CONTEXT.userMessage())
+                        .build())
+                .invocationContext(INVOCATION_CONTEXT)
                 .build();
 
-        var request = OutputGuardrailRequest.builder()
-                .responseFromLLM(ChatResponse.builder()
-                        .aiMessage(AiMessage.from(INITIAL_RESPONSE))
-                        .build())
+        return OutputGuardrailRequest.builder()
+                .responseFromLLM(
+                        ChatResponse.builder().aiMessage(AiMessage.from(response)).build())
                 .chatExecutor(chatExecutor)
                 .requestParams(GuardrailRequestParams.builder()
                         .userMessageTemplate("")
                         .variables(Map.of())
-                        .invocationContext(InvocationContext.builder()
-                                .chatMemoryId("default")
-                                .userMessage(UserMessage.from("Write an email to Bob"))
-                                .build())
+                        .invocationContext(INVOCATION_CONTEXT)
                         .build())
                 .build();
+    }
 
-        var result = executor.execute(request);
-
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(invocations).hasValue(1);
-        assertThat(repromptText.get()).isEqualTo("End the email with 'Best regards'");
-        ChatResponse response = result.response(request);
-        assertThat(response.aiMessage().text()).isEqualTo(REPROMPTED_RESPONSE);
+    private static List<String> repromptTexts(ChatModelMock chatModel) {
+        return chatModel.getRequests().stream()
+                .map(messages -> ((UserMessage) messages.get(messages.size() - 1)).singleText())
+                .toList();
     }
 
     record Email(String body) {}
@@ -121,6 +160,22 @@ class JsonExtractorOutputGuardrailChainTests {
             return email.body().endsWith("Best regards")
                     ? result
                     : reprompt("The email must end with 'Best regards'", "End the email with 'Best regards'");
+        }
+    }
+
+    static class AlwaysSuccess implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            return success();
+        }
+    }
+
+    static class PhoneRedacting implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            return successWith(responseFromLLM.text().replaceAll("\\d{3}-\\d{4}", "***"));
         }
     }
 }

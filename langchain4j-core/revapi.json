@@ -19,6 +19,12 @@
           "code": "java.class.nonFinalClassInheritsFromNewClass",
           "old": "class dev.langchain4j.exception.UnsupportedFeatureException",
           "justification": "UnsupportedFeatureException now extends NonRetriableException instead of extending LangChain4jException directly. NonRetriableException is itself a LangChain4jException, so the type is still assignable everywhere it was before and every existing catch clause keeps compiling and catching; only an intermediate supertype is inserted. The behavioural effect is that RetryUtils stops retrying it, which is the intended fix: a provider that does not support a feature will not begin to support it on a retry, so the retries only added latency before the same failure."
+        },
+        {
+          "regex": true,
+          "code": "java\\.method\\.(parameterTypeErasureChanged|returnTypeErasureChanged)",
+          "new": "(parameter|method) dev\\.langchain4j\\.guardrail\\.OutputGuardrailResult dev\\.langchain4j\\.guardrail\\.OutputGuardrailExecutor::composeResult\\(.*",
+          "justification": "OutputGuardrailExecutor now overrides the generic AbstractGuardrailExecutor.composeResult(R, R) to keep the result object attached by a guardrail. The compiler still emits the bridge method composeResult(GuardrailResult, GuardrailResult) with the previous erasure, so the change is binary and source compatible; revapi only compares the declared method."
         }
       ]
     }
