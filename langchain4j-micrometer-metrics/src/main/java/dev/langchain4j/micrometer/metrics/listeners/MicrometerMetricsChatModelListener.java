@@ -32,8 +32,10 @@ import java.util.concurrent.TimeUnit;
  * {@link Timer}, consistent with the
  * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/#metric-gen_aiclientoperationduration">
  * OpenTelemetry Semantic Conventions for {@code gen_ai.client.operation.duration}</a>.
- * The duration is recorded for both successful and failed calls; a failed call carries an additional
- * {@code error.type} tag, whose value is the class name of the exception and is therefore bounded.
+ * The duration is recorded for both successful and failed calls, with an {@code outcome} tag set to
+ * {@code SUCCESS} or {@code ERROR}, and an {@code error.type} tag set to {@code none} or to the class name of the
+ * exception. A failed call has no response, so its {@code gen_ai.response.model} is {@code unknown}.
+ * Every duration carries the same set of tags, as some registries (e.g., Prometheus) require that.
  * <p>
  * Histogram publishing and bucket boundaries are not configured by this listener.
  * Users can enable histograms and set bucket boundaries through their {@link MeterRegistry} configuration
@@ -51,6 +53,10 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
      * between listeners and can be pre-populated by the caller.
      */
     private static final String START_TIME_KEY = "micrometer.metrics.chat.startTime";
+
+    private static final String OUTCOME = "outcome";
+    private static final String OUTCOME_SUCCESS = "SUCCESS";
+    private static final String OUTCOME_ERROR = "ERROR";
 
     private final MeterRegistry meterRegistry;
 
@@ -72,10 +78,13 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     public void onResponse(ChatModelResponseContext responseContext) {
         Long startNanos = takeStartNanos(responseContext.attributes());
         if (startNanos != null) {
-            durationTimer(getProviderName(responseContext), getRequestModelName(responseContext))
-                    .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
-                    .register(meterRegistry)
-                    .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+            recordDuration(
+                    startNanos,
+                    getProviderName(responseContext),
+                    getRequestModelName(responseContext),
+                    getResponseModelName(responseContext),
+                    OUTCOME_SUCCESS,
+                    "none");
         }
 
         recordTokenUsageMetrics(responseContext);
@@ -88,16 +97,15 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
             return;
         }
 
-        Timer.Builder timer = durationTimer(
-                OTelGenAiProviderName.fromModelProvider(errorContext.modelProvider()),
-                getOrDefault(errorContext.chatRequest().parameters().modelName(), "unknown"));
-
         Throwable error = errorContext.error();
-        if (error != null) {
-            timer.tag(OTelGenAiAttributes.ERROR_TYPE.value(), error.getClass().getName());
-        }
-
-        timer.register(meterRegistry).record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        recordDuration(
+                startNanos,
+                OTelGenAiProviderName.fromModelProvider(errorContext.modelProvider()),
+                getOrDefault(errorContext.chatRequest().parameters().modelName(), "unknown"),
+                // a failed call has no response, so the response model is unknown
+                "unknown",
+                OUTCOME_ERROR,
+                error != null ? error.getClass().getName() : "unknown");
     }
 
     /**
@@ -111,12 +119,30 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
         return startTime instanceof Long startNanos ? startNanos : null;
     }
 
-    private static Timer.Builder durationTimer(String providerName, String requestModelName) {
-        return Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
+    /**
+     * Records the duration of one chat operation.
+     * <p>
+     * Every duration carries the exact same set of tag keys whatever the outcome, because some registries
+     * (e.g., Prometheus) drop any meter whose tag keys differ from an existing meter with the same name. The
+     * {@code outcome} tag distinguishes success from failure, so no tag has to be omitted on either path.
+     */
+    private void recordDuration(
+            long startNanos,
+            String providerName,
+            String requestModelName,
+            String responseModelName,
+            String outcome,
+            String errorType) {
+        Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
                 .description("Measures operation duration")
                 .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
                 .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
-                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName);
+                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
+                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
+                .tag(OUTCOME, outcome)
+                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
+                .register(meterRegistry)
+                .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {

@@ -1,5 +1,6 @@
 package dev.langchain4j.micrometer.metrics.listeners;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -17,10 +18,13 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -139,6 +143,8 @@ class MicrometerMetricsChatModelListenerTest {
                 .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), "azure.ai.inference")
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), "gpt-4o")
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o")
+                .tag("outcome", "SUCCESS")
+                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), "none")
                 .timer();
 
         assertThat(timer).isNotNull();
@@ -146,24 +152,38 @@ class MicrometerMetricsChatModelListenerTest {
     }
 
     @Test
-    void should_record_error_type_on_the_duration_when_the_call_fails() {
+    void should_record_operation_duration_with_error_outcome_when_the_call_fails() {
         listener.onRequest(requestContext());
         listener.onError(errorContext(new IllegalStateException("boom")));
 
         String errorType = IllegalStateException.class.getName();
 
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.OPERATION_DURATION.value())
-                        .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
-                        .timer())
-                .isNotNull();
-        // a failed call has no response, so the duration must not claim a response model
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.OPERATION_DURATION.value())
-                        .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
-                        .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "gpt-4o")
-                        .meter())
-                .isNull();
+        // a failed call has no response, so the response model is unknown
+        Timer timer = meterRegistry
+                .find(OTelGenAiMetricName.OPERATION_DURATION.value())
+                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "unknown")
+                .tag("outcome", "ERROR")
+                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
+                .timer();
+
+        assertThat(timer).isNotNull();
+        assertThat(timer.count()).isEqualTo(1L);
+    }
+
+    @Test
+    void should_record_operation_duration_with_the_same_tag_keys_on_success_and_failure() {
+        listener.onRequest(requestContext());
+        listener.onError(errorContext(new IllegalStateException("boom")));
+        listener.onRequest(requestContext());
+        listener.onResponse(responseContextWithTokenUsage(new TokenUsage(10, 20)));
+
+        // registries like Prometheus drop meters whose tag keys differ from an existing meter with the same name
+        List<Set<String>> tagKeys = meterRegistry.find(OTelGenAiMetricName.OPERATION_DURATION.value()).timers().stream()
+                .map(timer -> timer.getId().getTags().stream().map(Tag::getKey).collect(toSet()))
+                .toList();
+
+        assertThat(tagKeys).hasSize(2);
+        assertThat(tagKeys.get(0)).isEqualTo(tagKeys.get(1));
     }
 
     @Test
