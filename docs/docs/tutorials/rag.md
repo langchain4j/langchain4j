@@ -988,6 +988,27 @@ It supports full-text, vector, and hybrid search.
 It can be found in the `langchain4j-elasticsearch` module.
 Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
+#### Small-to-Big Retrieval
+
+`SmallToBigContentRetriever` wraps a retriever that searches small child segments and expands its results with larger
+context. Parent contents and sibling groups are resolved in a single batch, avoiding one lookup per hit.
+
+Use parent expansion when parent segments have a bounded size. When a parent can be too large for the context window,
+use sibling expansion to retrieve only nearby segments:
+
+```java
+ContentRetriever contentRetriever = SmallToBigContentRetriever.<String>builder()
+    .childRetriever(childRetriever)
+    .parentIdProvider(content -> content.textSegment().metadata().getString("parentId"))
+    .expansionMode(SmallToBigContentRetriever.ExpansionMode.SIBLINGS)
+    .siblingContentProvider(parentIds -> loadSiblingsInDocumentOrder(parentIds))
+    .siblingWindow(1, 1)
+    .build();
+```
+
+Overlapping sibling windows and multiple hits from the same parent are deduplicated. The order and retrieval metadata
+of the highest-ranked child are preserved.
+
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
 
