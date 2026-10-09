@@ -28,33 +28,31 @@ import dev.langchain4j.model.TokenCountEstimator;
  */
 public class DocumentByLineSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByLineSplitter(int maxSegmentSizeInChars,
-                                  int maxOverlapSizeInChars) {
+    public DocumentByLineSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByLineSplitter(int maxSegmentSizeInChars,
-                                  int maxOverlapSizeInChars,
-                                  DocumentSplitter subSplitter) {
+    public DocumentByLineSplitter(int maxSegmentSizeInChars, int maxOverlapSizeInChars, DocumentSplitter subSplitter) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByLineSplitter(int maxSegmentSizeInTokens,
-                                  int maxOverlapSizeInTokens,
-                                  TokenCountEstimator tokenCountEstimator) {
+    public DocumentByLineSplitter(
+            int maxSegmentSizeInTokens, int maxOverlapSizeInTokens, TokenCountEstimator tokenCountEstimator) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, null);
     }
 
-    public DocumentByLineSplitter(int maxSegmentSizeInTokens,
-                                  int maxOverlapSizeInTokens,
-                                  TokenCountEstimator tokenCountEstimator,
-                                  DocumentSplitter subSplitter) {
+    public DocumentByLineSplitter(
+            int maxSegmentSizeInTokens,
+            int maxOverlapSizeInTokens,
+            TokenCountEstimator tokenCountEstimator,
+            DocumentSplitter subSplitter) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenCountEstimator, subSplitter);
     }
 
     @Override
     public String[] split(String text) {
-        return text.split("\\s*\\R\\s*"); // additional whitespaces are ignored
+        // Try each whitespace run once; \G also permits a separator immediately after the previous match.
+        return text.split("(?:\\G|(?<!\\s))\\s*\\R\\s*"); // additional whitespaces are ignored
     }
 
     @Override
