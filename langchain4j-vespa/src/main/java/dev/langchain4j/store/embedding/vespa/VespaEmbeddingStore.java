@@ -30,6 +30,7 @@ import dev.langchain4j.store.embedding.vespa.Record.Fields;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -189,8 +190,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
 
             jsonFeeder.feedMany(
-                    new ByteArrayInputStream(
-                            CODEC.toJson(records).getBytes()),
+                    toJsonStream(records),
                     new JsonFeeder.ResultCallback() {
                         @Override
                         public void onNextResult(Result result, FeedException error) {
@@ -293,6 +293,14 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             api = createInstance(url, certPath, keyPath, logRequests, logResponses);
         }
         return api;
+    }
+
+    /**
+     * Serialises the records to the JSON payload sent to Vespa. Vespa expects UTF-8, so the
+     * bytes are encoded explicitly rather than with the JVM's default charset.
+     */
+    static ByteArrayInputStream toJsonStream(List<Record> records) {
+        return new ByteArrayInputStream(CODEC.toJson(records).getBytes(StandardCharsets.UTF_8));
     }
 
     private Record buildRecord(String id, Embedding embedding, TextSegment textSegment) {
