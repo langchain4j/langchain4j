@@ -66,6 +66,11 @@ precedence over a connection string.
 If initialization fails after the store creates a client, that client is closed
 automatically. Repeated calls to `close()` have no effect.
 
+A client created from a connection string uses the MongoDB driver defaults, which
+include no read timeout. To bound how long an operation can wait, add timeout
+options to the connection string, for example
+`...&socketTimeoutMS=30000&serverSelectionTimeoutMS=10000`.
+
 ## Spring Boot
 
 Choose the starter matching your Spring Boot version.
@@ -121,6 +126,15 @@ typically Spring, handles its lifecycle. Multiple client beans require an
 unambiguous candidate, such as one marked `@Primary`. The default client created
 by Spring Boot's MongoDB auto-configuration is never used, so set
 `connection-string` unless you define your own `MongoClient` bean.
+
+On Spring Boot 3, the MongoDB driver on the classpath also activates Spring Boot's
+own MongoDB auto-configuration, which creates a default client for `localhost:27017`.
+The store never uses that client. If your application does not use MongoDB otherwise,
+exclude it:
+
+```properties
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+```
 
 Set `langchain4j.azure.documentdb.enabled=false` to disable auto-configuration.
 Defining your own `AzureDocumentDbEmbeddingStore` bean also takes precedence.
