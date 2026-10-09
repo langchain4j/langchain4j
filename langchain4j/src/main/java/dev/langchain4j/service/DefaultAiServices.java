@@ -40,6 +40,7 @@ import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -231,7 +232,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .timestampNow()
                                 .build();
                         try {
-                            return invoke(method, args, invocationContext);
+                            InvocationContext withCapturedContext =
+                                    CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
+                            return invoke(method, args, withCapturedContext);
                         } catch (Exception ex) {
                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                     .invocationContext(invocationContext)
@@ -708,7 +711,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         List<ChatMessage> messages =
                                 assembleMessages(chatMemory, systemMessage, userMessage, originalUserMessage);
 
-                        CompletableFuture<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        CompletableFuture<Moderation> moderationFuture =
+                                triggerModerationIfNeeded(method, messages, invocationContext);
 
                         ToolServiceContext toolServiceContext =
                                 context.toolService.createContext(invocationContext, userMessage, messages);
@@ -1400,9 +1404,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private CompletableFuture<Moderation> triggerModerationIfNeeded(
-                            Method method, List<ChatMessage> messages) {
+                            Method method, List<ChatMessage> messages, InvocationContext invocationContext) {
                         if (method.isAnnotationPresent(Moderate.class)) {
-                            Executor executor = DefaultExecutorProvider.getDefaultExecutor();
+                            Executor executor = CapturedContextSupport.restoringIn(
+                                    DefaultExecutorProvider.getDefaultExecutor(), invocationContext);
                             return CompletableFuture.supplyAsync(
                                     () -> {
                                         List<ChatMessage> messagesToModerate = removeToolMessages(messages);
