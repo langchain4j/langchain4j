@@ -119,6 +119,7 @@ public class ServiceOutputParser {
     private static boolean schemaNotRequired(Class<?> type) {
         return type == String.class
                 || type == AiMessage.class
+                || type == ChatResponse.class
                 || type == TokenStream.class
                 || type == Response.class
                 || type == Map.class

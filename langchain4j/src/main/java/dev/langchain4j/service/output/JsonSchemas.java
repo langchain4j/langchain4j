@@ -1,17 +1,17 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.service.TokenStream;
-
-import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
-import java.util.Optional;
-
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.TokenStream;
+import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
+import java.util.Optional;
 
 public class JsonSchemas {
 
@@ -35,6 +35,7 @@ public class JsonSchemas {
 
         if (returnType == String.class
                 || returnType == AiMessage.class
+                || returnType == ChatResponse.class
                 || returnType == TokenStream.class
                 || returnType == Response.class) {
             return false;
