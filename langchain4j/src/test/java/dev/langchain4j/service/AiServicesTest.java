@@ -183,11 +183,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Keep your answer to one sentence."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Keep your answer to one sentence."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -205,11 +206,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Method: answer."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Method: answer."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -227,11 +229,10 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(systemMessage("You are a helpful assistant."), userMessage("What is 2 + 2?"))
+                        .build());
     }
 
     @Test
@@ -250,11 +251,12 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant. Always be concise."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a helpful assistant. Always be concise."),
+                                userMessage("What is 2 + 2?"))
+                        .build());
     }
 
     interface ChatResponseAssistant {
@@ -277,6 +279,7 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 }
