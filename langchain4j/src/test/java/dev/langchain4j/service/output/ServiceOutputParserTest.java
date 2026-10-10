@@ -183,6 +183,7 @@ class ServiceOutputParserTest {
         assertThat(sut.jsonSchema(new TypeReference<Result<AiMessage>>() {
         }.getType())).isEmpty();
 
+        assertThat(sut.jsonSchema(ChatResponse.class)).isEmpty();
         assertThat(sut.jsonSchema(Response.class)).isEmpty(); // legacy
         assertThat(sut.jsonSchema(TokenStream.class)).isEmpty();
 
@@ -294,6 +295,11 @@ class ServiceOutputParserTest {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
+    }
+
+    @Test
+    void outputFormatInstructions_ChatResponse() {
+        assertThat(sut.outputFormatInstructions(ChatResponse.class)).isEmpty();
     }
 
     @Test

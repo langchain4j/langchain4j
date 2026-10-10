@@ -2,6 +2,7 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.TokenStream;
 
@@ -35,6 +36,7 @@ public class JsonSchemas {
 
         if (returnType == String.class
                 || returnType == AiMessage.class
+                || returnType == ChatResponse.class
                 || returnType == TokenStream.class
                 || returnType == Response.class) {
             return false;
