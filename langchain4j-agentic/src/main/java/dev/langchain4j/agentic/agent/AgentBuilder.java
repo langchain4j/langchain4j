@@ -101,6 +101,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     Function<AgenticScope, ChatModel> chatModelProvider;
     Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
     private ChatModel contextSummarizerModel;
+    private ChatModel summarizerModel;
     private Context.ContextSummarizer contextSummarizer;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
@@ -222,7 +223,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                if (model != null) {
+                if (model != null || summarizerModel != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withSummarizer(
                             agenticScope, contextSummarizer(), contextProvidingAgents));
                 } else if (chatModelProvider != null) {
@@ -316,9 +317,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private synchronized Context.ContextSummarizer contextSummarizer() {
-        if (contextSummarizer == null || contextSummarizerModel != model) {
-            contextSummarizerModel = model;
-            contextSummarizer = Context.createSummarizer(model);
+        ChatModel effectiveSummarizerModel = summarizerModel != null ? summarizerModel : model;
+        if (contextSummarizer == null || contextSummarizerModel != effectiveSummarizerModel) {
+            contextSummarizerModel = effectiveSummarizerModel;
+            contextSummarizer = Context.createSummarizer(effectiveSummarizerModel);
         }
         return contextSummarizer;
     }
@@ -731,6 +733,22 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B summarizedContext(String... contextProvidingAgents) {
         this.contextProvidingAgents = contextProvidingAgents;
+        return (B) this;
+    }
+
+    /**
+     * Sets a separate {@link ChatModel} used to summarize the outputs of the context-providing
+     * agents declared via {@link #summarizedContext(String...)}.
+     * <p>
+     * This is required for agents configured with a {@link StreamingChatModel}, since context
+     * summarization always uses a blocking model. It is also useful for agents with a
+     * {@link ChatModel} to summarize context with a cheaper model than the one powering the agent.
+     *
+     * @param summarizerModel the chat model used for context summarization
+     * @return {@code this}
+     */
+    public B summarizerModel(ChatModel summarizerModel) {
+        this.summarizerModel = summarizerModel;
         return (B) this;
     }
 
