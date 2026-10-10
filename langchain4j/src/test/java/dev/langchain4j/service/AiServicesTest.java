@@ -16,6 +16,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.junit.jupiter.api.Test;
 
@@ -254,5 +255,28 @@ class AiServicesTest {
                         systemMessage("You are a helpful assistant. Always be concise."),
                         userMessage("What is 2 + 2?"))
                 .build());
+    }
+
+    interface ChatResponseAssistant {
+
+        ChatResponse chat(String message);
+    }
+
+    @Test
+    void should_not_append_output_format_instructions_when_return_type_is_ChatResponse() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+
+        ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        ChatResponse chatResponse = assistant.chat("Hello");
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
+        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 }
