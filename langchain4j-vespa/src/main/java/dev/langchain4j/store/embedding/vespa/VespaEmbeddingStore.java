@@ -50,8 +50,9 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     // SNAKE_CASE matches the @JsonNaming that Record.Fields still carries for Retrofit's own mapper,
     // so both paths agree whichever JSON library backs this codec.
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(
-            ProviderJsonSpec.builder().propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE).build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
+            .build());
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     static final String DEFAULT_NAMESPACE = "namespace";
@@ -189,21 +190,19 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                 records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
             }
 
-            jsonFeeder.feedMany(
-                    toJsonStream(records),
-                    new JsonFeeder.ResultCallback() {
-                        @Override
-                        public void onNextResult(Result result, FeedException error) {
-                            if (error != null) {
-                                throw new RuntimeException(error.getMessage());
-                            }
-                        }
+            jsonFeeder.feedMany(toJsonStream(records), new JsonFeeder.ResultCallback() {
+                @Override
+                public void onNextResult(Result result, FeedException error) {
+                    if (error != null) {
+                        throw new RuntimeException(error.getMessage());
+                    }
+                }
 
-                        @Override
-                        public void onError(FeedException error) {
-                            throw new RuntimeException(error.getMessage());
-                        }
-                    });
+                @Override
+                public void onError(FeedException error) {
+                    throw new RuntimeException(error.getMessage());
+                }
+            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
