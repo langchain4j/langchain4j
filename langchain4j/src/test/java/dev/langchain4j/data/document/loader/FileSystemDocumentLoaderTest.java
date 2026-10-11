@@ -178,6 +178,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "chefs-prompt-system-message.txt",
                         "chefs-prompt-based-on-ingredients-in-root.txt",
                         "chefs-prompt-based-on-ingredients-in-subdirectory.txt",
+                        "system-message-non-ascii.txt",
                         "test-file-2.banana",
                         "file1.txt",
                         "file2.txt",
