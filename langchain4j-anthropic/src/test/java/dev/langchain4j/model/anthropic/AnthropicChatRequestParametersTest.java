@@ -13,6 +13,8 @@ class AnthropicChatRequestParametersTest {
                 .temperature(0.7)
                 .cacheSystemMessages(true)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1024)
                 .sendThinking(true)
@@ -25,6 +27,8 @@ class AnthropicChatRequestParametersTest {
         assertThat(parameters.temperature()).isEqualTo(0.7);
         assertThat(parameters.cacheSystemMessages()).isTrue();
         assertThat(parameters.cacheTools()).isTrue();
+        assertThat(parameters.cacheAutomatically()).isTrue();
+        assertThat(parameters.cacheTtl()).isEqualTo("1h");
         assertThat(parameters.thinkingType()).isEqualTo("enabled");
         assertThat(parameters.thinkingBudgetTokens()).isEqualTo(1024);
         assertThat(parameters.sendThinking()).isTrue();
@@ -38,6 +42,9 @@ class AnthropicChatRequestParametersTest {
     void should_default_anthropic_specific_parameters_to_null() {
         assertThat(AnthropicChatRequestParameters.EMPTY.cacheSystemMessages()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.cacheTools()).isNull();
+        assertThat(AnthropicChatRequestParameters.EMPTY.cacheAutomatically())
+                .isNull();
+        assertThat(AnthropicChatRequestParameters.EMPTY.cacheTtl()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.thinkingType()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.thinkingBudgetTokens()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.sendThinking()).isNull();
@@ -53,6 +60,8 @@ class AnthropicChatRequestParametersTest {
         AnthropicChatRequestParameters original = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(true)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("5m")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1000)
                 .sendThinking(true)
@@ -64,6 +73,7 @@ class AnthropicChatRequestParametersTest {
 
         AnthropicChatRequestParameters override = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(false)
+                .cacheTtl("1h")
                 .thinkingType("disabled")
                 .thinkingBudgetTokens(0)
                 .sendThinking(false)
@@ -77,6 +87,8 @@ class AnthropicChatRequestParametersTest {
 
         assertThat(result.cacheSystemMessages()).isFalse();
         assertThat(result.cacheTools()).isTrue(); // not set in the override, so original value is kept
+        assertThat(result.cacheAutomatically()).isTrue(); // not set in the override
+        assertThat(result.cacheTtl()).isEqualTo("1h");
         assertThat(result.thinkingType()).isEqualTo("disabled");
         assertThat(result.thinkingBudgetTokens()).isEqualTo(0);
         assertThat(result.sendThinking()).isFalse();
@@ -91,6 +103,8 @@ class AnthropicChatRequestParametersTest {
         AnthropicChatRequestParameters original = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(true)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1000)
                 .sendThinking(true)
@@ -106,6 +120,8 @@ class AnthropicChatRequestParametersTest {
         assertThat(result.temperature()).isEqualTo(0.1);
         assertThat(result.cacheSystemMessages()).isTrue();
         assertThat(result.cacheTools()).isTrue();
+        assertThat(result.cacheAutomatically()).isTrue();
+        assertThat(result.cacheTtl()).isEqualTo("1h");
         assertThat(result.thinkingType()).isEqualTo("enabled");
         assertThat(result.thinkingBudgetTokens()).isEqualTo(1000);
         assertThat(result.sendThinking()).isTrue();
@@ -120,6 +136,8 @@ class AnthropicChatRequestParametersTest {
         AnthropicChatRequestParameters one = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(true)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1000)
                 .sendThinking(true)
@@ -131,6 +149,8 @@ class AnthropicChatRequestParametersTest {
         AnthropicChatRequestParameters two = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(true)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1000)
                 .sendThinking(true)
@@ -142,6 +162,8 @@ class AnthropicChatRequestParametersTest {
         AnthropicChatRequestParameters different = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(false)
                 .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(1000)
                 .sendThinking(true)
@@ -153,6 +175,8 @@ class AnthropicChatRequestParametersTest {
 
         assertThat(one).isEqualTo(two).hasSameHashCodeAs(two);
         assertThat(one).isNotEqualTo(different);
+        assertThat(one).isNotEqualTo(one.toBuilder().cacheAutomatically(false).build());
+        assertThat(one).isNotEqualTo(one.toBuilder().cacheTtl("5m").build());
     }
 
     @Test

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -258,11 +259,11 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         return ((startIndex - 1) / 10) + 1;
     }
 
-    private static String setCountryRestrict(WebSearchRequest webSearchRequest) {
+    static String setCountryRestrict(WebSearchRequest webSearchRequest) {
         return webSearchRequest.additionalParams().get("cr") != null
                 ? webSearchRequest.additionalParams().get("cr").toString()
                 : isNotNullOrBlank(webSearchRequest.geoLocation())
-                        ? "country" + webSearchRequest.geoLocation().toUpperCase()
+                        ? "country" + webSearchRequest.geoLocation().toUpperCase(Locale.ROOT)
                         : ""; // default value
     }
 
@@ -385,7 +386,8 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         }
 
         public String toString() {
-            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", csi="
+            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", csi="
                     + this.csi + ", siteRestrict=" + this.siteRestrict + ", includeImages=" + this.includeImages
                     + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests="
                     + this.logRequests + ", logResponses=" + this.logResponses + ")";

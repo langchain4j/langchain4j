@@ -3,6 +3,8 @@ package dev.langchain4j.model.scoring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -49,6 +51,16 @@ class DecisionScoringModelTest {
                 .containsEntry(
                         "document2",
                         YesNoQuestion.of("Does the document help answer the query?\nDocument: something else"));
+    }
+
+    @Test
+    void should_fail_when_decision_model_refuses_to_score_a_segment() {
+
+        ScoringModel scoringModel =
+                new DecisionScoringModel(DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of()));
+
+        assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("a document")), "the query"))
+                .isInstanceOf(ContentFilteredException.class);
     }
 
     @Test

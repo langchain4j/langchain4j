@@ -1,8 +1,10 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.VirtualThreadUtils.createVirtualThreadExecutor;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.spi.ServiceHelper;
 import java.util.concurrent.Executor;
@@ -75,12 +77,31 @@ public class DefaultExecutorProvider {
         return BuiltInHolder.EXECUTOR_SERVICE;
     }
 
-    private static Executor resolveProvidedExecutor() {
-        ExecutorProvider provider = programmaticProvider;
+    /**
+     * Captures the context of the calling thread with the registered {@link ExecutorProvider}, see
+     * {@link ExecutorProvider#captureContext()}.
+     *
+     * @return the captured context, or {@code null} if there is nothing to capture: no {@link ExecutorProvider} is
+     *         registered, or it does not capture context
+     */
+    public static CapturedContext captureContext() {
+        ExecutorProvider provider = resolveProvider();
         if (provider == null) {
-            provider = SpiHolder.PROVIDER;
+            return null;
         }
+        CapturedContext capturedContext = ensureNotNull(
+                provider.captureContext(), "%s.captureContext()", provider.getClass().getName());
+        return capturedContext == CapturedContext.NONE ? null : capturedContext;
+    }
+
+    private static Executor resolveProvidedExecutor() {
+        ExecutorProvider provider = resolveProvider();
         return provider != null ? provider.executor() : null;
+    }
+
+    private static ExecutorProvider resolveProvider() {
+        ExecutorProvider provider = programmaticProvider;
+        return provider != null ? provider : SpiHolder.PROVIDER;
     }
 
     private static final class SpiHolder {

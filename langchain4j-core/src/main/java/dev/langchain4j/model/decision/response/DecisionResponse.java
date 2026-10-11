@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -25,6 +26,8 @@ import java.util.Objects;
  *     escalate(team.value());
  * }
  * }</pre>
+ * A question that the model refused to answer has a {@link RefusalAnswer}: check {@link #isRefused(String)} before
+ * reading its answer, since the typed accessors throw a {@link ContentFilteredException} for it.
  *
  * @since 1.21.0
  */
@@ -49,7 +52,8 @@ public final class DecisionResponse {
     }
 
     /**
-     * The answers, keyed by the names of the questions they answer.
+     * The answers, keyed by the names of the questions they answer. The answer to a question that the model refused
+     * to answer is a {@link RefusalAnswer}.
      */
     public Map<String, DecisionAnswer> answers() {
         return answers;
@@ -59,6 +63,8 @@ public final class DecisionResponse {
      * Returns the answer to the {@link dev.langchain4j.model.decision.request.YesNoQuestion} with the given name.
      *
      * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link YesNoAnswer}.
+     * @throws dev.langchain4j.exception.ContentFilteredException if the model refused to answer the question (see
+     *                                                            {@link #isRefused(String)}).
      */
     public YesNoAnswer yesNo(String name) {
         return answer(name, YesNoAnswer.class);
@@ -68,6 +74,8 @@ public final class DecisionResponse {
      * Returns the answer to the {@link dev.langchain4j.model.decision.request.ChoiceQuestion} with the given name.
      *
      * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ChoiceAnswer}.
+     * @throws dev.langchain4j.exception.ContentFilteredException if the model refused to answer the question (see
+     *                                                            {@link #isRefused(String)}).
      */
     public ChoiceAnswer choice(String name) {
         return answer(name, ChoiceAnswer.class);
@@ -77,6 +85,8 @@ public final class DecisionResponse {
      * Returns the answer to the {@link dev.langchain4j.model.decision.request.ScaleQuestion} with the given name.
      *
      * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ScaleAnswer}.
+     * @throws dev.langchain4j.exception.ContentFilteredException if the model refused to answer the question (see
+     *                                                            {@link #isRefused(String)}).
      */
     public ScaleAnswer scale(String name) {
         return answer(name, ScaleAnswer.class);
@@ -87,12 +97,16 @@ public final class DecisionResponse {
      * integrations.
      *
      * @throws IllegalArgumentException if there is no answer with this name, or it is not of the given type.
+     * @throws dev.langchain4j.exception.ContentFilteredException if the model refused to answer the question (see
+     *                                                            {@link #isRefused(String)}) and the given type is
+     *                                                            neither {@link RefusalAnswer} nor
+     *                                                            {@link DecisionAnswer}.
      */
     public <A extends DecisionAnswer> A answer(String name, Class<A> type) {
-        DecisionAnswer answer = answers.get(name);
-        if (answer == null) {
-            throw new IllegalArgumentException("There is no answer to a question named '%s'. Available answers: %s"
-                    .formatted(name, answers.keySet()));
+        DecisionAnswer answer = existingAnswer(name);
+        if (answer instanceof RefusalAnswer && !type.isInstance(answer)) {
+            throw new ContentFilteredException(
+                    "The decision model refused to answer the question '%s'".formatted(name));
         }
         if (!type.isInstance(answer)) {
             throw new IllegalArgumentException("The answer to the question '%s' is a %s, not a %s"
@@ -100,6 +114,27 @@ public final class DecisionResponse {
                             name, answer.getClass().getSimpleName(), type.getSimpleName()));
         }
         return type.cast(answer);
+    }
+
+    /**
+     * Whether the model refused to answer the question with the given name, for example because the input or the
+     * question goes against the usage policies of the provider (see {@link RefusalAnswer}). When the decision is
+     * used as a safety check, treat a refused answer as a failed check rather than as a "no".
+     *
+     * @throws IllegalArgumentException if there is no answer with this name.
+     * @since 1.22.0
+     */
+    public boolean isRefused(String name) {
+        return existingAnswer(name) instanceof RefusalAnswer;
+    }
+
+    private DecisionAnswer existingAnswer(String name) {
+        DecisionAnswer answer = answers.get(name);
+        if (answer == null) {
+            throw new IllegalArgumentException("There is no answer to a question named '%s'. Available answers: %s"
+                    .formatted(name, answers.keySet()));
+        }
+        return answer;
     }
 
     public DecisionResponseMetadata metadata() {

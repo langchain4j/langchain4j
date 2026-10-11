@@ -144,6 +144,7 @@ public interface InvocationContext {
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
+        dev.langchain4j.spi.CapturedContext capturedContext;
 
         protected Builder() {}
 
@@ -160,6 +161,9 @@ public interface InvocationContext {
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
+            if (invocationContext instanceof DefaultInvocationContext defaultInvocationContext) {
+                this.capturedContext = defaultInvocationContext.capturedContext();
+            }
         }
 
         /**

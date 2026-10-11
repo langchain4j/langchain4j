@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
@@ -143,6 +144,21 @@ class DecisionModelQueryRouterTest {
                         .build()
                         .route(Query.from("query")))
                 .hasMessage("decision model is down");
+    }
+
+    @Test
+    void should_apply_fallback_strategy_when_decision_model_refuses_to_answer() {
+
+        DecisionModel refusing = DecisionModelMock.thatAlwaysAnswers(
+                Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.of(0.9)));
+        QueryRouter router = DecisionModelQueryRouter.builder()
+                .decisionModel(refusing)
+                .retrieverToDescription(retrievers)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        assertThat(router.route(Query.from("query"))).containsExactly(hr, wiki);
+        assertThat(router.routeAsync(Query.from("query")).join()).containsExactly(hr, wiki);
     }
 
     @Test

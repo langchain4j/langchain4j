@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
  * retrieved documents rather than the question would decide which tools are selected. The previous messages are sent
  * as they are stored in the chat memory, which by default includes the retrieved content.
  * <p>
- * If the user message has no text, all tools are passed on. If the decision model fails, the
+ * If the user message has no text, all tools are passed on. If the decision model fails or refuses to answer, the
  * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
  *
  * @see dev.langchain4j.service.tool.search.decision.DecisionModelToolSearchStrategy

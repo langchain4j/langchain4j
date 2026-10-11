@@ -380,7 +380,7 @@ jobs:
       - name: License Compliance
         run: |
           set -o pipefail
-          mvn -P compliance org.honton.chas:license-maven-plugin:compliance 2>&1 | tee maven-output.log
+          ./mvnw -B -P compliance org.honton.chas:license-maven-plugin:compliance 2>&1 | tee maven-output.log
 
       - name: Surface build errors
         if: failure()

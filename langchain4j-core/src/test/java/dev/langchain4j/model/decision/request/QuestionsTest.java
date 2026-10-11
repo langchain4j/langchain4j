@@ -156,6 +156,31 @@ class QuestionsTest {
     }
 
     @Test
+    void should_create_scale_question_with_level_descriptions() {
+
+        ScaleQuestion question = ScaleQuestion.builder()
+                .text("How severe is the incident?")
+                .level("Minor")
+                .level("Critical", "All customers are affected")
+                .build();
+
+        assertThat(question.levels()).containsExactly("Minor", "Critical");
+        assertThat(question.levelDescriptions()).containsExactly(null, "All customers are affected");
+        assertThat(ScaleQuestion.of("How urgent?", List.of("Later", "Now")).levelDescriptions())
+                .containsExactly(null, null);
+        assertThatThrownBy(() -> ScaleQuestion.builder().level("Critical", " "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description of level 'Critical'");
+        assertThat(ScaleQuestion.builder()
+                        .text("How severe?")
+                        .level("Minor", "Nobody affected")
+                        .levels(List.of("Low", "High"))
+                        .build()
+                        .levelDescriptions())
+                .containsExactly(null, null);
+    }
+
+    @Test
     void should_replace_scale_levels() {
 
         ScaleQuestion question = ScaleQuestion.builder()
