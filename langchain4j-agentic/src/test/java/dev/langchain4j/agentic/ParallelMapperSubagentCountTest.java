@@ -37,7 +37,8 @@ class ParallelMapperSubagentCountTest {
 
     @Test
     void build_fails_when_no_subagent() {
-        assertThatThrownBy(() -> AgenticServices.parallelMapperBuilder(BatchAgent.class).build())
+        assertThatThrownBy(() -> AgenticServices.parallelMapperBuilder(BatchAgent.class)
+                        .build())
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining("exactly one subagent")
                 .hasMessageContaining("0");
