@@ -19,6 +19,7 @@ jobs:
   snapshot_release:
     if: github.repository == 'langchain4j/langchain4j'
     runs-on: ubuntu-latest
+    environment: snapshot
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up JDK 25
