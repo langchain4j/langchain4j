@@ -43,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -393,6 +394,61 @@ class TypeSafeDecisionModelTest {
         // then
         assertThat(httpClient.request().url()).isEqualTo("http://localhost:8000/v1/systemone");
         assertThat(Json.fromJson(httpClient.request().body(), Map.class)).containsEntry("model", "kev-latest");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "http://localhost:8100/gateway, v1/decision",
+        "http://localhost:8100/gateway/, v1/decision",
+        "http://localhost:8100/gateway, /v1/decision",
+        "http://localhost:8100/gateway/, /v1/decision"
+    })
+    void should_use_custom_api_path(String baseUrl, String apiPath) {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl(baseUrl)
+                .apiPath(apiPath)
+                .modelName("jev-latest")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        assertThat(httpClient.request().url()).isEqualTo("http://localhost:8100/gateway/v1/decision");
+    }
+
+    @Test
+    void should_use_custom_api_path_with_default_base_url() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiPath("v2/systemone")
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        assertThat(httpClient.request().url()).isEqualTo("https://api.typesafe.ai/v2/systemone");
+    }
+
+    @Test
+    void should_reject_blank_api_path() {
+
+        assertThatThrownBy(() -> TypeSafeDecisionModel.builder()
+                        .apiKey("test-key")
+                        .apiPath(" ")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("apiPath");
     }
 
     @Test
