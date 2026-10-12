@@ -62,6 +62,7 @@ TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .apiKey(...)              // required for api.typesafe.ai, optional for other servers
         .modelName(...)           // required here or on each request (otherwise decide() fails), e.g. "jev-1.13.0"
         .baseUrl(...)             // defaults to "https://api.typesafe.ai"
+        .apiPath(...)             // path of the System One endpoint, relative to baseUrl; defaults to "v1/systemone"
         .timeout(...)             // defaults to the HTTP client builder's timeouts, otherwise 15s connect / 60s read
         .maxRetries(...)          // retries after the first attempt; defaults to 2
         .customHeaders(...)       // additional HTTP headers, as a Map or a Supplier<Map>
@@ -97,8 +98,9 @@ processing and retention terms, and see [Data protection](/tutorials/decision-mo
 
 ## Other servers
 
-Any server that implements the System One API (`POST /v1/systemone`) can be used by setting the base URL.
-For example, with OpenRouter:
+Any server that implements the System One API can be used by setting the base URL. Requests are sent to the base URL
+followed by the API path, which defaults to `v1/systemone`; if the server exposes the API at another path, set it with
+`apiPath(...)`. For example, with OpenRouter:
 
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
