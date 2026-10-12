@@ -25,6 +25,7 @@ public enum OTelGenAiProviderName {
     MISTRAL_AI(ModelProvider.MISTRAL_AI, "mistral_ai"),
     OLLAMA(ModelProvider.OLLAMA, "ollama"),
     OPEN_AI(ModelProvider.OPEN_AI, "openai"),
+    TYPESAFE(ModelProvider.TYPESAFE, "typesafe"),
     VOYAGE_AI(ModelProvider.VOYAGE_AI, "voyage_ai"),
     WATSONX(ModelProvider.WATSONX, "ibm.watsonx.ai"),
     OTHER(ModelProvider.OTHER, "unknown");

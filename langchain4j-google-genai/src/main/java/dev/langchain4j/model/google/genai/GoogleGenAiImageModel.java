@@ -192,7 +192,8 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {
@@ -205,8 +206,7 @@ public class GoogleGenAiImageModel implements ImageModel {
             if (candidate.groundingMetadata().isPresent()) {
                 GroundingMetadata gm = candidate.groundingMetadata().get();
                 try {
-                    Map<String, Object> groundingMap =
-                            CODEC.fromJson(gm.toJson(), Map.class);
+                    Map<String, Object> groundingMap = CODEC.fromJson(gm.toJson(), Map.class);
                     metadata.put("groundingMetadata", groundingMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse grounding metadata", e);

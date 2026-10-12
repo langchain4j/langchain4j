@@ -124,6 +124,7 @@ public class DockerMcpTransport implements McpTransport {
             pull.withTag(tag).exec(new PullImageResultCallback()).awaitCompletion();
             log.trace("Image pulled [{}:{}]", repository, tag);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 

@@ -684,16 +684,25 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     protected Connection getConnection() throws SQLException {
         Connection connection = datasource.getConnection();
-        // Find a way to do the following code in connection initialization.
-        // Here we assume the datasource could handle a connection pool
-        // and we should add the vector type on each connection
-        if (!skipCreateVectorExtension) {
-            try (Statement statement = connection.createStatement()) {
-                statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        try {
+            // Find a way to do the following code in connection initialization.
+            // Here we assume the datasource could handle a connection pool
+            // and we should add the vector type on each connection
+            if (!skipCreateVectorExtension) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+                }
             }
+            PGvector.addVectorType(connection);
+            return connection;
+        } catch (Throwable t) {
+            try {
+                connection.close();
+            } catch (Throwable closeFailure) {
+                t.addSuppressed(closeFailure);
+            }
+            throw t;
         }
-        PGvector.addVectorType(connection);
-        return connection;
     }
 
     public static class DatasourceBuilder {

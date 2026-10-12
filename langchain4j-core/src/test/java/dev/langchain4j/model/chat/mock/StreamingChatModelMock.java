@@ -13,18 +13,25 @@ import static java.util.Collections.synchronizedList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscription;
 
 /**
  * An implementation of a {@link StreamingChatModel} useful for unit testing.
@@ -36,6 +43,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private final Queue<AiMessage> aiMessages;
     private final RuntimeException exception;
     private final List<ChatRequest> requests = synchronizedList(new ArrayList<>());
+    private Set<Capability> supportedCapabilities = Set.of();
 
     public StreamingChatModelMock(List<String> tokens) {
         this(List.of(toAiMessage(tokens)));
@@ -49,6 +57,88 @@ public class StreamingChatModelMock implements StreamingChatModel {
     public StreamingChatModelMock(RuntimeException exception) {
         this.aiMessages = null;
         this.exception = ensureNotNull(exception, "exception");
+    }
+
+    public StreamingChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
+        this.supportedCapabilities = Set.of(supportedCapabilities);
+        return this;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
+    }
+
+    /**
+     * Emits one {@link PartialResponse} per token, then the {@link CompleteResponse}, on the thread that requests
+     * them, as many as the subscriber requested.
+     */
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        return subscriber -> {
+            requests.add(chatRequest);
+            subscriber.onSubscribe(new Subscription() {
+
+                private List<ChatModelStreamingEvent> events;
+                private int next;
+                private long demand;
+                private boolean emitting;
+                private boolean done;
+
+                @Override
+                public synchronized void request(long n) {
+                    if (done) {
+                        return;
+                    }
+                    if (n <= 0) {
+                        done = true;
+                        subscriber.onError(new IllegalArgumentException("Demand must be positive, got " + n));
+                        return;
+                    }
+                    demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
+                    if (emitting) {
+                        return; // called from onNext: the loop below emits the additional demand
+                    }
+                    emitting = true;
+                    try {
+                        emit();
+                    } finally {
+                        emitting = false;
+                    }
+                }
+
+                private void emit() {
+                    if (exception != null) {
+                        done = true;
+                        subscriber.onError(exception);
+                        return;
+                    }
+                    if (events == null) {
+                        events = toEvents(ensureNotNull(aiMessages.poll(), "aiMessage"));
+                    }
+                    while (!done && demand > 0 && next < events.size()) {
+                        demand--;
+                        subscriber.onNext(events.get(next++));
+                    }
+                    if (!done && next == events.size()) {
+                        done = true;
+                        subscriber.onComplete();
+                    }
+                }
+
+                @Override
+                public synchronized void cancel() {
+                    done = true;
+                }
+            });
+        };
+    }
+
+    private static List<ChatModelStreamingEvent> toEvents(AiMessage aiMessage) {
+        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        toTokens(aiMessage).forEach(token -> events.add(new PartialResponse(token)));
+        events.add(new CompleteResponse(ChatResponse.builder().aiMessage(aiMessage).build()));
+        return events;
     }
 
     @Override

@@ -43,19 +43,47 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.arguments = arguments(a2AClientInstance);
     }
 
+    /**
+     * Builds the argument list for the agent method.
+     *
+     * <p>All three A2A protocol annotation types ({@link A2ATenantId}, {@link A2AContextId},
+     * {@link A2ATaskId}) are marked optional so they resolve gracefully at invocation time:
+     * context and task IDs fall back to {@code null} when absent from scope; a tenant arg
+     * falls back to its {@code defaultValue} when absent from scope.
+     *
+     * <p>When a tenant is pre-configured on the client, the tenant arg is mapped to an
+     * {@link AgentArgument} carrying the configured value as its {@code defaultValue}.
+     * The arg is intentionally kept in the list: removing it would shorten the positional
+     * array and cause {@link java.lang.reflect.Method#invoke} to fail with a wrong argument
+     * count. The pre-configured value is used at invocation time unless the scope already
+     * contains a value for that argument, in which case the scope value takes precedence.
+     */
     private List<AgentArgument> arguments(A2AClientInstance a2AClientInstance) {
         if (isUntyped()) {
             return Stream.of(a2AClientInstance.inputKeys())
                     .map(input -> new AgentArgument(Object.class, input))
                     .toList();
         }
-        Set<String> optionalProtocolArgs = Stream.of(method.getParameters())
-                .filter(p -> (p.isAnnotationPresent(A2AContextId.class)
-                                || p.isAnnotationPresent(A2ATaskId.class)
-                                || p.isAnnotationPresent(A2ATenantId.class))
-                        && ParameterNameResolver.hasName(p))
+        Set<String> tenantArgNames = Stream.of(method.getParameters())
+                .filter(p -> p.isAnnotationPresent(A2ATenantId.class) && ParameterNameResolver.hasName(p))
                 .map(ParameterNameResolver::name)
                 .collect(Collectors.toSet());
+        Set<String> optionalProtocolArgs = Stream.concat(
+                        tenantArgNames.stream(),
+                        Stream.of(method.getParameters())
+                                .filter(p -> (p.isAnnotationPresent(A2AContextId.class)
+                                                || p.isAnnotationPresent(A2ATaskId.class))
+                                        && ParameterNameResolver.hasName(p))
+                                .map(ParameterNameResolver::name))
+                .collect(Collectors.toSet());
+        if (a2AClientInstance.tenant() != null) {
+            String configuredTenant = a2AClientInstance.tenant();
+            return argumentsFromMethod(method, optionalProtocolArgs).stream()
+                    .map(arg -> tenantArgNames.contains(arg.name())
+                            ? new AgentArgument(arg.type(), arg.name(), configuredTenant, true, arg.description())
+                            : arg)
+                    .toList();
+        }
         return argumentsFromMethod(method, optionalProtocolArgs);
     }
 

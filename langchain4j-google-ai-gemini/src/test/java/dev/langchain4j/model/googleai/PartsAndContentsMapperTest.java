@@ -376,6 +376,30 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromGPartsToAiMessage_rendersCodeExecutionResultParsedFromResponse() {
+        // Given
+        String json = """
+                {
+                  "candidates": [{
+                    "content": {
+                      "role": "model",
+                      "parts": [{"codeExecutionResult": {"outcome": "OUTCOME_OK", "output": "1"}}]
+                    }
+                  }]
+                }
+                """;
+        GeminiGenerateContentResponse response = Json.fromJson(json, GeminiGenerateContentResponse.class);
+        List<GeminiContent.GeminiPart> parts =
+                response.candidates().get(0).content().parts();
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, true, null);
+
+        // Then
+        assertThat(result.text()).isEqualTo("Output:\n```\n1```\n");
+    }
+
+    @Test
     void fromGPartsToAiMessage_ignoresNonImageInlineData() {
         // Given
         GeminiBlob audioBlob = new GeminiBlob("audio/mp3", "base64audiodata");

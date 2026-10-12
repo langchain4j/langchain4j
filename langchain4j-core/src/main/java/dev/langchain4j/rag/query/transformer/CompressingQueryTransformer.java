@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.Collection;
@@ -74,12 +75,13 @@ public class CompressingQueryTransformer implements QueryTransformer {
     @Override
     public Collection<Query> transform(Query query) {
 
-        List<ChatMessage> chatMemory = query.metadata().chatMemory();
-        if (chatMemory == null || chatMemory.isEmpty()) {
+        Metadata metadata = query.metadata();
+        if (metadata == null || metadata.chatMemory().isEmpty()) {
             // no need to compress if there are no previous messages
             return singletonList(query);
         }
 
+        List<ChatMessage> chatMemory = metadata.chatMemory();
         Prompt prompt = createPrompt(query, format(chatMemory));
         String compressedQueryText = chatModel.chat(prompt.text());
         return singletonList(toQuery(query, compressedQueryText));
@@ -87,11 +89,12 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        List<ChatMessage> chatMemory = query.metadata().chatMemory();
-        if (chatMemory == null || chatMemory.isEmpty()) {
+        Metadata metadata = query.metadata();
+        if (metadata == null || metadata.chatMemory().isEmpty()) {
             // no need to compress if there are no previous messages
             return CompletableFuture.completedFuture(singletonList(query));
         }
+        List<ChatMessage> chatMemory = metadata.chatMemory();
         Prompt prompt = createPrompt(query, format(chatMemory));
         var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
         CompletableFuture<Collection<Query>> result =

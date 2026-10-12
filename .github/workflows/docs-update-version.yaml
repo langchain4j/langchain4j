@@ -22,6 +22,7 @@ permissions:
 jobs:
   update-docs:
     runs-on: ubuntu-latest
+    environment: release-follow-up
 
     steps:
       - name: Checkout repository

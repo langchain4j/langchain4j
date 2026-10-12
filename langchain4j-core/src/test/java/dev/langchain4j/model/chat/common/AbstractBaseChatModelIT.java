@@ -229,16 +229,20 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(
-                        UserMessage.from("Hi, my favorite color is green"),
-                        AiMessage.from("Hi, nice to meet you"),
-                        UserMessage.from("What is my favorite color?"))
+                        // the last question can only be answered using the previous answer, without asking about
+                        // the conversation itself: Amazon Nova often refuses to repeat what the user said
+                        // or what it answered before, citing privacy or a lack of memory
+                        UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY),
+                        AiMessage.from("Berlin"),
+                        UserMessage.from(
+                                "Which river flows through that city? Answer in one sentence that names the city."))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
     }
 
     // CHAT PARAMETERS

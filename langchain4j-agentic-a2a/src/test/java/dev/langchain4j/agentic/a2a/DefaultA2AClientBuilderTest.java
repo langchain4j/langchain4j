@@ -2,14 +2,21 @@ package dev.langchain4j.agentic.a2a;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import org.a2aproject.sdk.client.Client;
+import org.a2aproject.sdk.spec.AgentCapabilities;
+import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.Part;
@@ -20,6 +27,30 @@ import org.a2aproject.sdk.spec.TextPart;
 import org.junit.jupiter.api.Test;
 
 class DefaultA2AClientBuilderTest {
+
+    @Test
+    void multiple_listeners_are_composed() {
+        AgentCard agentCard = AgentCard.builder()
+                .name("test-agent")
+                .description("Test agent")
+                .version("1.0.0")
+                .url("http://localhost")
+                .capabilities(new AgentCapabilities(false, false, false, List.of()))
+                .defaultInputModes(List.of("text"))
+                .defaultOutputModes(List.of("text"))
+                .skills(List.of())
+                .supportedInterfaces(List.of())
+                .build();
+        AgentListener first = new AgentListener() {};
+        AgentListener second = new AgentListener() {};
+
+        DefaultA2AClientBuilder<UntypedAgent> builder =
+                new DefaultA2AClientBuilder<>(agentCard, UntypedAgent.class, mock(Client.class));
+        builder.listener(first).listener(second);
+
+        assertThat(builder.listener()).isInstanceOf(ComposedAgentListener.class);
+        assertThat(((ComposedAgentListener) builder.listener()).listeners()).containsExactlyInAnyOrder(first, second);
+    }
 
     @Test
     void completeFromTask_failedTaskWithReason_completesExceptionally() {
