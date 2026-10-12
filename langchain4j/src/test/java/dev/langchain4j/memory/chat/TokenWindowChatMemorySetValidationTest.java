@@ -8,7 +8,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class TokenWindowChatMemorySetValidationTest {
