@@ -36,6 +36,31 @@ OpenAiChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 
+### HTTP version
+
+By default, `JdkHttpClient` uses HTTP/2 for `https://` URLs (when the server supports it) and HTTP/1.1 for
+plain `http://` URLs. HTTP/2 over plain HTTP would require an `Upgrade: h2c` request, which many servers
+(for example, Python servers running on uvicorn, such as vLLM, Xinference or LiteLLM) do not handle correctly.
+Typical symptoms are a server error saying the request body is missing (e.g., `Field required`),
+`Unsupported upgrade request`, `413 Request Entity Too Large`, or a request that hangs until it times out.
+
+When you provide your own `HttpClient.Builder` (for example, to configure a proxy or an `SSLContext`),
+the HTTP version configured on it is used for all URLs. If you do not set a version on it, the JDK default
+is HTTP/2, so plain `http://` requests send the `Upgrade: h2c` request again.
+To use HTTP/1.1 in that case, set the version explicitly:
+
+```java
+HttpClient.Builder httpClientBuilder = HttpClient.newBuilder()
+        .proxy(...)
+        .version(HttpClient.Version.HTTP_1_1);
+
+JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
+        .httpClientBuilder(httpClientBuilder);
+```
+
+Conversely, if your plain-HTTP server supports the `Upgrade: h2c` request and you want to use HTTP/2 with it,
+provide a builder with `.version(HttpClient.Version.HTTP_2)`.
+
 :::note
 An `HttpClient` implementation can also provide non-blocking counterparts: `executeAsync(...)` for a single
 response and `stream(...)` for a cold `Flow.Publisher` of parsed server-sent events. The bundled JDK, OkHttp and

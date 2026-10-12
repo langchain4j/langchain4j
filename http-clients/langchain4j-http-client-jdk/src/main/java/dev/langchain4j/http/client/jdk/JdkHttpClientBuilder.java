@@ -16,6 +16,21 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
         return httpClientBuilder;
     }
 
+    /**
+     * Sets the JDK {@link java.net.http.HttpClient.Builder} used to create the underlying client.
+     * <p>
+     * When not set, a default client is used: plain {@code http://} requests are sent over HTTP/1.1,
+     * and {@code https://} requests use HTTP/2 when the server supports it.
+     * <p>
+     * When set, the HTTP version configured on the given builder is used for all requests.
+     * If no version is configured, the JDK default is HTTP/2, which for plain {@code http://} URLs
+     * sends an {@code Upgrade: h2c} request that many servers do not handle correctly
+     * (for example, they ignore the request body).
+     * Call {@code .version(java.net.http.HttpClient.Version.HTTP_1_1)} on the builder to avoid this.
+     *
+     * @param httpClientBuilder the JDK HTTP client builder
+     * @return this builder
+     */
     public JdkHttpClientBuilder httpClientBuilder(java.net.http.HttpClient.Builder httpClientBuilder) {
         this.httpClientBuilder = httpClientBuilder;
         return this;
