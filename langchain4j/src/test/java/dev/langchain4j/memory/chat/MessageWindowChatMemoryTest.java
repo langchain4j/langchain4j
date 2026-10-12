@@ -676,10 +676,11 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(3);
         chatMemory.add(userMessage("keep-me"));
 
-        assertThatThrownBy(() -> chatMemory.set(List.of()))
+        List<dev.langchain4j.data.message.ChatMessage> empty = new ArrayList<>();
+        assertThatThrownBy(() -> chatMemory.set(empty))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
-        assertThatThrownBy(() -> chatMemory.set((Iterable<dev.langchain4j.data.message.ChatMessage>) List.of()))
+        assertThatThrownBy(() -> chatMemory.set((Iterable<dev.langchain4j.data.message.ChatMessage>) empty))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
 
