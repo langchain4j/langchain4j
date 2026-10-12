@@ -1,5 +1,13 @@
 package dev.langchain4j.http.client.log;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -9,23 +17,15 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.slf4j.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockingDetails;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.Logger;
 
 class LoggingHttpClientTest {
 
@@ -61,6 +61,27 @@ class LoggingHttpClientTest {
     }
 
     // ---------- async execute ----------
+
+    @ParameterizedTest(name = "logRequests={0}, logResponses={1}, mayInterruptIfRunning={2}")
+    @CsvSource({
+        "false,false,false", "false,false,true", "false,true,false", "false,true,true",
+        "true,false,false", "true,false,true", "true,true,false", "true,true,true"
+    })
+    void executeAsync_propagates_cancellation_to_wrapped_client(
+            boolean logRequests, boolean logResponses, boolean mayInterruptIfRunning) {
+        CompletableFuture<SuccessfulHttpResponse> delegateFuture = new CompletableFuture<>();
+        HttpClient delegate = mock(HttpClient.class);
+        when(delegate.executeAsync(REQUEST)).thenReturn(delegateFuture);
+        Logger log = mock(Logger.class);
+        LoggingHttpClient client = new LoggingHttpClient(delegate, logRequests, logResponses, log);
+
+        CompletableFuture<SuccessfulHttpResponse> future = client.executeAsync(REQUEST);
+
+        assertThat(future.cancel(mayInterruptIfRunning)).isTrue();
+        assertThat(future).isCancelled();
+        assertThat(delegateFuture).isCancelled();
+        assertThat(responseLogCount(log)).isZero();
+    }
 
     @ParameterizedTest(name = "logRequests={0}, logResponses={1}")
     @CsvSource({"false,false", "true,false", "false,true", "true,true"})
