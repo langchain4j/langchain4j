@@ -224,3 +224,5 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("smollm2-135m-instruct")
         .build();
 ```
+
+With LangChain4j versions before 1.23.0, configure HTTP/1.1 explicitly, see [HTTP version](/tutorials/customizable-http-client#http-version).

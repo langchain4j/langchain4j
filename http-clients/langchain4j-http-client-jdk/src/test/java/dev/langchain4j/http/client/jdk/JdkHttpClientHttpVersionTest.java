@@ -59,13 +59,13 @@ class JdkHttpClientHttpVersionTest {
     }
 
     @Test
-    void should_not_request_h2c_upgrade_for_plain_http_by_default_async() {
+    void should_not_request_h2c_upgrade_for_plain_http_by_default_async() throws Exception {
 
         // given
         JdkHttpClient client = JdkHttpClient.builder().build();
 
         // when
-        client.executeAsync(request()).join();
+        client.executeAsync(request()).get(10, SECONDS);
 
         // then
         assertNoUpgradeAndBodyReceived(singleRequest());
@@ -136,6 +136,21 @@ class JdkHttpClientHttpVersionTest {
 
         // then
         assertThat(jdkRequest.version()).isEmpty();
+    }
+
+    @Test
+    void should_request_h2c_upgrade_for_plain_http_when_custom_http_client_builder_has_no_version() {
+
+        // given
+        JdkHttpClient client = JdkHttpClient.builder()
+                .httpClientBuilder(java.net.http.HttpClient.newBuilder())
+                .build();
+
+        // when
+        client.execute(request());
+
+        // then
+        wireMockServer.verify(postRequestedFor(urlEqualTo("/endpoint")).withHeader("Upgrade", equalTo("h2c")));
     }
 
     @Test

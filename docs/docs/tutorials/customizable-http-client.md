@@ -40,9 +40,17 @@ OpenAiChatModel model = OpenAiChatModel.builder()
 
 By default, `JdkHttpClient` uses HTTP/2 for `https://` URLs (when the server supports it) and HTTP/1.1 for
 plain `http://` URLs. HTTP/2 over plain HTTP would require an `Upgrade: h2c` request, which many servers
-(for example, Python servers running on uvicorn, such as vLLM, Xinference or LiteLLM) do not handle correctly.
+do not handle correctly. For example, Python servers running on uvicorn with the `httptools` parser
+(such as vLLM or Xinference) ignore the request body, and Java servers with HTTP/2 enabled on Tomcat or
+Reactor Netty reject larger requests or stop responding.
 Typical symptoms are a server error saying the request body is missing (e.g., `Field required`),
 `Unsupported upgrade request`, `413 Request Entity Too Large`, or a request that hangs until it times out.
+
+:::note
+Before version 1.23.0, `JdkHttpClient` used HTTP/2 for plain `http://` URLs as well.
+If you use an older version and see the symptoms above, provide an `HttpClient.Builder`
+with `.version(HttpClient.Version.HTTP_1_1)` as shown below.
+:::
 
 When you provide your own `HttpClient.Builder` (for example, to configure a proxy or an `SSLContext`),
 the HTTP version configured on it is used for all URLs. If you do not set a version on it, the JDK default
