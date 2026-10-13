@@ -8,7 +8,10 @@ import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.HarmCategory;
 import com.google.genai.types.Part;
+import com.google.genai.types.PrebuiltVoiceConfig;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
+import com.google.genai.types.VoiceConfig;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -717,5 +720,122 @@ class GoogleGenAiConfigBuilderTest {
                 null);
 
         assertThat(config.audioTranscriptionConfig()).isEmpty();
+    }
+
+    @Test
+    void should_set_speech_config_and_response_modalities_and_automatic_continuation() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        SpeechConfig speechConfig = SpeechConfig.builder()
+                .languageCode("en-US")
+                .voiceConfig(VoiceConfig.builder()
+                        .prebuiltVoiceConfig(
+                                PrebuiltVoiceConfig.builder().voiceName("Kore").build())
+                        .build())
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                speechConfig,
+                List.of("AUDIO"),
+                true,
+                null);
+
+        assertThat(config.speechConfig()).isPresent();
+        assertThat(config.speechConfig().get().languageCode()).hasValue("en-US");
+        assertThat(config.speechConfig()
+                        .get()
+                        .voiceConfig()
+                        .get()
+                        .prebuiltVoiceConfig()
+                        .get()
+                        .voiceName())
+                .hasValue("Kore");
+        assertThat(config.responseModalities()).isPresent();
+        assertThat(config.responseModalities().get()).containsExactly("AUDIO");
+        assertThat(config.automaticContinuation()).hasValue(true);
+    }
+
+    @Test
+    void should_override_labels_cached_content_and_automatic_continuation_from_google_request_parameters() {
+        GoogleGenAiChatRequestParameters parameters = GoogleGenAiChatRequestParameters.builder()
+                .labels(Map.of("env", "staging", "requestId", "req-42"))
+                .cachedContent("projects/123/locations/us-central1/cachedContents/override")
+                .automaticContinuation(false)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                Map.of("env", "prod"),
+                "projects/123/locations/us-central1/cachedContents/default",
+                null,
+                null,
+                null,
+                true,
+                null);
+
+        assertThat(config.labels()).isPresent();
+        assertThat(config.labels().get())
+                .containsEntry("env", "staging")
+                .containsEntry("requestId", "req-42")
+                .hasSize(2);
+        assertThat(config.cachedContent()).hasValue("projects/123/locations/us-central1/cachedContents/override");
+        assertThat(config.automaticContinuation()).hasValue(false);
+    }
+
+    @Test
+    void should_verify_google_gen_ai_chat_request_parameters_override_equals_hashcode_and_to_string() {
+        GoogleGenAiChatRequestParameters first = GoogleGenAiChatRequestParameters.builder()
+                .temperature(0.7)
+                .cachedContent("cache-1")
+                .labels(Map.of("k", "v"))
+                .automaticContinuation(true)
+                .build();
+
+        GoogleGenAiChatRequestParameters second = GoogleGenAiChatRequestParameters.builder()
+                .labels(Map.of("k2", "v2"))
+                .automaticContinuation(false)
+                .build();
+
+        GoogleGenAiChatRequestParameters merged = first.overrideWith(second);
+        assertThat(merged.labels()).containsExactlyEntriesOf(Map.of("k2", "v2"));
+        assertThat(merged.automaticContinuation()).isFalse();
+        assertThat(merged.temperature()).isEqualTo(0.7);
+        assertThat(merged.cachedContent()).isEqualTo("cache-1");
+
+        GoogleGenAiChatRequestParameters copyOfFirst =
+                GoogleGenAiChatRequestParameters.builder().overrideWith(first).build();
+        assertThat(copyOfFirst).isEqualTo(first).hasSameHashCodeAs(first);
+        assertThat(first).isNotEqualTo(merged);
+        assertThat(first.toString())
+                .contains("labels={k=v}")
+                .contains("automaticContinuation=true")
+                .contains("cachedContent=\"cache-1\"");
     }
 }

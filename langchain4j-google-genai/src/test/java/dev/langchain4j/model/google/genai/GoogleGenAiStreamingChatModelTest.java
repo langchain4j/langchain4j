@@ -18,6 +18,8 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -809,5 +811,107 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
         assertThat(aiMessage.attribute("thought_signature_call_1", String.class))
                 .isEqualTo(Base64.getEncoder().encodeToString("sig".getBytes()));
+    }
+
+    @Test
+    void should_accumulate_generated_audio_across_streaming_chunks() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        when(models.generateContentStream(any(String.class), any(List.class), configCaptor.capture()))
+                .thenReturn(stream);
+
+        byte[] chunk1Bytes = "audio-chunk-1".getBytes(StandardCharsets.UTF_8);
+        byte[] chunk2Bytes = "audio-chunk-2".getBytes(StandardCharsets.UTF_8);
+
+        GenerateContentResponse firstChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder()
+                                        .inlineData(Blob.builder()
+                                                .data(chunk1Bytes)
+                                                .mimeType("audio/wav")
+                                                .build())
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse secondChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder()
+                                        .inlineData(Blob.builder()
+                                                .data(chunk2Bytes)
+                                                .mimeType("audio/wav")
+                                                .build())
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        SpeechConfig speechConfig = SpeechConfig.builder().languageCode("en-US").build();
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash-tts")
+                .speechConfig(speechConfig)
+                .responseModalities(List.of("AUDIO"))
+                .automaticContinuation(true)
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+
+        assertThat(configCaptor.getValue().speechConfig()).contains(speechConfig);
+        assertThat(configCaptor.getValue().responseModalities()).contains(List.of("AUDIO"));
+        assertThat(configCaptor.getValue().automaticContinuation()).contains(true);
+
+        List<Audio> generatedAudio = response.aiMessage().audios();
+        assertThat(generatedAudio).hasSize(2);
+        assertThat(generatedAudio.get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(chunk1Bytes));
+        assertThat(generatedAudio.get(1).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(chunk2Bytes));
+    }
+
+    @Test
+    void should_report_handler_exception_through_on_error_and_keep_streaming() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        RuntimeException handlerException = new RuntimeException("handler failed");
+        List<Throwable> errors = new ArrayList<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("What is 6 times 7?")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                throw handlerException;
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        assertThat(errors).containsExactly(handlerException);
+        assertThat(response.aiMessage().text()).isEqualTo("42");
     }
 }

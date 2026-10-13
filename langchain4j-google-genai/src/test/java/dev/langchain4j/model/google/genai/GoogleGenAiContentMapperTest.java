@@ -20,6 +20,7 @@ import com.google.genai.types.Part;
 import com.google.genai.types.Transcription;
 import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -29,11 +30,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1148,6 +1151,87 @@ class GoogleGenAiContentMapperTest {
                 responseWithParts(Part.builder().inlineData(blob).build()), "gemini-2.5-flash-image");
 
         assertThat(result.aiMessage().images()).isEmpty();
+        assertThat(result.aiMessage().audios()).isEmpty();
+    }
+
+    @Test
+    void should_collect_generated_audio_from_inline_data() {
+        byte[] wavBytes = "fake-wav-bytes".getBytes(StandardCharsets.UTF_8);
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(imagePart(wavBytes, "audio/wav")), "gemini-3.8-flash-tts");
+
+        assertThat(result.aiMessage().images()).isEmpty();
+        List<Audio> generatedAudio = result.aiMessage().audios();
+        assertThat(generatedAudio).hasSize(1);
+        assertThat(generatedAudio.get(0).mimeType()).isEqualTo("audio/wav");
+        assertThat(generatedAudio.get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(wavBytes));
+    }
+
+    @Test
+    void should_map_initial_prompt_token_count_for_multi_hop_continuation() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("Continued answer").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(30)
+                        .firstHopPromptTokenCount(12)
+                        .candidatesTokenCount(15)
+                        .totalTokenCount(45)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(30);
+        assertThat(tokenUsage.initialPromptTokenCount()).isEqualTo(12);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(15);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(45);
+    }
+
+    @Test
+    void should_preserve_audio_transcription_segment_start_and_end_offsets() {
+        Transcription firstSegment = Transcription.builder()
+                .text("First segment.")
+                .speakerLabel("spk_1")
+                .startOffset(Duration.ofMillis(100))
+                .endOffset(Duration.ofMillis(1500))
+                .build();
+        Transcription secondSegment = Transcription.builder()
+                .text("Second segment.")
+                .speakerLabel("spk_2")
+                .startOffset(Duration.ofMillis(1600))
+                .endOffset(Duration.ofMillis(3200))
+                .build();
+
+        GenerateContentResponse response =
+                responseWithParts(transcriptionPart(firstSegment), transcriptionPart(secondSegment));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("First segment. Second segment.");
+        GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) result.metadata();
+        List<Part> rawParts = metadata.rawResponse()
+                .candidates()
+                .orElseThrow()
+                .get(0)
+                .content()
+                .orElseThrow()
+                .parts()
+                .orElseThrow();
+        assertThat(rawParts.get(0).audioTranscription().orElseThrow().startOffset())
+                .hasValue(Duration.ofMillis(100));
+        assertThat(rawParts.get(0).audioTranscription().orElseThrow().endOffset())
+                .hasValue(Duration.ofMillis(1500));
+        assertThat(rawParts.get(1).audioTranscription().orElseThrow().startOffset())
+                .hasValue(Duration.ofMillis(1600));
+        assertThat(rawParts.get(1).audioTranscription().orElseThrow().endOffset())
+                .hasValue(Duration.ofMillis(3200));
     }
 
     private static GenerateContentResponse responseWithParts(Part... parts) {
@@ -1166,5 +1250,18 @@ class GoogleGenAiContentMapperTest {
 
     private static Part transcriptionPart(Transcription transcription) {
         return Part.builder().audioTranscription(transcription).build();
+    }
+
+    @Test
+    void should_fail_with_unsupported_feature_for_non_text_tool_execution_result() {
+        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
+                .id("call-1")
+                .toolName("getImage")
+                .contents(List.of(ImageContent.from("https://example.com/cat.png")))
+                .build();
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolResult)))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("Google Gen AI currently does not support non-text content in tool execution results");
     }
 }
