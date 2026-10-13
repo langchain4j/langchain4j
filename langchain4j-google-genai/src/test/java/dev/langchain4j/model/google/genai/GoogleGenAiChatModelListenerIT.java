@@ -19,13 +19,14 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .temperature(temperature())
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
+                .thinkingBudget(0)
                 .listeners(singletonList(listener))
                 .build();
     }
 
     @Override
     protected String modelName() {
-        return "gemini-2.5-flash";
+        return "gemini-3.8-flash";
     }
 
     @Override

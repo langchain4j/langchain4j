@@ -211,7 +211,7 @@ class GoogleGenAiChatModelTest {
         RuntimeException fromCustomizer = new RuntimeException("customizer invoked");
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .generateContentConfigCustomizer(config -> {
                     throw fromCustomizer;
                 })

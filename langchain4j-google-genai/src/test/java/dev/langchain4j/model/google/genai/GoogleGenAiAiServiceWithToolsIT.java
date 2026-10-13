@@ -13,7 +13,7 @@ class GoogleGenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     protected List<ChatModel> models() {
         return Collections.singletonList(GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .temperature(0.0)
                 .build());
     }
