@@ -11,9 +11,7 @@ public interface AiServiceEvent {
     InvocationContext invocationContext();
 
     /**
-     * The instant at which this event was created, shortly before listeners are notified.
-     * Unlike {@link InvocationContext#timestamp()}, which is fixed when the invocation starts,
-     * this differs for each event.
+     * The instant at which this event was created.
      */
     Instant timestamp();
 

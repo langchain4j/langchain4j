@@ -83,7 +83,8 @@ public class MyAiServiceCompletedListener implements AiServiceCompletedListener 
         String aiServiceMethodName = invocationContext.methodName();
         List<Object> aiServiceMethodArgs = invocationContext.methodArguments();
         Object chatMemoryId = invocationContext.chatMemoryId();
-        Instant eventTimestamp = invocationContext.timestamp();
+        Instant invocationTimestamp = invocationContext.timestamp(); // when the invocation started
+        Instant eventTimestamp = event.timestamp(); // when this event was created
 
         // Do something with the data
     }

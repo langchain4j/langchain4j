@@ -185,6 +185,28 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     @Test
+    void eventTimestampFallsBackToNowWhenExplicitlyNull() {
+        var event = AiServiceStartedEvent.builder()
+                .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                .userMessage(dev.langchain4j.data.message.UserMessage.from("hi"))
+                .timestamp(null)
+                .build();
+
+        assertThat(event.timestamp()).isNotNull();
+    }
+
+    @Test
+    void eventTimestampDoesNotSubstituteForMissingInvocationContext() {
+        var builder = AiServiceStartedEvent.builder()
+                .userMessage(dev.langchain4j.data.message.UserMessage.from("hi"))
+                .timestamp(Instant.now());
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(builder::build)
+                .withMessageContaining("invocationContext");
+    }
+
+    @Test
     void registrarEatsThrownExceptionsDuringFiring() {
         // From https://github.com/langchain4j/langchain4j/issues/4499
         var registrar = AiServiceListenerRegistrar.newInstance();
