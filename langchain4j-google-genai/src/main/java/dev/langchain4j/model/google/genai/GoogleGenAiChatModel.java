@@ -14,6 +14,7 @@ import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -61,6 +62,9 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
     private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
+    private final Boolean automaticContinuation;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiChatModel(Builder builder) {
@@ -82,6 +86,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
+        this.automaticContinuation = builder.automaticContinuation;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
@@ -116,6 +123,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
+                .labels(getOrDefault(this.labels, genAiParameters.labels()))
+                .automaticContinuation(
+                        getOrDefault(builder.automaticContinuation, genAiParameters.automaticContinuation()))
                 .build();
     }
 
@@ -170,6 +180,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                 labels,
                 parameters.cachedContent(),
                 audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
                 generateContentConfigCustomizer);
 
         if (logRequests) {
@@ -256,6 +269,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
+        private Boolean automaticContinuation;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
@@ -742,14 +758,52 @@ public class GoogleGenAiChatModel implements ChatModel {
          * word-level timestamps and speaker diarization.
          * <p>
          * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
-         * The transcript is returned as the text of the {@link AiMessage}. Word-level timestamps and speaker labels
-         * are not part of that text; read them from the parts of {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         * The transcript is returned as the text of the {@link AiMessage}. Segment offsets ({@code startOffset},
+         * {@code endOffset}), word-level timestamps and speaker labels are not part of that text; read them from
+         * the parts of {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
          *
          * @param audioTranscriptionConfig the audio transcription configuration
          * @return {@code this}
          */
         public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
             this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        /**
+         * Sets the {@link SpeechConfig} used when the model generates speech/audio output (e.g. voice selection,
+         * multi-speaker voice configuration, and spoken language).
+         *
+         * @param speechConfig the speech synthesis configuration
+         * @return {@code this}
+         */
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        /**
+         * Sets the requested response modalities (for example {@code List.of("TEXT", "AUDIO")} or {@code List.of("AUDIO")}
+         * for text-to-speech models).
+         *
+         * @param responseModalities the list of response modalities
+         * @return {@code this}
+         */
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        /**
+         * Controls whether the Google GenAI SDK automatically continues generation when a response stops
+         * with an intermediate {@code CONTINUATION} finish reason and continuation token.
+         * Enabled by default in the SDK when not set.
+         *
+         * @param automaticContinuation whether to enable automatic continuation
+         * @return {@code this}
+         */
+        public Builder automaticContinuation(Boolean automaticContinuation) {
+            this.automaticContinuation = automaticContinuation;
             return this;
         }
 

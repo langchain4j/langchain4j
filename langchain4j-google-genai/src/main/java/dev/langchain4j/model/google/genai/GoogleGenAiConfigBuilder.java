@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import com.google.genai.types.AudioTranscriptionConfig;
@@ -13,6 +14,7 @@ import com.google.genai.types.GoogleSearch;
 import com.google.genai.types.Retrieval;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
+import com.google.genai.types.SpeechConfig;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
@@ -63,6 +65,9 @@ class GoogleGenAiConfigBuilder {
                 labels,
                 cachedContent,
                 null,
+                null,
+                null,
+                null,
                 null);
     }
 
@@ -98,6 +103,9 @@ class GoogleGenAiConfigBuilder {
                 labels,
                 cachedContent,
                 null,
+                null,
+                null,
+                null,
                 generateContentConfigCustomizer);
     }
 
@@ -117,6 +125,48 @@ class GoogleGenAiConfigBuilder {
             Map<String, String> labels,
             String cachedContent,
             AudioTranscriptionConfig audioTranscriptionConfig,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                audioTranscriptionConfig,
+                null,
+                null,
+                null,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            SpeechConfig speechConfig,
+            List<String> responseModalities,
+            Boolean automaticContinuation,
             Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
@@ -188,16 +238,38 @@ class GoogleGenAiConfigBuilder {
             configBuilder.systemInstruction(systemInstruction);
         }
 
-        if (labels != null) {
-            configBuilder.labels(labels);
+        Map<String, String> effectiveLabels = labels;
+        String effectiveCachedContent = cachedContent;
+        Boolean effectiveAutomaticContinuation = automaticContinuation;
+        if (parameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters) {
+            effectiveLabels = getOrDefault(googleGenAiParameters.labels(), effectiveLabels);
+            effectiveCachedContent = getOrDefault(googleGenAiParameters.cachedContent(), effectiveCachedContent);
+            effectiveAutomaticContinuation =
+                    getOrDefault(googleGenAiParameters.automaticContinuation(), effectiveAutomaticContinuation);
         }
 
-        if (cachedContent != null && !cachedContent.trim().isEmpty()) {
-            configBuilder.cachedContent(cachedContent);
+        if (effectiveLabels != null) {
+            configBuilder.labels(effectiveLabels);
+        }
+
+        if (effectiveCachedContent != null && !effectiveCachedContent.trim().isEmpty()) {
+            configBuilder.cachedContent(effectiveCachedContent);
         }
 
         if (audioTranscriptionConfig != null) {
             configBuilder.audioTranscriptionConfig(audioTranscriptionConfig);
+        }
+
+        if (speechConfig != null) {
+            configBuilder.speechConfig(speechConfig);
+        }
+
+        if (!isNullOrEmpty(responseModalities)) {
+            configBuilder.responseModalities(responseModalities);
+        }
+
+        if (effectiveAutomaticContinuation != null) {
+            configBuilder.automaticContinuation(effectiveAutomaticContinuation);
         }
 
         buildTools(
