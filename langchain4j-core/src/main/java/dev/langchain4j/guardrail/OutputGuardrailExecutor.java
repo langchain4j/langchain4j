@@ -150,8 +150,8 @@ public non-sealed class OutputGuardrailExecutor
 
             if (!result.isRetry()) {
                 return removeViolatingMessageIfRequestedAsync(result, request)
-                        .thenCompose(ignored ->
-                                CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
+                        .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
+                                new OutputGuardrailException(
                                         result.toString(), result.getFirstFailureException(), result)));
             }
 
@@ -182,8 +182,8 @@ public non-sealed class OutputGuardrailExecutor
                     .collect(Collectors.joining(System.lineSeparator()));
 
             return removeViolatingMessageIfRequestedAsync(result, request)
-                    .thenCompose(ignored ->
-                            CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
+                    .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
+                            new OutputGuardrailException(
                                     MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result)));
         });
     }

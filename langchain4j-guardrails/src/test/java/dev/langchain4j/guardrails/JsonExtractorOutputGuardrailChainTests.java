@@ -16,6 +16,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -43,6 +44,20 @@ class JsonExtractorOutputGuardrailChainTests {
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new StartsWithDear(), new EndsWithSignature()).execute(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(repromptTexts(chatModel)).containsExactly("End the email with 'Best regards'");
+        assertThat((Object) result.response(request)).isEqualTo(new Email("Dear Bob, hello. Best regards"));
+    }
+
+    @Test
+    void guardrailAfterCleanJsonExtractionCanStillRepromptAsync() {
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var request = request(INITIAL_RESPONSE, chatModel);
+
+        var result = executor(new Async(new StartsWithDear()), new Async(new EndsWithSignature()))
+                .executeAsync(request)
+                .join();
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(repromptTexts(chatModel)).containsExactly("End the email with 'Best regards'");
@@ -170,6 +185,26 @@ class JsonExtractorOutputGuardrailChainTests {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return success();
+        }
+    }
+
+    // JsonExtractorOutputGuardrail does not implement validateAsync() yet
+    static class Async implements OutputGuardrail {
+
+        private final OutputGuardrail delegate;
+
+        Async(OutputGuardrail delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            return delegate.validate(request);
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(delegate.validate(request));
         }
     }
 

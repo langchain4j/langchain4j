@@ -8,17 +8,18 @@ import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.guardrail.GuardrailResult;
-import dev.langchain4j.guardrail.OutputGuardrailResult;
 import java.util.Map;
 import java.util.stream.Stream;
+import dev.langchain4j.guardrail.GuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class JsonExtractorOutputGuardrailTests {
-    private static final String JSON = """
+    private static final String JSON =
+            """
             {
                 "name": "MyObject",
                 "description": "Description of MyObject"
