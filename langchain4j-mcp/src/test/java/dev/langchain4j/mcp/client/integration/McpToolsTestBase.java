@@ -9,11 +9,11 @@ import static org.hamcrest.Matchers.is;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
-import dev.langchain4j.mcp.client.McpApplicationErrorException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
+import dev.langchain4j.mcp.client.McpApplicationErrorException;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -40,7 +40,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(13);
+        assertThat(tools).hasSize(14);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -87,6 +87,18 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().arguments("{\"input\": \"abc\"}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("abc");
+    }
+
+    @Test
+    public void executeToolThatReturnsImageAsText() {
+        ToolProviderResult toolProviderResult = obtainTools();
+        McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("getImage");
+        ToolExecutionRequest request =
+                ToolExecutionRequest.builder().name("getImage").arguments("{}").build();
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+        assertThat(result.resultText()).isEqualTo("data:image/png;base64,AQID");
+        assertThat(result.isError()).isFalse();
     }
 
     @Test
@@ -220,6 +232,16 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     @Override
     protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
         aiServiceBuilder.toolProvider(createMcpToolProvider());
+    }
+
+    @Override
+    protected String toolNameThrowingExceptionWithoutCause() {
+        return "getAudio";
+    }
+
+    @Override
+    protected String exceptionWithoutCauseMessage() {
+        return "Unsupported content type: \"audio\"";
     }
 
     private static McpToolProvider createMcpToolProvider() {
