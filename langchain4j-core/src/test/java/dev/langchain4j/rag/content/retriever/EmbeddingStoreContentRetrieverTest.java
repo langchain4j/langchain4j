@@ -20,6 +20,7 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -440,6 +441,10 @@ class EmbeddingStoreContentRetrieverTest {
 
         // then
         assertThat(contents).extracting(Content::textSegment).containsExactly(TextSegment.from("content 2"));
+        // Content.equals ignores metadata, so the retained match's score and embedding ID are asserted explicitly
+        assertThat(contents.get(0).metadata())
+                .containsEntry(ContentMetadata.SCORE, 0.7)
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "id 2");
     }
 
     @Test
@@ -455,5 +460,11 @@ class EmbeddingStoreContentRetrieverTest {
         assertThat(contents)
                 .extracting(Content::textSegment)
                 .containsExactly(TextSegment.from("content 1"), TextSegment.from("content 2"));
+        assertThat(contents)
+                .extracting(content -> content.metadata().get(ContentMetadata.SCORE))
+                .containsExactly(0.9, 0.7);
+        assertThat(contents)
+                .extracting(content -> content.metadata().get(ContentMetadata.EMBEDDING_ID))
+                .containsExactly("id 1", "id 2");
     }
 }
