@@ -1,26 +1,5 @@
 package dev.langchain4j.model.localai;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
-import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -33,6 +12,26 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiMessages
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
+
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.output.Response;
+import java.time.Duration;
+import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
@@ -47,15 +46,16 @@ public class LocalAiChatModel implements ChatModel {
     private final Integer maxRetries;
 
     @Deprecated(forRemoval = true, since = "1.5.0")
-    public LocalAiChatModel(String baseUrl,
-                            String modelName,
-                            Double temperature,
-                            Double topP,
-                            Integer maxTokens,
-                            Duration timeout,
-                            Integer maxRetries,
-                            Boolean logRequests,
-                            Boolean logResponses) {
+    public LocalAiChatModel(
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Double topP,
+            Integer maxTokens,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
 
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(60) : timeout;
@@ -104,9 +104,9 @@ public class LocalAiChatModel implements ChatModel {
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 response = generate(chatRequest.messages(), toolSpecifications.get(0));
             } else {
@@ -135,10 +135,10 @@ public class LocalAiChatModel implements ChatModel {
         return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private Response<AiMessage> generate(List<ChatMessage> messages,
-                                         List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted
-    ) {
+    private Response<AiMessage> generate(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            ToolSpecification toolThatMustBeExecuted) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
@@ -155,13 +155,13 @@ public class LocalAiChatModel implements ChatModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatCompletionResponse response = withRetryMappingExceptions(() -> client.chatCompletion(request).execute(), maxRetries);
+        ChatCompletionResponse response =
+                withRetryMappingExceptions(() -> client.chatCompletion(request).execute(), maxRetries);
 
         return Response.from(
                 aiMessageFrom(response),
                 null,
-                finishReasonFrom(response.choices().get(0).finishReason())
-        );
+                finishReasonFrom(response.choices().get(0).finishReason()));
     }
 
     public static LocalAiChatModelBuilder builder() {
@@ -187,46 +187,102 @@ public class LocalAiChatModel implements ChatModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets the base URL of the LocalAI server, e.g. {@code "http://localhost:8080"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the name of the model loaded in the LocalAI server.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature. Higher values produce more random output;
+         * lower values are more deterministic.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability in the range {@code (0.0, 1.0]}.
+         * The model considers only the tokens whose cumulative probability reaches this threshold.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxTokens the maximum number of tokens
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 3}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the LocalAI server.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the LocalAI server.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public LocalAiChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -246,7 +302,10 @@ public class LocalAiChatModel implements ChatModel {
         }
 
         public String toString() {
-            return "LocalAiChatModel.LocalAiChatModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "LocalAiChatModel.LocalAiChatModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName
+                    + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens
+                    + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests="
+                    + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
