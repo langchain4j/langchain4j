@@ -12,12 +12,13 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleGenAiChatModelThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    private static final String MODEL_NAME = "gemini-2.5-flash";
+    private static final String MODEL_NAME = "gemini-3.8-flash";
 
     // gemini-2.5-flash does not return a thought signature on parts that carry no function call
     private static final String THOUGHT_SIGNATURE_MODEL_NAME = "gemini-3.1-pro-preview";
 
-    private static final UserMessage QUESTION = UserMessage.from("What are the best tourist spots in San Francisco?");
+    private static final UserMessage QUESTION = UserMessage.from(
+            "Plan a 3-stop San Francisco itinerary starting at the Golden Gate Bridge that minimizes travel time between stops. Think it through carefully.");
 
     private static final UserMessage MULTIPLICATION = UserMessage.from("What is 17 times 24? Think it through.");
 
