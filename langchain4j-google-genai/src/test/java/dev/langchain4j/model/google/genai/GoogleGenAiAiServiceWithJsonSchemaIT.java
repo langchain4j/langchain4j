@@ -17,4 +17,9 @@ class GoogleGenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSche
                 .temperature(0.0)
                 .build());
     }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return true;
+    }
 }

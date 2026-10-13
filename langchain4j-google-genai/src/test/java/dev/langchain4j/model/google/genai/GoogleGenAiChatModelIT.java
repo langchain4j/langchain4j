@@ -59,8 +59,8 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // TCK uses raw schema string which Gemini SDK doesn't natively map in this builder logic
+    protected boolean supportsChatAsync() {
+        return true;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -25,6 +26,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -200,9 +202,13 @@ class GoogleGenAiConfigBuilder {
             configBuilder.responseMimeType("application/json");
             if (responseFormat.jsonSchema() != null
                     && responseFormat.jsonSchema().rootElement() != null) {
-                Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(
-                        responseFormat.jsonSchema().rootElement());
-                configBuilder.responseSchema(googleSchema);
+                JsonSchemaElement rootElement = responseFormat.jsonSchema().rootElement();
+                if (GoogleGenAiToolMapper.canBeMapped(rootElement)) {
+                    Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(rootElement);
+                    configBuilder.responseSchema(googleSchema);
+                } else {
+                    configBuilder.responseJsonSchema(toMap(rootElement));
+                }
             }
         }
 

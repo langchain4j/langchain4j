@@ -23,6 +23,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
@@ -1234,6 +1235,83 @@ class GoogleGenAiContentMapperTest {
                 .hasValue(Duration.ofMillis(3200));
     }
 
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_text_and_image() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-42")
+                .toolName("take_screenshot")
+                .contents(List.of(TextContent.from("Screenshot captured"), ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        Content content = contents.get(0);
+        assertThat(content.role()).hasValue("user");
+        List<Part> parts = content.parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse()).isPresent();
+        assertThat(parts.get(0).functionResponse().get().id()).hasValue("call-42");
+        assertThat(parts.get(0).functionResponse().get().name()).hasValue("take_screenshot");
+        assertThat(parts.get(0).functionResponse().get().response()).hasValue(Map.of("result", "Screenshot captured"));
+        assertThat(parts.get(1).inlineData()).isPresent();
+        assertThat(parts.get(1).inlineData().get().mimeType()).hasValue("image/png");
+    }
+
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_image_only() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-43")
+                .toolName("take_screenshot")
+                .contents(List.of(ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response()).hasValue(Map.of("result", ""));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_join_all_texts_of_multimodal_tool_execution_result_message() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-45")
+                .toolName("take_screenshot")
+                .contents(List.of(
+                        TextContent.from("Screenshot captured"),
+                        ImageContent.from(base64Png, "image/png"),
+                        TextContent.from("Resolution: 1920x1080")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response())
+                .hasValue(Map.of("result", "Screenshot captured\nResolution: 1920x1080"));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_reject_unsupported_content_in_tool_execution_result_message() {
+        String base64Wav = Base64.getEncoder().encodeToString("wav-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-44")
+                .toolName("record_audio")
+                .contents(List.of(AudioContent.from(base64Wav, "audio/wav")))
+                .build();
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolMessage), false))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("does not support non-text content type 'AUDIO'");
+    }
+
     private static GenerateContentResponse responseWithParts(Part... parts) {
         return GenerateContentResponse.builder()
                 .candidates(List.of(Candidate.builder()
@@ -1250,18 +1328,5 @@ class GoogleGenAiContentMapperTest {
 
     private static Part transcriptionPart(Transcription transcription) {
         return Part.builder().audioTranscription(transcription).build();
-    }
-
-    @Test
-    void should_fail_with_unsupported_feature_for_non_text_tool_execution_result() {
-        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
-                .id("call-1")
-                .toolName("getImage")
-                .contents(List.of(ImageContent.from("https://example.com/cat.png")))
-                .build();
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolResult)))
-                .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                .hasMessage("Google Gen AI currently does not support non-text content in tool execution results");
     }
 }

@@ -1,6 +1,8 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -10,6 +12,7 @@ import com.google.genai.Client;
 import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
@@ -28,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,8 +131,36 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+
+        GenerateContentResponse response = withRetryMappingExceptions(
+                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
+
+        return toChatResponseAndLogResponse(response, chatRequest.modelName());
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+
+        CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
+
+        CompletableFuture<ChatResponse> result =
+                rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
+
+        propagateCancellation(result, rawFuture);
+        return result;
+    }
+
+    private GenerateContentConfig buildConfigAndLogRequest(ChatRequest chatRequest) {
+        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
@@ -161,19 +193,17 @@ public class GoogleGenAiChatModel implements ChatModel {
                     config);
         }
 
-        var result = withRetryMappingExceptions(
-                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
-                maxRetries,
-                GoogleGenAiExceptionMapper.INSTANCE);
+        return config;
+    }
 
-        ChatResponse response =
-                GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName(), returnThinking);
+    private ChatResponse toChatResponseAndLogResponse(GenerateContentResponse response, String modelName) {
+        ChatResponse chatResponse = GoogleGenAiContentMapper.toChatResponse(response, modelName, returnThinking);
 
         if (logResponses) {
-            log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
+            log.info("Response:\n- model: {}\n- response: {}", modelName, chatResponse);
         }
 
-        return response;
+        return chatResponse;
     }
 
     @Override

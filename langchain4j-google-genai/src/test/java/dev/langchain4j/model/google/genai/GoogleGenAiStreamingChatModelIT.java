@@ -57,16 +57,6 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected boolean supportsStreamingCancellation() {
-        return false; // TODO
-    }
-
-    @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // TODO
-    }
-
-    @Override
     protected boolean assertToolId(StreamingChatModel model) {
         return false; // TODO
     }

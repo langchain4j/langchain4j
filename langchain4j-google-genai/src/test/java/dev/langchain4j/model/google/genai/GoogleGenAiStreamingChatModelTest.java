@@ -2,6 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +29,8 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
@@ -42,7 +45,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -913,5 +918,77 @@ class GoogleGenAiStreamingChatModelTest {
         ChatResponse response = future.get(5, TimeUnit.SECONDS);
         assertThat(errors).containsExactly(handlerException);
         assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_cancel_streaming_when_streaming_handle_cancel_is_called() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        GenerateContentResponse chunk1 = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("first ").build()))
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse chunk2 = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("second").build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(chunk1, chunk2).iterator());
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .executor(executor)
+                .build();
+
+        List<String> partialResponses = Collections.synchronizedList(new ArrayList<>());
+        AtomicBoolean onCompleteCalled = new AtomicBoolean(false);
+        AtomicBoolean isCancelledAfterCancel = new AtomicBoolean(false);
+        AtomicBoolean onErrorCalled = new AtomicBoolean(false);
+
+        model.chat(
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build(), new StreamingChatResponseHandler() {
+                    @Override
+                    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                        partialResponses.add(partialResponse.text());
+                        context.streamingHandle().cancel();
+                        isCancelledAfterCancel.set(context.streamingHandle().isCancelled());
+                    }
+
+                    @Override
+                    public void onCompleteResponse(ChatResponse completeResponse) {
+                        onCompleteCalled.set(true);
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        onErrorCalled.set(true);
+                    }
+                });
+
+        executor.shutdown();
+        assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(partialResponses).containsExactly("first ");
+        assertThat(isCancelledAfterCancel.get()).isTrue();
+        assertThat(onCompleteCalled.get()).isFalse();
+        assertThat(onErrorCalled.get()).isFalse();
+        verify(stream, atLeastOnce()).close();
     }
 }

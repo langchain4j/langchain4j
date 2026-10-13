@@ -2,7 +2,12 @@ package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -31,8 +36,8 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -184,8 +189,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 new MappingTrackingStreamingChatResponseHandler(handler);
 
         executor.execute(() -> {
+            GoogleGenAiStreamingHandle streamingHandle = null;
             try (ResponseStream<GenerateContentResponse> stream =
                     client.models.generateContentStream(modelName, contents, config)) {
+                streamingHandle = new GoogleGenAiStreamingHandle(stream);
 
                 StringBuilder textBuilder = new StringBuilder();
                 StringBuilder thinkingBuilder = new StringBuilder();
@@ -198,6 +205,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
                     trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse =
@@ -211,30 +221,24 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                     if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
                         thinkingBuilder.append(aiMessage.thinking());
-                        try {
-                            trackingHandler.onPartialThinking(new PartialThinking(aiMessage.thinking()));
-                        } catch (Exception userException) {
-                            trackingHandler.onError(userException);
+                        onPartialThinking(trackingHandler, aiMessage.thinking(), streamingHandle);
+                        if (streamingHandle.isCancelled()) {
+                            return;
                         }
                     }
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
-                        try {
-                            trackingHandler.onPartialResponse(aiMessage.text());
-                        } catch (Exception userException) {
-                            trackingHandler.onError(userException);
+                        onPartialResponse(trackingHandler, aiMessage.text(), streamingHandle);
+                        if (streamingHandle.isCancelled()) {
+                            return;
                         }
                     }
 
                     if (aiMessage.toolExecutionRequests() != null) {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
-                            try {
-                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
-                            } catch (Exception userException) {
-                                trackingHandler.onError(userException);
-                            }
+                            onCompleteToolCall(trackingHandler, new CompleteToolCall(toolIndex++, req));
                         }
                     }
 
@@ -251,6 +255,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (!trackingHandler.wasMapped()) {
                         onUnmappedRawEvent(trackingHandler, chunk);
                     }
+                }
+
+                if (streamingHandle.isCancelled()) {
+                    return;
                 }
 
                 AiMessage finalAiMessage;
@@ -292,11 +300,42 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
                 }
 
-                trackingHandler.onCompleteResponse(finalChatResponse);
+                onCompleteResponse(trackingHandler, finalChatResponse);
             } catch (Exception e) {
-                trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e));
+                if (streamingHandle != null && streamingHandle.isCancelled()) {
+                    return;
+                }
+                withLoggingExceptions(
+                        () -> trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e)));
             }
         });
+    }
+
+    private static class GoogleGenAiStreamingHandle implements StreamingHandle {
+
+        private final ResponseStream<?> stream;
+        private volatile boolean cancelled;
+
+        GoogleGenAiStreamingHandle(ResponseStream<?> stream) {
+            this.stream = stream;
+        }
+
+        @Override
+        public void cancel() {
+            if (cancelled) {
+                return;
+            }
+            cancelled = true;
+            try {
+                stream.close();
+            } catch (Exception ignored) {
+            }
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled;
+        }
     }
 
     @Override

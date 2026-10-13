@@ -19,6 +19,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.HashMap;
 import java.util.List;
@@ -837,5 +839,61 @@ class GoogleGenAiConfigBuilderTest {
                 .contains("labels={k=v}")
                 .contains("automaticContinuation=true")
                 .contains("cachedContent=\"cache-1\"");
+    }
+
+    @Test
+    void should_use_response_json_schema_when_root_element_is_raw_schema() {
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Answer")
+                        .rootElement(JsonRawSchema.from(
+                                "{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}"))
+                        .build())
+                .build();
+
+        ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
+
+        assertThat(config.responseMimeType()).hasValue("application/json");
+        assertThat(config.responseSchema()).isEmpty();
+        assertThat(config.responseJsonSchema()).isPresent();
+        assertThat(config.responseJsonSchema().get()).isInstanceOf(Map.class);
+    }
+
+    @Test
+    void should_use_response_json_schema_when_root_element_has_definitions() {
+        JsonObjectSchema personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addProperty(
+                        "parent",
+                        JsonReferenceSchema.builder().reference("Person").build())
+                .definitions(Map.of(
+                        "Person",
+                        JsonObjectSchema.builder().addStringProperty("name").build()))
+                .build();
+
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(personSchema)
+                        .build())
+                .build();
+
+        ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
+
+        assertThat(config.responseMimeType()).hasValue("application/json");
+        assertThat(config.responseSchema()).isEmpty();
+        assertThat(config.responseJsonSchema()).isPresent();
     }
 }

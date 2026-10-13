@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.genai.AsyncModels;
 import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.types.AudioTranscriptionConfig;
@@ -24,10 +25,12 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -373,5 +376,44 @@ class GoogleGenAiChatModelTest {
         assertThat(((GoogleGenAiChatRequestParameters) merged).cachedContent())
                 .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
         assertThat(merged.temperature()).isEqualTo(0.5);
+    }
+
+    @Test
+    void should_chat_async_using_async_models() throws Exception {
+        Client client = mock(Client.class);
+        Client.Async async = mock(Client.Async.class);
+        AsyncModels asyncModels = mock(AsyncModels.class);
+
+        Field asyncField = Client.class.getDeclaredField("async");
+        asyncField.setAccessible(true);
+        asyncField.set(client, async);
+
+        Field asyncModelsField = Client.Async.class.getDeclaredField("models");
+        asyncModelsField.setAccessible(true);
+        asyncModelsField.set(async, asyncModels);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(
+                                        Part.builder().text("Async hello!").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        when(asyncModels.generateContent(any(String.class), anyList(), any(GenerateContentConfig.class)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.chatAsync(
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        ChatResponse response = future.get();
+        assertThat(response.aiMessage().text()).isEqualTo("Async hello!");
     }
 }
