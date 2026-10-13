@@ -6,6 +6,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -20,6 +21,27 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class DefaultContentInjectorTest {
+
+    @Test
+    void should_inject_into_system_message() {
+
+        // given
+        SystemMessage systemMessage = SystemMessage.from("You are a helpful assistant.");
+
+        List<Content> contents = singletonList(Content.from("Bananas are awesome!"));
+
+        ContentInjector injector = new DefaultContentInjector();
+
+        // when
+        UserMessage injected = (UserMessage) injector.inject(contents, systemMessage);
+
+        // then
+        assertThat(injected.singleText()).isEqualTo("""
+                You are a helpful assistant.
+
+                Answer using the following information:
+                Bananas are awesome!""".stripIndent());
+    }
 
     @Test
     void should_not_inject_when_no_content() {
