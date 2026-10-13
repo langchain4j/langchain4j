@@ -21,26 +21,26 @@ To use one of the [Spring Boot starters](https://github.com/langchain4j/langchai
 import the corresponding dependency.
 
 The naming convention for the Spring Boot starter dependency is:
-- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
 - `langchain4j-{integration-name}-spring-boot4-starter` for **Spring Boot 4**
+- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
 
 For example, for OpenAI (`langchain4j-open-ai`):
-
-**Spring Boot 3:**
- ```xml
- <dependency>
-     <groupId>dev.langchain4j</groupId>
-     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-     <version>1.19.0-beta29</version>
- </dependency>
-```
 
 **Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.22.0-beta32</version>
+</dependency>
+```
+
+**Spring Boot 3:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -86,23 +86,23 @@ LangChain4j provides a Spring Boot starter for auto-configuring
 [AI Services](/tutorials/ai-services), [RAG](/tutorials/rag), [Tools](/tutorials/tools) etc.
 
 Assuming you have already imported one of the integrations starters (see above),
-import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-boot4-starter` (Spring Boot 4):
-
-**Spring Boot 3:**
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
-</dependency>
-```
+import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring-boot-starter` (Spring Boot 3):
 
 **Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.22.0-beta32</version>
+</dependency>
+```
+
+**Spring Boot 3:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-spring-boot-starter</artifactId>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -146,6 +146,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ContentRetriever`
 - `RetrievalAugmentor`
 - `ToolProvider`
+- `ToolExecutionErrorHandler` and `ToolArgumentsErrorHandler` (see [Error Handling](/tutorials/tools#error-handling))
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java
@@ -211,6 +212,35 @@ interface OllamaAssistant {
 In this case, you must explicitly specify **all** components.
 :::
 
+#### Choosing Components via Configuration
+
+Instead of hard-coding bean names, you can use property placeholders,
+so that the component wired into an AI Service can be changed via configuration (e.g., per environment or profile):
+```properties
+my-app.assistant.chat-model-bean=ollamaChatModel
+my-app.assistant.tool-beans=weatherTools,calendarTools
+```
+
+```java
+@AiService(
+        wiringMode = EXPLICIT,
+        chatModel = "${my-app.assistant.chat-model-bean:openAiChatModel}",
+        tools = "${my-app.assistant.tool-beans}"
+)
+interface Assistant {
+
+    String chat(String userMessage);
+}
+```
+
+A few things to keep in mind:
+- A placeholder must resolve to a **bean name** (e.g., `ollamaChatModel`), not to the name of an LLM model (e.g., `llama3.1`).
+The model name is configured on the `ChatModel` bean itself (e.g., `langchain4j.ollama.chat-model.model-name`).
+- A default value can be specified after a colon: `${my-app.assistant.chat-model-bean:openAiChatModel}`.
+- If a placeholder cannot be resolved and has no default value, the application fails to start.
+- If a placeholder resolves to an empty value, the attribute is treated as if it was not set.
+- For `tools`, a placeholder can resolve to several comma-separated bean names.
+
 More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java)
 (same API for the Spring Boot 4 variant).
 
@@ -250,6 +280,42 @@ interface Assistant {
 ```
 For this, please import `langchain4j-reactor` module.
 See more details [here](/tutorials/ai-services#flux).
+
+That module also provides `Mono<T>` and `Flux<AiServiceStreamingEvent>` for the
+[non-blocking modes](/tutorials/non-blocking), and the starter can route LangChain4j's offloaded work through
+Spring's own task executor with `langchain4j.executor.use-spring-task-executor=true` so that tracing, MDC and
+security context follow an asynchronous invocation.
+
+The OpenAI, Mistral AI and Ollama starters send requests with Spring's HTTP clients: `RestClient` for blocking
+calls and `WebClient` for the non-blocking modes. So when you use the non-blocking modes with one of these starters
+and a provider that supports them (see [Provider support](/tutorials/non-blocking#provider-support)), `WebClient`
+has to be on the classpath. `Flux<String>` and `TokenStream` do not need it.
+
+- **Spring Boot 4:** add `spring-boot-starter-webclient`.
+- **Spring Boot 3:** add `org.springframework:spring-webflux`. If your application is not a web application (no
+  `spring-boot-starter-web`), also set `spring.main.web-application-type=none`, because Spring Boot treats an
+  application with `spring-webflux` on the classpath as a reactive web application.
+
+Avoid `spring-boot-starter-webflux` for this purpose unless your application is a WebFlux application: it also
+brings a web server. Without `WebClient`, a non-blocking call fails with an `AsyncNotSupportedException` that says
+what to add.
+
+Non-blocking requests are built from the application's `WebClient.Builder`, just as blocking requests are built
+from its `RestClient.Builder`. So the filters, default headers and observability configured on each builder apply,
+and a filter that adds credentials for your own services also runs for requests to the model provider. The two
+builders are configured separately: a customization of one does not apply to the other. For the non-blocking
+requests, the connector that Spring Boot is configured to use, including its connector customizers, is combined
+with the timeouts configured in LangChain4j; Spring Boot's other HTTP client settings, such as SSL bundles, are not
+applied. If the application has several `WebClient.Builder` beans and none of them is `@Primary`, LangChain4j
+uses a new `WebClient.builder()` instead. To give LangChain4j a dedicated builder, declare a `WebClientBuilderHolder`
+bean:
+
+```java
+@Bean
+WebClientBuilderHolder langchain4jWebClientBuilder() {
+    return WebClientBuilderHolder.of(WebClient.builder());
+}
+```
 
 
 ## Observability
@@ -298,12 +364,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.19.0-beta29'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.22.0-beta32'
 ```
 
 #### Micrometer (Actuator) Configuration
@@ -428,8 +494,8 @@ For more details about the `langchain4j-observation` library, please check the [
 ## Supported versions
 
 LangChain4j Spring Boot integration requires Java 17 and supports both:
-- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
 - **Spring Boot 4** (4.0+) — use starters with the `-spring-boot4-starter` suffix
+- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
 
 Both families are released together and share the same version number. Choose the set of starters that matches the Spring Boot version in your project.
 

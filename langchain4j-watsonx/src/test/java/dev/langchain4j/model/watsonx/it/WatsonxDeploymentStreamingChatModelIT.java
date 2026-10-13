@@ -89,12 +89,6 @@ public class WatsonxDeploymentStreamingChatModelIT extends AbstractStreamingChat
     }
 
     @Override
-    protected boolean supportsStreamingCancellation() {
-        // The watsonx models do not expose a StreamingHandle that can stop an ongoing stream
-        return false;
-    }
-
-    @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         // None of the deployed models can combine the two features. The reasoning one rejects tools without a
         // description, the others answer with the requested JSON instead of calling the tool

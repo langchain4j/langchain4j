@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock.common;
 
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_HAIKU_4_5;
 import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 
@@ -16,7 +15,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -28,7 +26,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(AWS_NOVA_MICRO, CLAUDE_HAIKU_4_5, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, MISTRAL_LARGE);
     }
 
     @Override
@@ -61,6 +59,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
         return BedrockTokenUsage.class;
+    }
+
+    @Override
+    protected boolean supportsChatAsync() {
+        return true;
     }
 
     @Override
@@ -112,17 +115,15 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
-    // response
-    // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
     protected void should_respect_stopSequences_in_chat_request(ChatModel model) {
-        if (!model.equals(AWS_NOVA_MICRO)) {
-            super.should_respect_system_message(model);
+        if (model.equals(AWS_NOVA_MICRO)) {
+            return; // Nova models support stopSequences, but include the stop sequence in the response
         }
+        super.should_respect_stopSequences_in_chat_request(model);
     }
 
     // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
@@ -137,11 +138,6 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
         } else {
             super.should_fail_if_tool_choice_REQUIRED_is_not_supported(model);
         }
-    }
-
-    @Disabled("Sorry but I can't tell you that information because is not appropriate to share someone's personal information")
-    @Override
-    protected void should_respect_multiple_messages(ChatModel model) {
     }
 
     @AfterEach

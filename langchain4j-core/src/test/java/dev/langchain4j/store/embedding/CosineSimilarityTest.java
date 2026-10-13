@@ -35,6 +35,23 @@ class CosineSimilarityTest implements WithAssertions {
     }
 
     @Test
+    void should_calculate_cosine_similarity_for_large_finite_values() {
+        Embedding embeddingA = Embedding.from(new float[] {6e20f, -8e20f});
+        Embedding embeddingB = Embedding.from(new float[] {-6e20f, 8e20f});
+
+        assertThat(CosineSimilarity.between(embeddingA, embeddingA)).isCloseTo(1, withPercentage(1));
+        assertThat(CosineSimilarity.between(embeddingA, embeddingB)).isCloseTo(-1, withPercentage(1));
+    }
+
+    @Test
+    void should_calculate_cosine_similarity_for_orthogonal_vectors_with_large_finite_values() {
+        Embedding embeddingA = Embedding.from(new float[] {Float.MAX_VALUE, Float.MAX_VALUE});
+        Embedding embeddingB = Embedding.from(new float[] {Float.MAX_VALUE, -Float.MAX_VALUE});
+
+        assertThat(CosineSimilarity.between(embeddingA, embeddingB)).isCloseTo(0, withPercentage(1));
+    }
+
+    @Test
     void should_convert_relevance_score_into_cosine_similarity() {
         assertThat(CosineSimilarity.fromRelevanceScore(0)).isEqualTo(-1);
         assertThat(CosineSimilarity.fromRelevanceScore(0.5)).isEqualTo(0);

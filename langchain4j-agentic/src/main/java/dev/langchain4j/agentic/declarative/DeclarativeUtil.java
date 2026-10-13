@@ -168,11 +168,12 @@ public class DeclarativeUtil {
             agentBuilder.listener(invokeSupplierWithResolvers(agentType, listenerMethod, AgentListener.class));
         });
 
-        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class).ifPresent(method -> {
-            checkReturnType(method, String.class);
-            checkArguments(method, Object.class);
-            agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
-        });
+        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, String.class);
+                    checkArguments(method, Object.class);
+                    agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
+                });
 
         getAnnotatedMethodOnClass(agentType, UserMessageProviderSupplier.class).ifPresent(method -> {
             checkReturnType(method, String.class);
@@ -289,7 +290,7 @@ public class DeclarativeUtil {
                 agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
-    private static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
+    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
         if (method.getParameterCount() == 0) {
             return invokeStatic(method);
         }

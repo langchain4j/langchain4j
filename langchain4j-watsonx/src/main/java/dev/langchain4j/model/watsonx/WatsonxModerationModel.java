@@ -87,7 +87,7 @@ public class WatsonxModerationModel implements ModerationModel {
 
         var futures = moderationRequest.texts().stream()
                 .map(input -> CompletableFuture.supplyAsync(
-                        () -> moderateSingleInput(input), DefaultExecutorProvider.getDefaultExecutorService()))
+                        () -> moderateSingleInput(input), DefaultExecutorProvider.getDefaultExecutor()))
                 .toList();
 
         try {

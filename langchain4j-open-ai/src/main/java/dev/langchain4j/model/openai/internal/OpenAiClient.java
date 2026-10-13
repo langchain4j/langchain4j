@@ -1,6 +1,9 @@
 package dev.langchain4j.model.openai.internal;
 
+
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
@@ -9,6 +12,8 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.internal.image.EditImageRequest;
@@ -19,16 +24,35 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.Flow.Publisher;
+
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
 
+    /**
+     * Default size of the bounded back-pressure buffer used by the reactive streaming publisher (see
+     * {@code chatCompletionPublisher}); overridable per object via {@code Builder#streamingBufferSize(int)}.
+     */
+    public static final int DEFAULT_STREAMING_BUFFER_SIZE = ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE;
+
     public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
+
+    /**
+     * @return a cold {@link Publisher} that streams the chat completion as {@link ChatModelStreamingEvent}s.
+     * @since 1.20.0
+     */
+    @Experimental
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
+            ChatCompletionRequest request, ChatCompletionOptions options) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 
     public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);
 
@@ -46,6 +70,10 @@ public abstract class OpenAiClient {
 
     public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
         throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<DecisionCreateResponse> decision(DecisionCreateRequest request) {
+        throw new UnsupportedOperationException("Decisions are not supported by this client implementation");
     }
 
     public SyncOrAsync<ModelsListResponse> listModels() {
@@ -77,6 +105,7 @@ public abstract class OpenAiClient {
         public Logger logger;
         public Supplier<Map<String, String>> customHeadersSupplier;
         public Map<String, String> customQueryParams;
+        public Integer streamingBufferSize;
 
         public abstract T build();
 
@@ -192,6 +221,20 @@ public abstract class OpenAiClient {
          */
         public B customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return (B) this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer used by the reactive streaming publisher
+         * ({@code chatCompletionPublisher}). Defaults to {@value #DEFAULT_STREAMING_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size; must be greater than zero
+         * @return builder
+         * @since 1.20.0
+         */
+        @Experimental
+        public B streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return (B) this;
         }
     }

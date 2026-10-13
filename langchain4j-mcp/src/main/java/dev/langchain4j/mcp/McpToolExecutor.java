@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -9,6 +10,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @since 1.4.0
@@ -50,6 +52,35 @@ public class McpToolExecutor implements ToolExecutor {
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         ToolExecutionResult result = mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+        return applyToolResultAttributesPolicy(result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Non-blocking: delegates to
+     * {@link McpClient#executeToolAsync(ToolExecutionRequest, InvocationContext)}, so no thread is held
+     * while the tool executes on the MCP server.
+     * <p>
+     * The result follows the same {@code returnToolResultAttributes} behavior as the synchronous
+     * {@link #executeWithContext(ToolExecutionRequest, InvocationContext)}. Cancelling the returned
+     * future also cancels the underlying MCP client future.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        CompletableFuture<ToolExecutionResult> resultFuture =
+                mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
+        if (returnToolResultAttributes) {
+            return resultFuture;
+        }
+        CompletableFuture<ToolExecutionResult> filteredFuture =
+                resultFuture.thenApply(this::applyToolResultAttributesPolicy);
+        propagateCancellation(filteredFuture, resultFuture);
+        return filteredFuture;
+    }
+
+    private ToolExecutionResult applyToolResultAttributesPolicy(ToolExecutionResult result) {
         if (returnToolResultAttributes || result.attributes().isEmpty()) {
             return result;
         }

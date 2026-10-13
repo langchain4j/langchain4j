@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.moderation;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -16,7 +16,6 @@ import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = ModerationResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class ModerationResponse {
 
     @JsonProperty
@@ -26,10 +25,11 @@ public final class ModerationResponse {
     @JsonProperty
     private final List<ModerationResult> results;
 
+    @JsonCreator
     public ModerationResponse(Builder builder) {
         this.id = builder.id;
         this.model = builder.model;
-        this.results = builder.results;
+        this.results = builder.results == null ? null : unmodifiableList(builder.results);
     }
 
     public String id() {
@@ -85,7 +85,7 @@ public final class ModerationResponse {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         public String id;
@@ -104,7 +104,7 @@ public final class ModerationResponse {
 
         public Builder results(List<ModerationResult> results) {
             if (results != null) {
-                this.results = unmodifiableList(results);
+                this.results = results;
             }
             return this;
         }

@@ -998,9 +998,9 @@ class GoogleAiGeminiBatchImageModelTest {
                 .inlineData(new GeminiBlob(mimeType, base64Data))
                 .build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null);
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null, null);
 
-        return new GeminiGenerateContentResponse("responses-id", MODEL_NAME, List.of(candidate), null, null);
+        return new GeminiGenerateContentResponse("responses-id", MODEL_NAME, List.of(candidate), null, null, null);
     }
 
     private static Operation<GeminiGenerateContentResponse> createSuccessOperation(

@@ -184,7 +184,8 @@ public interface AgenticScope extends LangChain4jManaged {
      * a human's response after a process restart or when using a polling/event-driven model.
      *
      * @param responseId the unique identifier of the pending response
-     * @param value the value to complete the response with
+     * @param value the value to complete the response with, or {@code null} to complete it with no value,
+     *              which removes the key from the state as {@link #writeState(String, Object)} does
      * @return {@code true} if a matching pending response was found and completed
      */
     default boolean completePendingResponse(String responseId, Object value) {

@@ -2,6 +2,7 @@ package dev.langchain4j.data.message;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +20,61 @@ class SystemMessageTest implements WithAssertions {
         assertThat(message.text()).isEqualTo("text");
         assertThat(message.type()).isEqualTo(ChatMessageType.SYSTEM);
 
-        assertThat(message).hasToString("SystemMessage { text = \"text\" }");
+        assertThat(message.attributes()).isEmpty();
+
+        assertThat(message).hasToString("SystemMessage { text = \"text\", attributes = {} }");
+    }
+
+    @Test
+    void should_carry_attributes() {
+        SystemMessage message = SystemMessage.builder()
+                .text("text")
+                .attributes(Map.of("prompt_cache_breakpoint", "explicit"))
+                .build();
+
+        assertThat(message.text()).isEqualTo("text");
+        assertThat(message.attributes()).containsExactly(entry("prompt_cache_breakpoint", "explicit"));
+        assertThat(message.attribute("prompt_cache_breakpoint", String.class)).isEqualTo("explicit");
+        assertThat(message.attribute("missing", String.class)).isNull();
+    }
+
+    @Test
+    void should_expose_mutable_attributes() {
+        SystemMessage message = SystemMessage.from("text");
+
+        message.attributes().put("prompt_cache_breakpoint", "explicit");
+
+        assertThat(message.attribute("prompt_cache_breakpoint", String.class)).isEqualTo("explicit");
+    }
+
+    @Test
+    void should_copy_via_to_builder() {
+        SystemMessage message = SystemMessage.builder()
+                .text("text")
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        assertThat(message.toBuilder().build()).isEqualTo(message);
+        assertThat(message.toBuilder().text("other").build().text()).isEqualTo("other");
+    }
+
+    @Test
+    void should_not_be_equal_when_attributes_differ() {
+        SystemMessage withAttributes = SystemMessage.builder()
+                .text("text")
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        assertThat(withAttributes)
+                .isNotEqualTo(SystemMessage.from("text"))
+                .doesNotHaveSameHashCodeAs(SystemMessage.from("text"));
+    }
+
+    @Test
+    void should_fail_when_text_is_blank() {
+        assertThatThrownBy(() -> SystemMessage.builder().text(" ").build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("text");
     }
 
     @Test

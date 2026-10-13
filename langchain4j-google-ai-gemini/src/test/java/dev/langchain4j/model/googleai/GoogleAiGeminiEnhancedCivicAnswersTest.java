@@ -89,8 +89,9 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason.STOP,
                 null,
+                null,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0, null, null);
-        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
+        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null, null);
     }
 }
