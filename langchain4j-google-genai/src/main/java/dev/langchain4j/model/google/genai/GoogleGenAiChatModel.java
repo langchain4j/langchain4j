@@ -121,101 +121,76 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
 
-        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
-
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters,
-                systemInstruction,
-                safetySettings,
-                thinkingBudget,
-                thinkingLevel,
-                includeThoughts,
-                seed,
-                googleSearchEnabled,
-                googleMapsEnabled,
-                urlContextEnabled,
-                allowedFunctionNames,
-                vertexSearchDatastore,
-                labels,
-                parameters.cachedContent(),
-                audioTranscriptionConfig,
-                generateContentConfigCustomizer);
-
-        if (logRequests) {
-            log.info(
-                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
-                    chatRequest.modelName(),
-                    chatRequest.messages(),
-                    config);
-        }
-
-        var result = withRetryMappingExceptions(
+        GenerateContentResponse response = withRetryMappingExceptions(
                 () -> client.models.generateContent(chatRequest.modelName(), contents, config),
                 maxRetries,
                 GoogleGenAiExceptionMapper.INSTANCE);
 
-        ChatResponse response =
-                GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName(), returnThinking);
-
-        if (logResponses) {
-            log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
-        }
-
-        return response;
+        return toChatResponseAndLogResponse(response, chatRequest.modelName());
     }
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
-
-        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
-
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters,
-                systemInstruction,
-                safetySettings,
-                thinkingBudget,
-                thinkingLevel,
-                includeThoughts,
-                seed,
-                googleSearchEnabled,
-                googleMapsEnabled,
-                urlContextEnabled,
-                allowedFunctionNames,
-                vertexSearchDatastore,
-                labels,
-                parameters.cachedContent(),
-                audioTranscriptionConfig,
-                generateContentConfigCustomizer);
-
-        if (logRequests) {
-            log.info(
-                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
-                    chatRequest.modelName(),
-                    chatRequest.messages(),
-                    config);
-        }
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
 
         CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
                 () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
                 maxRetries,
                 GoogleGenAiExceptionMapper.INSTANCE);
 
-        CompletableFuture<ChatResponse> result = rawFuture.thenApply(response -> {
-            ChatResponse chatResponse =
-                    GoogleGenAiContentMapper.toChatResponse(response, chatRequest.modelName(), returnThinking);
-            if (logResponses) {
-                log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), chatResponse);
-            }
-            return chatResponse;
-        });
+        CompletableFuture<ChatResponse> result =
+                rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
 
         propagateCancellation(result, rawFuture);
         return result;
+    }
+
+    private GenerateContentConfig buildConfigAndLogRequest(ChatRequest chatRequest) {
+        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
+
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                parameters.cachedContent(),
+                audioTranscriptionConfig,
+                generateContentConfigCustomizer);
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
+
+        return config;
+    }
+
+    private ChatResponse toChatResponseAndLogResponse(GenerateContentResponse response, String modelName) {
+        ChatResponse chatResponse = GoogleGenAiContentMapper.toChatResponse(response, modelName, returnThinking);
+
+        if (logResponses) {
+            log.info("Response:\n- model: {}\n- response: {}", modelName, chatResponse);
+        }
+
+        return chatResponse;
     }
 
     @Override

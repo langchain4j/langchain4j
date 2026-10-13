@@ -2,6 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,8 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
@@ -846,15 +847,17 @@ class GoogleGenAiStreamingChatModelTest {
                 .build();
         when(stream.iterator()).thenReturn(List.of(chunk1, chunk2).iterator());
 
+        ExecutorService executor = Executors.newSingleThreadExecutor();
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(client)
                 .modelName("gemini-3.1-flash-lite")
+                .executor(executor)
                 .build();
 
         List<String> partialResponses = Collections.synchronizedList(new ArrayList<>());
         AtomicBoolean onCompleteCalled = new AtomicBoolean(false);
         AtomicBoolean isCancelledAfterCancel = new AtomicBoolean(false);
-        CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean onErrorCalled = new AtomicBoolean(false);
 
         model.chat(
                 ChatRequest.builder().messages(UserMessage.from("Hello")).build(), new StreamingChatResponseHandler() {
@@ -863,7 +866,6 @@ class GoogleGenAiStreamingChatModelTest {
                         partialResponses.add(partialResponse.text());
                         context.streamingHandle().cancel();
                         isCancelledAfterCancel.set(context.streamingHandle().isCancelled());
-                        latch.countDown();
                     }
 
                     @Override
@@ -872,14 +874,17 @@ class GoogleGenAiStreamingChatModelTest {
                     }
 
                     @Override
-                    public void onError(Throwable error) {}
+                    public void onError(Throwable error) {
+                        onErrorCalled.set(true);
+                    }
                 });
 
-        assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        Thread.sleep(100);
+        executor.shutdown();
+        assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         assertThat(partialResponses).containsExactly("first ");
         assertThat(isCancelledAfterCancel.get()).isTrue();
         assertThat(onCompleteCalled.get()).isFalse();
-        org.mockito.Mockito.verify(stream, org.mockito.Mockito.atLeastOnce()).close();
+        assertThat(onErrorCalled.get()).isFalse();
+        verify(stream, atLeastOnce()).close();
     }
 }

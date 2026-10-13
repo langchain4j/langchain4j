@@ -1190,7 +1190,28 @@ class GoogleGenAiContentMapperTest {
         assertThat(contents).hasSize(1);
         List<Part> parts = contents.get(0).parts().orElseThrow();
         assertThat(parts).hasSize(2);
-        assertThat(parts.get(0).functionResponse().orElseThrow().response()).hasValue(Map.of("response", ""));
+        assertThat(parts.get(0).functionResponse().orElseThrow().response()).hasValue(Map.of("result", ""));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_join_all_texts_of_multimodal_tool_execution_result_message() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-45")
+                .toolName("take_screenshot")
+                .contents(List.of(
+                        TextContent.from("Screenshot captured"),
+                        ImageContent.from(base64Png, "image/png"),
+                        TextContent.from("Resolution: 1920x1080")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response())
+                .hasValue(Map.of("result", "Screenshot captured\nResolution: 1920x1080"));
         assertThat(parts.get(1).inlineData()).isPresent();
     }
 

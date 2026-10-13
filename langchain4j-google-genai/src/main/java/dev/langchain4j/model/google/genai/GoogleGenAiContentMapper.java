@@ -146,9 +146,10 @@ class GoogleGenAiContentMapper {
                 if (toolMsg.hasSingleText()) {
                     responseMap.put("result", toolMsg.text());
                 } else {
+                    List<String> texts = new ArrayList<>();
                     for (dev.langchain4j.data.message.Content content : toolMsg.contents()) {
                         if (content instanceof TextContent textContent) {
-                            responseMap.put("result", textContent.text());
+                            texts.add(textContent.text());
                         } else if (content instanceof ImageContent imageContent) {
                             extraParts.add(map(imageContent));
                         } else {
@@ -157,9 +158,7 @@ class GoogleGenAiContentMapper {
                                             + "' in tool execution results");
                         }
                     }
-                    if (responseMap.isEmpty()) {
-                        responseMap.put("response", "");
-                    }
+                    responseMap.put("result", String.join("\n", texts));
                 }
 
                 FunctionResponse.Builder funcRespBuilder =
