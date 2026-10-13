@@ -1,6 +1,8 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -10,6 +12,7 @@ import com.google.genai.Client;
 import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
@@ -27,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,6 +165,57 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         return response;
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                parameters.cachedContent(),
+                audioTranscriptionConfig,
+                generateContentConfigCustomizer);
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
+
+        CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
+
+        CompletableFuture<ChatResponse> result = rawFuture.thenApply(response -> {
+            ChatResponse chatResponse =
+                    GoogleGenAiContentMapper.toChatResponse(response, chatRequest.modelName(), returnThinking);
+            if (logResponses) {
+                log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), chatResponse);
+            }
+            return chatResponse;
+        });
+
+        propagateCancellation(result, rawFuture);
+        return result;
     }
 
     @Override

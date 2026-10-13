@@ -22,4 +22,14 @@ class GoogleGenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel chatModel) {
         // Disabled: Google Gen AI model sometimes struggles with correctly forming nested POJO arguments
     }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
 }

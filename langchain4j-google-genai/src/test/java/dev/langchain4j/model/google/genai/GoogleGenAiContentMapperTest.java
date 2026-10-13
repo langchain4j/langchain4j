@@ -22,6 +22,7 @@ import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
@@ -29,6 +30,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -1148,6 +1150,62 @@ class GoogleGenAiContentMapperTest {
                 responseWithParts(Part.builder().inlineData(blob).build()), "gemini-2.5-flash-image");
 
         assertThat(result.aiMessage().images()).isEmpty();
+    }
+
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_text_and_image() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-42")
+                .toolName("take_screenshot")
+                .contents(List.of(TextContent.from("Screenshot captured"), ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        Content content = contents.get(0);
+        assertThat(content.role()).hasValue("user");
+        List<Part> parts = content.parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse()).isPresent();
+        assertThat(parts.get(0).functionResponse().get().id()).hasValue("call-42");
+        assertThat(parts.get(0).functionResponse().get().name()).hasValue("take_screenshot");
+        assertThat(parts.get(0).functionResponse().get().response()).hasValue(Map.of("result", "Screenshot captured"));
+        assertThat(parts.get(1).inlineData()).isPresent();
+        assertThat(parts.get(1).inlineData().get().mimeType()).hasValue("image/png");
+    }
+
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_image_only() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-43")
+                .toolName("take_screenshot")
+                .contents(List.of(ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response()).hasValue(Map.of("response", ""));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_reject_unsupported_content_in_tool_execution_result_message() {
+        String base64Wav = Base64.getEncoder().encodeToString("wav-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-44")
+                .toolName("record_audio")
+                .contents(List.of(AudioContent.from(base64Wav, "audio/wav")))
+                .build();
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolMessage), false))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("does not support non-text content type 'AUDIO'");
     }
 
     private static GenerateContentResponse responseWithParts(Part... parts) {

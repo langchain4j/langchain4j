@@ -140,15 +140,27 @@ class GoogleGenAiContentMapper {
             }
 
             if (message instanceof ToolExecutionResultMessage toolMsg) {
-                String toolResult;
-                try {
-                    toolResult = toolMsg.text();
-                } catch (IllegalStateException e) {
-                    throw new UnsupportedFeatureException(
-                            "Google Gen AI currently does not support non-text content in tool execution results");
-                }
+                List<Part> extraParts = new ArrayList<>();
                 Map<String, Object> responseMap = new HashMap<>();
-                responseMap.put("result", toolResult);
+
+                if (toolMsg.hasSingleText()) {
+                    responseMap.put("result", toolMsg.text());
+                } else {
+                    for (dev.langchain4j.data.message.Content content : toolMsg.contents()) {
+                        if (content instanceof TextContent textContent) {
+                            responseMap.put("result", textContent.text());
+                        } else if (content instanceof ImageContent imageContent) {
+                            extraParts.add(map(imageContent));
+                        } else {
+                            throw new UnsupportedFeatureException(
+                                    "Google Gen AI currently does not support non-text content type '" + content.type()
+                                            + "' in tool execution results");
+                        }
+                    }
+                    if (responseMap.isEmpty()) {
+                        responseMap.put("response", "");
+                    }
+                }
 
                 FunctionResponse.Builder funcRespBuilder =
                         FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
@@ -159,6 +171,7 @@ class GoogleGenAiContentMapper {
 
                 currentFunctionParts.add(
                         Part.builder().functionResponse(funcRespBuilder.build()).build());
+                currentFunctionParts.addAll(extraParts);
             } else {
                 if (!currentFunctionParts.isEmpty()) {
                     contents.add(Content.builder()
