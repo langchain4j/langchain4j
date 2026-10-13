@@ -17,8 +17,10 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.milvus.v2.MilvusV2EmbeddingStore.SearchMode;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.ConsistencyLevel;
+import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.vector.response.QueryResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import java.lang.reflect.Type;
@@ -81,7 +83,9 @@ class Mapper {
             String collectionName,
             FieldDefinition fieldDefinition,
             ConsistencyLevel consistencyLevel,
-            boolean queryForVectorOnSearch) {
+            boolean queryForVectorOnSearch,
+            IndexParam.MetricType metricType,
+            SearchMode searchMode) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
@@ -125,12 +129,21 @@ class Mapper {
             Embedding embedding = idToEmbedding.get(rowId);
             TextSegment textSegment =
                     toTextSegment(searchResp.getSearchResults().get(0).get(i), fieldDefinition);
-            EmbeddingMatch<TextSegment> embeddingMatch =
-                    new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(score), rowId, embedding, textSegment);
+            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(
+                    toRelevanceScore(score, metricType, searchMode), rowId, embedding, textSegment);
             matches.add(embeddingMatch);
         }
 
         return matches;
+    }
+
+    static double toRelevanceScore(double score, IndexParam.MetricType metricType, SearchMode searchMode) {
+        // In HYBRID mode, the score comes from the ranker, not from the dense metric
+        if (searchMode == SearchMode.VECTOR && metricType == IndexParam.MetricType.L2) {
+            return 1.0 / (1.0 + score);
+        }
+
+        return RelevanceScore.fromCosineSimilarity(score);
     }
 
     private static TextSegment toTextSegment(SearchResp.SearchResult searchResult, FieldDefinition fieldDefinition) {
