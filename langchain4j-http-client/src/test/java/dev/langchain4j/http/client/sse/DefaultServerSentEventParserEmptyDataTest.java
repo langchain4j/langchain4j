@@ -26,6 +26,10 @@ class DefaultServerSentEventParserEmptyDataTest {
                 Arguments.of("data: text\ndata:\n\n", List.of(new ServerSentEvent(null, "text\n"))),
                 Arguments.of("data: left\ndata:\ndata: right\n\n", List.of(new ServerSentEvent(null, "left\n\nright"))),
                 Arguments.of("data: left\ndata: right\n\n", List.of(new ServerSentEvent(null, "left\nright"))),
+                Arguments.of("event: ignored\n\ndata: next\n\n", List.of(new ServerSentEvent(null, "next"))),
+                Arguments.of(
+                        "event: ignored\ndata\n\ndata: next\n\n",
+                        List.of(new ServerSentEvent("ignored", ""), new ServerSentEvent(null, "next"))),
                 Arguments.of(": comment\n\n", List.of()),
                 Arguments.of(
                         "event: empty\ndata: \n\ndata: next\n\n",
