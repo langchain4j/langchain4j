@@ -8,9 +8,10 @@ import java.util.stream.Collectors;
 /**
  * Default converter for MCP tool responses backed by {@code content[]}.
  * <p>
- * It only supports {@code content} items of type {@code text}, joins multiple text
- * fragments with newline characters, and stores the result in
- * {@link ToolExecutionResult#resultText()}.
+ * Supports text, images and embedded resources. Images and binary resources are
+ * represented as base64 data URIs, while text resources retain their text. The
+ * representations are joined with newline characters in server order and stored
+ * in {@link ToolExecutionResult#resultText()}, not as multimodal message content.
  */
 public class DefaultMcpToolResultConverter implements McpToolResultConverter {
 
@@ -38,11 +39,18 @@ public class DefaultMcpToolResultConverter implements McpToolResultConverter {
             return "[image: missing data or mimeType]";
         } else if ("resource".equals(type)) {
             Object resource = contentItem.get("resource");
-            if (resource instanceof Map) {
-                Object text = ((Map<?, ?>) resource).get("text");
-                return text == null ? "" : String.valueOf(text);
+            if (resource instanceof Map<?, ?> resourceContents) {
+                Object text = resourceContents.get("text");
+                if (text != null) {
+                    return String.valueOf(text);
+                }
+                Object blob = resourceContents.get("blob");
+                if (blob != null) {
+                    Object mimeType = resourceContents.get("mimeType");
+                    return "data:" + (mimeType == null ? "application/octet-stream" : mimeType) + ";base64," + blob;
+                }
             }
-            return "";
+            throw new IllegalArgumentException("Embedded resource must contain text or blob");
         } else {
             throw new RuntimeException("Unsupported content type: \"" + type + "\"");
         }

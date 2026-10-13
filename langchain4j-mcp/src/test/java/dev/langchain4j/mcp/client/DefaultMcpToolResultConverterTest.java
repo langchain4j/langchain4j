@@ -76,4 +76,67 @@ class DefaultMcpToolResultConverterTest {
                         .resultText())
                 .isEqualTo("items=1");
     }
+
+    @Test
+    void extracts_resource_blob_as_data_uri_and_preserves_error_flag() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of(
+                        "type",
+                        "resource",
+                        "resource",
+                        Map.of("uri", "file:///report.pdf", "blob", "JVBERg==", "mimeType", "application/pdf"))),
+                true);
+
+        assertThat(result.resultText()).isEqualTo("data:application/pdf;base64,JVBERg==");
+        assertThat(result.isError()).isTrue();
+    }
+
+    @Test
+    void defaults_binary_resource_mime_type_when_omitted() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///data", "blob", "AA=="))), false);
+
+        assertThat(result.resultText()).isEqualTo("data:application/octet-stream;base64,AA==");
+    }
+
+    @Test
+    void preserves_empty_binary_resource() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///empty", "blob", ""))), false);
+
+        assertThat(result.resultText()).isEqualTo("data:application/octet-stream;base64,");
+    }
+
+    @Test
+    void preserves_empty_text_resource() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///empty.txt", "text", ""))), false);
+
+        assertThat(result.resultText()).isEmpty();
+    }
+
+    @Test
+    void rejects_resource_without_text_or_blob() {
+        for (Map<String, Object> contentItem : List.<Map<String, Object>>of(
+                Map.of("type", "resource"),
+                Map.of("type", "resource", "resource", "invalid"),
+                Map.of("type", "resource", "resource", Map.of("uri", "file:///missing")))) {
+            assertThatThrownBy(() -> extractor.convert(List.of(contentItem), false))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("text or blob");
+        }
+    }
+
+    @Test
+    void joins_mixed_content_in_server_order() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(
+                        Map.of("type", "text", "text", "first"),
+                        Map.of("type", "image", "mimeType", "image/png", "data", "iVBORw0KGgo="),
+                        Map.of("type", "resource", "resource", Map.of("uri", "file:///data", "blob", "AA=="))),
+                false);
+
+        assertThat(result.resultText())
+                .isEqualTo("first\ndata:image/png;base64,iVBORw0KGgo=\ndata:application/octet-stream;base64,AA==");
+    }
 }

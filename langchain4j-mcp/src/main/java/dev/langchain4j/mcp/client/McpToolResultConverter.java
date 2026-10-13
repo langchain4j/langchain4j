@@ -12,8 +12,8 @@ import java.util.Map;
  * Content items are presented as plain maps, so implementations do not need a JSON library.
  * A text item, for example, looks like {@code {"type": "text", "text": "..."}}.
  * <p>
- * The default client only supports {@code structuredContent} and text content out of the box.
- * More specialized conversion strategies can be provided through
+ * The default converter supports text, images and embedded resources, with binary
+ * content represented as data URI strings. More specialized conversion strategies can be provided through
  * {@link DefaultMcpClient.Builder#toolResultConverter(McpToolResultConverter)}.
  */
 @FunctionalInterface

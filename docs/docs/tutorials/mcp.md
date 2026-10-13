@@ -299,6 +299,12 @@ that is retrieved from annotations - that one is exposed under the `McpToolMetad
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
 
+### MCP tool result conversion
+
+When a tool response uses `content[]`, the default `McpToolResultConverter` joins its items in server order with newlines and returns them as `ToolExecutionResult.resultText()`. Text items and embedded text resources retain their text. Images and embedded binary resources become base64 data URI strings; a binary resource without a MIME type uses `application/octet-stream`. Empty text and binary resources are preserved, while an embedded resource without either `text` or `blob` is rejected. Other content types remain unsupported by this converter.
+
+These are text representations for the caller and model, not multimodal message content. Applications that need another representation can set a custom converter with `DefaultMcpClient.Builder.toolResultConverter(...)`. Responses with `structuredContent` are handled separately and do not invoke this converter.
+
 ### MCP tool result metadata
 
 Besides the actual result, an MCP server can attach a `_meta` object to the response of a tool call.
