@@ -788,20 +788,44 @@ public class DefaultMcpClient implements McpClient {
                 modernProtocol ? buildMcpParamHeaders(executionRequest.name(), arguments) : null;
         McpCallContext context = new McpCallContext(invocationContext, operation, paramHeaders);
 
-        CompletableFuture<String> resultFuture;
+        // Tracks the transport future currently in flight. Multi-round-trip retries replace this
+        // with a new future, so caller cancellation always cancels whichever round is live,
+        // not just the first one. Started as null because the first send below is what populates it.
+        AtomicReference<ActiveRound> activeFutureRef = new AtomicReference<>();
+
+        CompletableFuture<String> firstFuture;
         try {
             notifyListeners(l -> l.beforeExecuteTool(context));
             applyMeta(operation, context);
-            resultFuture = executeViaTransport(context);
+            firstFuture = executeViaTransport(context);
         } catch (Exception e) {
             pendingOperations.remove(operationId);
             return CompletableFuture.failedFuture(e);
         }
+        activeFutureRef.set(new ActiveRound(firstFuture, operationId));
+
+        // The retry loop runs in handleMultiRoundTripAsync below. The loop replaces activeFutureRef
+        // for each retry so the cancel-on-caller-cancellation step in the .whenComplete below
+        // always cancels the currently active transport future, not the original one.
+        CompletableFuture<String> resultFuture = handleMultiRoundTripAsync(
+                firstFuture,
+                activeFutureRef,
+                executionRequest.name(),
+                arguments,
+                progressToken,
+                timeoutMillis,
+                invocationContext,
+                paramHeaders,
+                operationId);
 
         // Caller cancellation can race with a response handler that has already started.
         AtomicBoolean completionHandled = new AtomicBoolean();
+        // Each round (initial + retries) has its own per-round .orTimeout(...) applied inside
+        // handleMultiRoundTripAsync. The outer chain therefore does not need another timeout: it
+        // would race with the inner one and, when it lost, would surface a plain TimeoutException
+        // whose id is the original tool call id, not the retry id that the server actually has
+        // pending - leading to a wrong cancellation notification.
         CompletableFuture<ToolExecutionResult> handledFuture = resultFuture
-                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
                 .handle((result, error) -> {
                     pendingOperations.remove(operationId);
                     if (!completionHandled.compareAndSet(false, true)) {
@@ -814,7 +838,16 @@ public class DefaultMcpClient implements McpClient {
                             throw (CancellationException) cause;
                         }
                         if (cause instanceof TimeoutException timeout) {
-                            return handleToolTimeout(context, operationId, resultFuture, timeout);
+                            // The timeout was applied per-round inside handleMultiRoundTripAsync,
+                            // so the McpOperationTimeoutException (if any) carries the id of the
+                            // round that actually timed out. cancelTimedOutOperation reads it via
+                            // the McpOperationTimeoutException.operationId field; the resultFuture
+                            // here is just there for the legacy code path.
+                            return handleToolTimeout(
+                                    context,
+                                    operationId,
+                                    null,
+                                    timeout);
                         }
                         notifyListeners(l -> l.onExecuteToolError(context, cause));
                         throw new ToolExecutionException(cause);
@@ -826,9 +859,16 @@ public class DefaultMcpClient implements McpClient {
             if (handledFuture.isCancelled()) {
                 boolean notifyCancellation = completionHandled.compareAndSet(false, true);
                 try {
-                    if (resultFuture.cancel(true)) {
-                        pendingOperations.remove(operationId);
-                        sendCancellationNotification(operationId, "Cancelled");
+                    // Cancel the currently active future, not the original one: a multi-round-trip
+                    // retry loop may have replaced it. The server-side JSON-RPC id of the active
+                    // round may also differ from the original call's id, so the cancellation
+                    // notification goes to the live id, not the original.
+                    ActiveRound active = activeFutureRef.get();
+                    CompletableFuture<String> activeFuture = active == null ? null : active.future();
+                    long activeId = active == null ? operationId : active.operationId();
+                    if (activeFuture != null && activeFuture.cancel(true)) {
+                        pendingOperations.remove(activeId);
+                        sendCancellationNotification(activeId, "Cancelled");
                     }
                 } finally {
                     if (notifyCancellation) {
@@ -840,6 +880,135 @@ public class DefaultMcpClient implements McpClient {
         });
         return handledFuture;
     }
+
+    /**
+     * Drives the multi-round-trip (MRTR) protocol from an asynchronous response stream: if the
+     * server returns {@code resultType == "input_required"} with an opaque {@code requestState},
+     * re-issues the {@code tools/call} request carrying that state and loops until the server
+     * returns a terminal {@code complete} response or the configured retry limit is hit. Each
+     * retry replaces the entry in {@code activeFutureRef} so caller-driven cancellation always
+     * reaches the round that is currently in flight.
+     *
+     * <p>Synchronous behaviour is already covered by {@link #handleMultiRoundTrip(String, long,
+     * McpCallContext, BiFunction, String)}; this method is its non-blocking counterpart. The
+     * two stay aligned on the rules for "no requestState", "inputRequests present", "retry
+     * limit exceeded" and "unexpected resultType", so callers see the same errors from both
+     * paths.
+     *
+     * <p>Implementation note: this method does not chain {@code thenCompose} because that would
+     * recurse synchronously when the transport hands back an already-completed future (which
+     * the in-memory test transport and some mock transports do), and recursing through
+     * {@code thenCompose} blow the stack once the loop is more than a few rounds long. The
+     * iterative form uses {@link CompletableFuture#get()} directly, which is also what the
+     * synchronous {@code handleMultiRoundTrip} does.
+     */
+    private CompletableFuture<String> handleMultiRoundTripAsync(
+            CompletableFuture<String> initialFuture,
+            AtomicReference<ActiveRound> activeFutureRef,
+            String toolName,
+            Map<String, Object> arguments,
+            String progressToken,
+            long timeoutMillis,
+            InvocationContext invocationContext,
+            Map<String, String> paramHeaders,
+            long originalOperationId) {
+        // The result future is a fresh one: this method never throws the timeout or any other
+        // failure synchronously, because the caller's chain (.orTimeout, .handle) inspects the
+        // failure to send the cancellation notification and notify listeners. Throwing here would
+        // skip that path. Instead the helper fails this future; the caller .handle sees the
+        // exception, runs handleToolTimeout -> cancelTimedOutOperation, which inspects the
+        // McpOperationTimeoutException type to find the right id for the cancellation notification.
+        CompletableFuture<String> terminal = new CompletableFuture<>();
+        int retryCount = 0;
+        CompletableFuture<String> resultFuture =
+                initialFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
+        // The retry limit only matters for the modern protocol; legacy servers always return a
+        // single-shot result, so the body of the loop never enters on legacy.
+        while (modernProtocol) {
+            String response;
+            try {
+                // The per-round timeout is already applied via .orTimeout above. An unbounded
+                // .get() here means TimeoutException always comes from the per-round wrapper,
+                // never from the wait itself, so we never misattribute the failure to a previous
+                // round.
+                response = resultFuture.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                terminal.completeExceptionally(new RuntimeException(e));
+                return terminal;
+            } catch (ExecutionException e) {
+                // Preserve the underlying cause for listeners and the caller; unwrapping a
+                // CompletionException here would lose the type information (CancellationException,
+                // TimeoutException, etc.) that the .handle() in executeToolAsync inspects.
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                terminal.completeExceptionally(cause);
+                return terminal;
+            } catch (TimeoutException timeout) {
+                // The id of whichever round timed out is the id of the round whose future is in
+                // the active slot. handleToolTimeout -> cancelTimedOutOperation will use this id
+                // for the cancellation notification so the server's pending operation map matches.
+                ActiveRound active = activeFutureRef.get();
+                long timedOutId = active == null ? originalOperationId : active.operationId();
+                terminal.completeExceptionally(new McpOperationTimeoutException(timedOutId, resultFuture, timeout));
+                return terminal;
+            }
+            McpServerDiscoverResponse.Result parsed = multiRoundTripResult(response);
+            String resultType = resultTypeOf(parsed);
+            if (!"input_required".equals(resultType)) {
+                if (!"complete".equals(resultType)) {
+                    terminal.completeExceptionally(
+                            new RuntimeException("Unexpected resultType for tools/call: " + resultType));
+                    return terminal;
+                }
+                terminal.complete(response);
+                return terminal;
+            }
+            if (retryCount >= multiRoundTripMaxRetries) {
+                terminal.completeExceptionally(new RuntimeException("Multi round-trip retry limit exceeded for tools/call"));
+                return terminal;
+            }
+            if (isNotEmpty(parsed.getInputRequests())) {
+                terminal.completeExceptionally(new RuntimeException("Server sent inputRequests that the client cannot handle"));
+                return terminal;
+            }
+            Object requestState = parsed.getRequestState();
+            if (requestState == null) {
+                terminal.completeExceptionally(new RuntimeException("Server sent input_required without requestState or inputRequests"));
+                return terminal;
+            }
+            retryCount++;
+            long retryOperationId = idGenerator.getAndIncrement();
+            McpCallToolRequest retryOperation =
+                    new McpCallToolRequest(retryOperationId, toolName, arguments, progressToken);
+            ((McpCallToolParams) retryOperation.getParams()).setRequestState(requestState);
+            McpCallContext retryContext =
+                    new McpCallContext(invocationContext, retryOperation, paramHeaders);
+            applyMeta(retryOperation, retryContext);
+            CompletableFuture<String> retryFuture =
+                    executeViaTransport(retryContext).orTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
+            // Publish the retry as the currently-active future before returning it, so a caller
+            // cancellation that fires after we yield sees the retry and not the original.
+            activeFutureRef.set(new ActiveRound(retryFuture, retryOperationId));
+            resultFuture = retryFuture;
+        }
+        // Legacy protocol: the response is terminal; copy its value (or failure) onto terminal
+        // and return terminal so the public contract stays consistent.
+        resultFuture.whenComplete((value, error) -> {
+            if (error != null) {
+                terminal.completeExceptionally(error);
+            } else {
+                terminal.complete(value);
+            }
+        });
+        return terminal;
+    }
+
+    /**
+     * Tracks one in-flight round of a multi-round-trip tool call. The future is what the transport
+     * returned; the operationId is what was written into the JSON-RPC request, which the server
+     * will need when the client cancels the round.
+     */
+    private record ActiveRound(CompletableFuture<String> future, long operationId) {}
 
     private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
         try {
