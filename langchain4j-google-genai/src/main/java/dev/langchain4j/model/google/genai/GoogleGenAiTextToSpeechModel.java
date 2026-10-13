@@ -21,6 +21,7 @@ import com.google.genai.types.MultiSpeakerVoiceConfig;
 import com.google.genai.types.Part;
 import com.google.genai.types.PrebuiltVoiceConfig;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeakerVoiceConfig;
 import com.google.genai.types.SpeechConfig;
 import com.google.genai.types.SpeechMetadata;
 import com.google.genai.types.VoiceConfig;
@@ -43,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +64,8 @@ import org.slf4j.LoggerFactory;
  * rate and channel count of its MIME type, so that it can be played or saved as a WAV file. Any other audio, such as
  * the WAV returned by the {@code gemini-3.8} text-to-speech models, is returned unchanged.
  * <p>
- * With {@link Builder#multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig)}, the text is read as a conversation in which
+ * With {@link Builder#speaker(String, String)} or {@link Builder#multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig)},
+ * the text is read as a conversation in which
  * every turn starts with the name of a configured speaker followed by a colon, for example
  * {@code "Joe: How is it going today, Jane?\nJane: Not too bad, how about you?"}, and every turn is spoken in the
  * voice of its speaker.
@@ -123,8 +126,11 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
         ensureNotNull(request, "request");
         validateVoice(request.voice());
 
-        List<Content> contents =
-                List.of(Content.builder().parts(toParts(request.text())).build());
+        List<Part> parts = toParts(request.text());
+        if (parts.isEmpty()) {
+            throw new IllegalArgumentException("The text does not contain any speech turns to synthesize");
+        }
+        List<Content> contents = List.of(Content.builder().parts(parts).build());
         GenerateContentConfig config = createGenerateContentConfig(request);
 
         if (logRequests) {
@@ -156,8 +162,8 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
 
     private void validateVoice(String voice) {
         if (voice != null && multiSpeakerVoiceConfig != null) {
-            throw new IllegalArgumentException("A voice cannot be combined with multiSpeakerVoiceConfig, "
-                    + "set the voice of each speaker in multiSpeakerVoiceConfig instead");
+            throw new IllegalArgumentException(
+                    "A voice cannot be combined with a multi-speaker configuration, set the voice of each speaker instead");
         }
     }
 
@@ -175,11 +181,12 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
         String speaker = null;
         StringBuilder turn = new StringBuilder();
         for (String line : text.split("\\R")) {
-            String lineSpeaker = speakerOf(line, speakers);
+            String stripped = line.stripLeading();
+            String lineSpeaker = speakerOf(stripped, speakers);
             if (lineSpeaker != null) {
                 addTurn(parts, speaker, turn);
                 speaker = lineSpeaker;
-                turn = new StringBuilder(line.stripLeading().substring(lineSpeaker.length() + 1));
+                turn = new StringBuilder(stripped.substring(lineSpeaker.length() + 1));
             } else {
                 if (!turn.isEmpty()) {
                     turn.append('\n');
@@ -191,8 +198,7 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
         return parts;
     }
 
-    private static String speakerOf(String line, List<String> speakers) {
-        String stripped = line.stripLeading();
+    private static String speakerOf(String stripped, List<String> speakers) {
         for (String speaker : speakers) {
             if (stripped.startsWith(speaker + ":")) {
                 return speaker;
@@ -245,11 +251,7 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
     }
 
     private static Audio toAudio(GenerateContentResponse response) {
-        List<Part> parts = firstCandidate(response)
-                .flatMap(Candidate::content)
-                .flatMap(Content::parts)
-                .orElse(List.of());
-        for (Part part : parts) {
+        for (Part part : partsOf(response)) {
             Optional<Blob> blob = part.inlineData();
             if (blob.isPresent() && blob.get().data().isPresent()) {
                 return toAudio(blob.get());
@@ -291,7 +293,11 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
 
     private static Integer parsePositiveInt(String value) {
         try {
-            int parsed = Integer.parseInt(value.strip());
+            String trimmed = value.strip();
+            if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+                trimmed = trimmed.substring(1, trimmed.length() - 1).strip();
+            }
+            int parsed = Integer.parseInt(trimmed);
             return parsed > 0 ? parsed : null;
         } catch (NumberFormatException e) {
             return null;
@@ -323,6 +329,13 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
         return response.candidates().flatMap(candidates -> candidates.stream().findFirst());
     }
 
+    private static List<Part> partsOf(GenerateContentResponse response) {
+        return firstCandidate(response)
+                .flatMap(Candidate::content)
+                .flatMap(Content::parts)
+                .orElse(List.of());
+    }
+
     private static LangChain4jException noAudioException(GenerateContentResponse response) {
         Optional<BlockedReason> blockReason =
                 response.promptFeedback().flatMap(GenerateContentResponsePromptFeedback::blockReason);
@@ -332,7 +345,12 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
 
         com.google.genai.types.FinishReason finishReason =
                 firstCandidate(response).flatMap(Candidate::finishReason).orElse(null);
-        String message = "The response contains no audio, finish reason: " + finishReason;
+        String text = partsOf(response).stream()
+                .filter(part -> !part.thought().orElse(false))
+                .map(part -> part.text().orElse(""))
+                .collect(Collectors.joining());
+        String message = "The response contains no audio, finish reason: " + finishReason
+                + (text.isBlank() ? "" : ", text: " + text);
         if (mapFinishReason(finishReason) == FinishReason.CONTENT_FILTER) {
             return new ContentFilteredException(message);
         }
@@ -484,6 +502,33 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
          */
         public Builder multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig multiSpeakerVoiceConfig) {
             this.multiSpeakerVoiceConfig = multiSpeakerVoiceConfig;
+            return this;
+        }
+
+        /**
+         * Adds a speaker of a conversation and the prebuilt voice it speaks with, for example
+         * {@code speaker("Joe", "Kore")}. Call it once per speaker; it is a shorter way to build the
+         * {@link #multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig)}, and adds to one that is already set.
+         *
+         * @param speaker the name that starts the turns of this speaker in the text
+         * @param voice the name of a prebuilt voice
+         * @return {@code this}
+         */
+        public Builder speaker(String speaker, String voice) {
+            List<SpeakerVoiceConfig> speakerVoiceConfigs = new ArrayList<>();
+            if (multiSpeakerVoiceConfig != null) {
+                speakerVoiceConfigs.addAll(
+                        multiSpeakerVoiceConfig.speakerVoiceConfigs().orElse(List.of()));
+            }
+            speakerVoiceConfigs.add(SpeakerVoiceConfig.builder()
+                    .speaker(ensureNotBlank(speaker, "speaker"))
+                    .voiceConfig(VoiceConfig.builder()
+                            .prebuiltVoiceConfig(
+                                    PrebuiltVoiceConfig.builder().voiceName(ensureNotBlank(voice, "voice"))))
+                    .build());
+            this.multiSpeakerVoiceConfig = MultiSpeakerVoiceConfig.builder()
+                    .speakerVoiceConfigs(speakerVoiceConfigs)
+                    .build();
             return this;
         }
 

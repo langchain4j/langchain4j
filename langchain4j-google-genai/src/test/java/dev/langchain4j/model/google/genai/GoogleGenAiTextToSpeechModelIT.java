@@ -4,10 +4,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.genai.types.AudioTranscriptionConfig;
-import com.google.genai.types.MultiSpeakerVoiceConfig;
-import com.google.genai.types.PrebuiltVoiceConfig;
-import com.google.genai.types.SpeakerVoiceConfig;
-import com.google.genai.types.VoiceConfig;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -59,9 +55,8 @@ class GoogleGenAiTextToSpeechModelIT {
         GoogleGenAiTextToSpeechModel model = GoogleGenAiTextToSpeechModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-3.8-flash-tts")
-                .multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig.builder()
-                        .speakerVoiceConfigs(speaker("Joe", "Kore"), speaker("Jane", "Puck"))
-                        .build())
+                .speaker("Joe", "Kore")
+                .speaker("Jane", "Puck")
                 .build();
 
         Audio audio = model.synthesize("Joe: How is the weather in Paris today?\nJane: Sunny and warm.")
@@ -85,13 +80,5 @@ class GoogleGenAiTextToSpeechModelIT {
                 AudioContent.from(Base64.getEncoder().encodeToString(audio.binaryData()), audio.mimeType());
 
         return transcriber.chat(UserMessage.from(audioContent)).aiMessage().text();
-    }
-
-    private static SpeakerVoiceConfig speaker(String speaker, String voice) {
-        return SpeakerVoiceConfig.builder()
-                .speaker(speaker)
-                .voiceConfig(VoiceConfig.builder()
-                        .prebuiltVoiceConfig(PrebuiltVoiceConfig.builder().voiceName(voice)))
-                .build();
     }
 }

@@ -592,23 +592,14 @@ With `gemini-3.8-flash-tts`, the whole text is spoken, including directions such
 
 ### Multiple speakers
 
-To voice a conversation, give each speaker a voice with `multiSpeakerVoiceConfig`, and start every turn on a new line with the name of its speaker and a colon:
+To voice a conversation, give each speaker a voice with `speaker`, and start every turn on a new line with the name of its speaker and a colon:
 
 ```java
 TextToSpeechModel model = GoogleGenAiTextToSpeechModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-3.8-flash-tts")
-    .multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig.builder()
-        .speakerVoiceConfigs(
-            SpeakerVoiceConfig.builder()
-                .speaker("Joe")
-                .voiceConfig(VoiceConfig.builder().prebuiltVoiceConfig(PrebuiltVoiceConfig.builder().voiceName("Kore")))
-                .build(),
-            SpeakerVoiceConfig.builder()
-                .speaker("Jane")
-                .voiceConfig(VoiceConfig.builder().prebuiltVoiceConfig(PrebuiltVoiceConfig.builder().voiceName("Puck")))
-                .build())
-        .build())
+    .speaker("Joe", "Kore")
+    .speaker("Jane", "Puck")
     .build();
 
 TextToSpeechResponse response = model.synthesize("""
@@ -617,7 +608,9 @@ TextToSpeechResponse response = model.synthesize("""
     """);
 ```
 
-A line that does not start with a speaker name belongs to the turn above it. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it.
+A line that does not start with a speaker name belongs to the turn above it. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
+
+To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
 
 ## Batch API
 
@@ -831,8 +824,9 @@ List<Audio> audioParts = response.aiMessage().audios();
 ```
 
 Each `Audio` holds one audio part exactly as the model returned it, with its `mimeType()` and `base64Data()`.
-Gemini TTS models return raw PCM audio (for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file,
-so add a WAV header before saving or playing it.
+The `gemini-3.8` TTS models return WAV (`audio/wav`). The preview TTS models return raw PCM audio
+(for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file, so add a WAV header before saving or playing it,
+or use [`GoogleGenAiTextToSpeechModel`](#googlegenaitexttospeechmodel), which adds it.
 
 `GoogleGenAiStreamingChatModel` receives the audio in several chunks. The final `AiMessage` keeps every part,
 in the order they arrived, so join the bytes of all parts to get the complete audio.

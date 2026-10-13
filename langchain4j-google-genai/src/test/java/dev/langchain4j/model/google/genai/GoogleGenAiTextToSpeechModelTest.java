@@ -153,7 +153,8 @@ class GoogleGenAiTextToSpeechModelTest {
                 "audio/L16;codec=pcm;rate=24000    | 24000 | 1",
                 "audio/l16; rate=24000; channels=1 | 24000 | 1",
                 "audio/pcm;rate=16000              | 16000 | 1",
-                "audio/L16;rate=48000;channels=2   | 48000 | 2"
+                "audio/L16;rate=48000;channels=2   | 48000 | 2",
+                "audio/L16; rate=\"24000\"; channels=\"2\" | 24000 | 2"
             })
     void should_wrap_pcm_audio_in_wav_header(String mimeType, int sampleRate, int channels) throws Exception {
         returnAudio(mimeType);
@@ -264,6 +265,54 @@ class GoogleGenAiTextToSpeechModelTest {
     }
 
     @Test
+    void should_build_multi_speaker_voice_config_from_speakers() throws Exception {
+        returnAudio("audio/wav");
+
+        modelBuilder().speaker("Joe", "Kore").speaker("Jane", "Puck").build().synthesize("Joe: Hi\nJane: Hello");
+
+        assertThat(configCaptor.getValue().speechConfig().get().multiSpeakerVoiceConfig())
+                .contains(JOE_AND_JANE);
+    }
+
+    @Test
+    void should_add_speaker_to_configured_multi_speaker_voice_config() throws Exception {
+        returnAudio("audio/wav");
+
+        modelBuilder()
+                .multiSpeakerVoiceConfig(MultiSpeakerVoiceConfig.builder()
+                        .speakerVoiceConfigs(speaker("Joe", "Kore"))
+                        .build())
+                .speaker("Jane", "Puck")
+                .build()
+                .synthesize("Joe: Hi\nJane: Hello");
+
+        assertThat(configCaptor.getValue().speechConfig().get().multiSpeakerVoiceConfig())
+                .contains(JOE_AND_JANE);
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            delimiter = '|',
+            value = {"'' | Kore | speaker cannot be null or blank", "Joe | ' ' | voice cannot be null or blank"})
+    void should_require_speaker_and_voice(String speaker, String voice, String message) {
+        GoogleGenAiTextToSpeechModel.Builder builder = GoogleGenAiTextToSpeechModel.builder();
+
+        assertThatThrownBy(() -> builder.speaker(speaker, voice))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage(message);
+    }
+
+    @Test
+    void should_reject_text_without_speech_turns() throws Exception {
+        GoogleGenAiTextToSpeechModel model =
+                modelBuilder().multiSpeakerVoiceConfig(JOE_AND_JANE).build();
+
+        assertThatThrownBy(() -> model.synthesize("Joe:\nJane:"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The text does not contain any speech turns to synthesize");
+    }
+
+    @Test
     void should_keep_text_with_speaker_names_in_one_part_without_multi_speaker_config() throws Exception {
         returnAudio("audio/wav");
 
@@ -309,7 +358,12 @@ class GoogleGenAiTextToSpeechModelTest {
                 .candidates(List.of(Candidate.builder()
                         .content(Content.builder()
                                 .role("model")
-                                .parts(List.of(Part.fromText("I cannot speak")))
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("Thinking about it")
+                                                .thought(true)
+                                                .build(),
+                                        Part.fromText("I cannot speak")))
                                 .build())
                         .finishReason(FinishReason.Known.STOP)
                         .build()))
@@ -318,7 +372,7 @@ class GoogleGenAiTextToSpeechModelTest {
 
         assertThatThrownBy(() -> model.synthesize("Hello"))
                 .isExactlyInstanceOf(LangChain4jException.class)
-                .hasMessage("The response contains no audio, finish reason: STOP");
+                .hasMessage("The response contains no audio, finish reason: STOP, text: I cannot speak");
     }
 
     @Test
@@ -351,8 +405,8 @@ class GoogleGenAiTextToSpeechModelTest {
 
         assertThatThrownBy(builder::build)
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A voice cannot be combined with multiSpeakerVoiceConfig, "
-                        + "set the voice of each speaker in multiSpeakerVoiceConfig instead");
+                .hasMessage(
+                        "A voice cannot be combined with a multi-speaker configuration, set the voice of each speaker instead");
     }
 
     @Test
@@ -364,8 +418,8 @@ class GoogleGenAiTextToSpeechModelTest {
 
         assertThatThrownBy(() -> model.synthesize(request))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A voice cannot be combined with multiSpeakerVoiceConfig, "
-                        + "set the voice of each speaker in multiSpeakerVoiceConfig instead");
+                .hasMessage(
+                        "A voice cannot be combined with a multi-speaker configuration, set the voice of each speaker instead");
     }
 
     @Test
