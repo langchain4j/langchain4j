@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -166,6 +167,22 @@ class DefaultAiServiceListenerRegistrarTests {
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
             .toList();
+
+    @Test
+    void eventTimestampIsSetOnCreationAndPreservedByToBuilder() {
+        var before = Instant.now();
+        var event = AiServiceStartedEvent.builder()
+                .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                .userMessage(dev.langchain4j.data.message.UserMessage.from("hi"))
+                .build();
+        var after = Instant.now();
+
+        assertThat(event.timestamp()).isBetween(before, after);
+        assertThat(event.toBuilder().build().timestamp()).isEqualTo(event.timestamp());
+
+        var fixed = Instant.parse("2020-01-01T00:00:00Z");
+        assertThat(event.toBuilder().timestamp(fixed).build().timestamp()).isEqualTo(fixed);
+    }
 
     @Test
     void registrarEatsThrownExceptionsDuringFiring() {
