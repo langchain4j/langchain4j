@@ -435,16 +435,20 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
         return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> new EmbeddingMatch<>(
-                                hit.score(),
-                                hit.id(),
-                                new Embedding(Optional.ofNullable(document.getVector())
-                                        .orElse(new float[] {})),
-                                document.getText() == null
-                                        ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
-                        .orElse(null))
+                // a hit without _source carries no vector, no text and no metadata,
+                // so there is nothing we could build an EmbeddingMatch from
+                .filter(hit -> hit.source() != null)
+                .map(hit -> {
+                    Document document = hit.source();
+                    return new EmbeddingMatch<>(
+                            hit.score(),
+                            hit.id(),
+                            new Embedding(
+                                    Optional.ofNullable(document.getVector()).orElse(new float[] {})),
+                            document.getText() == null
+                                    ? null
+                                    : TextSegment.from(document.getText(), new Metadata(document.getMetadata())));
+                })
                 .collect(toList());
     }
 }
