@@ -28,7 +28,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                        ServerSentEvent sse = new ServerSentEvent(event, data.substring(0, data.length() - 1));
                         ignoringExceptions(() -> listener.onEvent(sse, context));
                         event = null;
                         data.setLength(0);
@@ -39,15 +39,13 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 if (line.startsWith("event:")) {
                     event = line.substring("event:".length()).trim();
                 } else if (line.startsWith("data:")) {
-                    if (!data.isEmpty()) {
-                        data.append("\n");
-                    }
-                    data.append(dataFieldValue(line));
+                    // Every data field contributes a line, even when its value is empty.
+                    data.append(dataFieldValue(line)).append('\n');
                 }
             }
 
             if (!parsingHandle.isCancelled() && !data.isEmpty()) {
-                ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                ServerSentEvent sse = new ServerSentEvent(event, data.substring(0, data.length() - 1));
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
@@ -118,7 +116,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             }
             // Trailing event with no terminating blank line — match parse(InputStream)'s final emit.
             if (!currentData.isEmpty()) {
-                events.add(new ServerSentEvent(currentEvent, currentData.toString()));
+                events.add(new ServerSentEvent(currentEvent, currentData.substring(0, currentData.length() - 1)));
                 currentEvent = null;
                 currentData.setLength(0);
             }
@@ -128,7 +126,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
         private void processLine(String line, List<ServerSentEvent> events) {
             if (line.isEmpty()) {
                 if (!currentData.isEmpty()) {
-                    events.add(new ServerSentEvent(currentEvent, currentData.toString()));
+                    events.add(new ServerSentEvent(currentEvent, currentData.substring(0, currentData.length() - 1)));
                     currentEvent = null;
                     currentData.setLength(0);
                 }
@@ -137,10 +135,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             if (line.startsWith("event:")) {
                 currentEvent = line.substring("event:".length()).trim();
             } else if (line.startsWith("data:")) {
-                if (!currentData.isEmpty()) {
-                    currentData.append("\n");
-                }
-                currentData.append(dataFieldValue(line));
+                currentData.append(dataFieldValue(line)).append('\n');
             }
             // Other SSE fields (id:, retry:, comment lines) intentionally ignored — same as parse().
         }
