@@ -14,7 +14,7 @@ class GoogleGenAiChatModelThinkingIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
     private static final String MODEL_NAME = "gemini-3.8-flash";
 
-    // gemini-2.5-flash does not return a thought signature on parts that carry no function call
+    // not every model returns a thought signature on parts that carry no function call; this one does
     private static final String THOUGHT_SIGNATURE_MODEL_NAME = "gemini-3.1-pro-preview";
 
     private static final UserMessage QUESTION = UserMessage.from(
