@@ -19,16 +19,17 @@ import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
-import org.mockito.ArgumentCaptor;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class EmbeddingStoreContentRetrieverTest {
 
@@ -420,5 +421,39 @@ class EmbeddingStoreContentRetrieverTest {
                         .embeddingStore(EMBEDDING_STORE)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_ignore_matches_without_content() {
+
+        // given
+        // a match can legitimately have no text segment, e.g. after InMemoryEmbeddingStore.add(id, embedding)
+        when(EMBEDDING_STORE.search(any()))
+                .thenReturn(new EmbeddingSearchResult<>(asList(
+                        new EmbeddingMatch<TextSegment>(0.9, "vector only", null, null),
+                        new EmbeddingMatch<>(0.7, "id 2", null, TextSegment.from("content 2")))));
+
+        ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL);
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(QUERY);
+
+        // then
+        assertThat(contents).extracting(Content::textSegment).containsExactly(TextSegment.from("content 2"));
+    }
+
+    @Test
+    void should_retrieve_content_when_every_match_has_a_text_segment() {
+
+        // given
+        ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL);
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(QUERY);
+
+        // then
+        assertThat(contents)
+                .extracting(Content::textSegment)
+                .containsExactly(TextSegment.from("content 1"), TextSegment.from("content 2"));
     }
 }
