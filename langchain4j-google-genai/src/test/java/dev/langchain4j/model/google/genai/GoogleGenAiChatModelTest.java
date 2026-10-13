@@ -16,6 +16,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -26,6 +27,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -187,6 +189,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.audioTranscriptionConfig(
                         AudioTranscriptionConfig.builder().build()))
                 .isSameAs(builder);
+        assertThat(builder.speechConfig(SpeechConfig.builder().build())).isSameAs(builder);
+        assertThat(builder.responseModalities(List.of("AUDIO"))).isSameAs(builder);
+        assertThat(builder.automaticContinuation(true)).isSameAs(builder);
     }
 
     @Test
@@ -291,6 +296,54 @@ class GoogleGenAiChatModelTest {
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hello")).build());
 
         assertThat(configCaptor.getValue().audioTranscriptionConfig()).contains(audioTranscriptionConfig);
+    }
+
+    @Test
+    void should_send_speech_config_response_modalities_automatic_continuation_and_override_with_request_parameters()
+            throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("spoken").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(mockResponse);
+
+        SpeechConfig speechConfig = SpeechConfig.builder().languageCode("en-US").build();
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash-tts")
+                .speechConfig(speechConfig)
+                .responseModalities(List.of("AUDIO"))
+                .automaticContinuation(false)
+                .labels(Map.of("env", "default"))
+                .build();
+
+        model.chat(ChatRequest.builder()
+                .messages(UserMessage.from("Say hello"))
+                .parameters(GoogleGenAiChatRequestParameters.builder()
+                        .automaticContinuation(true)
+                        .labels(Map.of("env", "override"))
+                        .build())
+                .build());
+
+        assertThat(configCaptor.getValue().speechConfig()).contains(speechConfig);
+        assertThat(configCaptor.getValue().responseModalities()).contains(List.of("AUDIO"));
+        assertThat(configCaptor.getValue().automaticContinuation()).contains(true);
+        assertThat(configCaptor.getValue().labels()).contains(Map.of("env", "override"));
     }
 
     @Test

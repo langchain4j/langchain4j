@@ -28,7 +28,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -110,6 +109,8 @@ class GoogleGenAiContentMapper {
     private static final String THOUGHT_SIGNATURE_KEY =
             "thought_signature"; // do not change, will break backward compatibility!
 
+    static final String GENERATED_AUDIO_KEY = "generated_audio";
+
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
                 .filter(m -> m instanceof SystemMessage)
@@ -140,18 +141,9 @@ class GoogleGenAiContentMapper {
             }
 
             if (message instanceof ToolExecutionResultMessage toolMsg) {
-                String toolResult;
-                try {
-                    toolResult = toolMsg.text();
-                } catch (IllegalStateException e) {
-                    throw new UnsupportedFeatureException(
-                            "Google Gen AI currently does not support non-text content in tool execution results");
-                }
-                Map<String, Object> responseMap = new HashMap<>();
-                responseMap.put("result", toolResult);
-
-                FunctionResponse.Builder funcRespBuilder =
-                        FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
+                FunctionResponse.Builder funcRespBuilder = FunctionResponse.builder()
+                        .name(toolMsg.toolName())
+                        .response(Map.of("result", toolMsg.text() != null ? toolMsg.text() : ""));
 
                 if (toolMsg.id() != null) {
                     funcRespBuilder.id(toolMsg.id());
@@ -258,6 +250,8 @@ class GoogleGenAiContentMapper {
                                     meta.cachedContentTokenCount().orElse(null))
                             .thoughtsTokenCount(thoughtsTokenCount)
                             .toolUsePromptTokenCount(toolUsePromptTokenCount)
+                            .initialPromptTokenCount(
+                                    meta.initialPromptTokenCount().orElse(null))
                             .build();
                 })
                 .orElse(GoogleGenAiTokenUsage.builder()
@@ -290,6 +284,7 @@ class GoogleGenAiContentMapper {
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
         List<Image> generatedImages = new ArrayList<>();
+        List<Audio> generatedAudio = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -329,6 +324,7 @@ class GoogleGenAiContentMapper {
                 }
 
                 toGeneratedImage(part).ifPresent(generatedImages::add);
+                toGeneratedAudio(part).ifPresent(generatedAudio::add);
             }
 
             if (!parts.isEmpty()) {
@@ -344,6 +340,9 @@ class GoogleGenAiContentMapper {
 
             if (!generatedImages.isEmpty()) {
                 attributes.put(GENERATED_IMAGES_KEY, generatedImages);
+            }
+            if (!generatedAudio.isEmpty()) {
+                attributes.put(GENERATED_AUDIO_KEY, generatedAudio);
             }
         }
 
@@ -401,6 +400,26 @@ class GoogleGenAiContentMapper {
             return Optional.empty();
         }
         return Optional.of(Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
+                .mimeType(blob.mimeType().get())
+                .build());
+    }
+
+    /**
+     * Reads audio the model generated (e.g. TTS or multimodal audio output) into the given part.
+     * Only {@code audio/*} blobs are picked up and stored under {@link #GENERATED_AUDIO_KEY}.
+     */
+    private static Optional<Audio> toGeneratedAudio(Part part) {
+        if (part.inlineData().isEmpty()) {
+            return Optional.empty();
+        }
+        Blob blob = part.inlineData().get();
+        if (blob.mimeType().isEmpty()
+                || !blob.mimeType().get().startsWith("audio/")
+                || blob.data().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Audio.builder()
                 .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
                 .mimeType(blob.mimeType().get())
                 .build());
