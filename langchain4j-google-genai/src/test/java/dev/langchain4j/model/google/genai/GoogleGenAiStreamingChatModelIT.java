@@ -38,6 +38,7 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-3.8-flash"))
+                .thinkingBudget(0)
                 .build();
     }
 
