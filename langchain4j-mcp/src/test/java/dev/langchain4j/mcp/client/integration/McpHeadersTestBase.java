@@ -100,6 +100,21 @@ public abstract class McpHeadersTestBase {
     }
 
     @Test
+    void defaultUserAgent() {
+        try {
+            headersMap.clear(); // ensure the default User-Agent is not overridden by custom headers
+            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                    .name("echoHeader")
+                    .arguments("{\"headerName\": \"User-Agent\"}")
+                    .build();
+            String result = mcpClient.executeTool(toolExecutionRequest).resultText();
+            assertThat(result).isEqualTo("LangChain4j");
+        } finally {
+            headersMap.clear();
+        }
+    }
+
+    @Test
     void toolCallsViaAiService() {
         ChatModel mockChatModel = ChatModelMock.thatResponds((request) -> {
             if (request.messages().size() == 1) {
