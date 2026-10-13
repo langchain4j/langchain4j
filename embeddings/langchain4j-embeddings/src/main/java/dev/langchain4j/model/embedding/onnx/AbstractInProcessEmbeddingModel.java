@@ -10,7 +10,6 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.OnnxBertBiEncoder.EmbeddingAndTokenCount;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.io.InputStream;
@@ -48,6 +47,56 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
 
     protected abstract OnnxBertBiEncoder model();
 
+    protected Encoder encoder() {
+        return asEncoder(model());
+    }
+
+    static Encoder asEncoder(OnnxBertBiEncoder model) {
+        return new OnnxBertBiEncoderAdapter(model);
+    }
+
+    static Encoder asEncoder(OnnxBpeBiEncoder model) {
+        return new OnnxBpeBiEncoderAdapter(model);
+    }
+
+    private static final class OnnxBertBiEncoderAdapter implements Encoder {
+
+        private final OnnxBertBiEncoder model;
+
+        private OnnxBertBiEncoderAdapter(OnnxBertBiEncoder model) {
+            this.model = model;
+        }
+
+        @Override
+        public EmbeddingAndTokenCount embed(String text) {
+            return model.embed(text);
+        }
+
+        @Override
+        public int countTokens(String text) {
+            return model.countTokens(text);
+        }
+    }
+
+    private static final class OnnxBpeBiEncoderAdapter implements Encoder {
+
+        private final OnnxBpeBiEncoder model;
+
+        private OnnxBpeBiEncoderAdapter(OnnxBpeBiEncoder model) {
+            this.model = model;
+        }
+
+        @Override
+        public EmbeddingAndTokenCount embed(String text) {
+            return model.embed(text);
+        }
+
+        @Override
+        public int countTokens(String text) {
+            return model.countTokens(text);
+        }
+    }
+
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> segments) {
         ensureNotEmpty(segments, "segments");
@@ -59,16 +108,15 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
     }
 
     private Response<List<Embedding>> embedInTheSameThread(TextSegment segment) {
-        EmbeddingAndTokenCount embeddingAndTokenCount = model().embed(segment.text());
+        EmbeddingAndTokenCount embeddingAndTokenCount = encoder().embed(segment.text());
         return Response.from(
                 singletonList(Embedding.from(embeddingAndTokenCount.embedding)),
-                new TokenUsage(embeddingAndTokenCount.tokenCount - 2) // do not count special tokens [CLS] and [SEP])
-                );
+                new TokenUsage(embeddingAndTokenCount.tokenCount));
     }
 
     private Response<List<Embedding>> parallelizeEmbedding(List<TextSegment> segments) {
         List<CompletableFuture<EmbeddingAndTokenCount>> futures = segments.stream()
-                .map(segment -> supplyAsync(() -> model().embed(segment.text()), executor))
+                .map(segment -> supplyAsync(() -> encoder().embed(segment.text()), executor))
                 .collect(toList());
 
         int inputTokenCount = 0;
@@ -78,9 +126,9 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
             try {
                 EmbeddingAndTokenCount embeddingAndTokenCount = future.get();
                 embeddings.add(Embedding.from(embeddingAndTokenCount.embedding));
-                inputTokenCount += embeddingAndTokenCount.tokenCount - 2; // do not count special tokens [CLS] and [SEP]
+                inputTokenCount += embeddingAndTokenCount.tokenCount;
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); 
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(e);
