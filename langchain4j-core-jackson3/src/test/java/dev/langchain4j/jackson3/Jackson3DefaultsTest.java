@@ -45,7 +45,8 @@ class Jackson3DefaultsTest {
     private static final Json.JsonCodec JACKSON_3 = new Jackson3JsonCodec();
     private static final List<Json.JsonCodec> BOTH = List.of(JACKSON_2, JACKSON_3);
 
-    private static final Json.JsonCodec PROVIDER = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec PROVIDER =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     // ---------- set back to Jackson 2 ----------
 
@@ -100,7 +101,8 @@ class Jackson3DefaultsTest {
     void structured_output_detects_constructors_from_parameter_names() {
         assertThat(JACKSON_3.fromJson("{\"title\":\"x\",\"priority\":2}", ConstructorOnly.class).title)
                 .isEqualTo("x");
-        assertThat(JACKSON_3.fromJson("{\"value\":\"abc\"}", UserId.class).value).isEqualTo("abc");
+        assertThat(JACKSON_3.fromJson("{\"value\":\"abc\"}", UserId.class).value)
+                .isEqualTo("abc");
     }
 
     @Test
@@ -115,14 +117,18 @@ class Jackson3DefaultsTest {
     @Test
     void annotated_constructors_work_with_or_without_parameter_names() {
         for (Json.JsonCodec codec : BOTH) {
-            assertThat(codec.fromJson("\"abc\"", DelegatingId.class).value).as(name(codec)).isEqualTo("abc");
+            assertThat(codec.fromJson("\"abc\"", DelegatingId.class).value)
+                    .as(name(codec))
+                    .isEqualTo("abc");
             assertThat(codec.fromJson("{\"title\":\"x\",\"priority\":2}", AnnotatedConstructor.class).title)
                     .as(name(codec))
                     .isEqualTo("x");
         }
         Jackson3ToolSpecificationJsonCodec toolSpecificationCodec = new Jackson3ToolSpecificationJsonCodec();
-        assertThat(toolSpecificationCodec.fromJson("\"abc\"", DelegatingId.class).value).isEqualTo("abc");
-        assertThat(toolSpecificationCodec.fromJson("{\"title\":\"x\",\"priority\":2}", AnnotatedConstructor.class).title)
+        assertThat(toolSpecificationCodec.fromJson("\"abc\"", DelegatingId.class).value)
+                .isEqualTo("abc");
+        assertThat(toolSpecificationCodec.fromJson("{\"title\":\"x\",\"priority\":2}", AnnotatedConstructor.class)
+                        .title)
                 .isEqualTo("x");
     }
 
@@ -159,6 +165,19 @@ class Jackson3DefaultsTest {
     }
 
     @Test
+    void an_empty_string_is_read_as_null_for_an_enum_only() {
+        for (Json.JsonCodec codec : BOTH) {
+            assertThat(codec.fromJson("{\"color\":\"\"}", WithColor.class).color)
+                    .as(name(codec))
+                    .isNull();
+            assertThatThrownBy(() -> codec.fromJson("\"\"", Named.class))
+                    .as(name(codec))
+                    .isInstanceOf(RuntimeException.class);
+        }
+        assertThat(PROVIDER.fromJson("{\"color\":\"\"}", WithColor.class).color).isNull();
+    }
+
+    @Test
     void differs_from_jacksons_own_jackson_2_preset_only_where_deliberate() {
         // A Jackson upgrade that adds a setting to configureForJackson2() fails this test, so that
         // the new setting is either restored in Jackson3Defaults or added here on purpose.
@@ -171,7 +190,8 @@ class Jackson3DefaultsTest {
                 "STRIP_TRAILING_BIGDECIMAL_ZEROES", "only affects JsonNode trees, which are not read with BigDecimal");
 
         assertThat(featuresThatDiffer(
-                        Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder()).build(),
+                        Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())
+                                .build(),
                         JsonMapper.builder().configureForJackson2().build()))
                 .containsExactlyInAnyOrderElementsOf(deliberate.keySet());
     }
@@ -196,12 +216,6 @@ class Jackson3DefaultsTest {
         assertThat(JACKSON_3.fromJson("{\"month\":1}", WithMonth.class).month).isEqualTo(Month.JANUARY);
         assertThat(JACKSON_3.fromJson("{\"month\":\"JANUARY\"}", WithMonth.class).month)
                 .isEqualTo(Month.JANUARY);
-    }
-
-    @Test
-    void an_empty_string_is_read_as_null_for_an_enum_only() {
-        assertThat(JACKSON_3.fromJson("{\"color\":\"\"}", WithColor.class).color).isNull();
-        assertThatThrownBy(() -> JACKSON_3.fromJson("\"\"", Named.class)).isInstanceOf(JsonReadException.class);
     }
 
     @Test

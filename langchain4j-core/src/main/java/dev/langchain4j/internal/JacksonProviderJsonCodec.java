@@ -8,7 +8,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.type.LogicalType;
 import dev.langchain4j.Internal;
 import java.lang.reflect.Type;
 
@@ -24,7 +27,13 @@ class JacksonProviderJsonCodec implements Json.JsonCodec {
         JsonMapper.Builder builder = JsonMapper.builder()
                 .disable(FAIL_ON_IGNORED_PROPERTIES)
                 // a provider adding a field must never break deserialization
-                .disable(FAIL_ON_UNKNOWN_PROPERTIES);
+                .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+                // "" is read as null for an enum: providers send it - an OpenAI-compatible server
+                // returning "type": "" for a tool call is what found this. Scoped to enums on purpose,
+                // so that "" for a POJO, a Map or a List still fails.
+                .withCoercionConfig(
+                        LogicalType.Enum,
+                        config -> config.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull));
         if (spec.prettyPrint()) {
             builder.enable(INDENT_OUTPUT);
         }
