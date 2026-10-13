@@ -13,8 +13,8 @@ information about the protocol can be found at the [MCP
 website](https://modelcontextprotocol.io/).
 
 :::note
-Looking to build an MCP **stdio server** in Java?
-The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+Looking to build an MCP **server** in Java?
+See [Building a Java MCP server](./mcp-stdio-server).
 :::
 
 The protocol specifies two types of transport, both of these are supported:

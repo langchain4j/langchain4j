@@ -202,7 +202,8 @@ model provider: convert them to a `Map` that holds only what the decision needs.
 ### Images
 
 The input can also be a list of contents, such as text and images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai)):
+(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
+a vision model such as Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
@@ -368,8 +369,8 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 `DecisionScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
 "Does the document help answer the query?" is "yes". Each segment is asked as a separate yes/no question, and the
 segments are scored in requests of up to 20 segments (`maxSegmentsPerRequest(...)`), which are sent in parallel by
-`scoreAsync(...)`. Decision models with a small input limit (for example, 2,048 tokens on Ollama) need smaller
-requests: size them from the length of the segments. It can be used to re-rank and filter content in RAG:
+`scoreAsync(...)`. Decision models with a small input limit (for example, local models with a small context window)
+need smaller requests: size them from the length of the segments. It can be used to re-rank and filter content in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()

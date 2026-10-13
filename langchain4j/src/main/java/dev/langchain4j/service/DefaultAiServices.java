@@ -40,10 +40,12 @@ import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -231,7 +233,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .timestampNow()
                                 .build();
                         try {
-                            return invoke(method, args, invocationContext);
+                            InvocationContext withCapturedContext =
+                                    CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
+                            return invoke(method, args, withCapturedContext);
                         } catch (Exception ex) {
                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                     .invocationContext(invocationContext)
@@ -708,7 +712,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         List<ChatMessage> messages =
                                 assembleMessages(chatMemory, systemMessage, userMessage, originalUserMessage);
 
-                        CompletableFuture<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        CompletableFuture<Moderation> moderationFuture =
+                                triggerModerationIfNeeded(method, messages, invocationContext);
 
                         ToolServiceContext toolServiceContext =
                                 context.toolService.createContext(invocationContext, userMessage, messages);
@@ -1114,7 +1119,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 method,
                                 aggregateResponse,
                                 toolAwareRepromptExecutor,
-                                commonGuardrailParam);
+                                outputGuardrailParams(
+                                        context.guardrailService(), method, commonGuardrailParam, toolServiceResult));
 
                         return finishToolServiceResult(
                                 response,
@@ -1177,7 +1183,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         method,
                                         aggregateResponse,
                                         toolAwareRepromptExecutor,
-                                        commonGuardrailParam)
+                                        outputGuardrailParams(
+                                                context.guardrailService(),
+                                                method,
+                                                commonGuardrailParam,
+                                                toolServiceResult))
                                 .thenApply(response -> finishToolServiceResult(
                                         response,
                                         invocationContext,
@@ -1400,9 +1410,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private CompletableFuture<Moderation> triggerModerationIfNeeded(
-                            Method method, List<ChatMessage> messages) {
+                            Method method, List<ChatMessage> messages, InvocationContext invocationContext) {
                         if (method.isAnnotationPresent(Moderate.class)) {
-                            Executor executor = DefaultExecutorProvider.getDefaultExecutor();
+                            Executor executor = CapturedContextSupport.restoringIn(
+                                    DefaultExecutorProvider.getDefaultExecutor(), invocationContext);
                             return CompletableFuture.supplyAsync(
                                     () -> {
                                         List<ChatMessage> messagesToModerate = removeToolMessages(messages);
@@ -1476,6 +1487,23 @@ class DefaultAiServices<T> extends AiServices<T> {
      * {@link InvocationContext} carrying it, as prepared for dispatch.
      */
     private record GuardedInput(UserMessage userMessage, InvocationContext invocationContext) {}
+
+    /**
+     * Output guardrails retry and reprompt from the chat memory, so without one they get a temporary memory holding
+     * this call's conversation.
+     */
+    private static GuardrailRequestParams outputGuardrailParams(
+            GuardrailService guardrailService,
+            Method method,
+            GuardrailRequestParams commonGuardrailParams,
+            ToolServiceResult toolServiceResult) {
+        if (commonGuardrailParams.chatMemory() != null || !guardrailService.hasOutputGuardrails(method)) {
+            return commonGuardrailParams;
+        }
+        ChatMemory temporaryMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+        temporaryMemory.add(toolServiceResult.messages());
+        return commonGuardrailParams.toBuilder().chatMemory(temporaryMemory).build();
+    }
 
     private <T> T invokeOutputGuardrails(
             GuardrailService guardrailService,
