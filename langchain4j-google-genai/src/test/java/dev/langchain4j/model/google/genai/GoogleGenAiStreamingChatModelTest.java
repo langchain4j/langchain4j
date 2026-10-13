@@ -874,13 +874,44 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(configCaptor.getValue().responseModalities()).contains(List.of("AUDIO"));
         assertThat(configCaptor.getValue().automaticContinuation()).contains(true);
 
-        @SuppressWarnings("unchecked")
-        List<Audio> generatedAudio =
-                response.aiMessage().attribute(GoogleGenAiStreamingChatModel.GENERATED_AUDIO_KEY, List.class);
+        List<Audio> generatedAudio = response.aiMessage().audios();
         assertThat(generatedAudio).hasSize(2);
         assertThat(generatedAudio.get(0).base64Data())
                 .isEqualTo(Base64.getEncoder().encodeToString(chunk1Bytes));
         assertThat(generatedAudio.get(1).base64Data())
                 .isEqualTo(Base64.getEncoder().encodeToString(chunk2Bytes));
+    }
+
+    @Test
+    void should_report_handler_exception_through_on_error_and_keep_streaming() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        RuntimeException handlerException = new RuntimeException("handler failed");
+        List<Throwable> errors = new ArrayList<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("What is 6 times 7?")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                throw handlerException;
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        assertThat(errors).containsExactly(handlerException);
+        assertThat(response.aiMessage().text()).isEqualTo("42");
     }
 }

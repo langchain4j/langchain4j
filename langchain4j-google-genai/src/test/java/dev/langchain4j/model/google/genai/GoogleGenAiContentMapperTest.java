@@ -30,6 +30,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -1150,8 +1151,7 @@ class GoogleGenAiContentMapperTest {
                 responseWithParts(Part.builder().inlineData(blob).build()), "gemini-2.5-flash-image");
 
         assertThat(result.aiMessage().images()).isEmpty();
-        assertThat(result.aiMessage().attribute(GoogleGenAiChatModel.GENERATED_AUDIO_KEY, List.class))
-                .isNull();
+        assertThat(result.aiMessage().audios()).isEmpty();
     }
 
     @Test
@@ -1162,8 +1162,7 @@ class GoogleGenAiContentMapperTest {
                 responseWithParts(imagePart(wavBytes, "audio/wav")), "gemini-3.8-flash-tts");
 
         assertThat(result.aiMessage().images()).isEmpty();
-        @SuppressWarnings("unchecked")
-        List<Audio> generatedAudio = result.aiMessage().attribute(GoogleGenAiChatModel.GENERATED_AUDIO_KEY, List.class);
+        List<Audio> generatedAudio = result.aiMessage().audios();
         assertThat(generatedAudio).hasSize(1);
         assertThat(generatedAudio.get(0).mimeType()).isEqualTo("audio/wav");
         assertThat(generatedAudio.get(0).base64Data())
@@ -1251,5 +1250,18 @@ class GoogleGenAiContentMapperTest {
 
     private static Part transcriptionPart(Transcription transcription) {
         return Part.builder().audioTranscription(transcription).build();
+    }
+
+    @Test
+    void should_fail_with_unsupported_feature_for_non_text_tool_execution_result() {
+        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
+                .id("call-1")
+                .toolName("getImage")
+                .contents(List.of(ImageContent.from("https://example.com/cat.png")))
+                .build();
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolResult)))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("Google Gen AI currently does not support non-text content in tool execution results");
     }
 }

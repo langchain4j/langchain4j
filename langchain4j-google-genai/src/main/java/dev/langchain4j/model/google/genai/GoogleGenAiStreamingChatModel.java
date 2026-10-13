@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
@@ -48,12 +49,6 @@ import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
-
-    /**
-     * Key used in {@link AiMessage#attributes()} to store generated {@link dev.langchain4j.data.audio.Audio}
-     * parts returned by TTS or multimodal audio-output models.
-     */
-    public static final String GENERATED_AUDIO_KEY = GoogleGenAiContentMapper.GENERATED_AUDIO_KEY;
 
     private static final Logger log = LoggerFactory.getLogger(GoogleGenAiStreamingChatModel.class);
 
@@ -216,18 +211,30 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                     if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
                         thinkingBuilder.append(aiMessage.thinking());
-                        trackingHandler.onPartialThinking(new PartialThinking(aiMessage.thinking()));
+                        try {
+                            trackingHandler.onPartialThinking(new PartialThinking(aiMessage.thinking()));
+                        } catch (Exception userException) {
+                            trackingHandler.onError(userException);
+                        }
                     }
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
-                        trackingHandler.onPartialResponse(aiMessage.text());
+                        try {
+                            trackingHandler.onPartialResponse(aiMessage.text());
+                        } catch (Exception userException) {
+                            trackingHandler.onError(userException);
+                        }
                     }
 
                     if (aiMessage.toolExecutionRequests() != null) {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
-                            trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
+                            try {
+                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
+                            } catch (Exception userException) {
+                                trackingHandler.onError(userException);
+                            }
                         }
                     }
 
@@ -877,7 +884,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          * <p>
          * When generating audio, also configure {@link #responseModalities(List)} to include
          * {@code "AUDIO"} (e.g., {@code List.of("AUDIO")}). Generated audio parts are exposed on the
-         * returned {@link AiMessage} via {@code aiMessage.attribute(GENERATED_AUDIO_KEY, List.class)}.
+         * returned {@link AiMessage} via {@link AiMessage#audios()}.
          *
          * @param speechConfig the speech generation configuration
          * @return {@code this}

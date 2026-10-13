@@ -35,12 +35,6 @@ import org.slf4j.LoggerFactory;
 @Experimental
 public class GoogleGenAiChatModel implements ChatModel {
 
-    /**
-     * Key used in {@link AiMessage#attributes()} to store generated {@link dev.langchain4j.data.audio.Audio}
-     * parts returned by TTS or multimodal audio-output models.
-     */
-    public static final String GENERATED_AUDIO_KEY = GoogleGenAiContentMapper.GENERATED_AUDIO_KEY;
-
     private static final Logger log = LoggerFactory.getLogger(GoogleGenAiChatModel.class);
 
     private final Client client;

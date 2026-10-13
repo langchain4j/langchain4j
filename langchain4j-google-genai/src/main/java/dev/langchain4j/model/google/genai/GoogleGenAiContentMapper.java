@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -28,6 +29,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -109,8 +111,6 @@ class GoogleGenAiContentMapper {
     private static final String THOUGHT_SIGNATURE_KEY =
             "thought_signature"; // do not change, will break backward compatibility!
 
-    static final String GENERATED_AUDIO_KEY = "generated_audio";
-
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
                 .filter(m -> m instanceof SystemMessage)
@@ -141,9 +141,18 @@ class GoogleGenAiContentMapper {
             }
 
             if (message instanceof ToolExecutionResultMessage toolMsg) {
-                FunctionResponse.Builder funcRespBuilder = FunctionResponse.builder()
-                        .name(toolMsg.toolName())
-                        .response(Map.of("result", toolMsg.text() != null ? toolMsg.text() : ""));
+                String toolResult;
+                try {
+                    toolResult = toolMsg.text();
+                } catch (IllegalStateException e) {
+                    throw new UnsupportedFeatureException(
+                            "Google Gen AI currently does not support non-text content in tool execution results");
+                }
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("result", toolResult);
+
+                FunctionResponse.Builder funcRespBuilder =
+                        FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
 
                 if (toolMsg.id() != null) {
                     funcRespBuilder.id(toolMsg.id());
@@ -406,8 +415,8 @@ class GoogleGenAiContentMapper {
     }
 
     /**
-     * Reads audio the model generated (e.g. TTS or multimodal audio output) into the given part.
-     * Only {@code audio/*} blobs are picked up and stored under {@link #GENERATED_AUDIO_KEY}.
+     * Reads audio the model generated (e.g. text-to-speech output) from the given part.
+     * Only {@code audio/*} blobs are picked up and stored under {@link AiMessage#GENERATED_AUDIO_KEY}.
      */
     private static Optional<Audio> toGeneratedAudio(Part part) {
         if (part.inlineData().isEmpty()) {

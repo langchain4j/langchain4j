@@ -76,7 +76,6 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final AudioTranscriptionConfig audioTranscriptionConfig;
     private final SpeechConfig speechConfig;
     private final List<String> responseModalities;
-    private final Boolean automaticContinuation;
     private final ChatRequestParameters defaultRequestParameters;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
@@ -100,7 +99,6 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
         this.speechConfig = builder.speechConfig;
         this.responseModalities = copy(builder.responseModalities);
-        this.automaticContinuation = builder.automaticContinuation;
         this.defaultRequestParameters = builder.defaultRequestParameters;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
@@ -229,7 +227,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 audioTranscriptionConfig,
                 speechConfig,
                 responseModalities,
-                automaticContinuation,
+                null,
                 generateContentConfigCustomizer);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
@@ -309,7 +307,6 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private AudioTranscriptionConfig audioTranscriptionConfig;
         private SpeechConfig speechConfig;
         private List<String> responseModalities;
-        private Boolean automaticContinuation;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         public Builder client(Client client) {
@@ -497,11 +494,6 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
         public Builder responseModalities(List<String> responseModalities) {
             this.responseModalities = responseModalities;
-            return this;
-        }
-
-        public Builder automaticContinuation(Boolean automaticContinuation) {
-            this.automaticContinuation = automaticContinuation;
             return this;
         }
 

@@ -496,10 +496,22 @@ Each is `null` when the model does not report it. `cachedContentTokenCount` is a
 `inputTokenCount()`, whereas `toolUsePromptTokenCount` and `thoughtsTokenCount` are counted on top of it:
 Gemini defines the total as `inputTokenCount + outputTokenCount + toolUsePromptTokenCount + thoughtsTokenCount`.
 
-When automatic continuation (`automaticContinuation(true)`) is enabled on the model builder or per-request via
-`GoogleGenAiChatRequestParameters`, the SDK transparently handles multi-hop continuation turns. In that case,
-`inputTokenCount()` reflects the cumulative prompt token count across all hops, while `initialPromptTokenCount()`
-returns the prompt token count of the first hop (or falls back to `inputTokenCount()` for single-hop calls).
+Gemini can end a long response early with the `CONTINUATION` finish reason. By default, the Google Gen AI SDK
+then sends the same request again, with a continuation token, until the model finishes, and returns all parts as one
+response. Each of these requests (hops) is billed separately. In that case, `inputTokenCount()` is the sum of the
+prompt tokens of all hops, while `initialPromptTokenCount()` is the prompt token count of the first hop only.
+For a response that needed a single request, both are the same.
+
+To turn automatic continuation off, set `automaticContinuation(false)` on the model builder, or per request
+via `GoogleGenAiChatRequestParameters`:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .automaticContinuation(false)
+    .build();
+```
 
 ## GoogleGenAiEmbeddingModel
 
@@ -762,11 +774,15 @@ ChatModel ttsModel = GoogleGenAiChatModel.builder()
 
 ChatResponse response = ttsModel.chat(UserMessage.from("Welcome to LangChain4j!"));
 
-List<Audio> audioClips = response.aiMessage()
-    .attribute(GoogleGenAiChatModel.GENERATED_AUDIO_KEY, List.class);
+List<Audio> audioParts = response.aiMessage().audios();
 ```
 
-When streaming with `GoogleGenAiStreamingChatModel`, audio segments arriving across multiple chunks are automatically concatenated into the final `AiMessage` under `GoogleGenAiStreamingChatModel.GENERATED_AUDIO_KEY`.
+Each `Audio` holds one audio part exactly as the model returned it, with its `mimeType()` and `base64Data()`.
+Gemini TTS models return raw PCM audio (for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file,
+so add a WAV header before saving or playing it.
+
+`GoogleGenAiStreamingChatModel` receives the audio in several chunks. The final `AiMessage` keeps every part,
+in the order they arrived, so join the bytes of all parts to get the complete audio.
 
 ## Image Generation Output
 
@@ -790,7 +806,8 @@ for (Image image : response.aiMessage().images()) {
 }
 ```
 
-Only `image/*` blobs become generated images; inline `audio/*` blobs are stored under `GENERATED_AUDIO_KEY`.
+Only `image/*` blobs become generated images; `audio/*` blobs are returned by `AiMessage.audios()` (see above),
+and inline data of any other type is ignored.
 
 Streaming responses work the same way. `GoogleGenAiStreamingChatModel` receives the answer one chunk at a time, and
 every chunk contributes its images to the final message, so a picture that arrives on its own chunk is not lost.
