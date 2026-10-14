@@ -8,10 +8,13 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
+import com.google.genai.types.CodeExecutionResult;
 import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Outcome;
 import com.google.genai.types.Part;
 import com.google.genai.types.Transcription;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -283,6 +286,14 @@ class GoogleGenAiContentMapper {
     }
 
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
+        return toChatResponse(response, modelName, returnThinking, false);
+    }
+
+    static ChatResponse toChatResponse(
+            GenerateContentResponse response,
+            String modelName,
+            boolean returnThinking,
+            boolean includeCodeExecutionOutput) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
         GoogleGenAiTokenUsage usage = toTokenUsage(response);
 
@@ -320,6 +331,11 @@ class GoogleGenAiContentMapper {
                     }
                 } else if (part.audioTranscription().isPresent()) {
                     appendTranscription(textBuilder, part.audioTranscription().get());
+                }
+
+                if (includeCodeExecutionOutput) {
+                    part.executableCode().ifPresent(code -> appendExecutableCode(textBuilder, code));
+                    part.codeExecutionResult().ifPresent(result -> appendCodeExecutionResult(textBuilder, result));
                 }
 
                 if (part.functionCall().isPresent()) {
@@ -444,6 +460,57 @@ class GoogleGenAiContentMapper {
                 .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
                 .mimeType(blob.mimeType().get())
                 .build());
+    }
+
+    private static void appendExecutableCode(StringBuilder textBuilder, ExecutableCode executableCode) {
+        String language = executableCode
+                .language()
+                .map(Object::toString)
+                .filter(name -> !name.equals("LANGUAGE_UNSPECIFIED"))
+                .map(name -> name.toLowerCase(Locale.ROOT))
+                .orElse("python");
+        textBuilder.append("Code executed:\n");
+        appendCodeBlock(textBuilder, language, executableCode.code().orElse(""));
+    }
+
+    private static void appendCodeExecutionResult(StringBuilder textBuilder, CodeExecutionResult result) {
+        Optional<Outcome> outcome = result.outcome();
+        String output = result.output().orElse("");
+        if (outcome.map(value -> value.knownEnum() == Outcome.Known.OUTCOME_OK).orElse(false)) {
+            if (!output.isEmpty()) {
+                textBuilder.append("Output:\n");
+                appendCodeBlock(textBuilder, "", output);
+            }
+            return;
+        }
+        textBuilder
+                .append("Code execution failed: **")
+                .append(outcome.map(Object::toString).orElse("OUTCOME_UNSPECIFIED"))
+                .append("**\n");
+        if (!output.isEmpty()) {
+            appendCodeBlock(textBuilder, "", output);
+        } else {
+            textBuilder.append('\n');
+        }
+    }
+
+    private static void appendCodeBlock(StringBuilder textBuilder, String language, String content) {
+        String fence = "`".repeat(Math.max(3, longestBacktickRun(content) + 1));
+        textBuilder.append(fence).append(language).append('\n').append(content);
+        if (!content.endsWith("\n")) {
+            textBuilder.append('\n');
+        }
+        textBuilder.append(fence).append("\n\n");
+    }
+
+    private static int longestBacktickRun(String content) {
+        int longest = 0;
+        int current = 0;
+        for (int i = 0; i < content.length(); i++) {
+            current = content.charAt(i) == '`' ? current + 1 : 0;
+            longest = Math.max(longest, current);
+        }
+        return longest;
     }
 
     private static void appendTranscription(StringBuilder textBuilder, Transcription transcription) {
