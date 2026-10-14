@@ -79,9 +79,14 @@ class ToolServiceTest {
     void findTools_should_execute_tool_through_overriding_method() {
         InterceptedDateTool objectWithTools = new InterceptedDateTool();
 
-        ToolExecutor toolExecutor = ToolService.findTools(objectWithTools).get(0).toolExecutor();
+        ToolExecutor toolExecutor =
+                ToolService.findTools(objectWithTools).get(0).toolExecutor();
         String result = toolExecutor.execute(
-                ToolExecutionRequest.builder().name("getCurrentDate").arguments("{}").build(), null);
+                ToolExecutionRequest.builder()
+                        .name("getCurrentDate")
+                        .arguments("{}")
+                        .build(),
+                null);
 
         assertThat(result).isEqualTo("2024-04-29");
         assertThat(objectWithTools.intercepted).isTrue();
@@ -187,6 +192,42 @@ class ToolServiceTest {
         assertThatThrownBy(() ->
                         executeWithErrorHandling(DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler))
                 .isSameAs(original);
+    }
+
+    @SuppressWarnings("unused")
+    public static class ToolsDeclaredOutOfOrder {
+
+        @Tool
+        public String searchOrders(String query) {
+            return query;
+        }
+
+        @Tool
+        public String getWeather(String city) {
+            return city;
+        }
+
+        @Tool
+        public String createTicket(String title) {
+            return title;
+        }
+
+        @Tool
+        public String refund(String orderId) {
+            return orderId;
+        }
+    }
+
+    @Test
+    void tools_should_be_registered_sorted_by_name() {
+        ToolService toolService = new ToolService();
+        List<Object> objectsWithTools = List.of(new ToolsDeclaredOutOfOrder());
+
+        toolService.tools(objectsWithTools);
+
+        assertThat(toolService.toolSpecifications())
+                .extracting(ToolSpecification::name)
+                .containsExactly("createTicket", "getWeather", "refund", "searchOrders");
     }
 
     // --- callback getter tests ---
