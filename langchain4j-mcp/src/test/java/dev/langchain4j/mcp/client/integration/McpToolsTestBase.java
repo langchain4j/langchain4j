@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
@@ -97,7 +98,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().name("getImage").arguments("{}").build();
         ToolExecutionResult result =
                 executor.executeWithContext(request, InvocationContext.builder().build());
-        assertThat(result.resultText()).isEqualTo("data:image/png;base64,AQID");
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png"));
         assertThat(result.isError()).isFalse();
     }
 

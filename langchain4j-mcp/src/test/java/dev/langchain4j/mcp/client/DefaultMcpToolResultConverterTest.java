@@ -3,6 +3,8 @@ package dev.langchain4j.mcp.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -43,18 +45,25 @@ class DefaultMcpToolResultConverterTest {
     }
 
     @Test
-    void extracts_image_as_data_uri() {
+    void extracts_image_as_native_content() {
         ToolExecutionResult result = extractor.convert(
                 List.of(Map.of("type", "image", "data", "iVBORw0KGgo=", "mimeType", "image/png")), false);
 
-        assertThat(result.resultText()).isEqualTo("data:image/png;base64,iVBORw0KGgo=");
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("iVBORw0KGgo=", "image/png"));
+        assertThatThrownBy(result::resultText).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void handles_image_with_missing_fields() {
-        ToolExecutionResult result = extractor.convert(List.of(Map.of("type", "image", "data", "xxx")), false);
-
-        assertThat(result.resultText()).isEqualTo("[image: missing data or mimeType]");
+    void rejects_malformed_image_instead_of_returning_placeholder_text() {
+        for (Map<String, Object> image : List.<Map<String, Object>>of(
+                Map.of("type", "image", "data", "xxx"),
+                Map.of("type", "image", "mimeType", "image/png"),
+                Map.of("type", "image", "data", 42, "mimeType", "image/png"),
+                Map.of("type", "image", "data", "xxx", "mimeType", 42),
+                Map.of("type", "image", "data", "", "mimeType", "image/png"))) {
+            assertThatThrownBy(() -> extractor.convert(List.of(image), false))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     @Test
@@ -78,33 +87,40 @@ class DefaultMcpToolResultConverterTest {
     }
 
     @Test
-    void extracts_resource_blob_as_data_uri_and_preserves_error_flag() {
-        ToolExecutionResult result = extractor.convert(
-                List.of(Map.of(
-                        "type",
-                        "resource",
-                        "resource",
-                        Map.of("uri", "file:///report.pdf", "blob", "JVBERg==", "mimeType", "application/pdf"))),
-                true);
-
-        assertThat(result.resultText()).isEqualTo("data:application/pdf;base64,JVBERg==");
-        assertThat(result.isError()).isTrue();
+    void rejects_binary_resources_instead_of_sending_base64_as_text() {
+        assertThatThrownBy(() -> extractor.convert(
+                        List.of(Map.of(
+                                "type",
+                                "resource",
+                                "resource",
+                                Map.of(
+                                        "uri",
+                                        "file:///report.pdf",
+                                        "blob",
+                                        "JVBERg==",
+                                        "mimeType",
+                                        "application/pdf"))),
+                        true))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("binary resource");
     }
 
     @Test
-    void defaults_binary_resource_mime_type_when_omitted() {
-        ToolExecutionResult result = extractor.convert(
-                List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///data", "blob", "AA=="))), false);
-
-        assertThat(result.resultText()).isEqualTo("data:application/octet-stream;base64,AA==");
+    void rejects_binary_resource_without_mime_type() {
+        assertThatThrownBy(() -> extractor.convert(
+                        List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///data", "blob", "AA=="))),
+                        false))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("binary resource");
     }
 
     @Test
-    void preserves_empty_binary_resource() {
-        ToolExecutionResult result = extractor.convert(
-                List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///empty", "blob", ""))), false);
-
-        assertThat(result.resultText()).isEqualTo("data:application/octet-stream;base64,");
+    void rejects_empty_binary_resource_explicitly() {
+        assertThatThrownBy(() -> extractor.convert(
+                        List.of(Map.of("type", "resource", "resource", Map.of("uri", "file:///empty", "blob", ""))),
+                        false))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("binary resource");
     }
 
     @Test
@@ -133,10 +149,30 @@ class DefaultMcpToolResultConverterTest {
                 List.of(
                         Map.of("type", "text", "text", "first"),
                         Map.of("type", "image", "mimeType", "image/png", "data", "iVBORw0KGgo="),
-                        Map.of("type", "resource", "resource", Map.of("uri", "file:///data", "blob", "AA=="))),
+                        Map.of("type", "resource", "resource", Map.of("text", "last"))),
                 false);
 
-        assertThat(result.resultText())
-                .isEqualTo("first\ndata:image/png;base64,iVBORw0KGgo=\ndata:application/octet-stream;base64,AA==");
+        assertThat(result.resultContents())
+                .containsExactly(
+                        TextContent.from("first"),
+                        ImageContent.from("iVBORw0KGgo=", "image/png"),
+                        TextContent.from("last"));
+    }
+
+    @Test
+    void joins_plain_and_resource_text_for_text_only_models() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(
+                        Map.of("type", "text", "text", "first"),
+                        Map.of("type", "resource", "resource", Map.of("text", "second")),
+                        Map.of("type", "text", "text", "")),
+                false);
+        assertThat(result.resultText()).isEqualTo("first\nsecond\n");
+        assertThat(result.resultContents()).containsExactly(TextContent.from("first\nsecond\n"));
+    }
+
+    @Test
+    void retains_empty_content_as_an_empty_text_result() {
+        assertThat(extractor.convert(List.of(), false).resultText()).isEmpty();
     }
 }

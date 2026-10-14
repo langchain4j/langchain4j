@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -98,7 +99,7 @@ class McpToolResultMetaParsingTest {
     }
 
     @Test
-    void should_preserve_blob_resource_and_meta_in_an_ignored_application_error() {
+    void should_preserve_native_image_and_meta_in_an_ignored_application_error() {
         String response = """
                 {
                   "jsonrpc": "2.0",
@@ -106,8 +107,7 @@ class McpToolResultMetaParsingTest {
                   "result": {
                     "isError": true,
                     "content": [{
-                      "type": "resource",
-                      "resource": {"uri": "file:///diagnostic.bin", "blob": "AQID"}
+                      "type": "image", "data": "AQID", "mimeType": "image/png"
                     }],
                     "_meta": {"example.org/traceId": "blob-123"}
                   }
@@ -116,7 +116,7 @@ class McpToolResultMetaParsingTest {
 
         ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, extractor);
 
-        assertThat(result.resultText()).isEqualTo("data:application/octet-stream;base64,AQID");
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png"));
         assertThat(result.isError()).isTrue();
         assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "blob-123"));
     }
