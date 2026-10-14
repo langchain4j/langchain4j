@@ -549,6 +549,74 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void tool_timeout_cancellation_is_supplied_with_its_context_before_listeners_are_notified() {
+        List<String> events = verifyTimeoutCancellationOrder(client -> client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build()));
+
+        assertThat(events).containsExactly("meta:tools/call", "meta:cancel", "listener:error");
+    }
+
+    @Test
+    public void async_tool_timeout_cancellation_is_supplied_with_its_context_before_listeners_are_notified() {
+        List<String> events = verifyTimeoutCancellationOrder(client -> client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .join());
+
+        assertThat(events).containsExactly("meta:tools/call", "meta:cancel", "listener:error");
+    }
+
+    /**
+     * Runs an operation that times out and records, in order, the messages that the meta supplier is called with
+     * and the listener error notifications. The meta supplier must get the cancellation in a context (so that,
+     * e.g., a tracing span can be attached to it), and while the timed out operation is still in progress from
+     * the listeners' point of view.
+     */
+    private static List<String> verifyTimeoutCancellationOrder(
+            java.util.function.Consumer<DefaultMcpClient> operation) {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
+        AtomicReference<Long> toolCallId = new AtomicReference<>();
+        McpClientListener listener = new McpClientListener() {
+            @Override
+            public void onExecuteToolError(McpCallContext context, Throwable error) {
+                events.add("listener:error");
+            }
+        };
+        McpMetaSupplier metaSupplier = context -> {
+            assertThat(context)
+                    .as("the meta supplier must always get a context")
+                    .isNotNull();
+            if (context.message() instanceof McpCallToolRequest request) {
+                toolCallId.set(request.getId());
+                events.add("meta:tools/call");
+            } else if (context.message() instanceof McpCancellationNotification cancellation) {
+                assertThat(((McpCancellationParams) cancellation.getParams()).getRequestId())
+                        .isEqualTo(toolCallId.get());
+                events.add("meta:cancel");
+            }
+            return Map.of();
+        };
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .listener(listener)
+                .metaSupplier(metaSupplier)
+                .build();
+
+        operation.accept(client);
+
+        verify(transport).sendMessage(any(McpCancellationNotification.class));
+        return events;
+    }
+
+    @Test
     public void cancelling_async_tool_future_cancels_transport_request() {
         McpTransport transport = getMinimalMcpTransportMock();
         McpClientListener listener = mock(McpClientListener.class);

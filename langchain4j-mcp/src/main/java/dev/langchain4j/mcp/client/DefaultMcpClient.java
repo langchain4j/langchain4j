@@ -652,7 +652,9 @@ public class DefaultMcpClient implements McpClient {
     private void sendCancellationNotification(long operationId, String reason) {
         if (shouldSendCancellationNotification()) {
             McpCancellationNotification cancellation = new McpCancellationNotification(operationId, reason);
-            applyMeta(cancellation, null);
+            // the context lets listeners and the meta supplier tell which request is being cancelled
+            McpCallContext cancellationContext = new McpCallContext(null, cancellation);
+            applyMeta(cancellation, cancellationContext);
             transport.sendMessage(cancellation);
         }
     }
@@ -861,8 +863,12 @@ public class DefaultMcpClient implements McpClient {
 
     private ToolExecutionResult handleToolTimeout(
             McpCallContext context, long operationId, CompletableFuture<?> resultFuture, TimeoutException timeout) {
-        notifyListeners(l -> l.onExecuteToolError(context, timeout));
-        cancelTimedOutOperation(timeout, operationId, resultFuture);
+        // cancel before notifying the listeners, so that they see the cancellation as part of the operation
+        try {
+            cancelTimedOutOperation(timeout, operationId, resultFuture);
+        } finally {
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
+        }
         // built on demand, not once at construction: a custom converter must not be invoked
         // for a tool call that never happened
         return toolResultConverter.convert(
@@ -942,8 +948,11 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(finalResult, (l, response) -> l.afterResourceGet(context, resourceResult, response));
             return resourceResult;
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onResourceGetError(context, timeout));
-            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            try {
+                cancelTimedOutOperation(timeout, operationId, resultFuture);
+            } finally {
+                notifyListeners(l -> l.onResourceGetError(context, timeout));
+            }
             throw new RuntimeException(timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
@@ -998,8 +1007,11 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(finalResult, (l, response) -> l.afterPromptGet(context, promptResult, response));
             return promptResult;
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onPromptGetError(context, timeout));
-            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            try {
+                cancelTimedOutOperation(timeout, operationId, resultFuture);
+            } finally {
+                notifyListeners(l -> l.onPromptGetError(context, timeout));
+            }
             throw new RuntimeException(timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
@@ -1119,11 +1131,7 @@ public class DefaultMcpClient implements McpClient {
             if (resultFuture != null) {
                 resultFuture.cancel(true);
             }
-            if (shouldSendCancellationNotification()) {
-                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-                applyMeta(cancellation, null);
-                transport.sendMessage(cancellation);
-            }
+            sendCancellationNotification(operationId, "Timeout");
             RuntimeException re = new RuntimeException(timeout);
             notifyListeners(l -> l.onResourceSubscribeError(context, re));
             throw re;
@@ -1165,11 +1173,7 @@ public class DefaultMcpClient implements McpClient {
             if (resultFuture != null) {
                 resultFuture.cancel(true);
             }
-            if (shouldSendCancellationNotification()) {
-                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-                applyMeta(cancellation, null);
-                transport.sendMessage(cancellation);
-            }
+            sendCancellationNotification(operationId, "Timeout");
             RuntimeException re = new RuntimeException(timeout);
             notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
             throw re;
