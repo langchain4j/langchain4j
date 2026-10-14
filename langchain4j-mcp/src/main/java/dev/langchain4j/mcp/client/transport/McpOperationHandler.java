@@ -166,9 +166,14 @@ public class McpOperationHandler {
                 || message.containsKey("error")) {
             return;
         }
+        Long id = toLong(message.get("id"));
+        if (id == null && message.containsKey("id")) {
+            // the client can't handle a request with this ID, see handleMessageWithId
+            return;
+        }
         Map<String, Object> params = message.get("params") instanceof Map<?, ?> p ? (Map<String, Object>) p : Map.of();
         try {
-            onServerMessage.accept(new McpServerMessageContext(method, toLong(message.get("id")), params));
+            onServerMessage.accept(new McpServerMessageContext(method, id, params));
         } catch (RuntimeException e) {
             log.warn("Failed to report a message from the server", e);
         }

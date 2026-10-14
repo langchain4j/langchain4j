@@ -283,6 +283,16 @@ class McpOperationHandlerTest {
         assertThat(pending).isEmpty();
     }
 
+    @Test
+    void doesNotReportRequestWithAnIdTheClientCannotHandle() {
+        List<McpServerMessageContext> reported = new ArrayList<>();
+        McpOperationHandler handler = handlerReportingServerMessages(Mockito.mock(McpTransport.class), reported::add);
+
+        handler.onMessage("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"ping\"}");
+
+        assertThat(reported).isEmpty();
+    }
+
     private static McpOperationHandler handlerReportingServerMessages(
             McpTransport transport, Consumer<McpServerMessageContext> onServerMessage) {
         return new McpOperationHandler(
