@@ -1,8 +1,8 @@
 # Google Cloud SQL for PostgreSQL
 
-[Cloud SQL](https://cloud.google.com/sql/docs/postgres) is a fully managed relational database service that offers high performance, seamless integration, and impressive scalability. Cloud SQL is 100% compatible with PostgreSQL. Extend your database application to build AI-powered experiences leveraging Cloud SQL's Langchain integrations.
+[Cloud SQL](https://cloud.google.com/sql/docs/postgres) is a fully managed relational database service that offers high performance, seamless integration, and impressive scalability. Cloud SQL is 100% compatible with PostgreSQL. Extend your database application to build AI-powered experiences leveraging Cloud SQL's LangChain4j integrations.
 
-This module implements `EmbeddingStore` backed by an Cloud SQL for PostgreSQL database.
+This module implements `EmbeddingStore` backed by a Cloud SQL for PostgreSQL database.
 
 ## Before You Begin
 
