@@ -2,6 +2,7 @@ package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.invocation.InvocationContext;
 import java.time.Instant;
+import org.jspecify.annotations.Nullable;
 
 public interface AiServiceEvent {
     /**
@@ -12,8 +13,13 @@ public interface AiServiceEvent {
 
     /**
      * The instant at which this event was created.
+     *
+     * @return the creation instant, or {@code null} if this event does not record one
      */
-    Instant timestamp();
+    @Nullable
+    default Instant timestamp() {
+        return null;
+    }
 
     /**
      * Retrieves the class type of the event, representing the specific category

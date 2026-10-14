@@ -207,6 +207,30 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     @Test
+    void customEventNotOverridingTimestampCompilesAndReportsUnavailableTimestamp() {
+        // Implements only the pre-timestamp methods, as an existing downstream event would
+        AiServiceEvent custom = new AiServiceEvent() {
+            @Override
+            public InvocationContext invocationContext() {
+                return DEFAULT_INVOCATION_CONTEXT;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <T extends AiServiceEvent> Class<T> eventClass() {
+                return (Class<T>) AiServiceEvent.class;
+            }
+
+            @Override
+            public <T extends AiServiceEvent> Builder<T> toBuilder() {
+                throw new UnsupportedOperationException();
+            }
+        };
+
+        assertThat(custom.timestamp()).isNull();
+    }
+
+    @Test
     void registrarEatsThrownExceptionsDuringFiring() {
         // From https://github.com/langchain4j/langchain4j/issues/4499
         var registrar = AiServiceListenerRegistrar.newInstance();
