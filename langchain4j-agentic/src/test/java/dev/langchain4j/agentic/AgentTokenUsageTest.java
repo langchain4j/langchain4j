@@ -12,15 +12,24 @@ import dev.langchain4j.agentic.observability.AgentInvocation;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +46,13 @@ class AgentTokenUsageTest {
 
         @Agent
         String run(@V("question") String question);
+    }
+
+    public interface MemoryAssistant {
+
+        @UserMessage("Answer {{question}}")
+        @Agent(outputKey = "answer")
+        String answer(@MemoryId Object memoryId, @V("question") String question);
     }
 
     public static class Clock {
@@ -298,5 +314,134 @@ class AgentTokenUsageTest {
 
         Object memoryId = monitor.successfulExecutions().get(0).memoryId();
         assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
+    }
+
+    @Test
+    void response_cleanup_does_not_clear_the_underlying_chat_memory_messages() {
+        AgentMonitor monitor = new AgentMonitor();
+        Map<Object, MessageWindowChatMemory> suppliedMemories = new ConcurrentHashMap<>();
+        MemoryAssistant assistant = AgenticServices.agentBuilder(MemoryAssistant.class)
+                .chatModel(modelAnsweringDirectly())
+                .chatMemoryProvider(memoryId -> {
+                    MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
+                            .id(memoryId)
+                            .maxMessages(10)
+                            .build();
+                    suppliedMemories.put(memoryId, memory);
+                    return memory;
+                })
+                .build();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        Object memoryId = monitor.successfulExecutions().get(0).memoryId();
+        assertThat(nestedInvocations(monitor).get(0).totalTokenCount()).isEqualTo(35);
+        assertThat(suppliedMemories.get(memoryId).messages()).hasSize(2).last().isEqualTo(AiMessage.from("It is noon"));
+        assertThat(((ChatMessagesAccess) assistant).lastChatRequest(memoryId)).isNull();
+        assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
+    }
+
+    @Test
+    void standalone_listener_receives_the_request_after_the_cached_entry_is_released() {
+        List<AgentResponse> responses = new CopyOnWriteArrayList<>();
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(modelAnsweringDirectly())
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(AgentResponse response) {
+                        responses.add(response);
+                    }
+                })
+                .build();
+
+        for (int i = 0; i < 10; i++) {
+            assistant.answer("question " + i);
+        }
+
+        assertThat(responses).hasSize(10);
+        assertThat(responses)
+                .extracting(response -> response.agenticScope().memoryId())
+                .doesNotHaveDuplicates();
+        for (int i = 0; i < responses.size(); i++) {
+            AgentResponse response = responses.get(i);
+            assertThat(response.inputs()).containsEntry("question", "question " + i);
+            assertThat(response.chatRequest().messages())
+                    .contains(dev.langchain4j.data.message.UserMessage.from("Answer question " + i));
+            assertThat(response.chatResponse().aiMessage()).isEqualTo(AiMessage.from("It is noon"));
+            assertThat(response.chatResponse().tokenUsage()).isEqualTo(new TokenUsage(30, 5));
+            assertThat(((ChatMessagesAccess) assistant)
+                            .lastChatRequest(response.agenticScope().memoryId()))
+                    .isNull();
+            assertThat(((ChatMessagesAccess) assistant)
+                            .lastChatResponse(response.agenticScope().memoryId()))
+                    .isNull();
+        }
+    }
+
+    @Test
+    void concurrent_standalone_calls_keep_their_responses_separate_and_release_them() throws Exception {
+        CyclicBarrier bothInModel = new CyclicBarrier(2);
+        List<AgentResponse> responses = new CopyOnWriteArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest request) {
+                String question = ((dev.langchain4j.data.message.UserMessage)
+                                request.messages().get(request.messages().size() - 1))
+                        .singleText();
+                try {
+                    bothInModel.await(10, TimeUnit.SECONDS);
+                } catch (Exception error) {
+                    throw new IllegalStateException(error);
+                }
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from(question))
+                        .tokenUsage(question.endsWith("first") ? new TokenUsage(11, 2) : new TokenUsage(20, 3))
+                        .build();
+            }
+        };
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(model)
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(AgentResponse response) {
+                        responses.add(response);
+                    }
+                })
+                .build();
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> {
+                String answer = assistant.answer("first");
+                assertThat(LangChain4jManaged.current(AgenticScope.class)).isNull();
+                return answer;
+            });
+            var second = executor.submit(() -> {
+                String answer = assistant.answer("second");
+                assertThat(LangChain4jManaged.current(AgenticScope.class)).isNull();
+                return answer;
+            });
+            assertThat(first.get(15, TimeUnit.SECONDS)).isEqualTo("Answer first");
+            assertThat(second.get(15, TimeUnit.SECONDS)).isEqualTo("Answer second");
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
+        assertThat(responses).hasSize(2);
+        assertThat(responses)
+                .extracting(response -> response.agenticScope().memoryId())
+                .doesNotHaveDuplicates();
+        for (AgentResponse response : responses) {
+            boolean first = "first".equals(response.inputs().get("question"));
+            assertThat(response.chatResponse().aiMessage().text()).isEqualTo(first ? "Answer first" : "Answer second");
+            assertThat(response.chatResponse().tokenUsage())
+                    .isEqualTo(first ? new TokenUsage(11, 2) : new TokenUsage(20, 3));
+            assertThat(((ChatMessagesAccess) assistant)
+                            .lastChatResponse(response.agenticScope().memoryId()))
+                    .isNull();
+        }
     }
 }
