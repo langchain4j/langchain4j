@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpRoot;
+import dev.langchain4j.mcp.client.McpServerMessageContext;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressNotification;
@@ -15,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,7 @@ public class McpOperationHandler {
     private final Runnable onServerRootsList;
     private final BiConsumer<Long, String> onServerCancelled;
     private final BiConsumer<Long, Map<String, Object>> onSubscriptionAcknowledged;
+    private final Consumer<McpServerMessageContext> onServerMessage;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<String>> pendingOperations,
@@ -59,6 +62,42 @@ public class McpOperationHandler {
             Runnable onServerRootsList,
             BiConsumer<Long, String> onServerCancelled,
             BiConsumer<Long, Map<String, Object>> onSubscriptionAcknowledged) {
+        this(
+                pendingOperations,
+                roots,
+                transport,
+                logMessageConsumer,
+                onToolListUpdate,
+                onResourceListUpdate,
+                onPromptListUpdate,
+                onResourceUpdate,
+                progressHandler,
+                onServerPing,
+                onServerRootsList,
+                onServerCancelled,
+                onSubscriptionAcknowledged,
+                null);
+    }
+
+    /**
+     * @param onServerMessage called with every request and notification from the server, before it's handled
+     */
+    public McpOperationHandler(
+            Map<Long, CompletableFuture<String>> pendingOperations,
+            Supplier<List<McpRoot>> roots,
+            McpTransport transport,
+            Consumer<McpLogMessage> logMessageConsumer,
+            Runnable onToolListUpdate,
+            Runnable onResourceListUpdate,
+            Runnable onPromptListUpdate,
+            Consumer<String> onResourceUpdate,
+            McpProgressHandler progressHandler,
+            Runnable onServerPing,
+            Runnable onServerRootsList,
+            BiConsumer<Long, String> onServerCancelled,
+            BiConsumer<Long, Map<String, Object>> onSubscriptionAcknowledged,
+            @Nullable Consumer<McpServerMessageContext> onServerMessage) {
+        this.onServerMessage = onServerMessage;
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -108,10 +147,30 @@ public class McpOperationHandler {
             return;
         }
         Map<String, Object> message = (Map<String, Object>) parsed;
+        notifyServerMessage(message);
         if (message.containsKey("id")) {
             handleMessageWithId(message, json);
         } else if (message.containsKey("method")) {
             handleNotification(message);
+        }
+    }
+
+    /**
+     * Reports a request or notification from the server (not a response to a request of the client).
+     */
+    @SuppressWarnings("unchecked")
+    private void notifyServerMessage(Map<String, Object> message) {
+        if (onServerMessage == null
+                || !(message.get("method") instanceof String method)
+                || message.containsKey("result")
+                || message.containsKey("error")) {
+            return;
+        }
+        Map<String, Object> params = message.get("params") instanceof Map<?, ?> p ? (Map<String, Object>) p : Map.of();
+        try {
+            onServerMessage.accept(new McpServerMessageContext(method, toLong(message.get("id")), params));
+        } catch (RuntimeException e) {
+            log.warn("Failed to report a message from the server", e);
         }
     }
 
@@ -250,9 +309,8 @@ public class McpOperationHandler {
     private void handleSubscriptionAcknowledgedNotification(Map<String, Object> message) {
         Map<String, Object> params = params(message);
         Object meta = params == null ? null : params.get("_meta");
-        Long subscriptionId = meta instanceof Map
-                ? toLong(((Map<?, ?>) meta).get("io.modelcontextprotocol/subscriptionId"))
-                : null;
+        Long subscriptionId =
+                meta instanceof Map ? toLong(((Map<?, ?>) meta).get("io.modelcontextprotocol/subscriptionId")) : null;
         if (subscriptionId == null) {
             log.warn("Received subscriptions acknowledged notification without a subscription ID: {}", message);
             return;

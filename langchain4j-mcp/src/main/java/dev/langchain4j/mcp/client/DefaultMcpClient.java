@@ -237,7 +237,8 @@ public class DefaultMcpClient implements McpClient {
                         if (ackFuture != null) {
                             ackFuture.complete(message);
                         }
-                    });
+                    },
+                    serverMessage -> notifyListeners(l -> l.onServerMessage(serverMessage)));
             transport.onFailure(() -> {
                 if (!closed) {
                     try {
