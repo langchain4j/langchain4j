@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
@@ -166,6 +168,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
+                    }
+
+                    // checked explicitly here, since an exception thrown from this callback
+                    // may be swallowed by the SSE parser instead of reaching onError
+                    String refusal = openAiResponseBuilder.refusal();
+                    if (isNotNullOrBlank(refusal)) {
+                        withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                        return;
                     }
 
                     ChatResponse completeResponse = openAiResponseBuilder.build();
