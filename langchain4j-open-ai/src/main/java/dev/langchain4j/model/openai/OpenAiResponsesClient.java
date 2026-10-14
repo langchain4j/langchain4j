@@ -92,6 +92,7 @@ class OpenAiResponsesClient {
     private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
     private static final String EVENT_RESPONSE_FAILED = "response.failed";
     private static final String EVENT_RESPONSE_ERROR = "response.error";
+    private static final String EVENT_ERROR = "error";
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
@@ -117,6 +118,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_RESPONSE = "response";
     private static final String FIELD_ERROR = "error";
     private static final String FIELD_MESSAGE = "message";
+    private static final String FIELD_CODE = "code";
     private static final String FIELD_OUTPUT = "output";
     private static final String FIELD_USAGE = "usage";
     private static final String FIELD_INPUT_TOKENS = "input_tokens";
@@ -1186,6 +1188,9 @@ class OpenAiResponsesClient {
                     handleResponseCompleted(node);
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
+                } else if (EVENT_ERROR.equals(type)) {
+                    // the stream-level error event carries code and message at the top level
+                    handleResponseFailure(Map.of(FIELD_ERROR, node));
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -1283,7 +1288,8 @@ class OpenAiResponsesClient {
                 errorNode = at(at(node, FIELD_RESPONSE), FIELD_ERROR);
             }
             String message = extractErrorMessage(errorNode);
-            withLoggingExceptions(() -> handler.onError(new RuntimeException(message)));
+            String code = str(at(errorNode, FIELD_CODE), null);
+            withLoggingExceptions(() -> handler.onError(new OpenAiResponsesStreamingException(message, code)));
         }
 
         private String extractErrorMessage(Object errorNode) {
