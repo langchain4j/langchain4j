@@ -230,6 +230,37 @@ class ToolServiceTest {
                 .containsExactly("createTicket", "getWeather", "refund", "searchOrders");
     }
 
+    @SuppressWarnings("unused")
+    public static class RenamedTools {
+
+        @Tool(name = "b_search")
+        public String alpha() {
+            return "alpha";
+        }
+
+        @Tool(name = "a_refund")
+        public String zulu() {
+            return "zulu";
+        }
+    }
+
+    @Test
+    void findTools_should_keep_each_tool_paired_with_its_own_method() {
+        List<AiServiceTool> tools = ToolService.findTools(new RenamedTools());
+
+        assertThat(tools)
+                .extracting(
+                        tool -> tool.toolSpecification().name(),
+                        tool -> tool.toolExecutor()
+                                .execute(
+                                        ToolExecutionRequest.builder()
+                                                .name(tool.toolSpecification().name())
+                                                .arguments("{}")
+                                                .build(),
+                                        null))
+                .containsExactlyInAnyOrder(tuple("a_refund", "zulu"), tuple("b_search", "alpha"));
+    }
+
     // --- callback getter tests ---
 
     @Test
