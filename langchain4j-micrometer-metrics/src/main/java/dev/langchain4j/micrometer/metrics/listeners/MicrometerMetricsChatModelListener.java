@@ -60,7 +60,6 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
 
-    private final MeterRegistry meterRegistry;
     private final Meter.MeterProvider<Timer> operationDuration;
     private final Meter.MeterProvider<DistributionSummary> chatTokenSummary;
 
@@ -70,9 +69,10 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
      */
     public MicrometerMetricsChatModelListener(MeterRegistry meterRegistry) {
-        this.meterRegistry = ensureNotNull(meterRegistry, "meterRegistry");
+        ensureNotNull(meterRegistry, "meterRegistry");
         operationDuration = Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
                 .description("Measures operation duration")
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
                 .withRegistry(meterRegistry);
         chatTokenSummary = DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .description("Measures token usage")
@@ -137,13 +137,12 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
             String responseModelName,
             String outcome,
             String errorType) {
-        operationDuration.withTags(
-                        Tags.of(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                                .and(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
-                                .and(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
-                                .and(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
-                                .and(OUTCOME, outcome)
-                                .and(OTelGenAiAttributes.ERROR_TYPE.value(), errorType))
+        operationDuration
+                .withTags(Tags.of(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
+                        .and(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
+                        .and(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
+                        .and(OUTCOME, outcome)
+                        .and(OTelGenAiAttributes.ERROR_TYPE.value(), errorType))
                 .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
     }
 

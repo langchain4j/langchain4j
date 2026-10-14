@@ -62,7 +62,6 @@ public class MicrometerMetricsEmbeddingModelListener implements EmbeddingModelLi
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
 
-    private final MeterRegistry meterRegistry;
     private final Meter.MeterProvider<Timer> operationDuration;
     private final Meter.MeterProvider<DistributionSummary> inputOperationTokenUsageSummary;
 
@@ -72,9 +71,10 @@ public class MicrometerMetricsEmbeddingModelListener implements EmbeddingModelLi
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
      */
     public MicrometerMetricsEmbeddingModelListener(MeterRegistry meterRegistry) {
-        this.meterRegistry = ensureNotNull(meterRegistry, "meterRegistry");
+        ensureNotNull(meterRegistry, "meterRegistry");
         operationDuration = Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
                 .description("Measures operation duration")
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.EMBEDDINGS.value())
                 .withRegistry(meterRegistry);
         inputOperationTokenUsageSummary = DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .description("Measures token usage")
@@ -140,10 +140,8 @@ public class MicrometerMetricsEmbeddingModelListener implements EmbeddingModelLi
             String responseModelName,
             String outcome,
             String errorType) {
-        operationDuration.withTags(Tags.of(
-                                OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.EMBEDDINGS.value())
-                        .and(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.EMBEDDINGS.value())
-                        .and(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
+        operationDuration
+                .withTags(Tags.of(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
                         .and(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
                         .and(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
                         .and(OUTCOME, outcome)
