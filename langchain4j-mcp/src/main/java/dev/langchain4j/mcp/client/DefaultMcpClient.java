@@ -756,7 +756,13 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolExecutionException(e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onExecuteToolError(context, re));
+            throw re;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
+            notifyListeners(l -> l.onExecuteToolError(context, e));
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -797,6 +803,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = executeViaTransport(context);
         } catch (Exception e) {
             pendingOperations.remove(operationId);
+            notifyListeners(l -> l.onExecuteToolError(context, e));
             return CompletableFuture.failedFuture(e);
         }
 
@@ -963,6 +970,10 @@ public class DefaultMcpClient implements McpClient {
         } catch (McpException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
             throw e;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
+            notifyListeners(l -> l.onResourceGetError(context, e));
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -1020,6 +1031,10 @@ public class DefaultMcpClient implements McpClient {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (McpException e) {
+            notifyListeners(l -> l.onPromptGetError(context, e));
+            throw e;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
             notifyListeners(l -> l.onPromptGetError(context, e));
             throw e;
         } finally {
@@ -1144,7 +1159,9 @@ public class DefaultMcpClient implements McpClient {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceSubscribeError(context, re));
+            throw re;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -1186,7 +1203,9 @@ public class DefaultMcpClient implements McpClient {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
+            throw re;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -1298,7 +1317,9 @@ public class DefaultMcpClient implements McpClient {
             throw re;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourcesSubscribeError(context, re));
+            throw re;
         } finally {
             pendingSubscriptionAcks.remove(subscriptionId);
         }

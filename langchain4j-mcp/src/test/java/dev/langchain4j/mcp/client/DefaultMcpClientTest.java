@@ -1327,6 +1327,101 @@ public class DefaultMcpClientTest {
                 .hasMessageContaining("retry limit");
     }
 
+    @Test
+    public void mrtr_max_retries_exceeded_should_be_reported_to_listeners() {
+        final McpTransport transport = getModernMcpTransportMock();
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createMcpClient(transport, listener);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .hasMessageContaining("retry limit");
+
+        ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(any(McpCallContext.class), error.capture());
+        assertThat(error.getValue()).hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void mrtr_max_retries_exceeded_for_resource_should_be_reported_to_listeners() {
+        final McpTransport transport = getModernMcpTransportMock();
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createMcpClient(transport, listener);
+
+        assertThatThrownBy(() -> client.readResource("file:///test")).hasMessageContaining("retry limit");
+
+        ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onResourceGetError(any(McpCallContext.class), error.capture());
+        assertThat(error.getValue()).hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void interrupted_tool_execution_should_be_reported_to_listeners() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .build();
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                            .name("test")
+                            .arguments("{}")
+                            .build()))
+                    .hasCauseInstanceOf(InterruptedException.class);
+        } finally {
+            // clear the interrupt flag, so that it doesn't affect other tests
+            Thread.interrupted();
+        }
+
+        verify(listener).onExecuteToolError(any(McpCallContext.class), any(RuntimeException.class));
+    }
+
+    @Test
+    public void async_tool_execution_failing_to_send_should_be_reported_to_listeners() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        IllegalStateException failure = new IllegalStateException("transport is closed");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenThrow(failure);
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .build();
+
+        CompletableFuture<ToolExecutionResult> result = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThat(result).isCompletedExceptionally();
+        verify(listener).onExecuteToolError(any(McpCallContext.class), same(failure));
+    }
+
+    private static DefaultMcpClient createMcpClient(McpTransport transport, McpClientListener listener) {
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .subscribeToToolListChanges(false)
+                .listener(listener)
+                .build();
+    }
+
     private static DefaultMcpClient createMcpClient(McpTransport transport) {
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
