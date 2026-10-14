@@ -1068,6 +1068,7 @@ class OpenAiResponsesClient {
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
+        private boolean terminated;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
             this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
@@ -1122,7 +1123,22 @@ class OpenAiResponsesClient {
 
         @Override
         public void onError(Throwable error) {
+            if (terminated) {
+                return;
+            }
+            terminated = true;
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(error)));
+        }
+
+        @Override
+        public void onClose() {
+            if (terminated || isCancelled()) {
+                return;
+            }
+            terminated = true;
+            withLoggingExceptions(() -> handler.onError(new OpenAiResponsesStreamingException(
+                    "Response stream closed before a response.completed, response.incomplete, response.failed or error event was received",
+                    null)));
         }
 
         private void handleDelta(String data) {
@@ -1189,8 +1205,8 @@ class OpenAiResponsesClient {
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
                 } else if (EVENT_ERROR.equals(type)) {
-                    // the stream-level error event carries code and message at the top level
-                    handleResponseFailure(Map.of(FIELD_ERROR, node));
+                    // the error event carries code and message either in a nested error object or at the top level
+                    handleResponseFailure(at(node, FIELD_ERROR) != null ? node : Map.of(FIELD_ERROR, node));
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -1224,6 +1240,10 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseCompleted(Object node) {
+            if (terminated) {
+                return;
+            }
+            terminated = true;
             var responseNode = at(node, FIELD_RESPONSE);
 
             Object outputNode = at(responseNode, FIELD_OUTPUT);
@@ -1283,6 +1303,10 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseFailure(Object node) {
+            if (terminated) {
+                return;
+            }
+            terminated = true;
             Object errorNode = at(node, FIELD_ERROR);
             if (errorNode == null) {
                 errorNode = at(at(node, FIELD_RESPONSE), FIELD_ERROR);

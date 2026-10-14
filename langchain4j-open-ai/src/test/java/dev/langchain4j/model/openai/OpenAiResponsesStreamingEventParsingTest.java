@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +37,7 @@ class OpenAiResponsesStreamingEventParsingTest {
     private final List<PartialToolCall> partialToolCalls = new ArrayList<>();
     private final List<CompleteToolCall> completeToolCalls = new ArrayList<>();
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+    private final AtomicInteger errorCount = new AtomicInteger();
 
     private final StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
@@ -66,6 +68,7 @@ class OpenAiResponsesStreamingEventParsingTest {
 
         @Override
         public void onError(Throwable error) {
+            errorCount.incrementAndGet();
             futureResponse.completeExceptionally(error);
         }
     };
@@ -210,7 +213,7 @@ class OpenAiResponsesStreamingEventParsingTest {
     }
 
     @Test
-    void should_fail_with_the_code_and_message_of_the_error_event() {
+    void should_fail_with_the_code_and_message_of_a_top_level_error_event() {
         stream(
                 event("{\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}"),
                 event(
@@ -224,6 +227,50 @@ class OpenAiResponsesStreamingEventParsingTest {
                     assertThat(e).hasMessage("Response failed: Rate limit reached");
                     assertThat(e.code()).isEqualTo("rate_limit_exceeded");
                 });
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_with_the_code_and_message_of_a_nested_error_event() {
+        stream(
+                event(
+                        "{\"type\":\"error\",\"sequence_number\":1,\"error\":{\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\",\"message\":\"You exceeded your current quota\",\"param\":null}}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOfSatisfying(OpenAiResponsesStreamingException.class, e -> {
+                    assertThat(e).hasMessage("Response failed: You exceeded your current quota");
+                    assertThat(e.code()).isEqualTo("insufficient_quota");
+                });
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_when_the_stream_closes_before_a_terminal_event() {
+        stream(event("{\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}"));
+
+        assertThat(text).hasToString("Hel");
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOfSatisfying(
+                        OpenAiResponsesStreamingException.class,
+                        e -> assertThat(e.code()).isNull());
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_report_an_error_event_followed_by_a_failed_event_only_once() {
+        stream(
+                event("{\"type\":\"error\",\"code\":\"server_error\",\"message\":\"First\"}"),
+                event(
+                        "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Second\"}}}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasMessageContaining("Response failed: First");
+        assertThat(errorCount).hasValue(1);
     }
 
     @Test
