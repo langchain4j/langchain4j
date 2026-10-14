@@ -66,4 +66,23 @@ class AgentInvocationHandlerTest {
         assertThat(agentInstance.subagents().get(0).outputKey()).isEqualTo("result");
         assertThat(agentInstance.async()).isFalse();
     }
+
+    @Test
+    void parallel_mapper_without_subagent_fails_with_configuration_exception() {
+        assertThatThrownBy(() ->
+                        AgenticServices.parallelMapperBuilder(BatchAgent.class).build())
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("exactly one subagent")
+                .hasMessageContaining("0 were provided");
+    }
+
+    @Test
+    void parallel_mapper_with_multiple_subagents_fails_with_configuration_exception() {
+        assertThatThrownBy(() -> AgenticServices.parallelMapperBuilder(BatchAgent.class)
+                        .subAgents(subagent(false), subagent(false))
+                        .build())
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("exactly one subagent")
+                .hasMessageContaining("2 were provided");
+    }
 }
