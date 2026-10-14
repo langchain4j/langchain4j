@@ -4,15 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -257,6 +263,35 @@ class OpenAiResponsesStreamingEventParsingTest {
                 .isInstanceOfSatisfying(
                         OpenAiResponsesStreamingException.class,
                         e -> assertThat(e.code()).isNull());
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_once_when_the_completed_event_cannot_be_parsed() {
+        // like the real HTTP clients: the SSE parser swallows listener exceptions, then the stream closes
+        MockHttpClient mockHttpClient = new MockHttpClient() {
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                String body = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n"
+                        + "data: {\"type\":\"response.completed\",\"response\":{\"id\":\n\n";
+                new DefaultServerSentEventParser()
+                        .parse(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)), listener);
+                listener.onClose();
+            }
+        };
+
+        OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("dummy")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("gpt-5.4-mini")
+                .build()
+                .chat("Hello", handler);
+
+        assertThat(text).hasToString("Hel");
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(OpenAiResponsesStreamingException.class);
         assertThat(errorCount).hasValue(1);
     }
 

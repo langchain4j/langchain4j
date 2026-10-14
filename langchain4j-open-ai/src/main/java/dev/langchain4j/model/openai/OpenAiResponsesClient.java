@@ -1243,7 +1243,6 @@ class OpenAiResponsesClient {
             if (terminated) {
                 return;
             }
-            terminated = true;
             var responseNode = at(node, FIELD_RESPONSE);
 
             Object outputNode = at(responseNode, FIELD_OUTPUT);
@@ -1293,9 +1292,11 @@ class OpenAiResponsesClient {
 
             var responseBuilder = ChatResponse.builder().aiMessage(aiMessage).metadata(metadataBuilder.build());
 
+            ChatResponse chatResponse = responseBuilder.build();
+            terminated = true;
             if (!isCancelled()) {
                 try {
-                    handler.onCompleteResponse(responseBuilder.build());
+                    handler.onCompleteResponse(chatResponse);
                 } catch (Exception e) {
                     withLoggingExceptions(() -> handler.onError(e));
                 }
@@ -1306,13 +1307,13 @@ class OpenAiResponsesClient {
             if (terminated) {
                 return;
             }
-            terminated = true;
             Object errorNode = at(node, FIELD_ERROR);
             if (errorNode == null) {
                 errorNode = at(at(node, FIELD_RESPONSE), FIELD_ERROR);
             }
             String message = extractErrorMessage(errorNode);
             String code = str(at(errorNode, FIELD_CODE), null);
+            terminated = true;
             withLoggingExceptions(() -> handler.onError(new OpenAiResponsesStreamingException(message, code)));
         }
 
