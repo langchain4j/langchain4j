@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.PolymorphicTypes.isPolymorphic;
 import static dev.langchain4j.internal.PolymorphicTypes.verifyJsonTypeInfoIsSupported;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
+import static java.lang.reflect.Modifier.isTransient;
 import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -27,6 +28,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -262,7 +264,7 @@ public class JsonSchemaElementUtils {
         List<String> required = new ArrayList<>();
         for (Field field : type.getDeclaredFields()) {
             String fieldName = field.getName();
-            if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
+            if (isIgnoredField(field)) {
                 continue;
             }
             if (isRequired(field, areSubFieldsRequiredByDefault)) {
@@ -294,6 +296,48 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Whether a declared field of a class is not one of its JSON properties: static fields, fields generated
+     * by the compiler or by instrumentation (such as the {@code this$0} reference of an inner class or the
+     * {@code __$hits$__} field of a coverage tool), and {@code transient} fields that Jackson, used to parse
+     * the response, does not map either: those without {@link JsonProperty} and without a public getter or
+     * setter.
+     *
+     * @param field the declared field
+     * @return {@code true} when the field must not appear in a JSON schema or format instructions
+     */
+    public static boolean isIgnoredField(Field field) {
+        int modifiers = field.getModifiers();
+        String fieldName = field.getName();
+        return isStatic(modifiers)
+                || field.isSynthetic()
+                || fieldName.equals("__$hits$__")
+                || fieldName.startsWith("this$")
+                || (isTransient(modifiers) && !isJacksonProperty(field));
+    }
+
+    private static boolean isJacksonProperty(Field field) {
+        if (field.isAnnotationPresent(JsonProperty.class)) {
+            return true;
+        }
+        String name = field.getName();
+        String suffix = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        for (Method method : field.getDeclaringClass().getMethods()) {
+            if (isStatic(method.getModifiers())) {
+                continue;
+            }
+            String methodName = method.getName();
+            int parameterCount = method.getParameterCount();
+            if ((parameterCount == 0
+                            && method.getReturnType() != void.class
+                            && (methodName.equals("get" + suffix) || methodName.equals("is" + suffix)))
+                    || (parameterCount == 1 && methodName.equals("set" + suffix))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
