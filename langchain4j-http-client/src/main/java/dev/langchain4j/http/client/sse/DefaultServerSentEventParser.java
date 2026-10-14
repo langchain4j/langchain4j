@@ -28,26 +28,24 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
                     if (!data.isEmpty()) {
-                        ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                        ServerSentEvent sse = new ServerSentEvent(event, data.substring(0, data.length() - 1));
                         ignoringExceptions(() -> listener.onEvent(sse, context));
-                        event = null;
                         data.setLength(0);
                     }
+                    event = null;
                     continue;
                 }
 
                 if (line.startsWith("event:")) {
                     event = line.substring("event:".length()).trim();
-                } else if (line.startsWith("data:")) {
-                    if (!data.isEmpty()) {
-                        data.append("\n");
-                    }
-                    data.append(dataFieldValue(line));
+                } else if (line.equals("data") || line.startsWith("data:")) {
+                    // Every data field contributes a line, even when its value is empty.
+                    data.append(dataFieldValue(line)).append('\n');
                 }
             }
 
             if (!parsingHandle.isCancelled() && !data.isEmpty()) {
-                ServerSentEvent sse = new ServerSentEvent(event, data.toString());
+                ServerSentEvent sse = new ServerSentEvent(event, data.substring(0, data.length() - 1));
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
@@ -61,11 +59,14 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
     }
 
     /**
-     * Extracts the value of a {@code data:} line. Per the WHATWG HTML Living Standard (Server-sent events), if the
+     * Extracts the value of a {@code data:} line, or the empty value of a bare {@code data} field. Per the WHATWG HTML Living Standard (Server-sent events), if the
      * field value starts with a single U+0020 SPACE, only that one space is removed; any further leading whitespace
      * and all trailing whitespace are preserved.
      */
     private static String dataFieldValue(String line) {
+        if (line.equals("data")) {
+            return "";
+        }
         String content = line.substring("data:".length());
         return content.startsWith(" ") ? content.substring(1) : content;
     }
@@ -118,7 +119,7 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             }
             // Trailing event with no terminating blank line — match parse(InputStream)'s final emit.
             if (!currentData.isEmpty()) {
-                events.add(new ServerSentEvent(currentEvent, currentData.toString()));
+                events.add(new ServerSentEvent(currentEvent, currentData.substring(0, currentData.length() - 1)));
                 currentEvent = null;
                 currentData.setLength(0);
             }
@@ -128,19 +129,16 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
         private void processLine(String line, List<ServerSentEvent> events) {
             if (line.isEmpty()) {
                 if (!currentData.isEmpty()) {
-                    events.add(new ServerSentEvent(currentEvent, currentData.toString()));
-                    currentEvent = null;
+                    events.add(new ServerSentEvent(currentEvent, currentData.substring(0, currentData.length() - 1)));
                     currentData.setLength(0);
                 }
+                currentEvent = null;
                 return;
             }
             if (line.startsWith("event:")) {
                 currentEvent = line.substring("event:".length()).trim();
-            } else if (line.startsWith("data:")) {
-                if (!currentData.isEmpty()) {
-                    currentData.append("\n");
-                }
-                currentData.append(dataFieldValue(line));
+            } else if (line.equals("data") || line.startsWith("data:")) {
+                currentData.append(dataFieldValue(line)).append('\n');
             }
             // Other SSE fields (id:, retry:, comment lines) intentionally ignored — same as parse().
         }
