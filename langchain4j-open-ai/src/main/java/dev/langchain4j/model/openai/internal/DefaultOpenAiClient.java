@@ -2,11 +2,11 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static java.time.Duration.ofSeconds;
@@ -17,14 +17,12 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
@@ -47,13 +45,13 @@ import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-import mutiny.zero.Tube;
-
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-
 import java.util.function.Supplier;
+import mutiny.zero.Tube;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
@@ -209,13 +207,15 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
         private final OpenAiStreamingResponseBuilder responseBuilder;
         private SuccessfulHttpResponse rawHttpResponse;
+        private volatile boolean failed;
 
         ChatCompletionEventSink(Tube<ChatModelStreamingEvent> tube, ChatCompletionOptions options) {
             this.tube = ensureNotNull(tube, "tube");
             this.tubeHandler = new TubeBackedStreamingChatResponseHandler(tube);
             this.handler = new MappingTrackingStreamingChatResponseHandler(tubeHandler);
             this.options = ensureNotNull(options, "options");
-            this.responseBuilder = new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
+            this.responseBuilder =
+                    new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
         }
 
         @Override
@@ -233,14 +233,23 @@ public class DefaultOpenAiClient extends OpenAiClient {
             if (DONE_MARKER.equals(sse.data())) {
                 return;
             }
+            if (failed) {
+                return;
+            }
             try {
+                var streamError = OpenAiStreamError.tryParse(sse.data());
+                if (streamError != null) {
+                    failed = true;
+                    tube.fail(streamError);
+                    return;
+                }
                 ChatCompletionResponse parsed = Json.fromJson(sse.data(), ChatCompletionResponse.class);
                 ParsedAndRawResponse<ChatCompletionResponse> parsedAndRaw = ParsedAndRawResponse.builder()
-                                .parsedResponse(parsed)
-                                .rawHttpResponse(rawHttpResponse)
-                                .rawServerSentEvent(sse)
-                                .streamingHandle(tubeHandler.streamingHandle())
-                                .build();
+                        .parsedResponse(parsed)
+                        .rawHttpResponse(rawHttpResponse)
+                        .rawServerSentEvent(sse)
+                        .streamingHandle(tubeHandler.streamingHandle())
+                        .build();
                 responseBuilder.append(parsedAndRaw);
 
                 handler.resetMappingTracking();
@@ -249,20 +258,22 @@ public class DefaultOpenAiClient extends OpenAiClient {
                     onUnmappedRawEvent(handler, sse);
                 }
             } catch (Exception e) {
+                failed = true;
                 tube.fail(e);
             }
         }
 
         @Override
         public void onError(Throwable throwable) {
-            if (!tube.cancelled()) {
+            if (!tube.cancelled() && !failed) {
+                failed = true;
                 tube.fail(ExceptionMapper.DEFAULT.mapException(throwable));
             }
         }
 
         @Override
         public void onComplete() {
-            if (tube.cancelled()) {
+            if (tube.cancelled() || failed) {
                 return;
             }
             try {
