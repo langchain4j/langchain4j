@@ -147,6 +147,66 @@ class OpenAiChatModelErrorsTest {
                 .hasMessage("I'm sorry, I cannot assist with that request.");
     }
 
+    @Test
+    void should_expose_provider_error_returned_with_http_200() {
+
+        // given
+        final var userMessage = "Return error with HTTP 200";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // DeepSeek returns this after keeping the connection alive for 15 minutes
+            // language=json
+            res.setBody("""
+                    {"error":{"message":"We were unable to start processing your request within the 900-second timeout limit. Please try again later."}}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: We were unable to start processing your request "
+                        + "within the 900-second timeout limit. Please try again later.");
+    }
+
+    @Test
+    void should_expose_provider_error_without_message_returned_with_http_200() {
+
+        // given
+        final var userMessage = "Return error without message with HTTP 200";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"error":{"code":"service_unavailable"}}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessageStartingWith("Chat completion failed: ")
+                .hasMessageContaining("service_unavailable");
+    }
+
+    @Test
+    void should_fail_when_no_choices_and_no_error_returned() {
+
+        // given
+        final var userMessage = "Return no choices";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"id":"chatcmpl-123","object":"chat.completion","created":1721596428,"model":"gpt-4o-mini","choices":[]}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: no choices returned in response");
+    }
+
     @AfterEach
     void afterEach() {
         MOCK.verifyNoUnmatchedRequests();
