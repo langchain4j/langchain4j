@@ -8,8 +8,10 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.util.ArrayList;
 import java.util.List;
@@ -162,6 +164,29 @@ class ContextTest {
 
         assertThat(firstModel.invocations()).isEqualTo(2);
         assertThat(secondModel.invocations()).isEqualTo(1);
+    }
+
+    @Test
+    void summarizer_with_streaming_chat_model_provider_should_use_the_streamed_summary() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        StreamingChatModel streamingModel = new StreamingChatModel() {
+            @Override
+            public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+                handler.onPartialResponse("streamed ");
+                handler.onPartialResponse("summary");
+                handler.onCompleteResponse(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("streamed summary"))
+                        .build());
+            }
+        };
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThat(summarizer.transformUserMessage("question", "memory"))
+                .isEqualTo("Considering this context \"streamed summary\"\nquestion");
     }
 
     @Test

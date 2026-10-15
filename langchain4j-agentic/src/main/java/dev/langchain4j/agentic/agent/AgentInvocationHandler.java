@@ -250,7 +250,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     "Agents with chat memory can't be a subagent of " + parent.type());
         }
         this.parent = parent;
-        registerInheritedParentListener(parent.listener());
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
         if (compensateOnError()) {
             enableCrossAgentCompensation();
         }

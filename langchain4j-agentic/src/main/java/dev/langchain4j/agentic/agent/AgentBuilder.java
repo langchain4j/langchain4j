@@ -46,7 +46,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -100,7 +99,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private StreamingChatModel streamingChatModel;
     Function<AgenticScope, ChatModel> chatModelProvider;
     Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
-    private ChatModel contextSummarizerModel;
+    private Object contextSummarizerModel;
     private Context.ContextSummarizer contextSummarizer;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
@@ -222,15 +221,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                if (model != null) {
+                if (model != null || streamingChatModel != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withSummarizer(
                             agenticScope, contextSummarizer(), contextProvidingAgents));
                 } else if (chatModelProvider != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withChatModelProvider(
                             agenticScope, chatModelProvider, contextProvidingAgents));
-                } else {
-                    throw new IllegalConfigurationException(
-                            "A ChatModel is required to summarize context for agent '" + this.name + "'.");
+                } else if (streamingChatModelProvider != null) {
+                    aiServices.chatRequestTransformer(Context.Summarizer.withStreamingChatModelProvider(
+                            agenticScope, streamingChatModelProvider, contextProvidingAgents));
                 }
             }
         }
@@ -316,9 +315,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private synchronized Context.ContextSummarizer contextSummarizer() {
-        if (contextSummarizer == null || contextSummarizerModel != model) {
-            contextSummarizerModel = model;
-            contextSummarizer = Context.createSummarizer(model);
+        Object summarizerModel = model != null ? model : streamingChatModel;
+        if (contextSummarizer == null || contextSummarizerModel != summarizerModel) {
+            contextSummarizerModel = summarizerModel;
+            contextSummarizer =
+                    model != null ? Context.createSummarizer(model) : Context.createSummarizer(streamingChatModel);
         }
         return contextSummarizer;
     }
