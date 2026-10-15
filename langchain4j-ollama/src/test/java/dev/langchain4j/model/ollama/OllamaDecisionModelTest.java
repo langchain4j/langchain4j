@@ -24,6 +24,7 @@ import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -100,6 +101,100 @@ class OllamaDecisionModelTest {
                             .level("Angry", "Strong language or threatening to leave")
                             .build())
             .build();
+
+    @Test
+    void should_reject_parameters_of_another_decision_model_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = OllamaDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("nimble")
+                .build();
+        DecisionRequest request =
+                REQUEST.toBuilder().parameters(new OtherModelParameters()).build();
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(request))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("OtherModelParameters")
+                .hasMessageContaining("OllamaDecisionRequestParameters");
+        assertThat(model.decideAsync(request))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_send_custom_parameters_set_on_builder() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = OllamaDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("nimble")
+                .customParameters(Map.of(
+                        "new_parameter", "value",
+                        "model", "custom-model",
+                        "state", "custom state",
+                        "questions", List.of("custom question")))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        String body = httpClient.requests().get(0).body();
+        assertThat(Json.fromJson(body, Map.class))
+                .containsEntry("new_parameter", "value")
+                .containsEntry("model", "custom-model")
+                .containsEntry("state", "custom state")
+                .containsEntry("questions", List.of("custom question"));
+        assertThat(body).containsOnlyOnce("\"model\"");
+        assertThat(body).containsOnlyOnce("\"state\"");
+        assertThat(body).containsOnlyOnce("\"questions\"");
+    }
+
+    @Test
+    void should_replace_builder_custom_parameters_per_request() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = OllamaDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("nimble")
+                .customParameters(Map.of("a", "1", "b", "2"))
+                .build();
+
+        // when
+        model.decide(REQUEST.toBuilder()
+                .parameters(OllamaDecisionRequestParameters.builder()
+                        .customParameters(Map.of("b", "3"))
+                        .build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(OllamaDecisionRequestParameters.builder().customParameters(Map.of()).build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .build());
+
+        // then
+        assertThat(Json.fromJson(httpClient.requests().get(0).body(), Map.class))
+                .containsEntry("b", "3")
+                .doesNotContainKey("a");
+        assertThat(Json.fromJson(httpClient.requests().get(1).body(), Map.class))
+                .containsEntry("a", "1")
+                .containsEntry("b", "2");
+        assertThat(Json.fromJson(httpClient.requests().get(2).body(), Map.class))
+                .containsEntry("a", "1")
+                .containsEntry("b", "2")
+                .containsEntry("model", "other-model");
+    }
 
     @Test
     void should_send_request_in_system_one_format() {
@@ -793,5 +888,12 @@ class OllamaDecisionModelTest {
 
     private static SuccessfulHttpResponse ok(String body) {
         return SuccessfulHttpResponse.builder().statusCode(200).body(body).build();
+    }
+
+    static class OtherModelParameters extends DefaultDecisionRequestParameters {
+
+        OtherModelParameters() {
+            super(DefaultDecisionRequestParameters.builder().modelName("other-model"));
+        }
     }
 }
