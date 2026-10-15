@@ -15,7 +15,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.net.Proxy;
 import java.time.Duration;
@@ -47,7 +46,7 @@ import java.util.concurrent.CompletableFuture;
 public class OpenAiOfficialDecisionModel implements DecisionModel {
 
     private final OpenAIClient client;
-    private final DecisionRequestParameters defaultRequestParameters;
+    private final OpenAiOfficialDecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
 
     public OpenAiOfficialDecisionModel(Builder builder) {
@@ -69,8 +68,10 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
                     builder.proxy,
                     builder.customHeaders);
         }
-        this.defaultRequestParameters =
-                DecisionRequestParameters.builder().modelName(builder.modelName).build();
+        this.defaultRequestParameters = OpenAiOfficialDecisionRequestParameters.builder()
+                .modelName(builder.modelName)
+                .customParameters(builder.customParameters)
+                .build();
         this.listeners = copy(builder.listeners);
     }
 
@@ -102,7 +103,7 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
     }
 
     @Override
-    public DecisionRequestParameters defaultRequestParameters() {
+    public OpenAiOfficialDecisionRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -131,6 +132,7 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
         private Integer maxRetries;
         private Proxy proxy;
         private Map<String, String> customHeaders;
+        private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
 
         public Builder baseUrl(String baseUrl) {
@@ -190,6 +192,17 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Custom parameters added to the body of every request, for example to use a feature of the OpenAI Decisions
+         * API that this class does not support yet. A custom parameter with the same name as a parameter set by this
+         * class replaces it. They can be replaced for a single request with
+         * {@link OpenAiOfficialDecisionRequestParameters.Builder#customParameters(Map)}.
+         */
+        public Builder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 
