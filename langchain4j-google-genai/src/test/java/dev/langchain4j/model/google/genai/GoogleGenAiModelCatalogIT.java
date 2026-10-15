@@ -21,7 +21,7 @@ class GoogleGenAiModelCatalogIT {
         List<ModelDescription> models = catalog.listModels();
         assertThat(models).isNotEmpty();
 
-        boolean foundGeminiFlash = models.stream().anyMatch(m -> m.name().contains("gemini-2.5-flash"));
+        boolean foundGeminiFlash = models.stream().anyMatch(m -> m.name().contains("gemini-3.8-flash"));
         assertThat(foundGeminiFlash).isTrue();
     }
 }
