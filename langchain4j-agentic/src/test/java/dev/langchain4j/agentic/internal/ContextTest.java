@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -41,9 +42,7 @@ class ContextTest {
         @Override
         public ChatResponse chat(ChatRequest chatRequest) {
             invocations++;
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from("{\"summary\": \"" + summary + "\"}"))
-                    .build();
+            return ChatResponse.builder().aiMessage(AiMessage.from(summary)).build();
         }
     }
 
@@ -179,6 +178,32 @@ class ContextTest {
         assertThat(summarizer.transformUserMessage("question", "memory"))
                 .isEqualTo("Considering this context \"streamed summary\"\nquestion");
         assertThat(streamingModel.request().messages().toString()).contains("expert conversation");
+    }
+
+    @Test
+    void sync_and_streaming_summarizers_should_send_the_same_plain_text_request() {
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("sync summary");
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
+
+        assertThat(Context.createSummarizer(chatModel).summarize("expert conversation"))
+                .isEqualTo("sync summary");
+        assertThat(Context.createStreamingSummarizer(streamingModel).summarize("expert conversation"))
+                .isEqualTo("streamed summary");
+
+        assertThat(chatModel.request().messages()).hasSize(1);
+        assertThat(chatModel.userMessageText()).contains("expert conversation").doesNotContain("JSON");
+        assertThat(chatModel.request().responseFormat()).isNull();
+        assertThat(streamingModel.request().messages())
+                .isEqualTo(chatModel.request().messages());
+    }
+
+    @Test
+    void summarizer_should_propagate_the_chat_model_error() {
+        RuntimeException error = new RuntimeException("chat failed");
+
+        assertThatThrownBy(
+                        () -> Context.createSummarizer(new ChatModelMock(error)).summarize("expert conversation"))
+                .isSameAs(error);
     }
 
     @Test
