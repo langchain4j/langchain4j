@@ -39,6 +39,7 @@ import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -449,6 +450,33 @@ public class OpenAiUtils {
             }
             return map;
         }
+    }
+
+    public static String noChoicesErrorMessage(SuccessfulHttpResponse rawHttpResponse) {
+        String providerErrorMessage = providerErrorMessageFrom(rawHttpResponse);
+        return "Chat completion failed: "
+                + (providerErrorMessage != null ? providerErrorMessage : "no choices returned in response");
+    }
+
+    private static String providerErrorMessageFrom(SuccessfulHttpResponse rawHttpResponse) {
+        if (rawHttpResponse == null || isNullOrBlank(rawHttpResponse.body())) {
+            return null;
+        }
+        Object error;
+        try {
+            error = Json.fromJson(rawHttpResponse.body(), Map.class).get("error");
+        } catch (Exception e) {
+            return null;
+        }
+        if (error instanceof Map<?, ?> errorMap
+                && errorMap.get("message") instanceof String message
+                && isNotNullOrBlank(message)) {
+            return message;
+        }
+        if (error instanceof String message && isNotNullOrBlank(message)) {
+            return message;
+        }
+        return error != null ? rawHttpResponse.body().strip() : null;
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
