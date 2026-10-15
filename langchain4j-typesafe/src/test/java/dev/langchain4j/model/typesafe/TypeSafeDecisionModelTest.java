@@ -309,6 +309,93 @@ class TypeSafeDecisionModelTest {
         assertThat(httpClient.requests()).isEmpty();
     }
 
+    private static final DecisionRequest BOX_REQUEST = DecisionRequest.builder()
+            .input(Map.of("photo", ImageContent.from("/9j/4AAQ", "image/jpeg")))
+            .question("mug", TypeSafeBoxQuestion.of("the coffee mug in `photo`"))
+            .build();
+
+    @Test
+    void should_send_box_questions_without_criteria_and_with_images_header() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(boxAnswer(
+                "{\"type\": \"box\", \"box\": {\"top\": 0.25, \"bottom\": 0.82, \"left\": 0.44, \"right\": 0.84}}")));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(BOX_REQUEST);
+
+        // then
+        HttpRequest request = httpClient.request();
+        assertThat(request.headers().get("TypeSafe-Danger-Zone-Images")).containsExactly("true");
+        Map<?, ?> body = Json.fromJson(request.body(), Map.class);
+        assertThat(body.get("questions"))
+                .isEqualTo(Map.of("mug", Map.of("type", "box", "instructions", "the coffee mug in `photo`")));
+    }
+
+    @Test
+    void should_map_box_answer() {
+
+        // given
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(boxAnswer("""
+                {
+                  "type": "box",
+                  "box": {"top": 0.25, "bottom": 0.82, "left": 0.44, "right": 1.0000000002},
+                  "confidence": 0.92
+                }
+                """))));
+
+        // when
+        DecisionResponse response = model.decide(BOX_REQUEST);
+
+        // then
+        assertThat(response.answer("mug", TypeSafeBoxAnswer.class))
+                .isEqualTo(TypeSafeBoxAnswer.builder()
+                        .top(0.25)
+                        .bottom(0.82)
+                        .left(0.44)
+                        .right(1.0)
+                        .confidence(0.92)
+                        .build());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidBoxAnswers")
+    void should_reject_invalid_box_answers(String answer, String expectedMessage) {
+
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(boxAnswer(answer))));
+
+        assertThatThrownBy(() -> model.decide(BOX_REQUEST))
+                .isInstanceOf(InvalidDecisionResponseException.class)
+                .hasMessageContaining(expectedMessage);
+    }
+
+    static List<Arguments> invalidBoxAnswers() {
+        return List.of(
+                Arguments.of("{\"type\": \"box\"}", "'mug' has no 'box'"),
+                Arguments.of("{\"type\": \"noul\", \"noul\": 0.5}", "has type 'noul' instead of 'box'"),
+                Arguments.of(
+                        "{\"type\": \"box\", \"box\": {\"top\": 0.2, \"bottom\": 0.8, \"left\": 0.1}}",
+                        "invalid right edge: null"),
+                Arguments.of(
+                        "{\"type\": \"box\", \"box\": {\"top\": 0.2, \"bottom\": 1.4, \"left\": 0.1, \"right\": 0.5}}",
+                        "invalid bottom edge: 1.4"),
+                Arguments.of(
+                        "{\"type\": \"box\", \"box\": {\"top\": 0.8, \"bottom\": 0.2, \"left\": 0.1, \"right\": 0.5}}",
+                        "has an invalid box"),
+                Arguments.of(
+                        "{\"type\": \"box\", \"box\": {\"top\": 0.2, \"bottom\": 0.8, \"left\": 0.6, \"right\": 0.5}}",
+                        "has an invalid box"),
+                Arguments.of(
+                        "{\"type\": \"box\", \"box\": {\"top\": 0.2, \"bottom\": 0.8, \"left\": 0.1, \"right\": 0.5},"
+                                + " \"confidence\": 1.5}",
+                        "invalid confidence: 1.5"));
+    }
+
+    private static String boxAnswer(String answer) {
+        return "{\"model\": \"jev-1.14.0\", \"answers\": {\"mug\": " + answer + "}}";
+    }
+
     @Test
     void should_send_levels_with_descriptions_as_objects() {
 

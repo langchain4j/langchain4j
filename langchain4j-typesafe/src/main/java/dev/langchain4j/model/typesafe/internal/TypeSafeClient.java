@@ -82,8 +82,9 @@ public class TypeSafeClient {
         if (authorizationHeader != null) {
             builder.addHeader("Authorization", authorizationHeader);
         }
-        if (request.assets != null) {
-            // images are an experimental feature that the API accepts only with this header
+        if (request.assets != null
+                || request.questions.values().stream().anyMatch(question -> "box".equals(question.type))) {
+            // images and box questions are an experimental feature that the API accepts only with this header
             builder.addHeader("TypeSafe-Danger-Zone-Images", "true");
         }
         Map<String, String> customHeaders = customHeadersSupplier.get();

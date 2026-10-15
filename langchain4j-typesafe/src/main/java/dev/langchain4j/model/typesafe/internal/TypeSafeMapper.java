@@ -21,6 +21,8 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.typesafe.TypeSafeBoxAnswer;
+import dev.langchain4j.model.typesafe.TypeSafeBoxQuestion;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -135,6 +137,8 @@ public final class TypeSafeMapper {
         } else if (question instanceof ScaleQuestion scale) {
             result.type = "score";
             result.criteria = levels(scale);
+        } else if (question instanceof TypeSafeBoxQuestion) {
+            result.type = "box";
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
@@ -196,6 +200,9 @@ public final class TypeSafeMapper {
                     .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                     .build();
         }
+        if (question instanceof TypeSafeBoxQuestion) {
+            return box(name, answer);
+        }
         ScaleQuestion scale = (ScaleQuestion) question;
         ensureType(name, answer, "score");
         int levels = scale.levels().size();
@@ -215,6 +222,25 @@ public final class TypeSafeMapper {
         return ScaleAnswer.builder()
                 .mean(level(name, required(name, "score", answer.score), levels))
                 .probabilities(probabilities)
+                .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
+                .build();
+    }
+
+    private static TypeSafeBoxAnswer box(String name, TypeSafeAnswer answer) {
+        ensureType(name, answer, "box");
+        Map<String, Double> box = required(name, "box", answer.box);
+        double top = probability(name, "top edge", box.get("top"));
+        double bottom = probability(name, "bottom edge", box.get("bottom"));
+        double left = probability(name, "left edge", box.get("left"));
+        double right = probability(name, "right edge", box.get("right"));
+        if (top > bottom || left > right) {
+            throw invalid(name, "has an invalid box: %s", box);
+        }
+        return TypeSafeBoxAnswer.builder()
+                .top(top)
+                .bottom(bottom)
+                .left(left)
+                .right(right)
                 .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();
     }
