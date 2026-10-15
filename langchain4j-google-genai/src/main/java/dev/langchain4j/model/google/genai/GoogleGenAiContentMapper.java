@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -140,15 +141,26 @@ class GoogleGenAiContentMapper {
             }
 
             if (message instanceof ToolExecutionResultMessage toolMsg) {
-                String toolResult;
-                try {
-                    toolResult = toolMsg.text();
-                } catch (IllegalStateException e) {
-                    throw new UnsupportedFeatureException(
-                            "Google Gen AI currently does not support non-text content in tool execution results");
-                }
+                List<Part> extraParts = new ArrayList<>();
                 Map<String, Object> responseMap = new HashMap<>();
-                responseMap.put("result", toolResult);
+
+                if (toolMsg.hasSingleText()) {
+                    responseMap.put("result", toolMsg.text());
+                } else {
+                    List<String> texts = new ArrayList<>();
+                    for (dev.langchain4j.data.message.Content content : toolMsg.contents()) {
+                        if (content instanceof TextContent textContent) {
+                            texts.add(textContent.text());
+                        } else if (content instanceof ImageContent imageContent) {
+                            extraParts.add(map(imageContent));
+                        } else {
+                            throw new UnsupportedFeatureException(
+                                    "Google Gen AI currently does not support non-text content type '" + content.type()
+                                            + "' in tool execution results");
+                        }
+                    }
+                    responseMap.put("result", String.join("\n", texts));
+                }
 
                 FunctionResponse.Builder funcRespBuilder =
                         FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
@@ -159,6 +171,7 @@ class GoogleGenAiContentMapper {
 
                 currentFunctionParts.add(
                         Part.builder().functionResponse(funcRespBuilder.build()).build());
+                currentFunctionParts.addAll(extraParts);
             } else {
                 if (!currentFunctionParts.isEmpty()) {
                     contents.add(Content.builder()
@@ -258,6 +271,8 @@ class GoogleGenAiContentMapper {
                                     meta.cachedContentTokenCount().orElse(null))
                             .thoughtsTokenCount(thoughtsTokenCount)
                             .toolUsePromptTokenCount(toolUsePromptTokenCount)
+                            .initialPromptTokenCount(
+                                    meta.initialPromptTokenCount().orElse(null))
                             .build();
                 })
                 .orElse(GoogleGenAiTokenUsage.builder()
@@ -290,6 +305,7 @@ class GoogleGenAiContentMapper {
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
         List<Image> generatedImages = new ArrayList<>();
+        List<Audio> generatedAudio = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -329,6 +345,7 @@ class GoogleGenAiContentMapper {
                 }
 
                 toGeneratedImage(part).ifPresent(generatedImages::add);
+                toGeneratedAudio(part).ifPresent(generatedAudio::add);
             }
 
             if (!parts.isEmpty()) {
@@ -344,6 +361,9 @@ class GoogleGenAiContentMapper {
 
             if (!generatedImages.isEmpty()) {
                 attributes.put(GENERATED_IMAGES_KEY, generatedImages);
+            }
+            if (!generatedAudio.isEmpty()) {
+                attributes.put(GENERATED_AUDIO_KEY, generatedAudio);
             }
         }
 
@@ -401,6 +421,26 @@ class GoogleGenAiContentMapper {
             return Optional.empty();
         }
         return Optional.of(Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
+                .mimeType(blob.mimeType().get())
+                .build());
+    }
+
+    /**
+     * Reads audio the model generated (e.g. text-to-speech output) from the given part.
+     * Only {@code audio/*} blobs are picked up and stored under {@link AiMessage#GENERATED_AUDIO_KEY}.
+     */
+    private static Optional<Audio> toGeneratedAudio(Part part) {
+        if (part.inlineData().isEmpty()) {
+            return Optional.empty();
+        }
+        Blob blob = part.inlineData().get();
+        if (blob.mimeType().isEmpty()
+                || !blob.mimeType().get().startsWith("audio/")
+                || blob.data().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Audio.builder()
                 .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
                 .mimeType(blob.mimeType().get())
                 .build());

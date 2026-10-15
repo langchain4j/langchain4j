@@ -89,7 +89,12 @@ public interface DecisionModel {
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-        DecisionRequest finalRequest = withDefaultParameters(request);
+        DecisionRequest finalRequest;
+        try {
+            finalRequest = withDefaultParameters(request);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
         List<DecisionModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
 

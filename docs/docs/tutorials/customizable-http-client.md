@@ -104,6 +104,30 @@ SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
         .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.reactor()); // optional: pins the connector
 ```
 
+### HTTP version with the JDK client
+
+When Spring picks the JDK `HttpClient` (no Apache HttpComponents, Jetty or Reactor Netty on the classpath),
+`SpringRestClient` behaves like `JdkHttpClient`: plain `http://` requests are sent over HTTP/1.1, and `https://`
+requests use HTTP/2 when the server supports it. This applies to both blocking and non-blocking requests.
+See [HTTP version](#http-version) for why plain HTTP does not use HTTP/2.
+
+A builder you set with `clientHttpRequestFactoryBuilder(...)` or `clientHttpConnectorBuilder(...)` is used as is.
+The JDK client defaults to HTTP/2, so to use HTTP/1.1 with it, set the version explicitly:
+
+```java
+SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
+        .clientHttpRequestFactoryBuilder(ClientHttpRequestFactoryBuilder.jdk()
+                .withHttpClientCustomizer(builder -> builder.version(HttpClient.Version.HTTP_1_1)))
+        .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.jdk() // only needed for non-blocking requests
+                .withHttpClientCustomizer(builder -> builder.version(HttpClient.Version.HTTP_1_1)));
+```
+
+:::note
+Before version 1.23.0-beta33, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
+If you use an older version and see the symptoms described in [HTTP version](#http-version),
+set `clientHttpRequestFactoryBuilder(...)` as shown above.
+:::
+
 ## Customizing Apache's `HttpClient`
 
 ```java

@@ -2,6 +2,7 @@ package dev.langchain4j.model.typesafe.internal;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
@@ -19,6 +20,7 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.typesafe.TypeSafeDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +48,15 @@ public final class TypeSafeMapper {
         typeSafeRequest.state = state(request.input());
         typeSafeRequest.questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> typeSafeRequest.questions.put(name, toQuestion(question)));
+        if (request.parameters() instanceof TypeSafeDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            typeSafeRequest.customParameters = customParameters;
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) typeSafeRequest.model = null;
+            if (customParameters.containsKey("state")) typeSafeRequest.state = null;
+            if (customParameters.containsKey("questions")) typeSafeRequest.questions = null;
+        }
         return typeSafeRequest;
     }
 
