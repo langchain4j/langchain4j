@@ -20,6 +20,8 @@ public interface ServerSentEventParser {
      * For each complete event found in the stream, {@link ServerSentEventListener#onEvent(ServerSentEvent)}
      * is called. If any parsing or processing error occurs, {@link ServerSentEventListener#onError(Throwable)}
      * is called and parsing may terminate.
+     * Once parsing has been cancelled via {@link ServerSentEventParsingHandle#cancel()},
+     * {@link ServerSentEventListener#onError(Throwable)} is not called for the resulting I/O error.
      *
      * @param httpResponseBody the input stream containing SSE data to parse
      * @param listener         the listener to receive parsed events or error notifications

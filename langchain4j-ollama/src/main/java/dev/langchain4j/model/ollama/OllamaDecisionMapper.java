@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
@@ -45,6 +46,17 @@ class OllamaDecisionMapper {
         request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
         ollamaRequest.setQuestions(questions);
         ollamaRequest.setKeepAlive(keepAlive);
+        if (request.parameters() instanceof OllamaDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            ollamaRequest.setCustomParameters(customParameters);
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) ollamaRequest.setModel(null);
+            if (customParameters.containsKey("state")) ollamaRequest.setState(null);
+            if (customParameters.containsKey("images")) ollamaRequest.setImages(null);
+            if (customParameters.containsKey("questions")) ollamaRequest.setQuestions(null);
+            if (customParameters.containsKey("keep_alive")) ollamaRequest.setKeepAlive(null);
+        }
         return ollamaRequest;
     }
 

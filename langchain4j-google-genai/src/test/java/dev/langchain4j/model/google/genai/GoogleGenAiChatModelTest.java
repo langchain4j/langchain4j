@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.genai.AsyncModels;
 import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.types.AudioTranscriptionConfig;
@@ -16,6 +17,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -23,9 +25,12 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -187,6 +192,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.audioTranscriptionConfig(
                         AudioTranscriptionConfig.builder().build()))
                 .isSameAs(builder);
+        assertThat(builder.speechConfig(SpeechConfig.builder().build())).isSameAs(builder);
+        assertThat(builder.responseModalities(List.of("AUDIO"))).isSameAs(builder);
+        assertThat(builder.automaticContinuation(true)).isSameAs(builder);
     }
 
     @Test
@@ -203,7 +211,7 @@ class GoogleGenAiChatModelTest {
         RuntimeException fromCustomizer = new RuntimeException("customizer invoked");
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .generateContentConfigCustomizer(config -> {
                     throw fromCustomizer;
                 })
@@ -294,6 +302,54 @@ class GoogleGenAiChatModelTest {
     }
 
     @Test
+    void should_send_speech_config_response_modalities_automatic_continuation_and_override_with_request_parameters()
+            throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("spoken").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(mockResponse);
+
+        SpeechConfig speechConfig = SpeechConfig.builder().languageCode("en-US").build();
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash-tts")
+                .speechConfig(speechConfig)
+                .responseModalities(List.of("AUDIO"))
+                .automaticContinuation(false)
+                .labels(Map.of("env", "default"))
+                .build();
+
+        model.chat(ChatRequest.builder()
+                .messages(UserMessage.from("Say hello"))
+                .parameters(GoogleGenAiChatRequestParameters.builder()
+                        .automaticContinuation(true)
+                        .labels(Map.of("env", "override"))
+                        .build())
+                .build());
+
+        assertThat(configCaptor.getValue().speechConfig()).contains(speechConfig);
+        assertThat(configCaptor.getValue().responseModalities()).contains(List.of("AUDIO"));
+        assertThat(configCaptor.getValue().automaticContinuation()).contains(true);
+        assertThat(configCaptor.getValue().labels()).contains(Map.of("env", "override"));
+    }
+
+    @Test
     void global_cached_content_should_be_reflected_in_default_request_parameters() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .client(mock(Client.class))
@@ -320,5 +376,44 @@ class GoogleGenAiChatModelTest {
         assertThat(((GoogleGenAiChatRequestParameters) merged).cachedContent())
                 .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
         assertThat(merged.temperature()).isEqualTo(0.5);
+    }
+
+    @Test
+    void should_chat_async_using_async_models() throws Exception {
+        Client client = mock(Client.class);
+        Client.Async async = mock(Client.Async.class);
+        AsyncModels asyncModels = mock(AsyncModels.class);
+
+        Field asyncField = Client.class.getDeclaredField("async");
+        asyncField.setAccessible(true);
+        asyncField.set(client, async);
+
+        Field asyncModelsField = Client.Async.class.getDeclaredField("models");
+        asyncModelsField.setAccessible(true);
+        asyncModelsField.set(async, asyncModels);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(
+                                        Part.builder().text("Async hello!").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        when(asyncModels.generateContent(any(String.class), anyList(), any(GenerateContentConfig.class)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.chatAsync(
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        ChatResponse response = future.get();
+        assertThat(response.aiMessage().text()).isEqualTo("Async hello!");
     }
 }
