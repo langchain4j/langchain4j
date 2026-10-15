@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -97,6 +99,25 @@ class JacksonStateJsonCodecTest {
                 AudioContent.from("bXAz", "audio/mp3"),
                 VideoContent.from("bXA0", "video/mp4"),
                 PdfFileContent.from("cGRm", "application/pdf"));
+    }
+
+    @Test
+    void should_read_back_the_generated_content_of_an_ai_message_stored_as_a_state_value() {
+        Image image =
+                Image.builder().url("http://image.url").mimeType("image/png").build();
+        Audio audio = Audio.builder().base64Data("AAEC").mimeType("audio/wav").build();
+        AiMessage message = AiMessage.builder()
+                .text("test-text")
+                .attributes(Map.of(
+                        AiMessage.GENERATED_IMAGES_KEY, List.of(image),
+                        AiMessage.GENERATED_AUDIO_KEY, List.of(audio)))
+                .build();
+
+        AiMessage restored = (AiMessage) roundTrip(message);
+
+        assertThat(restored).isEqualTo(message);
+        assertThat(restored.images()).containsExactly(image);
+        assertThat(restored.audios()).containsExactly(audio);
     }
 
     @Test

@@ -28,6 +28,11 @@ import java.util.Map;
  *
  * <p>The written JSON is unchanged: only the read side knows what the keys mean, so a message
  * persisted by an earlier version still reads.
+ *
+ * <p>This deserializer only runs when the attributes are read as an untyped map. A mapper that
+ * writes type information into the JSON - as the state codec does, since it has to read chat
+ * messages stored as plain state values - carries the element types itself, and Jackson reads the
+ * values with its own typed deserializer instead of this one.
  */
 class AiMessageAttributesDeserializer extends JsonDeserializer<Map<String, Object>> {
 
