@@ -13,7 +13,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.ollama.spi.OllamaDecisionModelBuilderFactory;
 import java.time.Duration;
@@ -55,7 +54,7 @@ public class OllamaDecisionModel implements DecisionModel {
     private final OllamaClient client;
     private final Integer maxRetries;
     private final Integer keepAlive;
-    private final DecisionRequestParameters defaultRequestParameters;
+    private final OllamaDecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
 
     public OllamaDecisionModel(OllamaDecisionModelBuilder builder) {
@@ -70,8 +69,10 @@ public class OllamaDecisionModel implements DecisionModel {
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.keepAlive = builder.keepAlive;
-        this.defaultRequestParameters =
-                DecisionRequestParameters.builder().modelName(builder.modelName).build();
+        this.defaultRequestParameters = OllamaDecisionRequestParameters.builder()
+                .modelName(builder.modelName)
+                .customParameters(builder.customParameters)
+                .build();
         this.listeners = copy(builder.listeners);
     }
 
@@ -101,7 +102,7 @@ public class OllamaDecisionModel implements DecisionModel {
     }
 
     @Override
-    public DecisionRequestParameters defaultRequestParameters() {
+    public OllamaDecisionRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -127,6 +128,7 @@ public class OllamaDecisionModel implements DecisionModel {
         private Boolean logResponses;
         private Logger logger;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
 
         public OllamaDecisionModelBuilder() {
@@ -229,6 +231,17 @@ public class OllamaDecisionModel implements DecisionModel {
          */
         public OllamaDecisionModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Custom parameters added to the body of every request, for example to use a feature of the Ollama System One
+         * API that this class does not support yet. A custom parameter with the same name as a parameter set by this
+         * class replaces it. They can be replaced for a single request with
+         * {@link OllamaDecisionRequestParameters.Builder#customParameters(Map)}.
+         */
+        public OllamaDecisionModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

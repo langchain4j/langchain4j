@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal.decision;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.openai.OpenAiDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +49,15 @@ public final class DecisionMapper {
         openAiRequest.input = toInput(request.input());
         openAiRequest.questions = new ArrayList<>();
         request.questions().forEach((name, question) -> openAiRequest.questions.add(toQuestion(name, question)));
+        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            openAiRequest.customParameters = customParameters;
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) openAiRequest.model = null;
+            if (customParameters.containsKey("input")) openAiRequest.input = null;
+            if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+        }
         return openAiRequest;
     }
 

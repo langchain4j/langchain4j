@@ -73,6 +73,43 @@ DecisionModel decisionModel = OpenAiOfficialDecisionModel.builder()
 It has the same client settings as the other models of the module, for example `baseUrl`, `timeout`, `maxRetries`
 and `openAIClient`.
 
+## Custom parameters
+
+To send a parameter that `OpenAiDecisionModel` does not support yet, set it with `customParameters(...)`. It is added to
+the JSON body of every request:
+
+```java
+DecisionModel decisionModel = OpenAiDecisionModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiDecisionModelName.GPT_6_LUNA)
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `OpenAiDecisionRequestParameters`
+(`OpenAiOfficialDecisionRequestParameters` for `OpenAiOfficialDecisionModel`, which supports custom parameters the
+same way). If not empty, they replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(OpenAiDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`input`.
+
+Use the parameters class of the model you call. For example, passing `OpenAiDecisionRequestParameters` to
+`OpenAiOfficialDecisionModel` fails with an `IllegalArgumentException`. `DecisionRequestParameters.builder()`, which
+has only the parameters common to all decision models, works with every model.
+
 ## Spring Boot
 
 Add the starter of the module you use:
