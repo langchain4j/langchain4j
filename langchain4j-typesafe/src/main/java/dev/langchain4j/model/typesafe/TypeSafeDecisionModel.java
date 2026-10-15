@@ -75,8 +75,8 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     private static String apiKey(TypeSafeDecisionModelBuilder builder) {
-        boolean defaultBaseUrl = builder.baseUrl == null
-                || DEFAULT_BASE_URL.equals(builder.baseUrl.replaceAll("/+$", ""));
+        boolean defaultBaseUrl =
+                builder.baseUrl == null || DEFAULT_BASE_URL.equals(builder.baseUrl.replaceAll("/+$", ""));
         if (defaultBaseUrl) {
             return ensureNotBlank(builder.apiKey, "apiKey");
         }

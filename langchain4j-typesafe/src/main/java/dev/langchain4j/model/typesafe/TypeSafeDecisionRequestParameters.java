@@ -63,8 +63,8 @@ public class TypeSafeDecisionRequestParameters extends DefaultDecisionRequestPar
 
     @Override
     public String toString() {
-        return "TypeSafeDecisionRequestParameters{modelName=" + modelName() + ", customParameters="
-                + customParameters + '}';
+        return "TypeSafeDecisionRequestParameters{modelName=" + modelName() + ", customParameters=" + customParameters
+                + '}';
     }
 
     public static Builder builder() {

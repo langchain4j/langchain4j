@@ -5,9 +5,11 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -20,10 +22,13 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.typesafe.TypeSafeBoxAnswer;
+import dev.langchain4j.model.typesafe.TypeSafeBoxQuestion;
 import dev.langchain4j.model.typesafe.TypeSafeDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -35,6 +40,11 @@ public final class TypeSafeMapper {
 
     private static final double PROBABILITY_TOLERANCE = 1e-6;
 
+    // unlikely to appear in text, since the server replaces every occurrence with the image
+    private static final String IMAGE_REFERENCE_PREFIX = "{{langchain4j-image-";
+    private static final Map<String, String> IMAGE_FORMATS =
+            Map.of("image/png", "png", "image/jpeg", "jpeg", "image/jpg", "jpg");
+
     private TypeSafeMapper() {}
 
     public static TypeSafeRequest toTypeSafeRequest(DecisionRequest request) {
@@ -45,7 +55,9 @@ public final class TypeSafeMapper {
         }
         TypeSafeRequest typeSafeRequest = new TypeSafeRequest();
         typeSafeRequest.model = request.modelName();
-        typeSafeRequest.state = state(request.input());
+        Map<String, Map<String, String>> assets = new LinkedHashMap<>();
+        typeSafeRequest.state = state(request.input(), assets);
+        typeSafeRequest.assets = assets.isEmpty() ? null : assets;
         typeSafeRequest.questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> typeSafeRequest.questions.put(name, toQuestion(question)));
         if (request.parameters() instanceof TypeSafeDecisionRequestParameters parameters
@@ -56,37 +68,67 @@ public final class TypeSafeMapper {
             if (customParameters.containsKey("model")) typeSafeRequest.model = null;
             if (customParameters.containsKey("state")) typeSafeRequest.state = null;
             if (customParameters.containsKey("questions")) typeSafeRequest.questions = null;
+            if (customParameters.containsKey("assets")) typeSafeRequest.assets = null;
         }
         return typeSafeRequest;
     }
 
-    private static Object state(Object input) {
+    private static Object state(Object input, Map<String, Map<String, String>> assets) {
         if (input instanceof Map<?, ?> map) {
-            // text contents are sent as their text, other contents (such as images) are not supported
             Map<Object, Object> state = new LinkedHashMap<>();
             map.forEach((name, value) -> state.put(
                     name,
-                    value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
-                            ? text(value instanceof Content ? List.of(value) : (List<?>) value)
+                    value instanceof Content
+                                    || value instanceof List<?> list
+                                            && !list.isEmpty()
+                                            && list.get(0) instanceof Content
+                            ? text(value instanceof Content ? List.of(value) : (List<?>) value, assets)
                             : value));
             return state;
         }
-        return input instanceof List<?> contents ? text(contents) : input;
+        return input instanceof List<?> contents ? text(contents, assets) : input;
     }
 
-    private static String text(List<?> contents) {
+    /**
+     * Images are sent as assets, and each one is referred to in the text by its reference, which the server replaces
+     * with the image.
+     */
+    private static String text(List<?> contents, Map<String, Map<String, String>> assets) {
         StringBuilder text = new StringBuilder();
         for (Object content : contents) {
-            if (!(content instanceof TextContent textContent)) {
-                throw new UnsupportedFeatureException("TypeSafe supports only text input, but the input contains "
-                        + ((Content) content).type());
-            }
             if (!text.isEmpty()) {
                 text.append("\n\n");
             }
-            text.append(textContent.text());
+            if (content instanceof TextContent textContent) {
+                text.append(textContent.text());
+            } else if (content instanceof ImageContent imageContent) {
+                String reference = IMAGE_REFERENCE_PREFIX + (assets.size() + 1) + "}}";
+                assets.put(reference, asset(imageContent.image()));
+                text.append(reference);
+            } else {
+                throw new UnsupportedFeatureException("TypeSafe supports only text and image input, but the input "
+                        + "contains " + ((Content) content).type());
+            }
         }
         return text.toString();
+    }
+
+    private static Map<String, String> asset(Image image) {
+        if (isNullOrBlank(image.base64Data())) {
+            throw new UnsupportedFeatureException("TypeSafe supports only images given as base64 data, not as URLs");
+        }
+        String format = image.mimeType() == null
+                ? null
+                : IMAGE_FORMATS.get(image.mimeType().toLowerCase(Locale.ROOT));
+        if (format == null) {
+            throw new UnsupportedFeatureException(
+                    "TypeSafe supports only PNG and JPEG images, but the input contains " + image.mimeType());
+        }
+        Map<String, String> asset = new LinkedHashMap<>();
+        asset.put("type", "image");
+        asset.put("format", format);
+        asset.put("data_base64", image.base64Data());
+        return asset;
     }
 
     private static TypeSafeQuestion toQuestion(Question question) {
@@ -107,6 +149,8 @@ public final class TypeSafeMapper {
         } else if (question instanceof ScaleQuestion scale) {
             result.type = "score";
             result.criteria = levels(scale);
+        } else if (question instanceof TypeSafeBoxQuestion) {
+            result.type = "box";
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
@@ -139,8 +183,8 @@ public final class TypeSafeMapper {
         request.questions().forEach((name, question) -> {
             TypeSafeAnswer answer = answers.get(name);
             if (answer == null) {
-                throw new InvalidDecisionResponseException("The response contains no answer to question '%s'"
-                        .formatted(name));
+                throw new InvalidDecisionResponseException(
+                        "The response contains no answer to question '%s'".formatted(name));
             }
             builder.answer(name, toAnswer(name, answer, question));
         });
@@ -168,6 +212,9 @@ public final class TypeSafeMapper {
                     .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                     .build();
         }
+        if (question instanceof TypeSafeBoxQuestion) {
+            return box(name, answer);
+        }
         ScaleQuestion scale = (ScaleQuestion) question;
         ensureType(name, answer, "score");
         int levels = scale.levels().size();
@@ -175,7 +222,8 @@ public final class TypeSafeMapper {
         if (answer.probabilities != null && !answer.probabilities.isEmpty()) {
             answer.probabilities.keySet().forEach(level -> {
                 if (!isLevelIndex(level, levels)) {
-                    throw invalid(name, "has a probability for level '%s', but the levels are 0 to %s", level, levels - 1);
+                    throw invalid(
+                            name, "has a probability for level '%s', but the levels are 0 to %s", level, levels - 1);
                 }
             });
             for (int level = 0; level < levels; level++) {
@@ -186,6 +234,25 @@ public final class TypeSafeMapper {
         return ScaleAnswer.builder()
                 .mean(level(name, required(name, "score", answer.score), levels))
                 .probabilities(probabilities)
+                .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
+                .build();
+    }
+
+    private static TypeSafeBoxAnswer box(String name, TypeSafeAnswer answer) {
+        ensureType(name, answer, "box");
+        Map<String, Double> box = required(name, "box", answer.box);
+        double top = probability(name, "top edge", box.get("top"));
+        double bottom = probability(name, "bottom edge", box.get("bottom"));
+        double left = probability(name, "left edge", box.get("left"));
+        double right = probability(name, "right edge", box.get("right"));
+        if (top > bottom || left > right) {
+            throw invalid(name, "has an invalid box: %s", box);
+        }
+        return TypeSafeBoxAnswer.builder()
+                .top(top)
+                .bottom(bottom)
+                .left(left)
+                .right(right)
                 .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();
     }
