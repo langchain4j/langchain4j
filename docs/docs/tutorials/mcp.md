@@ -75,6 +75,95 @@ With the modern protocol (2026-07-28), notifications are received via `subscript
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
+#### Custom HTTP client
+
+The Streamable HTTP transport uses the [HTTP-client SPI](./customizable-http-client.md).
+It uses the JDK client by default. To select a backend explicitly, pass its `HttpClientBuilder`:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .httpClientBuilder(JdkHttpClient.builder()
+                .streamingBackpressure(true)
+                .connectTimeout(Duration.ofSeconds(10)))
+        .build();
+```
+
+The supplied client must implement `HttpClient.stream(request, parser)`, including the provided
+parser and subscription cancellation. This is the publisher-based API introduced in 1.20.0;
+implementing only the older callback-based SSE API is insufficient. The same backend handles
+JSON responses, SSE responses, initialization, notifications, and the optional subsidiary GET channel.
+Framework integrations can supply an implementation backed by their own HTTP client without
+reimplementing MCP protocol handling.
+
+The default backend makes HTTP body reads follow subscriber demand, so a temporarily busy
+progress or notification callback pauses consumption instead of overflowing an event queue.
+When supplying a backend, select its demand-driven streaming mode where available; for
+`JdkHttpClient`, use `streamingBackpressure(true)` as shown above. Its general-purpose default
+continues to use a bounded event buffer.
+
+Configure TLS, HTTP version, and redirects on the supplied backend. Combining `httpClientBuilder`
+with the transport's `sslContext`, `setHttpVersion1_1`, or `followRedirects(true)` options is rejected.
+Those transport options continue to work with the default JDK backend.
+An explicit transport `timeout` overrides the backend's connection timeout. Otherwise, the
+supplied backend retains its own connection timeout settings and defaults. The 60-second fallback
+applies only to the default JDK backend. The transport does not set a read timeout. With a custom
+backend, the transport's `executor` controls subsidiary reconnect scheduling only; configure HTTP
+execution on the backend itself.
+
+Closing the transport cancels its active HTTP exchanges and closes a client it built if that client
+implements `AutoCloseable`. To share a caller-owned client, use `.httpClient(client)` instead of
+`.httpClientBuilder(builder)`; the transport cancels only its own exchanges and leaves that client open.
+The two options cannot be combined. Configure all HTTP settings, including connection timeout,
+before supplying a built client.
+
+#### Per-call context
+
+For a framework that uses a scoped or thread-local context, configure
+`requestContextFactory(Supplier<CapturedContext>)`. The factory captures the current context
+once when the application calls `sendRequest`, `sendMessage`, or explicitly initializes the
+transport. Its `CapturedContext.wrap(Runnable)` carrier restores that context around
+transport-owned request preparation, HTTP stream subscription, and response callbacks, including
+work deferred until initialization completes and a request retried after session expiry. Without
+this hook, the transport runs those actions directly.
+
+The transport runs each wrapped action **inline, exactly once**. The wrapper must propagate the
+action's exception, restore the previous scope when the action returns, and support concurrent
+and nested invocations. For example, a `ThreadLocal` carrier can save and restore the previous value:
+
+```java
+ThreadLocal<String> tenant = new ThreadLocal<>();
+
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .requestContextFactory(() -> {
+            String captured = tenant.get();
+            return action -> () -> {
+                String previous = tenant.get();
+                try {
+                    if (captured == null) tenant.remove(); else tenant.set(captured);
+                    action.run();
+                } finally {
+                    if (previous == null) tenant.remove(); else tenant.set(previous);
+                }
+            };
+        })
+        .build();
+```
+
+Explicit initialization also captures a connection context. The transport reuses it for the
+initialized notification, automatic reinitialization after a 404 response, and subsidiary SSE
+reconnects, independently of each caller's captured context. Connection captures can outlive
+individual requests and remain associated with active channels. Initialize under an application
+or session context appropriate for those connection-level operations, and close the transport
+when it is no longer needed.
+
+The hook covers transport-owned work. A supplied HTTP backend must propagate context across any
+additional threads or tasks it starts. Caller-added asynchronous future stages still follow normal
+`CompletableFuture` semantics. To send context values as headers, configure the backend's native
+header/security/tracing services or use `customHeaders(...)`; restoring context does not itself
+copy values into headers.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()
