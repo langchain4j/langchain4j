@@ -22,6 +22,9 @@ class OpenAiDecisionModelIT extends AbstractDecisionModelIT {
     static final String RED_SQUARE_PNG =
             "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKElEQVR4nO3NsQ0AAAzCMP5/un0CNkuZ41wybXsHAAAAAAAAAAAAxR4yw/wuPL6QkAAAAABJRU5ErkJggg==";
 
+    static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
+
     DecisionModel model = OpenAiDecisionModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -80,5 +83,23 @@ class OpenAiDecisionModelIT extends AbstractDecisionModelIT {
         // then
         assertThat(response.yesNo("red").probability()).isGreaterThan(0.5);
         assertThat(response.yesNo("blue").probability()).isLessThan(0.5);
+    }
+
+    @Test
+    void should_decide_on_image_referenced_by_url() {
+
+        // given
+        DecisionRequest request = DecisionRequest.builder()
+                .input(List.of(ImageContent.from(CAT_IMAGE_URL)))
+                .question("cat", YesNoQuestion.of("Is there a cat in the image?"))
+                .question("dog", YesNoQuestion.of("Is there a dog in the image?"))
+                .build();
+
+        // when
+        DecisionResponse response = model.decide(request);
+
+        // then
+        assertThat(response.yesNo("cat").probability()).isGreaterThan(0.5);
+        assertThat(response.yesNo("dog").probability()).isLessThan(0.5);
     }
 }

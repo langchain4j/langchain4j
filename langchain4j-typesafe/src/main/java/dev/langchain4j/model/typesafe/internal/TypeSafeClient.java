@@ -83,7 +83,8 @@ public class TypeSafeClient {
             builder.addHeader("Authorization", authorizationHeader);
         }
         if (request.assets != null
-                || request.questions.values().stream().anyMatch(question -> "box".equals(question.type))) {
+                || request.questions != null
+                        && request.questions.values().stream().anyMatch(question -> "box".equals(question.type))) {
             // images and box questions are an experimental feature that the API accepts only with this header
             builder.addHeader("TypeSafe-Danger-Zone-Images", "true");
         }

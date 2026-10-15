@@ -3,6 +3,7 @@ package dev.langchain4j.http.client.sse;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,6 +21,10 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -215,6 +220,120 @@ class DefaultServerSentEventParserTest {
         };
 
         parser.parse(new ByteArrayInputStream(input.getBytes(UTF_8)), cancelling);
+
+        assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
+    }
+
+    @Test
+    void parse_does_not_report_error_when_cancelled_while_waiting_for_next_event() throws Exception {
+        // a stream that delivers one event, then blocks (like a live HTTP response)
+        // and fails with IOException once it is closed, as the JDK HTTP client does
+        CountDownLatch waitingForNextEvent = new CountDownLatch(1);
+        CountDownLatch closed = new CountDownLatch(1);
+        InputStream liveStream = new InputStream() {
+
+            private final ByteArrayInputStream firstEvent = new ByteArrayInputStream("data: first\n\n".getBytes(UTF_8));
+
+            @Override
+            public int read() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                if (firstEvent.available() > 0) {
+                    return firstEvent.read(b, off, len);
+                }
+                waitingForNextEvent.countDown();
+                try {
+                    closed.await(10, SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new IOException("closed");
+            }
+
+            @Override
+            public void close() {
+                closed.countDown();
+            }
+        };
+
+        List<ServerSentEvent> received = new CopyOnWriteArrayList<>();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CompletableFuture<ServerSentEventParsingHandle> parsingHandle = new CompletableFuture<>();
+        ServerSentEventListener listener = new ServerSentEventListener() {
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                received.add(event);
+                parsingHandle.complete(context.parsingHandle());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                errors.add(throwable);
+            }
+        };
+
+        Thread parsingThread = new Thread(() -> parser.parse(liveStream, listener));
+        parsingThread.setDaemon(true);
+        parsingThread.start();
+
+        // cancel from another thread while the parser is blocked waiting for the next event
+        ServerSentEventParsingHandle handle = parsingHandle.get(10, SECONDS);
+        assertThat(waitingForNextEvent.await(10, SECONDS)).isTrue();
+        handle.cancel();
+        parsingThread.join(SECONDS.toMillis(10));
+
+        assertThat(parsingThread.isAlive()).isFalse();
+        assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
+        assertThat(errors).isEmpty();
+    }
+
+    @Test
+    void parse_does_not_emit_event_read_after_cancellation() {
+        // simulates cancel() arriving from another thread right after the next event has been read
+        AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
+        InputStream stream = new InputStream() {
+
+            private int reads;
+
+            @Override
+            public int read() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                byte[] chunk = switch (reads++) {
+                    case 0 -> "data: first\n\ndata: second\n".getBytes(UTF_8);
+                    case 1 -> {
+                        parsingHandle.get().cancel();
+                        yield "\n".getBytes(UTF_8); // the blank line that completes the second event
+                    }
+                    default -> null;
+                };
+                if (chunk == null) {
+                    return -1;
+                }
+                System.arraycopy(chunk, 0, b, off, chunk.length);
+                return chunk.length;
+            }
+        };
+
+        List<ServerSentEvent> received = new ArrayList<>();
+        ServerSentEventListener listener = new ServerSentEventListener() {
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                received.add(event);
+                parsingHandle.set(context.parsingHandle());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {}
+        };
+
+        parser.parse(stream, listener);
 
         assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
     }
