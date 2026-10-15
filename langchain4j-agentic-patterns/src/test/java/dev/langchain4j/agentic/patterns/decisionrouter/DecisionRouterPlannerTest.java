@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -254,6 +255,50 @@ class DecisionRouterPlannerTest {
         assertThat(medicalExpert.calls).hasValue(0);
         assertThat(legalExpert.calls).hasValue(0);
         assertThat(technicalExpert.calls).hasValue(0);
+    }
+
+    // ── Skipped subagents ──
+
+    private static AgenticScopeFunction<String> inactiveExpert(String name, AtomicInteger calls) {
+        return AgenticServices.nonAiAgentBuilder(scope -> {
+                    calls.incrementAndGet();
+                    return name + " answer";
+                })
+                .name(name)
+                .outputKey(name + "Response")
+                .activationCondition("never", scope -> false)
+                .build();
+    }
+
+    @Test
+    void shouldLeaveASkippedAgentOutOfTheOutputsWithAThreshold() {
+        AtomicInteger skippedCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
+
+        MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(medicalExpert, inactiveExpert("legal", skippedCalls), technicalExpert)
+                .outputKey("responses")
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+
+        assertThat(router.ask(REQUEST)).containsOnly(entry("medical", "medical answer"));
+        assertThat(skippedCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldHaveNoResultWhenTheChosenAgentIsSkipped() {
+        AtomicInteger skippedCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(medicalExpert, inactiveExpert("legal", skippedCalls), technicalExpert)
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isNull();
+        assertThat(skippedCalls).hasValue(0);
+        assertThat(medicalExpert.calls).hasValue(0);
     }
 
     @Test

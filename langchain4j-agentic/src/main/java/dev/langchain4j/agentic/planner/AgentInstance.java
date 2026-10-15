@@ -25,9 +25,20 @@ public interface AgentInstance {
         return false;
     }
 
+    /**
+     * The condition under which this agent runs when it is invoked as a subagent, or {@code null} when it always
+     * runs. When the condition is false, the agent is skipped: it is not invoked, it writes nothing to the
+     * {@link dev.langchain4j.agentic.scope.AgenticScope} and its parent's planner is notified of the skip. The
+     * condition is ignored when the agent is invoked directly, as the root of an agentic system.
+     */
+    default AgentCondition activationCondition() {
+        return null;
+    }
+
     List<AgentArgument> arguments();
 
     AgentInstance parent();
+
     List<AgentInstance> subagents();
 
     default boolean leaf() {

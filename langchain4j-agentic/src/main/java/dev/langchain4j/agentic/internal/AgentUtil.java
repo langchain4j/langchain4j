@@ -13,10 +13,12 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -125,7 +127,8 @@ public class AgentUtil {
                 function.outputKey(),
                 function.async(),
                 function.inputs(),
-                function.listener());
+                function.listener(),
+                function.activationCondition());
         return new AgentExecutor(new AgenticScopeFunctionInvoker(agenticMethod, agentInstance), function);
     }
 
@@ -140,13 +143,28 @@ public class AgentUtil {
 
     private static AgentInvoker nonAiAgentInvoker(
             Object agent, Method agenticMethod, String name, String description, String outputKey, boolean async) {
-        return agent instanceof AgentSpecsProvider spec
-                ? AgentInvoker.fromSpec(spec, agenticMethod, name)
-                : nonAiAgentInvoker(agenticMethod, name, description, outputKey, async);
+        if (agent instanceof AgentSpecsProvider spec) {
+            return AgentInvoker.fromSpec(spec, agenticMethod, name);
+        }
+        // a class with a static agent method is wrapped in an AgenticScopeFunction, its conditions are on the class
+        Class<?> agentClass =
+                agent instanceof AgenticScopeFunction<?> ? agenticMethod.getDeclaringClass() : agent.getClass();
+        return nonAiAgentInvoker(
+                agenticMethod, name, description, outputKey, async, DeclarativeUtil.activationCondition(agentClass));
     }
 
     public static AgentInvoker nonAiAgentInvoker(
             Method agenticMethod, String name, String description, String outputKey, boolean async) {
+        return nonAiAgentInvoker(agenticMethod, name, description, outputKey, async, null);
+    }
+
+    public static AgentInvoker nonAiAgentInvoker(
+            Method agenticMethod,
+            String name,
+            String description,
+            String outputKey,
+            boolean async,
+            AgentCondition activationCondition) {
         return AgentInvoker.fromMethod(
                 new NonAiAgentInstance(
                         agenticMethod.getDeclaringClass(),
@@ -156,7 +174,8 @@ public class AgentUtil {
                         outputKey,
                         async,
                         argumentsFromMethod(agenticMethod),
-                        null),
+                        null,
+                        activationCondition),
                 agenticMethod);
     }
 

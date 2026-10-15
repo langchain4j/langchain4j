@@ -4,19 +4,17 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import dev.langchain4j.data.message.AiMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A debate planner that orchestrates iterative adversarial rounds among debater agents.
@@ -82,11 +80,16 @@ public class DebatePlanner implements Planner {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
+        AgentInvocation invocation = planningContext.previousAgentInvocation();
         if (judgePhase) {
-            return done(planningContext.previousAgentInvocation().output());
+            // the output of a skipped judge is the current value of its output key
+            return done(invocation.output());
         }
 
-        lastDebatersMessages.put(planningContext.previousAgentInvocation().agentName(), planningContext.previousAgentInvocation().output());
+        // a skipped debater keeps its position of the previous round, if any
+        if (!invocation.skipped()) {
+            lastDebatersMessages.put(invocation.agentName(), invocation.output());
+        }
         completedInRound++;
 
         if (completedInRound < debaters.size()) {

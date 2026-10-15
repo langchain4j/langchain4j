@@ -1,7 +1,10 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -9,8 +12,6 @@ import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Class<?> type;
@@ -20,15 +21,35 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final String outputKey;
     private final boolean async;
     private final List<AgentArgument> arguments;
+    private final AgentCondition activationCondition;
 
     private AgentListener listener;
 
     private InternalAgent parent;
     private String agentId;
 
-    public NonAiAgentInstance(Class<?> type, String name, String description,
-            Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            List<AgentArgument> arguments,
             AgentListener listener) {
+        this(type, name, description, outputType, outputKey, async, arguments, listener, null);
+    }
+
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            List<AgentArgument> arguments,
+            AgentListener listener,
+            AgentCondition activationCondition) {
         this.type = type;
         this.name = name;
         this.agentId = name;
@@ -38,6 +59,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         this.async = async;
         this.arguments = arguments;
         this.listener = listener;
+        this.activationCondition = activationCondition;
     }
 
     @Override
@@ -57,7 +79,9 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public AgenticSystemTopology topology() {
-        return type == HumanInTheLoop.class ? AgenticSystemTopology.HUMAN_IN_THE_LOOP : AgenticSystemTopology.NON_AI_AGENT;
+        return type == HumanInTheLoop.class
+                ? AgenticSystemTopology.HUMAN_IN_THE_LOOP
+                : AgenticSystemTopology.NON_AI_AGENT;
     }
 
     @Override
@@ -101,6 +125,11 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
+    }
+
+    @Override
     public AgentListener listener() {
         return listener;
     }
@@ -117,32 +146,35 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (NonAiAgentInstance) obj;
-        return Objects.equals(this.type, that.type) &&
-                Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.outputType, that.outputType) &&
-                Objects.equals(this.outputKey, that.outputKey) &&
-                this.async == that.async &&
-                Objects.equals(this.arguments, that.arguments) &&
-                Objects.equals(this.listener, that.listener);
+        return Objects.equals(this.type, that.type)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.outputType, that.outputType)
+                && Objects.equals(this.outputKey, that.outputKey)
+                && this.async == that.async
+                && Objects.equals(this.arguments, that.arguments)
+                && Objects.equals(this.listener, that.listener)
+                && Objects.equals(this.activationCondition, that.activationCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, name, description, outputType, outputKey, async, arguments, listener);
+        return Objects.hash(
+                type, name, description, outputType, outputKey, async, arguments, listener, activationCondition);
     }
 
     @Override
     public String toString() {
-        return "NonAiAgentInstance[" +
-                "type=" + type + ", " +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "outputType=" + outputType + ", " +
-                "outputKey=" + outputKey + ", " +
-                "async=" + async + ", " +
-                "arguments=" + arguments + ", " +
-                "listener=" + listener + ']';
+        return "NonAiAgentInstance[" + "type="
+                + type + ", " + "name="
+                + name + ", " + "description="
+                + description + ", " + "outputType="
+                + outputType + ", " + "outputKey="
+                + outputKey + ", " + "async="
+                + async + ", " + "arguments="
+                + arguments + ", " + "listener="
+                + listener + ", " + "activationCondition="
+                + activationCondition + ']';
     }
 
     @Override

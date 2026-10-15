@@ -213,10 +213,13 @@ public class DecisionRouterPlanner implements Planner {
     public Action nextAction(PlanningContext planningContext) {
         AgentInvocation invocation = planningContext.previousAgentInvocation();
         String agentName = invocation.agentName();
-        outputs.put(agentName, invocation.output());
-        if (scopeOutput(agentName, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
-                && !delayedResponse.isDone()) {
-            deferred.add(agentName);
+        // a skipped agent produced no output, so it is left out of the result
+        if (!invocation.skipped()) {
+            outputs.put(agentName, invocation.output());
+            if (scopeOutput(agentName, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
+                    && !delayedResponse.isDone()) {
+                deferred.add(agentName);
+            }
         }
         // the loop resumes only when all the activated agents completed, so the last done action carries all outputs
         return done(result(planningContext.agenticScope()));

@@ -4,9 +4,9 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
-
+import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,14 +41,18 @@ public class VotingPlanner implements Planner {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
-        votes.add(planningContext.previousAgentInvocation().output());
+        AgentInvocation invocation = planningContext.previousAgentInvocation();
+        // a skipped voter didn't vote
+        if (!invocation.skipped()) {
+            votes.add(invocation.output());
+        }
         completedCount++;
 
         if (completedCount < subagents.size()) {
             return noOp();
         }
 
-        return done(strategy.aggregate(votes));
+        return votes.isEmpty() ? done() : done(strategy.aggregate(votes));
     }
 
     @Override
