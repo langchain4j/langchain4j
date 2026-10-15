@@ -147,9 +147,9 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
-Images must be inline: base64 data, or a `data:` URL. Images referenced by an `http` or `https` URL are not supported
-by the API, and are rejected with an `UnsupportedFeatureException` before calling it. The detail levels `LOW`, `HIGH`
-and `AUTO` are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
+Images can be base64 data, a `data:` URL, or a publicly accessible `http` or `https` URL, which OpenAI downloads
+itself, for example `ImageContent.from("https://example.com/package.jpg")`. The detail levels `LOW`, `HIGH` and `AUTO`
+are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
 
 ## Questions and answers
 

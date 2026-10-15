@@ -95,7 +95,7 @@ public final class DecisionMapper {
             part.text = text.text();
         } else if (content instanceof ImageContent image) {
             part.type = "input_image";
-            part.imageUrl = toDataUrl(image.image());
+            part.imageUrl = toImageUrl(image.image());
             part.detail = toDetail(image.detailLevel());
         } else {
             throw new UnsupportedFeatureException(
@@ -105,18 +105,14 @@ public final class DecisionMapper {
         return part;
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static String toDetail(ImageContent.DetailLevel detailLevel) {

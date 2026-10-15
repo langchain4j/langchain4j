@@ -43,8 +43,8 @@ import org.slf4j.Logger;
  * }</pre>
  * The input can be text, a {@link java.util.Map} (sent as JSON text), or a list of
  * {@link dev.langchain4j.data.message.TextContent}s and {@link dev.langchain4j.data.message.ImageContent}s. Images
- * must be inline (base64 data or data URLs): images referenced by URL are not supported by the API. The image detail
- * levels {@code LOW}, {@code HIGH} and {@code AUTO} are supported.
+ * can be base64 data, {@code data:} URLs or publicly accessible {@code http(s)} URLs. The image detail levels
+ * {@code LOW}, {@code HIGH} and {@code AUTO} are supported.
  * <p>
  * The API can refuse to answer a single question, for example because it goes against the usage policies of
  * OpenAI: the answer to that question is then a {@link dev.langchain4j.model.decision.response.RefusalAnswer}.
