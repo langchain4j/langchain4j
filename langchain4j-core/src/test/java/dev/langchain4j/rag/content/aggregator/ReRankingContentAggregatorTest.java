@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ReRankingContentAggregatorTest {
 
@@ -426,7 +427,7 @@ class ReRankingContentAggregatorTest {
                 singletonMap(query, singletonList(asList(content1, content2, content3)));
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.7, 0.005, 0.001)));
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.007, 0.005, 0.001)));
         ContentAggregator aggregator = ReRankingContentAggregator.builder()
                 .scoringModel(scoringModel)
                 .minScore(0.5)
@@ -439,7 +440,7 @@ class ReRankingContentAggregatorTest {
         // then: nothing clears minScore, so the two highest-ranked contents are kept as fill-ups
         assertThat(aggregated).hasSize(2);
         assertReRankedContentOrder(aggregated, content1, content2);
-        assertReRankedContentScore(aggregated, 0.7, 0.005);
+        assertReRankedContentScore(aggregated, 0.007, 0.005);
     }
 
     @Test
@@ -518,7 +519,7 @@ class ReRankingContentAggregatorTest {
                 singletonMap(query, singletonList(asList(content1, content2, content3, content4)));
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.7, 0.6, 0.4, 0.3)));
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.7, 0.6, 0.55, 0.3)));
         ContentAggregator aggregator = ReRankingContentAggregator.builder()
                 .scoringModel(scoringModel)
                 .minScore(0.5)
@@ -589,6 +590,106 @@ class ReRankingContentAggregatorTest {
                         .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("minResults must not be greater than maxResults");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_not_invent_candidates_to_satisfy_minResults(boolean async) throws Exception {
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        Query query = Query.from("query");
+        Map<Query, Collection<List<Content>>> inputs = singletonMap(query, singletonList(asList(content1, content2)));
+        ScoringModel scoringModel = scoringModel(asList(0.1, 0.2));
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModel)
+                .minScore(0.5)
+                .minResults(3)
+                .maxResults(3)
+                .build();
+
+        List<Content> actual = aggregate(aggregator, inputs, async);
+
+        assertThat(actual).hasSize(2);
+        assertReRankedContentOrder(actual, content2, content1);
+        assertReRankedContentScore(actual, 0.2, 0.1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_preserve_retrieval_metadata_on_a_fill_up(boolean async) throws Exception {
+        TextSegment segment = TextSegment.from("favorite color is black");
+        Content content =
+                Content.from(segment, Map.of(ContentMetadata.EMBEDDING_ID, "memory-1", ContentMetadata.SCORE, 0.9));
+        Map<Query, Collection<List<Content>>> inputs =
+                singletonMap(Query.from("is the favorite color blue?"), singletonList(singletonList(content)));
+        ScoringModel scoringModel = scoringModel(singletonList(0.007));
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModel)
+                .minScore(0.5)
+                .minResults(1)
+                .build();
+
+        List<Content> actual = aggregate(aggregator, inputs, async);
+
+        assertThat(actual).hasSize(1);
+        assertThat(actual.get(0).textSegment()).isSameAs(segment);
+        assertThat(actual.get(0).metadata())
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "memory-1")
+                .containsEntry(ContentMetadata.SCORE, 0.9)
+                .containsEntry(ContentMetadata.RERANKED_SCORE, 0.007);
+        assertThat(content.metadata()).doesNotContainKey(ContentMetadata.RERANKED_SCORE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_keep_threshold_equality_and_append_only_the_best_fill_up(boolean async) throws Exception {
+        Content content1 = Content.from("threshold match");
+        Content content2 = Content.from("best remaining match");
+        Content content3 = Content.from("lower match");
+        Map<Query, Collection<List<Content>>> inputs =
+                singletonMap(Query.from("query"), singletonList(asList(content1, content2, content3)));
+        ScoringModel scoringModel = scoringModel(asList(0.5, 0.2, 0.1));
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModel)
+                .minScore(0.5)
+                .minResults(2)
+                .maxResults(2)
+                .build();
+
+        List<Content> actual = aggregate(aggregator, inputs, async);
+
+        assertThat(actual).hasSize(2);
+        assertReRankedContentOrder(actual, content1, content2);
+        assertReRankedContentScore(actual, 0.5, 0.2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_not_score_empty_inputs_even_when_minResults_is_positive(boolean async) throws Exception {
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModel)
+                .minScore(0.5)
+                .minResults(1)
+                .build();
+
+        assertThat(aggregate(aggregator, emptyMap(), async)).isEmpty();
+        verifyNoInteractions(scoringModel);
+    }
+
+    private ScoringModel scoringModel(List<Double> scores) {
+        ScoringModel model = mock(ScoringModel.class);
+        when(model.scoreAll(any(), any())).thenReturn(Response.from(scores));
+        when(model.scoreAsync(any(ScoringRequest.class)))
+                .thenReturn(
+                        completedFuture(ScoringResponse.builder().scores(scores).build()));
+        return model;
+    }
+
+    private List<Content> aggregate(
+            ContentAggregator aggregator, Map<Query, Collection<List<Content>>> inputs, boolean async)
+            throws Exception {
+        return async ? aggregator.aggregateAsync(inputs).get(5, SECONDS) : aggregator.aggregate(inputs);
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {
