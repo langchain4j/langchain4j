@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
@@ -127,14 +128,30 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (hasIncompleteSuspendedResponse(planningContext.agenticScope())) {
             return suspend();
         }
-        String lastResponse = planningContext.previousAgentInvocation() == null
-                        || planningContext.previousAgentInvocation().output() == null
-                ? ""
-                : planningContext.previousAgentInvocation().output().toString();
+
+        dev.langchain4j.agentic.scope.AgentInvocation previousInvocation = planningContext.previousAgentInvocation();
+        String lastResponse =
+                previousInvocation == null || previousInvocation.skipped() || previousInvocation.output() == null
+                        ? ""
+                        : previousInvocation.output().toString();
+
         if (loopCount++ >= maxAgentsInvocations) {
             return doneAction(planningContext.agenticScope(), lastResponse, null);
         }
-        return nextSubagent(planningContext.agenticScope(), lastResponse);
+        // a skipped agent produced no response, so the model is told why instead
+        String plannerResponse = previousInvocation != null && previousInvocation.skipped()
+                ? skippedAgentResponse(previousInvocation)
+                : lastResponse;
+        return nextSubagent(planningContext.agenticScope(), plannerResponse, lastResponse);
+    }
+
+    private String skippedAgentResponse(dev.langchain4j.agentic.scope.AgentInvocation skippedInvocation) {
+        AgentInstance agent = agents.get(skippedInvocation.agentId());
+        AgentCondition condition = agent != null ? agent.activationCondition() : null;
+        String reason = condition != null
+                ? "its activation condition is false: " + condition.description()
+                : "one of its arguments is missing";
+        return "agent '" + skippedInvocation.agentName() + "' was skipped: " + reason;
     }
 
     private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {
@@ -266,7 +283,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
     }
 
-    private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
+    private Action nextSubagent(AgenticScope agenticScope, String plannerResponse, String lastResponse) {
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
@@ -274,7 +291,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         AgentInvocation agentInvocation = withAgenticScope(
                 agenticScope,
                 () -> planner(agenticScope)
-                        .plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
+                        .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName() == null) {

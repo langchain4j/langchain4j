@@ -1,19 +1,20 @@
 package dev.langchain4j.agentic.patterns.goap;
 
-import java.util.List;
-import java.util.Map;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import java.util.List;
+import java.util.Map;
 
 public class GoalOrientedPlanner implements Planner {
 
     private String goal;
 
-    private GoalOrientedSearchGraph graph;
+    private List<AgentInstance> subagents;
     private List<AgentInstance> path;
 
     private int agentCursor = 0;
@@ -21,12 +22,19 @@ public class GoalOrientedPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.goal = initPlanningContext.plannerAgent().outputKey();
-        this.graph = new GoalOrientedSearchGraph(initPlanningContext.subagents());
+        this.subagents = initPlanningContext.subagents();
     }
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        path = graph.search(planningContext.agenticScope().state().keySet(), goal);
+        AgenticScope agenticScope = planningContext.agenticScope();
+        // an agent whose activation condition is false can't be part of the path
+        List<AgentInstance> activeAgents = subagents.stream()
+                .filter(agent -> agent.activationCondition() == null
+                        || agent.activationCondition().test(agenticScope))
+                .toList();
+        path = new GoalOrientedSearchGraph(activeAgents)
+                .search(agenticScope.state().keySet(), goal);
         if (path.isEmpty()) {
             throw new IllegalStateException("No path found for goal: " + goal);
         }

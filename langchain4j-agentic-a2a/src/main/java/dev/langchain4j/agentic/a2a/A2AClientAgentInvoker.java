@@ -11,6 +11,7 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -131,6 +132,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public Method method() {
         return method;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return a2AClientInstance.activationCondition();
     }
 
     @Override

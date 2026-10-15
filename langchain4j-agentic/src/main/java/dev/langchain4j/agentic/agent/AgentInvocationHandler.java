@@ -16,6 +16,7 @@ import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -413,6 +414,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     @Override
     public boolean optional() {
         return builder.optional;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return builder.activationCondition;
     }
 
     @Override

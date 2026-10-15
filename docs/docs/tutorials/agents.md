@@ -512,6 +512,8 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+A conditional workflow is the right tool to choose among alternatives, like in this example. When instead its only purpose would be to decide whether to invoke a single agent, it is simpler to give that agent an [activation condition](#activation-conditions).
+
 ## Optional agents
 
 In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
@@ -554,6 +556,65 @@ String story = (String) novelCreator.invoke(input);
 ```
 
 Here the `audienceEditor` agent is configured as optional. Since the input map does not contain the "audience" key required by the `AudienceEditor`, its invocation is skipped and the workflow proceeds directly with the `StyleEditor`. The same agent can also be marked as optional declaratively using the `@Agent` annotation attribute `@Agent(optional = true)`.
+
+## Activation conditions
+
+An optional agent is skipped only when one of its arguments is missing. More generally, any agent can declare an activation condition, a predicate on the `AgenticScope` deciding whether it runs: when the agent is invoked as a subagent of an agentic system and its condition is false, it is skipped. This avoids wrapping an agent into a [conditional workflow](#conditional-workflow) only to decide whether to invoke it.
+
+For instance, considering again the sequential workflow defined above, the `AudienceEditor` can be configured to edit the story only when it is meant for a specific audience.
+
+```java
+AudienceEditor audienceEditor = AgenticServices
+        .agentBuilder(AudienceEditor.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .activationCondition("the story targets a specific audience",
+                agenticScope -> !agenticScope.readState("audience", "everyone").equals("everyone"))
+        .build();
+```
+
+The description of the condition is optional, defaults to `<unknown>`, and is shown in the logs, by the `AgentMonitor` and in the HTML reports discussed in the [monitoring](#monitoring) section. The `activationCondition` method is available on the builders of all kinds of agents: AI agents, all the workflows and planners, including the supervisor, non-AI agents created with `nonAiAgentBuilder`, human-in-the-loop agents, and A2A and MCP client agents.
+
+The same condition can also be declared on the agent interface, with a static method returning a `boolean` and annotated with `@ActivationCondition` without any value.
+
+```java
+public interface AudienceEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better align
+        with the target audience of {{audience}}.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent("Edits a story to better fit a given audience")
+    String editStory(@V("story") String story, @V("audience") String audience);
+
+    @ActivationCondition(description = "the story targets a specific audience")
+    static boolean hasSpecificAudience(@V("audience") String audience) {
+        return !audience.equals("everyone");
+    }
+}
+```
+
+As for the other annotated static methods, the arguments of the condition are read from the `AgenticScope`, or the method can receive the `AgenticScope` itself, which is preferable when a key may be absent, because a missing argument makes the condition fail. A condition can be declared in this way on any kind of agent: AI agents, classes with a static `@Agent` method, workflows and planners defined through the [declarative API](#declarative-api), and agents annotated with `@HumanInTheLoop`, `@A2AClientAgent` or `@McpClientAgent`. It is not supported on a `@RegistryAgent`, whose agent is taken already built from the [agents registry](#agents-registry). An `@ActivationCondition` with a value is instead only allowed on a `@ConditionalAgent`, where it selects the subagents to activate, and using it on any other class is a configuration error.
+
+When an agent is skipped:
+
+- it isn't invoked and writes nothing to the `AgenticScope`, and its result, as seen by the planner of its parent, is the current value of its output key, or `null` when that key is absent or the agent has no output key;
+- its condition is evaluated before its arguments are read, so a skipped agent never fails because of a missing argument;
+- an asynchronous agent is skipped synchronously, without being started;
+- `AgentListener`s are notified through their `onAgentSkipped` method, and the planner of its parent receives an `AgentInvocation` whose `skipped()` method returns `true`, while its invocation is not registered in the `AgenticScope`.
+
+The condition is evaluated each time the agent is about to be invoked as a subagent, so inside a loop it is evaluated at every iteration, and in a parallel mapper the condition of the mapped agent is evaluated once per item, with a skipped item producing a `null` at its position in the result. Conversely, it is ignored when the agent is invoked directly, as the root of an agentic system, so that the same agent can be used in both ways.
+
+A condition throwing an exception is handled as a failure of the agent: the exception is wrapped in an `AgentInvocationException` and passed to the [error handler](#error-handling) of the parent, so that, for instance, retrying the agent evaluates the condition again.
+
+The condition of a workflow or of a planner gates all its subagents together: when it is false, none of them is invoked. Once its condition holds, a composite agent is considered activated until it completes, so that, when it is resumed after a suspension, for instance waiting for a human, or recovered after a crash, it continues where it stopped even if its own subagents made the condition false in the meantime.
+
+Activation conditions and optional agents can be combined: the condition is evaluated first, and an activated optional agent is still skipped if one of its arguments is missing. In both cases listeners and planners are notified in the same way.
+
+Finally, an activation condition gates a single agent, while a conditional workflow remains the way to choose among alternatives, like routing a request to the right expert. When a subagent of a conditional workflow has its own activation condition, it runs only if both the condition of its branch and its own condition hold.
 
 ## Asynchronous agents
 
@@ -800,6 +861,7 @@ public interface AgentListener {
     default void beforeAgentInvocation(AgentRequest agentRequest) { }
     default void afterAgentInvocation(AgentResponse agentResponse) { }
     default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
+    default void onAgentSkipped(AgentSkipped agentSkipped) { }
 
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
@@ -836,6 +898,8 @@ CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.clas
 ```
 
 These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+
+When an agent is skipped, because its [activation condition](#activation-conditions) is false or because it is [optional](#optional-agents) and one of its arguments is missing, none of these methods is invoked for it, and the `onAgentSkipped` method receives instead an `AgentSkipped` with the skipped agent and the reason of the skip.
 
 `AgentListener`s have 2 important properties, they are:
 - **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
@@ -948,6 +1012,8 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
 
+An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
+
 By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
 
 The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
@@ -1037,7 +1103,7 @@ Similarly to what demonstrated for the `@Output` annotation, annotating other `s
 | Annotation Name          | Description                                                                                                                       |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
-| `@ActivationCondition`   | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean` |
+| `@ActivationCondition`   | Without a value, the [activation condition](#activation-conditions) of this agentic pattern. With a value, only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents. It must return a `boolean` |
 | `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
 | `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
 | `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
@@ -1111,7 +1177,7 @@ public interface ExpertsAgent {
 }
 ```
 
-In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
+In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`. A further method annotated with `@ActivationCondition` without any value would instead be the [activation condition](#activation-conditions) of the `ExpertsAgent` itself, deciding whether it runs at all when used as a subagent.
 
 Note that it is also possible to mix the programmatic and declarative styles of defining agents and agentic systems, so that an agent can be configured partially using annotations and partially using the agent builders. It is also allowed to completely define an agent declaratively and then programmatically implement an agentic system using the agent's class as a subagent. For instance, it would be possible to declaratively define the `CreativeWriter` and `AudienceEditor` agents as follows:
 
@@ -1477,6 +1543,8 @@ AgenticServices.supervisorBuilder()
         .build();
 ```
 
+When the supervisor invokes an agent that is skipped, because of its [activation condition](#activation-conditions) or because it is optional and an argument is missing, the supervisor's planner receives, as the last response, a message saying that the agent was skipped and why, instead of a stale output, so that it can decide what to do next.
+
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
 ### Providing context to the supervisor
@@ -1762,6 +1830,8 @@ the `GoalOrientedPlanner` will analyze the initial state of the `AgenticScope`, 
 Agents path sequence: [extractPerson, extractSign, horoscope, findStory, write]
 ```
 
+The agents whose [activation condition](#activation-conditions) is false when the path is calculated are left out of the dependency graph, so that the path goes around them, while a goal that can only be reached through an inactive agent fails as unreachable.
+
 Note that, as anticipated, this goal-oriented agentic pattern can be mixed and combined with any other of the existing agentic patterns. For instance this possibility can be used to overcome an evident limitation of this approach that, being optimized to reach a specific goal following the shortest possible path, structurally doesn't allow loops, so in some cases it could be useful to have a loop agentic pattern as a subagent of this goal-oriented one.
 
 ### Peer-to-peer agentic pattern
@@ -1823,7 +1893,7 @@ public class P2PPlanner implements Planner {
 }
 ```
 
-Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action.
+Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action. An agent whose [activation condition](#activation-conditions) is false is never activated, even when all its inputs are available.
 
 To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
 
@@ -2027,7 +2097,7 @@ public class BlackboardPlanner implements Planner {
 }
 ```
 
-The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated.
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated. An agent whose [activation condition](#activation-conditions) is false is never a candidate, even when all its inputs are available.
 
 ```java
 @FunctionalInterface
@@ -2285,6 +2355,8 @@ or provide a completely custom strategy:
 
 This custom strategy normalizes all votes to uppercase before counting, handling minor formatting differences between agents (e.g. "Positive" vs "POSITIVE").
 
+A voter skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, doesn't vote, and when all the voters are skipped the `VotingPlanner` returns no result instead of aggregating.
+
 ### Debate agentic pattern
 
 The patterns discussed so far either dispatch agents once (voting), activate them based on data availability (blackboard, P2P), or sequence them toward a goal (GOAP). None of them supports adversarial refinement — a process where agents see each other's reasoning and iteratively revise their positions. The debate pattern fills this gap: agents generate independent answers in parallel, then enter critique rounds where they can read the full debate history and refine their arguments. Rounds continue until the agents converge on the same answer or a maximum number of rounds is reached, at which point a judge agent renders a final verdict.
@@ -2398,7 +2470,7 @@ String result = panel.debate(
         "Is it ethical to use AI-generated art in commercial products without crediting the AI tool?");
 ```
 
-The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context.
+The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context. A debater skipped because of its [activation condition](#activation-conditions) doesn't contribute to a round, keeping its position of the previous round if any, while a skipped judge ends the debate with the current value of its output key.
 
 To customize the convergence check or the number of rounds:
 
@@ -2663,7 +2735,7 @@ public interface DeclarativeExpertRouter {
 
 where the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
 
-Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks.
+Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks, for instance through an [activation condition](#activation-conditions). A subagent skipped in this way is left out of the map returned with an activation threshold, while without a threshold, when the chosen subagent is skipped, the router returns no result.
 
 ## Non-AI agents
 

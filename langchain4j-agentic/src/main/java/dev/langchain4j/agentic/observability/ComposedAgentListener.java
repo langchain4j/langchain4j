@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
@@ -68,6 +67,13 @@ public class ComposedAgentListener implements AgentListener {
     public void onAgentInvocationError(final AgentInvocationError agentInvocationError) {
         for (AgentListener listener : listeners) {
             listener.onAgentInvocationError(agentInvocationError);
+        }
+    }
+
+    @Override
+    public void onAgentSkipped(final AgentSkipped agentSkipped) {
+        for (AgentListener listener : listeners) {
+            listener.onAgentSkipped(agentSkipped);
         }
     }
 
@@ -153,7 +159,8 @@ public class ComposedAgentListener implements AgentListener {
         add(existingListeners, newListener, AgentListener::inheritedBySubagents);
     }
 
-    private static void add(List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
+    private static void add(
+            List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
         if (newListener == null) {
             return;
         }

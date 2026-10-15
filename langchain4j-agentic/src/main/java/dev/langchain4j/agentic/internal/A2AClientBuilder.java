@@ -2,7 +2,9 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Builder for creating A2A client proxies that communicate with remote agents
@@ -44,6 +46,27 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     A2AClientBuilder<T> listener(AgentListener agentListener);
+
+    /**
+     * Sets the condition under which the agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the remote agent is not called and the agent is skipped.
+     *
+     * @param activationCondition the predicate deciding whether the agent runs
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> activationCondition(Predicate<AgenticScope> activationCondition) {
+        return activationCondition("<unknown>", activationCondition);
+    }
+
+    /**
+     * Sets the condition under which the agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the remote agent is not called and the agent is skipped.
+     *
+     * @param description a human-readable description of the condition, used in logs, listeners and reports
+     * @param activationCondition the predicate deciding whether the agent runs
+     * @return this builder for method chaining
+     */
+    A2AClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
 
     /**
      * Sets a customizer that will be applied to the underlying a2a-java SDK

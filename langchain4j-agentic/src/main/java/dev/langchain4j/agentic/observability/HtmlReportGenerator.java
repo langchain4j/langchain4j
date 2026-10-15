@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
@@ -201,7 +202,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             String id = "ah-" + Math.abs(kc.getKey().hashCode());
             html.append("<marker id=\"").append(id).append("\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\"");
             html.append(" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\">");
-            html.append("<path d=\"M0 0 L10 5 L0 10 z\" fill=\"").append(kc.getValue()).append("\"/>");
+            html.append("<path d=\"M0 0 L10 5 L0 10 z\" fill=\"")
+                    .append(kc.getValue())
+                    .append("\"/>");
             html.append("</marker>");
         }
         html.append("</defs></svg>\n");
@@ -218,7 +221,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<span class=\"df-legend-title\">Data Flow</span>");
         for (Map.Entry<String, String> e : keyColors.entrySet()) {
             html.append("<div class=\"legend-item\">");
-            html.append("<div class=\"legend-dot\" style=\"background:").append(e.getValue()).append("\"></div>");
+            html.append("<div class=\"legend-dot\" style=\"background:")
+                    .append(e.getValue())
+                    .append("\"></div>");
             html.append("<span>").append(esc(e.getKey())).append("</span>");
             html.append("</div>\n");
         }
@@ -233,7 +238,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<div class=\"legend\">\n");
         for (AgenticSystemTopology t : present) {
             html.append("<div class=\"legend-item\">");
-            html.append("<div class=\"legend-dot\" style=\"background:").append(color(t)).append("\"></div>");
+            html.append("<div class=\"legend-dot\" style=\"background:")
+                    .append(color(t))
+                    .append("\"></div>");
             html.append("<span>").append(label(t)).append("</span>");
             html.append("</div>\n");
         }
@@ -249,12 +256,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
     }
 
-    private void appendTopologyNode(StringBuilder html, AgentInstance agent, String condition,
-                                    Map<String, String> keyColors) {
+    private void appendTopologyNode(
+            StringBuilder html, AgentInstance agent, String condition, Map<String, String> keyColors) {
         html.append("<li>\n");
 
         if (condition != null && !condition.isEmpty()) {
-            html.append("<div class=\"condition-label\">when: ").append(esc(condition)).append("</div>\n");
+            html.append("<div class=\"condition-label\">when: ")
+                    .append(esc(condition))
+                    .append("</div>\n");
         }
 
         String css = cssCls(agent.topology());
@@ -264,12 +273,15 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append(" data-agent-id=\"").append(esc(agent.agentId())).append("\"");
         if (agent.outputKey() != null && !agent.outputKey().isEmpty()) {
             html.append(" data-output-key=\"").append(esc(agent.outputKey())).append("\"");
-            html.append(" data-output-color=\"").append(keyColors.getOrDefault(agent.outputKey(), "#999")).append("\"");
+            html.append(" data-output-color=\"")
+                    .append(keyColors.getOrDefault(agent.outputKey(), "#999"))
+                    .append("\"");
         }
         if (agent.arguments() != null && !agent.arguments().isEmpty()) {
             String inputKeys = agent.arguments().stream()
                     .map(AgentArgument::name)
-                    .reduce((a, b) -> a + "," + b).orElse("");
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
             html.append(" data-input-keys=\"").append(esc(inputKeys)).append("\"");
         }
         html.append(">\n");
@@ -302,6 +314,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             detail(html, "Planner", agent.plannerType().getSimpleName());
         }
         appendLoopInfo(html, agent);
+        appendActivationCondition(html, agent);
         html.append("</div>\n"); // node-details
 
         // Data-flow key badges (colored pills showing what this agent reads/writes)
@@ -332,14 +345,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (hasInputs) {
             for (AgentArgument arg : agent.arguments()) {
                 String c = keyColors.getOrDefault(arg.name(), "#999");
-                html.append("<span class=\"key-pill key-in\" style=\"--kc:").append(c).append("\">");
+                html.append("<span class=\"key-pill key-in\" style=\"--kc:")
+                        .append(c)
+                        .append("\">");
                 html.append("&#8592; ").append(esc(arg.name()));
                 html.append("</span>");
             }
         }
         if (hasOutput) {
             String c = keyColors.getOrDefault(agent.outputKey(), "#999");
-            html.append("<span class=\"key-pill key-out\" style=\"--kc:").append(c).append("\">");
+            html.append("<span class=\"key-pill key-out\" style=\"--kc:")
+                    .append(c)
+                    .append("\">");
             html.append("&#8594; ").append(esc(agent.outputKey()));
             html.append("</span>");
         }
@@ -352,11 +369,30 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         LoopAgentInstance loop = agent.as(LoopAgentInstance.class);
         html.append("<div class=\"loop-info\">");
-        html.append("<span class=\"loop-tag\">max ").append(loop.maxIterations()).append("</span>");
+        html.append("<span class=\"loop-tag\">max ")
+                .append(loop.maxIterations())
+                .append("</span>");
         if (loop.exitCondition() != null && !loop.exitCondition().isEmpty()) {
-            html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
+            html.append("<span class=\"loop-tag\">exit: ")
+                    .append(esc(truncate(loop.exitCondition(), 40)))
+                    .append("</span>");
         }
-        html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
+        html.append("<span class=\"loop-tag\">")
+                .append(loop.testExitAtLoopEnd() ? "test at end" : "test at start")
+                .append("</span>");
+        html.append("</div>\n");
+    }
+
+    private void appendActivationCondition(StringBuilder html, AgentInstance agent) {
+        AgentCondition condition = agent.activationCondition();
+        if (condition == null) {
+            return;
+        }
+        html.append("<div class=\"activation-info\">");
+        html.append("<span class=\"activation-tag\" title=\"")
+                .append(esc(condition.description()))
+                .append("\">");
+        html.append("if: ").append(esc(truncate(condition.description(), 40))).append("</span>");
         html.append("</div>\n");
     }
 
@@ -389,9 +425,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     private void appendExecutionsSection(StringBuilder html) {
         Set<Object> memoryIds;
         if (memoryId != null) {
-            memoryIds = monitor.allMemoryIds().contains(memoryId)
-                    ? Set.of(memoryId)
-                    : Set.of();
+            memoryIds = monitor.allMemoryIds().contains(memoryId) ? Set.of(memoryId) : Set.of();
         } else {
             memoryIds = monitor.allMemoryIds();
         }
@@ -431,11 +465,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (collapsed) html.append(" collapsed");
         html.append("\" onclick=\"toggle('").append(gid).append("')\">\n");
         html.append("  <span class=\"chevron\">&#9660;</span>");
-        html.append("  <span class=\"execution-memory-id\">Session: ").append(esc(String.valueOf(memoryId))).append("</span>");
+        html.append("  <span class=\"execution-memory-id\">Session: ")
+                .append(esc(String.valueOf(memoryId)))
+                .append("</span>");
         html.append("  <div class=\"execution-meta\">");
         html.append("    <span class=\"section-count\">").append(all.size()).append(" run(s)</span>");
-        if (successCount > 0) html.append("<span class=\"status-badge st-ok\">").append(successCount).append(" success</span>");
-        if (failCount > 0) html.append("<span class=\"status-badge st-fail\">").append(failCount).append(" failed</span>");
+        if (successCount > 0)
+            html.append("<span class=\"status-badge st-ok\">")
+                    .append(successCount)
+                    .append(" success</span>");
+        if (failCount > 0)
+            html.append("<span class=\"status-badge st-fail\">")
+                    .append(failCount)
+                    .append(" failed</span>");
         if (runCount > 0) html.append("<span class=\"status-badge st-run\">in progress</span>");
         html.append("  </div>\n");
         html.append("</div>\n");
@@ -468,9 +510,13 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         // Summary line
         html.append("<div class=\"exec-summary\">");
         html.append("<span class=\"status-dot st-dot-").append(status).append("\"></span>");
-        html.append("<span class=\"exec-agent\">").append(esc(top.agent().name())).append("</span>");
+        html.append("<span class=\"exec-agent\">")
+                .append(esc(top.agent().name()))
+                .append("</span>");
         if (top.done()) {
-            html.append("<span class=\"dur-badge\">").append(fmtDur(top.duration())).append("</span>");
+            html.append("<span class=\"dur-badge\">")
+                    .append(fmtDur(top.duration()))
+                    .append("</span>");
             html.append("<span class=\"exec-time\">").append(top.startTime().format(TIME_FMT));
             html.append(" &#8594; ").append(top.finishTime().format(TIME_FMT)).append("</span>");
         } else {
@@ -481,20 +527,27 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         // Error
         if (exec.hasError()) {
             html.append("<div class=\"error-box\">");
-            html.append("<strong>Error in ").append(esc(exec.error().agentName())).append(":</strong> ");
-            html.append("<code>").append(esc(String.valueOf(exec.error().error().getMessage()))).append("</code>");
+            html.append("<strong>Error in ")
+                    .append(esc(exec.error().agentName()))
+                    .append(":</strong> ");
+            html.append("<code>")
+                    .append(esc(String.valueOf(exec.error().error().getMessage())))
+                    .append("</code>");
             html.append("</div>\n");
         }
 
         // Waterfall
-        if (top.done() || !top.nestedInvocations().isEmpty() || !top.toolExecutions().isEmpty()) {
+        if (top.done()
+                || !top.nestedInvocations().isEmpty()
+                || !top.toolExecutions().isEmpty()) {
             LocalDateTime base = top.startTime();
             long totalMs = top.done()
                     ? Math.max(1, top.duration().toMillis())
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append(
+                    "<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             int[] rowCounter = {0};
             appendWfRow(html, top, 0, base, totalMs, rowCounter, -1);
@@ -504,12 +557,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("</div>\n");
     }
 
-    private void appendWfRow(StringBuilder html, AgentInvocation inv, int depth,
-                             LocalDateTime base, long totalMs, int[] rowCounter, int parentRowId) {
+    private void appendWfRow(
+            StringBuilder html,
+            AgentInvocation inv,
+            int depth,
+            LocalDateTime base,
+            long totalMs,
+            int[] rowCounter,
+            int parentRowId) {
         AgentInstance ag = inv.agent();
         String css = cssCls(ag.topology());
         int myRowId = rowCounter[0]++;
-        boolean hasChildren = !inv.nestedInvocations().isEmpty() || !inv.toolExecutions().isEmpty();
+        boolean hasChildren =
+                !inv.nestedInvocations().isEmpty() || !inv.toolExecutions().isEmpty();
 
         long offMs = Duration.between(base, inv.startTime()).toMillis();
         long durMs = inv.done()
@@ -518,7 +578,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         double leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
         double widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
 
-        html.append("<tr data-row-id=\"").append(myRowId).append("\"");
+        html.append("<tr");
+        if (inv.skipped()) {
+            html.append(" class=\"skipped-row\"");
+        }
+        html.append(" data-row-id=\"").append(myRowId).append("\"");
         if (parentRowId >= 0) {
             html.append(" data-parent-row=\"").append(parentRowId).append("\"");
         }
@@ -529,18 +593,33 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         for (int i = 0; i < depth; i++) html.append("<span class=\"wf-indent\"></span>");
         if (depth > 0) html.append("<span class=\"wf-connector\">&#x2514;</span>");
         if (hasChildren) {
-            html.append("<span class=\"row-toggle\" onclick=\"toggleRow(").append(myRowId).append(")\">&#9660;</span>");
+            html.append("<span class=\"row-toggle\" onclick=\"toggleRow(")
+                    .append(myRowId)
+                    .append(")\">&#9660;</span>");
         }
-        html.append("<span class=\"topology-badge sm ").append(css).append("\">").append(label(ag.topology())).append("</span>");
+        html.append("<span class=\"topology-badge sm ")
+                .append(css)
+                .append("\">")
+                .append(label(ag.topology()))
+                .append("</span>");
         html.append(" ").append(esc(ag.name()));
         if (inv.iterationIndex() >= 0) {
-            html.append(" <span class=\"iter-tag\">iter ").append(inv.iterationIndex()).append("</span>");
+            html.append(" <span class=\"iter-tag\">iter ")
+                    .append(inv.iterationIndex())
+                    .append("</span>");
+        }
+        if (inv.skipped()) {
+            html.append(" <span class=\"skip-tag\" title=\"")
+                    .append(esc(inv.skipReason()))
+                    .append("\">skipped</span>");
         }
         html.append("</div></td>");
 
         // Duration column
         html.append("<td class=\"wf-dur\">");
-        html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
+        if (!inv.skipped()) {
+            html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
+        }
         html.append("</td>");
 
         // Tokens column
@@ -550,13 +629,24 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Timeline bar column
+        // Timeline bar column, empty for a skipped agent
         html.append("<td><div class=\"wf-bar-track\">");
-        html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
-                .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
-        html.append(" title=\"").append(esc(ag.name())).append(": ")
-                .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
-        html.append("</div></div></td>");
+        if (!inv.skipped()) {
+            html.append("<div class=\"wf-bar bar-")
+                    .append(css)
+                    .append("\" style=\"left:")
+                    .append(fmt(leftPct))
+                    .append("%;width:")
+                    .append(fmt(widthPct))
+                    .append("%;\"");
+            html.append(" title=\"")
+                    .append(esc(ag.name()))
+                    .append(": ")
+                    .append(inv.done() ? fmtDur(inv.duration()) : "running")
+                    .append("\">");
+            html.append("</div>");
+        }
+        html.append("</div></td>");
 
         // Input column
         html.append("<td class=\"wf-io\">");
@@ -565,9 +655,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Output column
+        // Output column, with the reason of the skip for a skipped agent
         html.append("<td class=\"wf-io\">");
-        if (inv.done() && inv.output() != null) {
+        if (inv.skipped()) {
+            appendTruncatedWithTooltip(html, inv.skipReason(), 80);
+        } else if (inv.done() && inv.output() != null) {
             appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
         }
         html.append("</td>");
@@ -583,8 +675,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
     }
 
-    private void appendToolWfRow(StringBuilder html, ToolExecution toolExec, int depth,
-                                 LocalDateTime base, long totalMs, int[] rowCounter, int parentRowId) {
+    private void appendToolWfRow(
+            StringBuilder html,
+            ToolExecution toolExec,
+            int depth,
+            LocalDateTime base,
+            long totalMs,
+            int[] rowCounter,
+            int parentRowId) {
         int myRowId = rowCounter[0]++;
         Duration dur = toolExec.duration();
         boolean hasTiming = toolExec.startTime() != null && dur != null;
@@ -611,7 +709,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<span class=\"topology-badge sm tool\">Tool</span>");
         html.append(" ").append(esc(toolExec.request().name()));
         if (toolExec.hasFailed()) {
-            html.append(" <span class=\"iter-tag\" style=\"background:#fee2e2;color:#991b1b;border-color:#fca5a5\">failed</span>");
+            html.append(
+                    " <span class=\"iter-tag\" style=\"background:#fee2e2;color:#991b1b;border-color:#fca5a5\">failed</span>");
         }
         html.append("</div></td>");
 
@@ -629,16 +728,23 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<td><div class=\"wf-bar-track\">");
         if (hasTiming) {
             html.append("<div class=\"wf-bar bar-tool\" style=\"left:")
-                    .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
-            html.append(" title=\"").append(esc(toolExec.request().name())).append(": ")
-                    .append(fmtDur(dur)).append("\">");
+                    .append(fmt(leftPct))
+                    .append("%;width:")
+                    .append(fmt(widthPct))
+                    .append("%;\"");
+            html.append(" title=\"")
+                    .append(esc(toolExec.request().name()))
+                    .append(": ")
+                    .append(fmtDur(dur))
+                    .append("\">");
             html.append("</div>");
         }
         html.append("</div></td>");
 
         // Input column (tool arguments)
         html.append("<td class=\"wf-io\">");
-        if (toolExec.request().arguments() != null && !toolExec.request().arguments().isEmpty()) {
+        if (toolExec.request().arguments() != null
+                && !toolExec.request().arguments().isEmpty()) {
             appendTruncatedWithTooltip(html, toolExec.request().arguments(), 80);
         }
         html.append("</td>");
@@ -823,8 +929,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
 
     private static String esc(String s) {
         if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private static String truncate(String s, int max) {
@@ -915,8 +1024,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
 
     private static final String[] KEY_PALETTE = {
-            "#e63946", "#457b9d", "#2a9d8f", "#e9c46a", "#7b2d8e",
-            "#f4a261", "#264653", "#d62828", "#6a994e", "#bc6c25"
+        "#e63946", "#457b9d", "#2a9d8f", "#e9c46a", "#7b2d8e",
+        "#f4a261", "#264653", "#d62828", "#6a994e", "#bc6c25"
     };
 
     private Map<String, String> collectStateKeyColors(AgentInstance root) {
@@ -1102,6 +1211,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                                margin-bottom:4px; white-space:nowrap; }
 
             .loop-info { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+            .activation-info { display:flex; margin-top:4px; }
+            .activation-tag { font-size:10px; background:#fef3c7; color:#92400e;
+                              padding:0 6px; border-radius:3px; border:1px solid #fcd34d; white-space:nowrap; }
             .loop-tag { font-size:10px; background:#ede9fe; color:#5b21b6;
                         padding:0 6px; border-radius:3px; border:1px solid #c4b5fd; }
 
@@ -1209,6 +1321,10 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .iter-tag { font-size:9px; background:#ede9fe; color:#5b21b6;
                         padding:0 5px; border-radius:3px; border:1px solid #c4b5fd;
                         font-weight:600; white-space:nowrap; }
+            .skip-tag { font-size:9px; background:var(--bg2); color:var(--fg3);
+                        padding:0 5px; border-radius:3px; border:1px solid var(--brd);
+                        font-weight:600; white-space:nowrap; }
+            .skipped-row { opacity:.65; }
 
             /* ---- Tooltip ---- */
             .tt-trigger { position:relative; cursor:help; }

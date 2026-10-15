@@ -143,7 +143,11 @@ public class P2PPlanner implements Planner {
         }
 
         private boolean canActivate(AgenticScope agenticScope) {
-            return !executing && shouldExecute && argumentNames.stream().allMatch(agenticScope::hasState);
+            return !executing
+                    && shouldExecute
+                    && argumentNames.stream().allMatch(agenticScope::hasState)
+                    && (agent.activationCondition() == null
+                            || agent.activationCondition().test(agenticScope));
         }
 
         private void startExecution() {
