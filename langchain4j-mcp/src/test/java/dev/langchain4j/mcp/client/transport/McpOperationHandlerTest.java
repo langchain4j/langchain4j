@@ -15,6 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 class McpOperationHandlerTest {
@@ -284,13 +287,38 @@ class McpOperationHandlerTest {
     }
 
     @Test
-    void doesNotReportRequestWithAnIdTheClientCannotHandle() {
+    void reportsRequestFromServerWithItsIdAsSent() {
         List<McpServerMessageContext> reported = new ArrayList<>();
         McpOperationHandler handler = handlerReportingServerMessages(Mockito.mock(McpTransport.class), reported::add);
 
         handler.onMessage("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"ping\"}");
 
-        assertThat(reported).isEmpty();
+        assertThat(reported).hasSize(1);
+        assertThat(reported.get(0).id()).isEqualTo("abc");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"abc\"", "\"7\"", "7"})
+    void respondsToPingWithItsIdAsSent(String id) {
+        assertThat(responseTo("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"method\":\"ping\"}"))
+                .isEqualTo(McpJson.toMap("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{}}"));
+    }
+
+    @Test
+    void respondsToRootsListWithItsIdAsSent() {
+        assertThat(responseTo("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"method\":\"roots/list\"}"))
+                .isEqualTo(McpJson.toMap("{\"jsonrpc\":\"2.0\",\"id\":\"abc\",\"result\":{\"roots\":[]}}"));
+    }
+
+    private static Map<String, Object> responseTo(String request) {
+        McpTransport transport = Mockito.mock(McpTransport.class);
+        McpOperationHandler handler = handlerReportingServerMessages(transport, context -> {});
+
+        handler.onMessage(request);
+
+        ArgumentCaptor<McpClientMessage> response = ArgumentCaptor.forClass(McpClientMessage.class);
+        Mockito.verify(transport).sendMessage(response.capture());
+        return McpJson.toMap(McpJson.serialize(response.getValue()));
     }
 
     private static McpOperationHandler handlerReportingServerMessages(

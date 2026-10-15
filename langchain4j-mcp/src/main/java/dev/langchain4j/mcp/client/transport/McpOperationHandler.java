@@ -166,27 +166,22 @@ public class McpOperationHandler {
                 || message.containsKey("error")) {
             return;
         }
-        Long id = toLong(message.get("id"));
-        if (id == null && message.containsKey("id")) {
-            // the client can't handle a request with this ID, see handleMessageWithId
-            return;
-        }
         Map<String, Object> params = message.get("params") instanceof Map<?, ?> p ? (Map<String, Object>) p : Map.of();
         try {
-            onServerMessage.accept(new McpServerMessageContext(method, id, params));
+            onServerMessage.accept(new McpServerMessageContext(method, message.get("id"), params));
         } catch (RuntimeException e) {
             log.warn("Failed to report a message from the server", e);
         }
     }
 
     private void handleMessageWithId(Map<String, Object> message, String json) {
-        Long messageId = toLong(message.get("id"));
-        if (messageId == null) {
-            log.warn("Received message with an unusable id: {}", message);
-            return;
-        }
         if (message.containsKey("result") || message.containsKey("error")) {
             // response to a client-initiated operation
+            Long messageId = toLong(message.get("id"));
+            if (messageId == null) {
+                log.warn("Received message with an unusable id: {}", message);
+                return;
+            }
             CompletableFuture<String> op = pendingOperations.remove(messageId);
             if (op != null) {
                 op.complete(json);
@@ -194,7 +189,12 @@ public class McpOperationHandler {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
         } else if (message.containsKey("method")) {
-            // server-initiated request requiring a response
+            // server-initiated request requiring a response, which has to carry the request's ID as it was sent
+            Object messageId = message.get("id");
+            if (!(messageId instanceof String) && !(messageId instanceof Number)) {
+                log.warn("Received message with an unusable id: {}", message);
+                return;
+            }
             McpServerMethod method = McpServerMethod.from(String.valueOf(message.get("method")));
             if (method == null) {
                 log.warn("Received response for unknown message id: {}", messageId);
@@ -217,7 +217,7 @@ public class McpOperationHandler {
                     log.warn("Received response for unknown message id: {}", messageId);
             }
         } else {
-            log.warn("Received response for unknown message id: {}", messageId);
+            log.warn("Received response for unknown message id: {}", message.get("id"));
         }
     }
 
