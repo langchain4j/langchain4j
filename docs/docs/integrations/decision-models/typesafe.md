@@ -85,8 +85,31 @@ The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` que
 In the TypeSafe documentation, yes/no questions are called "noul" questions, scale questions are called "score"
 questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
 sent as an object with a `label` and a `description`.
-The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
-without calling the API.
+Text contents are sent as their text.
+
+### Images
+
+Jev 1.13 and later can judge images, as an [experimental feature](https://docs.typesafe.ai/go/images) of the API.
+Images can be part of a list of contents, or values of a `Map` input, so that a question can refer to them by name:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(Map.of(
+                "comment", "Arrived like this",
+                "photo", ImageContent.from(base64Image, "image/jpeg")))
+        .question("damaged", YesNoQuestion.of("Is the item in `photo` damaged?"))
+        .build();
+```
+
+Each image is sent as an asset and replaced in the input by a reference such as `{{langchain4j-image-1}}`, which the
+server replaces with the image. When the request contains images, the `TypeSafe-Danger-Zone-Images: true` header is
+sent to enable the feature.
+Only PNG and JPEG images given as base64 data are supported: other formats and images given by URL throw an
+`UnsupportedFeatureException` without calling the API. Other limits are checked by the server, see the
+[TypeSafe documentation](https://docs.typesafe.ai/go/images): for example, each side must be 256 to 1568 pixels and
+an image must have at least 78,400 pixels in total (so 256 × 256 is too small), an image can be at most 16 MiB and
+the request body at most 32 MiB.
+Like all models, decision models answer less reliably about images than about text, so keep the questions simple.
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not

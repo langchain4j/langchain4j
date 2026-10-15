@@ -1,6 +1,5 @@
 package dev.langchain4j.model.typesafe.internal;
 
-import dev.langchain4j.Internal;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
@@ -8,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -39,9 +39,10 @@ public class TypeSafeClient {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(
-                        getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
+                .connectTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
         if (builder.logRequests || builder.logResponses) {
             this.httpClient =
@@ -80,6 +81,10 @@ public class TypeSafeClient {
                 .body(CODEC.toJson(request));
         if (authorizationHeader != null) {
             builder.addHeader("Authorization", authorizationHeader);
+        }
+        if (request.assets != null) {
+            // images are an experimental feature that the API accepts only with this header
+            builder.addHeader("TypeSafe-Danger-Zone-Images", "true");
         }
         Map<String, String> customHeaders = customHeadersSupplier.get();
         if (customHeaders != null) {
