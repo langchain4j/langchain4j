@@ -452,19 +452,24 @@ public class OpenAiUtils {
         }
     }
 
+    public static final String NO_CHOICES_ERROR_MESSAGE = "Chat completion failed: no choices returned in response";
+
     public static String noChoicesErrorMessage(SuccessfulHttpResponse rawHttpResponse) {
-        String providerErrorMessage = providerErrorMessageFrom(rawHttpResponse);
-        return "Chat completion failed: "
-                + (providerErrorMessage != null ? providerErrorMessage : "no choices returned in response");
+        String providerErrorMessage = rawHttpResponse == null ? null : providerErrorMessageFrom(rawHttpResponse.body());
+        return providerErrorMessage != null ? "Chat completion failed: " + providerErrorMessage : NO_CHOICES_ERROR_MESSAGE;
     }
 
-    private static String providerErrorMessageFrom(SuccessfulHttpResponse rawHttpResponse) {
-        if (rawHttpResponse == null || isNullOrBlank(rawHttpResponse.body())) {
+    /**
+     * Returns the provider's error message if the given JSON has a top-level {@code error}, otherwise {@code null}.
+     * Some OpenAI-compatible providers return such errors with HTTP 200, either as a plain body or as an SSE event.
+     */
+    public static String providerErrorMessageFrom(String json) {
+        if (isNullOrBlank(json) || !json.contains("\"error\"")) {
             return null;
         }
         Object error;
         try {
-            error = Json.fromJson(rawHttpResponse.body(), Map.class).get("error");
+            error = Json.fromJson(json, Map.class).get("error");
         } catch (Exception e) {
             return null;
         }
@@ -476,7 +481,7 @@ public class OpenAiUtils {
         if (error instanceof String message && isNotNullOrBlank(message)) {
             return message;
         }
-        return error != null ? rawHttpResponse.body().strip() : null;
+        return error != null ? json.strip() : null;
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
