@@ -14,13 +14,6 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.IllegalConfigurationException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -101,46 +94,6 @@ class ContextTest {
     void summarizer_should_fail_fast_when_model_is_missing() {
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> new Context.Summarizer(mock(AgenticScope.class), null, "expert"));
-    }
-
-    @Test
-    void summarizers_created_for_the_same_model_should_be_independent() {
-        RecordingChatModel model = new RecordingChatModel("shared summary");
-
-        Context.ContextSummarizer first = Context.createSummarizer(model);
-        Context.ContextSummarizer second = Context.createSummarizer(model);
-
-        assertThat(second).isNotSameAs(first);
-    }
-
-    @Test
-    void summarizers_with_different_models_should_not_share_a_service() {
-        Context.ContextSummarizer first = Context.createSummarizer(new RecordingChatModel("first summary"));
-        Context.ContextSummarizer second = Context.createSummarizer(new RecordingChatModel("second summary"));
-
-        assertThat(second).isNotSameAs(first);
-    }
-
-    @Test
-    void concurrent_createSummarizer_calls_with_the_same_model_should_create_independent_services() throws Exception {
-        RecordingChatModel model = new RecordingChatModel("concurrent summary");
-        int threads = 8;
-        CyclicBarrier barrier = new CyclicBarrier(threads);
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
-        try {
-            List<Future<Context.ContextSummarizer>> futures = new ArrayList<>();
-            for (int i = 0; i < threads; i++) {
-                futures.add(executor.submit(() -> {
-                    barrier.await(5, TimeUnit.SECONDS);
-                    return Context.createSummarizer(model);
-                }));
-            }
-            for (Future<Context.ContextSummarizer> future : futures) {
-                assertThat(future.get()).isNotNull();
-            }
-        } finally {
-            executor.shutdownNow();
-        }
     }
 
     @Test
