@@ -199,6 +199,6 @@ class ContextTest {
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
-                .withMessage("The chat model provider returned null while summarizing agentic context.");
+                .withMessage("The model provider returned null while summarizing agentic context.");
     }
 }
