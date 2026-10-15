@@ -108,6 +108,35 @@ class DecisionModelTest {
     }
 
     @Test
+    void decideAsync_should_return_failed_future_when_parameters_cannot_be_applied() {
+
+        // given
+        IllegalArgumentException failure = new IllegalArgumentException("unsupported parameters");
+        DecisionRequestParameters rejectingDefaults = new DecisionRequestParameters() {
+
+            @Override
+            public String modelName() {
+                return "default-model";
+            }
+
+            @Override
+            public DecisionRequestParameters overrideWith(DecisionRequestParameters that) {
+                throw failure;
+            }
+        };
+        DecisionModel model = new TestDecisionModel(rejectingDefaults);
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCause(failure);
+    }
+
+    @Test
     void decideAsync_should_apply_default_parameters_and_dispatch_to_doDecideAsync() {
 
         // given

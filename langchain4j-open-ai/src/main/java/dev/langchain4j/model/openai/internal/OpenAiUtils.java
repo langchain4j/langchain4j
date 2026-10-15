@@ -39,6 +39,7 @@ import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -449,6 +450,38 @@ public class OpenAiUtils {
             }
             return map;
         }
+    }
+
+    public static final String NO_CHOICES_ERROR_MESSAGE = "Chat completion failed: no choices returned in response";
+
+    public static String noChoicesErrorMessage(SuccessfulHttpResponse rawHttpResponse) {
+        String providerErrorMessage = rawHttpResponse == null ? null : providerErrorMessageFrom(rawHttpResponse.body());
+        return providerErrorMessage != null ? "Chat completion failed: " + providerErrorMessage : NO_CHOICES_ERROR_MESSAGE;
+    }
+
+    /**
+     * Returns the provider's error message if the given JSON has a top-level {@code error}, otherwise {@code null}.
+     * Some OpenAI-compatible providers return such errors with HTTP 200, either as a plain body or as an SSE event.
+     */
+    public static String providerErrorMessageFrom(String json) {
+        if (isNullOrBlank(json) || !json.contains("\"error\"")) {
+            return null;
+        }
+        Object error;
+        try {
+            error = Json.fromJson(json, Map.class).get("error");
+        } catch (Exception e) {
+            return null;
+        }
+        if (error instanceof Map<?, ?> errorMap
+                && errorMap.get("message") instanceof String message
+                && isNotNullOrBlank(message)) {
+            return message;
+        }
+        if (error instanceof String message && isNotNullOrBlank(message)) {
+            return message;
+        }
+        return error != null ? json.strip() : null;
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {

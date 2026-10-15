@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import com.openai.core.JsonField;
+import com.openai.core.JsonValue;
 import com.openai.models.decisions.Decision;
 import com.openai.models.decisions.DecisionChoiceOption;
 import com.openai.models.decisions.DecisionChoiceValue;
@@ -79,7 +81,28 @@ class InternalOpenAiOfficialDecisionHelper {
                     List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
         }
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
+        if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
+            parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
+        }
         return params.build();
+    }
+
+    /**
+     * The SDK writes additional body properties next to the fields it knows, so the fields set by this class are
+     * replaced through their own setters to avoid sending them twice.
+     */
+    private static void addCustomParameter(DecisionCreateParams.Builder params, String name, Object value) {
+        switch (name) {
+            case "model" -> params.model(jsonField(value));
+            case "input" -> params.input(jsonField(value));
+            case "questions" -> params.questions(jsonField(value));
+            default -> params.putAdditionalBodyProperty(name, JsonValue.from(value));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> JsonField<T> jsonField(Object value) {
+        return (JsonField<T>) (JsonField<?>) JsonValue.from(value);
     }
 
     private static boolean isContents(Object value) {
@@ -97,7 +120,7 @@ class InternalOpenAiOfficialDecisionHelper {
         }
         if (content instanceof ImageContent image) {
             return DecisionInputPart.ofInputImage(DecisionInputImage.builder()
-                    .imageUrl(toDataUrl(image.image()))
+                    .imageUrl(toImageUrl(image.image()))
                     .detail(toDetail(image.detailLevel()))
                     .build());
         }
@@ -106,18 +129,14 @@ class InternalOpenAiOfficialDecisionHelper {
                         + content.type());
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static DecisionInputImage.Detail toDetail(ImageContent.DetailLevel detailLevel) {

@@ -91,17 +91,17 @@ src/main/resources/
 
 ```java
 // Load all skills from a classpath directory:
-List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills");
+List<Skill> skills = ClassPathSkillLoader.loadSkills("skills");
 
 // Or load a single skill:
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx");
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx");
 ```
 
 By default, `ClassPathSkillLoader` uses the thread's context class loader.
 You can pass a custom `ClassLoader` if needed:
 
 ```java
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
 ```
 
 The same `SKILL.md` format, resource loading rules, and `scripts/` exclusion apply
