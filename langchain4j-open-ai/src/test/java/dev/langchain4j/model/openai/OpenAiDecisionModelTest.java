@@ -332,20 +332,27 @@ class OpenAiDecisionModelTest {
     }
 
     @Test
-    void should_reject_images_referenced_by_url_without_calling_the_api() {
+    void should_send_images_referenced_by_url_as_is() throws Exception {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """));
 
-        // when-then
-        assertThatThrownBy(() -> model(httpClient)
-                        .decide(DecisionRequest.builder()
-                                .input(List.of(ImageContent.from("https://example.com/package.png")))
-                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
-                                .build()))
-                .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("only inline images");
-        assertThat(httpClient.requests()).isEmpty();
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .input(List.of(ImageContent.from("https://example.com/package.png")))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input").get(0).get("content"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{"type": "input_image", "image_url": "https://example.com/package.png", "detail": "low"}]
+                        """));
     }
 
     @Test

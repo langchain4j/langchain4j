@@ -97,7 +97,7 @@ class InternalOpenAiOfficialDecisionHelper {
         }
         if (content instanceof ImageContent image) {
             return DecisionInputPart.ofInputImage(DecisionInputImage.builder()
-                    .imageUrl(toDataUrl(image.image()))
+                    .imageUrl(toImageUrl(image.image()))
                     .detail(toDetail(image.detailLevel()))
                     .build());
         }
@@ -106,18 +106,14 @@ class InternalOpenAiOfficialDecisionHelper {
                         + content.type());
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static DecisionInputImage.Detail toDetail(ImageContent.DetailLevel detailLevel) {
