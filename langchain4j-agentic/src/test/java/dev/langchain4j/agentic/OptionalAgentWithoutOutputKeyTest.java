@@ -74,6 +74,21 @@ class OptionalAgentWithoutOutputKeyTest {
         assertThat(SIDE_EFFECT_INVOCATIONS).hasValue(1);
     }
 
+    @Test
+    void optional_agent_without_output_key_returns_null_when_it_is_the_last_agent() {
+        SideEffectAgent sideEffectAgent = AgenticServices.agentBuilder(SideEffectAgent.class)
+                .chatModel(SIDE_EFFECT_MODEL)
+                .optional(true)
+                .build();
+
+        UntypedAgent singleAgentWorkflow = AgenticServices.sequenceBuilder()
+                .subAgents(List.of(sideEffectAgent))
+                .build();
+
+        assertThat(singleAgentWorkflow.invoke(Map.of())).isNull();
+        assertThat(SIDE_EFFECT_INVOCATIONS).hasValue(0);
+    }
+
     private static UntypedAgent workflow() {
         SideEffectAgent sideEffectAgent = AgenticServices.agentBuilder(SideEffectAgent.class)
                 .chatModel(SIDE_EFFECT_MODEL)
