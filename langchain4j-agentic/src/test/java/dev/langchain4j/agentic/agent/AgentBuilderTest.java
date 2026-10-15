@@ -20,7 +20,7 @@ class AgentBuilderTest {
     }
 
     @Test
-    void streaming_agent_with_summarized_context() {
+    void should_build_streaming_agent_with_summarized_context() {
         SummarizedAgent agent = new AgentBuilder<>(SummarizedAgent.class)
                 .streamingChatModel(mock(StreamingChatModel.class))
                 .summarizedContext("expert")

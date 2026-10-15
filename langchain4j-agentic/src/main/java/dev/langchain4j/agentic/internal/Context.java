@@ -26,7 +26,7 @@ public class Context {
         Summary summarize(String conversation);
     }
 
-    private interface StreamingContextSummarizer {
+    public interface StreamingContextSummarizer {
 
         @UserMessage(SUMMARIZER_PROMPT)
         TokenStream summarize(String conversation);
@@ -60,11 +60,12 @@ public class Context {
 
     /**
      * Creates a new stateless summarizer AI service bound to the given {@link StreamingChatModel}.
-     * The returned summarizer blocks until the streamed summary is complete.
+     * The returned summarizer blocks until the streamed summary is complete. The service is not cached here:
+     * callers that build it once and share it across invocations own the caching strategy.
      *
      * @throws IllegalConfigurationException if {@code streamingChatModel} is {@code null}
      */
-    public static ContextSummarizer createSummarizer(StreamingChatModel streamingChatModel) {
+    public static ContextSummarizer createStreamingSummarizer(StreamingChatModel streamingChatModel) {
         if (streamingChatModel == null) {
             throw new IllegalConfigurationException("A StreamingChatModel is required to summarize agentic context.");
         }
@@ -114,7 +115,7 @@ public class Context {
 
         /**
          * Creates a summarizer backed by a pre-built {@link ContextSummarizer}, typically one shared
-         * by the caller across agents or invocations using the same {@link ChatModel}.
+         * by the caller across agents or invocations using the same model.
          */
         public static Summarizer withSummarizer(
                 AgenticScope agenticScope, ContextSummarizer summarizer, String... agentNames) {
@@ -130,8 +131,7 @@ public class Context {
                 AgenticScope agenticScope, Function<AgenticScope, ChatModel> chatModelProvider, String... agentNames) {
             return new Summarizer(
                     agenticScope,
-                    new ModelBasedSummarizer<>(
-                            agenticScope, chatModelProvider, Context::createSummarizer),
+                    new ModelBasedSummarizer<>(agenticScope, chatModelProvider, Context::createSummarizer, "chat model"),
                     agentNames);
         }
 
@@ -147,7 +147,10 @@ public class Context {
             return new Summarizer(
                     agenticScope,
                     new ModelBasedSummarizer<>(
-                            agenticScope, streamingChatModelProvider, Context::createSummarizer),
+                            agenticScope,
+                            streamingChatModelProvider,
+                            Context::createStreamingSummarizer,
+                            "streaming chat model"),
                     agentNames);
         }
 
@@ -165,16 +168,19 @@ public class Context {
             private final AgenticScope agenticScope;
             private final Function<AgenticScope, M> modelProvider;
             private final Function<M, ContextSummarizer> summarizerFactory;
+            private final String modelType;
 
             private volatile CachedSummarizer<M> cachedSummarizer;
 
             private ModelBasedSummarizer(
                     AgenticScope agenticScope,
                     Function<AgenticScope, M> modelProvider,
-                    Function<M, ContextSummarizer> summarizerFactory) {
+                    Function<M, ContextSummarizer> summarizerFactory,
+                    String modelType) {
                 this.agenticScope = agenticScope;
                 this.modelProvider = modelProvider;
                 this.summarizerFactory = summarizerFactory;
+                this.modelType = modelType;
             }
 
             @Override
@@ -187,7 +193,7 @@ public class Context {
             private ContextSummarizer summarizerFor(M model) {
                 if (model == null) {
                     throw new IllegalConfigurationException(
-                            "The model provider returned null while summarizing agentic context.");
+                            "The " + modelType + " provider returned null while summarizing agentic context.");
                 }
 
                 CachedSummarizer<M> cached = cachedSummarizer;

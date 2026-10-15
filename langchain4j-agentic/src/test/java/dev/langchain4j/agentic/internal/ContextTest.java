@@ -2,16 +2,16 @@ package dev.langchain4j.agentic.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.util.ArrayList;
 import java.util.List;
@@ -171,22 +171,63 @@ class ContextTest {
         AgenticScope agenticScope = mock(AgenticScope.class);
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
 
-        StreamingChatModel streamingModel = new StreamingChatModel() {
-            @Override
-            public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-                handler.onPartialResponse("streamed ");
-                handler.onPartialResponse("summary");
-                handler.onCompleteResponse(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("streamed summary"))
-                        .build());
-            }
-        };
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
 
         Context.Summarizer summarizer =
                 Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
 
         assertThat(summarizer.transformUserMessage("question", "memory"))
                 .isEqualTo("Considering this context \"streamed summary\"\nquestion");
+        assertThat(streamingModel.request().messages().toString()).contains("expert conversation");
+    }
+
+    @Test
+    void streaming_summarizer_should_propagate_the_streaming_error() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        RuntimeException error = new RuntimeException("streaming failed");
+        StreamingChatModelMock streamingModel = new StreamingChatModelMock(error);
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThatThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
+                .isSameAs(error);
+    }
+
+    @Test
+    void streaming_summarizer_should_not_invoke_model_when_context_is_blank() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("");
+
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("summary");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThat(summarizer.transformUserMessage("question", "memory")).isEqualTo("question");
+        assertThat(streamingModel.requests()).isEmpty();
+    }
+
+    @Test
+    void streaming_summarizer_should_fail_fast_when_model_is_missing() {
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> Context.createStreamingSummarizer(null))
+                .withMessage("A StreamingChatModel is required to summarize agentic context.");
+    }
+
+    @Test
+    void summarizer_with_streaming_chat_model_provider_should_fail_when_provider_returns_null() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> null, "expert");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
+                .withMessage("The streaming chat model provider returned null while summarizing agentic context.");
     }
 
     @Test
@@ -199,6 +240,6 @@ class ContextTest {
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
-                .withMessage("The model provider returned null while summarizing agentic context.");
+                .withMessage("The chat model provider returned null while summarizing agentic context.");
     }
 }
