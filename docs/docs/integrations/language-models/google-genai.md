@@ -478,10 +478,10 @@ preserved, regardless of this setting.
 > `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
 > never appear in `AiMessage.text()`.
 
-## Token Usage
+## Token Usage & Automatic Continuation
 
 Responses carry a `GoogleGenAiTokenUsage`, which adds the token counts Gemini reports for thinking, cached
-content and tool results to the standard input, output and total counts:
+content, tool results, and multi-hop continuation to the standard input, output, and total counts:
 
 ```java
 GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.metadata().tokenUsage();
@@ -489,11 +489,29 @@ GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.metadata().t
 Integer thoughtsTokenCount = tokenUsage.thoughtsTokenCount();
 Integer cachedContentTokenCount = tokenUsage.cachedContentTokenCount();
 Integer toolUsePromptTokenCount = tokenUsage.toolUsePromptTokenCount();
+Integer initialPromptTokenCount = tokenUsage.initialPromptTokenCount();
 ```
 
 Each is `null` when the model does not report it. `cachedContentTokenCount` is a subset of
 `inputTokenCount()`, whereas `toolUsePromptTokenCount` and `thoughtsTokenCount` are counted on top of it:
 Gemini defines the total as `inputTokenCount + outputTokenCount + toolUsePromptTokenCount + thoughtsTokenCount`.
+
+Gemini can end a long response early with the `CONTINUATION` finish reason. By default, the Google Gen AI SDK
+then sends the same request again, with a continuation token, until the model finishes, and returns all parts as one
+response. Each of these requests (hops) is billed separately. In that case, `inputTokenCount()` is the sum of the
+prompt tokens of all hops, while `initialPromptTokenCount()` is the prompt token count of the first hop only.
+For a response that needed a single request, both are the same.
+
+To turn automatic continuation off, set `automaticContinuation(false)` on the model builder, or per request
+via `GoogleGenAiChatRequestParameters`:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .automaticContinuation(false)
+    .build();
+```
 
 ## GoogleGenAiEmbeddingModel
 
@@ -621,6 +639,17 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .build();
 ```
 
+You can also override labels per request via `GoogleGenAiChatRequestParameters`:
+
+```java
+ChatResponse response = gemini.chat(ChatRequest.builder()
+    .messages(UserMessage.from("Hello"))
+    .parameters(GoogleGenAiChatRequestParameters.builder()
+        .labels(Map.of("environment", "staging", "tenant", "acme"))
+        .build())
+    .build());
+```
+
 ## File API
 
 The Google Gen AI integration provides the `GoogleGenAiFiles` utility to upload and manage files on Google's servers. This is particularly useful for passing large multimodal inputs (like long videos, audio files, or extensive PDFs) that might exceed standard request limits.
@@ -703,7 +732,7 @@ String transcript = response.aiMessage().text();
 - `wordTimestamp`: returns the start and end offset of every word.
 - `diarization`: labels which speaker said what.
 
-Word timestamps and speaker labels are not part of the `AiMessage` text. Read them from the raw response:
+Segment-level timestamps (`startOffset` and `endOffset` as `Duration`), word timestamps, and speaker labels are not part of the `AiMessage` text. Read them from the raw response:
 
 ```java
 GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) response.metadata();
@@ -711,8 +740,12 @@ GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) res
 for (Part part : metadata.rawResponse().parts()) {
     part.audioTranscription().ifPresent(transcription -> {
         String speaker = transcription.speakerLabel().orElse("");
+        Duration segmentStart = transcription.startOffset().orElse(Duration.ZERO);
+        Duration segmentEnd = transcription.endOffset().orElse(Duration.ZERO);
+        System.out.printf("Segment [%s] (%s - %s): %s%n",
+            speaker, segmentStart, segmentEnd, transcription.text().orElse(""));
         for (WordInfo word : transcription.words().orElse(List.of())) {
-            System.out.printf("[%s] %s - %s %s%n",
+            System.out.printf("  [%s] %s - %s %s%n",
                 speaker, word.startOffset().orElse(""), word.endOffset().orElse(""), word.word().orElse(""));
         }
     });
@@ -720,7 +753,36 @@ for (Part part : metadata.rawResponse().parts()) {
 ```
 
 `GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
-so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
+so use `GoogleGenAiChatModel` when you need timestamps or speaker labels.
+
+## Speech / Audio Generation Output
+
+Gemini TTS models (such as `gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`, or `gemini-3.1-flash-tts-preview`) can synthesize speech audio from text. Configure `speechConfig` (including single-speaker or multi-speaker voices, language code, and custom pronunciation dictionaries via `PronunciationDictionaryConfig`) along with `responseModalities(List.of("AUDIO"))`:
+
+```java
+ChatModel ttsModel = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash-tts")
+    .responseModalities(List.of("AUDIO"))
+    .speechConfig(SpeechConfig.builder()
+        .languageCode("en-US")
+        .voiceConfig(VoiceConfig.builder()
+            .prebuiltVoiceConfig(PrebuiltVoiceConfig.builder().voiceName("Kore").build())
+            .build())
+        .build())
+    .build();
+
+ChatResponse response = ttsModel.chat(UserMessage.from("Welcome to LangChain4j!"));
+
+List<Audio> audioParts = response.aiMessage().audios();
+```
+
+Each `Audio` holds one audio part exactly as the model returned it, with its `mimeType()` and `base64Data()`.
+Gemini TTS models return raw PCM audio (for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file,
+so add a WAV header before saving or playing it.
+
+`GoogleGenAiStreamingChatModel` receives the audio in several chunks. The final `AiMessage` keeps every part,
+in the order they arrived, so join the bytes of all parts to get the complete audio.
 
 ## Image Generation Output
 
@@ -744,7 +806,8 @@ for (Image image : response.aiMessage().images()) {
 }
 ```
 
-Only `image/*` blobs become generated images; inline data of any other type is ignored.
+Only `image/*` blobs become generated images; `audio/*` blobs are returned by `AiMessage.audios()` (see above),
+and inline data of any other type is ignored.
 
 Streaming responses work the same way. `GoogleGenAiStreamingChatModel` receives the answer one chunk at a time, and
 every chunk contributes its images to the final message, so a picture that arrives on its own chunk is not lost.

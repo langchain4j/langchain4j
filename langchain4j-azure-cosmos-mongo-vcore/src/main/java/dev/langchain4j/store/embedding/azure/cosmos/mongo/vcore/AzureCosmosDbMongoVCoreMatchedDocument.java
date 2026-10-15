@@ -3,6 +3,13 @@ package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @deprecated Replaced by
+ * {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbMatchedDocument}
+ * in the {@code langchain4j-azure-documentdb} module. See
+ * {@link AzureCosmosDbMongoVCoreEmbeddingStore} for migration details.
+ */
+@Deprecated(forRemoval = true)
 public class AzureCosmosDbMongoVCoreMatchedDocument {
 
     private String id;

@@ -500,3 +500,8 @@ ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(
 
 System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```
+
+### Decision models
+
+Ollama also runs decision models, which answer yes/no, choice and scale questions with probabilities,
+see [Ollama decision models](/integrations/decision-models/ollama).

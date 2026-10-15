@@ -258,7 +258,8 @@ If a name is not available, `build()` fails and explains both options.
 
 Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
 sent as contents, for example images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai)):
+(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
+a vision model such as Clef):
 
 ```java
 interface DamageInspector {

@@ -722,7 +722,12 @@ public class ToolService {
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
-        return finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage);
+        return finalToolServiceResult(
+                chatResponse,
+                intermediateResponses,
+                toolExecutions,
+                aggregateTokenUsage,
+                chatMemory == null ? messages : List.of());
     }
 
     /**
@@ -884,7 +889,11 @@ public class ToolService {
                     .thenCompose(ignored -> {
                         if (!aiMessage.hasToolExecutionRequests()) {
                             return CompletableFuture.completedFuture(finalToolServiceResult(
-                                    chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    chatResponse,
+                                    intermediateResponses,
+                                    toolExecutions,
+                                    aggregateTokenUsage,
+                                    chatMemory == null ? accumulator : List.of()));
                         }
 
                         intermediateResponses.add(chatResponse);
@@ -1243,16 +1252,22 @@ public class ToolService {
                 .build();
     }
 
+    /**
+     * @param messages the conversation the loop ended with, final response included, when there is no chat memory
+     *                 to hold it (empty otherwise). Output guardrails need it to retry or reprompt.
+     */
     private static ToolServiceResult finalToolServiceResult(
             ChatResponse finalResponse,
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
-            TokenUsage aggregateTokenUsage) {
+            TokenUsage aggregateTokenUsage,
+            List<ChatMessage> messages) {
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
                 .finalResponse(finalResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .messages(messages)
                 .build();
     }
 
