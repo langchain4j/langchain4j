@@ -2914,7 +2914,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .build();
 ```
 
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+By doing so it internally sends a summarization prompt, similar to the one of the `ContextSummarizer` agent discussed before, to the same model of the agent where it has been defined. This also works for an agent configured with a `StreamingChatModel`: the summary is then generated with that streaming model, but it is fully collected before the agent sends its own request. In both cases the summarization is an additional, blocking LLM call that happens before the agent starts answering. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
 
 ### AgenticScope registry and persistence
 
