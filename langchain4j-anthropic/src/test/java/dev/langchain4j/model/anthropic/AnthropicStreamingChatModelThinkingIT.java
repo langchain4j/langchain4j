@@ -50,7 +50,7 @@ class AnthropicStreamingChatModelThinkingIT {
         // sendThinking = true by default
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -131,7 +131,7 @@ class AnthropicStreamingChatModelThinkingIT {
         boolean sendThinking = false;
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -220,7 +220,7 @@ class AnthropicStreamingChatModelThinkingIT {
                 .build();
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

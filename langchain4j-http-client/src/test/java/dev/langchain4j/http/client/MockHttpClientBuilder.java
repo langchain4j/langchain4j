@@ -7,28 +7,45 @@ import java.time.Duration;
 public class MockHttpClientBuilder implements HttpClientBuilder {
 
     private final HttpClient httpClient;
+    private final HttpClientBuilder delegateBuilder;
 
     public MockHttpClientBuilder(HttpClient httpClient) {
         this.httpClient = httpClient;
+        this.delegateBuilder = null;
+    }
+
+    /**
+     * Timeouts configured on this builder (e.g. by a model) are applied to the builder of the real HTTP client
+     * that the given {@link SpyingHttpClient} delegates to, if it was created from a builder.
+     */
+    public MockHttpClientBuilder(SpyingHttpClient spyingHttpClient) {
+        this.httpClient = spyingHttpClient;
+        this.delegateBuilder = spyingHttpClient.delegateBuilder();
     }
 
     @Override
     public Duration connectTimeout() {
-        return null;
+        return delegateBuilder == null ? null : delegateBuilder.connectTimeout();
     }
 
     @Override
     public HttpClientBuilder connectTimeout(Duration timeout) {
+        if (delegateBuilder != null) {
+            delegateBuilder.connectTimeout(timeout);
+        }
         return this;
     }
 
     @Override
     public Duration readTimeout() {
-        return null;
+        return delegateBuilder == null ? null : delegateBuilder.readTimeout();
     }
 
     @Override
     public HttpClientBuilder readTimeout(Duration timeout) {
+        if (delegateBuilder != null) {
+            delegateBuilder.readTimeout(timeout);
+        }
         return this;
     }
 
