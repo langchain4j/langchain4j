@@ -27,6 +27,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -41,6 +43,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -62,7 +65,35 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private AgentListener agentListener;
     private boolean crossAgentCompensationEnabled;
 
-    private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
+    private final Map<Object, LastResponse> lastResponses = new ConcurrentHashMap<>();
+
+    private record LastResponse(AiServiceResponseReceivedEvent event, TokenUsage tokenUsage) {
+
+        static LastResponse first(AiServiceResponseReceivedEvent event) {
+            return new LastResponse(event, event.response().metadata().tokenUsage());
+        }
+
+        LastResponse next(AiServiceResponseReceivedEvent nextEvent) {
+            if (!Objects.equals(
+                    event.invocationContext().invocationId(),
+                    nextEvent.invocationContext().invocationId())) {
+                return first(nextEvent);
+            }
+            return new LastResponse(
+                    nextEvent,
+                    TokenUsage.sum(tokenUsage, nextEvent.response().metadata().tokenUsage()));
+        }
+
+        ChatResponse chatResponse() {
+            ChatResponse response = event.response();
+            return ChatResponse.builder()
+                    .aiMessage(response.aiMessage())
+                    .metadata(response.metadata().toBuilder()
+                            .tokenUsage(tokenUsage)
+                            .build())
+                    .build();
+        }
+    }
 
     public AgentInvocationHandler(
             AiServiceContext context, Object agent, AgentBuilder<?, ?> builder, boolean agenticScopeDependent) {
@@ -86,7 +117,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     AiServiceResponseReceivedEvent event = (AiServiceResponseReceivedEvent) args[0];
                     AgenticScope agenticScope = (AgenticScope)
                             event.invocationContext().managedParameters().get(AgenticScope.class);
-                    lastResponseEvents.put(agenticScope.memoryId(), event);
+                    lastResponses.compute(
+                            agenticScope.memoryId(),
+                            (memoryId, previous) ->
+                                    previous == null ? LastResponse.first(event) : previous.next(event));
                     yield null;
                 }
                 default ->
@@ -97,18 +131,18 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
         if (method.getDeclaringClass() == ChatMessagesAccess.class) {
             if ("removeLastResponseEvent".equals(method.getName())) {
-                lastResponseEvents.remove(args[0]);
+                lastResponses.remove(args[0]);
                 return null;
             }
-            AiServiceResponseReceivedEvent lastResponseEvent = lastResponseEvents.get(args[0]);
-            if (lastResponseEvent == null) {
+            LastResponse lastResponse = lastResponses.get(args[0]);
+            if (lastResponse == null) {
                 return null;
             }
             return switch (method.getName()) {
                 case "lastUserMessage" ->
-                    lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
-                case "lastChatRequest" -> lastResponseEvent.request();
-                case "lastChatResponse" -> lastResponseEvent.response();
+                    lastUserMessage(lastResponse.event().request().messages()).orElse(null);
+                case "lastChatRequest" -> lastResponse.event().request();
+                case "lastChatResponse" -> lastResponse.chatResponse();
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeOwner class : " + method.getName());
