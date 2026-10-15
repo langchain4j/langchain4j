@@ -12,7 +12,6 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SpyingHttpClient;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.http.HttpTimeoutException;
 import org.junit.jupiter.api.Test;
 
@@ -21,18 +20,8 @@ class SpyingJdkHttpClientTimeoutTest {
     @Test
     void should_apply_read_timeout_configured_on_mock_http_client_builder() throws Exception {
 
+        // the OS completes the TCP handshake (backlog), but nobody ever reads the request or responds
         try (ServerSocket neverRespondingServer = new ServerSocket(0)) {
-
-            // accepts connections but never responds
-            Thread acceptor = new Thread(() -> {
-                try {
-                    Socket ignored = neverRespondingServer.accept();
-                    Thread.sleep(Long.MAX_VALUE);
-                } catch (Exception ignored) {
-                }
-            });
-            acceptor.setDaemon(true);
-            acceptor.start();
 
             // given
             SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
@@ -48,6 +37,7 @@ class SpyingJdkHttpClientTimeoutTest {
                     .build();
 
             // when-then
+            assertThat(httpClientBuilder.connectTimeout()).isEqualTo(ofSeconds(1));
             assertThat(httpClientBuilder.readTimeout()).isEqualTo(ofSeconds(1));
             assertTimeoutPreemptively(
                     ofSeconds(30),

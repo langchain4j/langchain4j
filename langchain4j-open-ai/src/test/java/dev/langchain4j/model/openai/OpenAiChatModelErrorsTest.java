@@ -14,6 +14,8 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.chat.ChatModel;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
 import org.junit.jupiter.api.Test;
@@ -169,6 +171,31 @@ class OpenAiChatModelErrorsTest {
     }
 
     @Test
+    void should_expose_provider_error_returned_with_http_200_async() {
+
+        // given
+        final var userMessage = "Async provider error";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"error":{"message":"Service is too busy"}}
+                    """);
+        });
+
+        // when
+        CompletableFuture<String> future = model.chatAsync(userMessage);
+
+        // then
+        assertThat(future)
+                .failsWithin(TIMEOUT)
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isExactlyInstanceOf(InternalServerException.class)
+                .withMessage("Chat completion failed: Service is too busy");
+    }
+
+    @Test
     void should_expose_provider_error_without_message_returned_with_http_200() {
 
         // given
@@ -184,8 +211,7 @@ class OpenAiChatModelErrorsTest {
         // when-then
         assertThatThrownBy(() -> model.chat(userMessage))
                 .isExactlyInstanceOf(InternalServerException.class)
-                .hasMessageStartingWith("Chat completion failed: ")
-                .hasMessageContaining("service_unavailable");
+                .hasMessage("Chat completion failed: {\"error\":{\"code\":\"service_unavailable\"}}");
     }
 
     @Test

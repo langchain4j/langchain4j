@@ -473,7 +473,10 @@ public class OpenAiUtils {
                 && isNotNullOrBlank(message)) {
             return message;
         }
-        return error != null ? Json.toJson(error) : null;
+        if (error instanceof String message && isNotNullOrBlank(message)) {
+            return message;
+        }
+        return error != null ? rawHttpResponse.body().strip() : null;
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {

@@ -20,6 +20,10 @@ public class SpyingHttpClient implements HttpClient {
     private final List<SuccessfulHttpResponse> responses = Collections.synchronizedList(new ArrayList<>());
     private final List<String> sseEvents = Collections.synchronizedList(new ArrayList<>());
 
+    /**
+     * Timeouts configured via {@link MockHttpClientBuilder} are not applied to an already built delegate,
+     * use {@link #SpyingHttpClient(HttpClientBuilder)} for that.
+     */
     public SpyingHttpClient(HttpClient delegate) {
         this.delegateBuilder = null;
         this.delegate = ensureNotNull(delegate, "delegate");
