@@ -1617,7 +1617,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
 
-Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the two examples of custom patterns, provided in the `langchain4j-agentic-patterns` module, that can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
+Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 
 ### Goal oriented agentic pattern
 
