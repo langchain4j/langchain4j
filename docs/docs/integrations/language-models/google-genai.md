@@ -21,6 +21,7 @@ https://github.com/googleapis/java-genai
     - [Executor](#executor)
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
 - [GoogleGenAiImageModel](#googlegenaiimagemodel)
+- [GoogleGenAiTextToSpeechModel](#googlegenaitexttospeechmodel)
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
@@ -626,6 +627,51 @@ ImageModel imageModel = GoogleGenAiImageModel.builder()
 Response<Image> response = imageModel.generate("A futuristic city at sunset");
 ```
 
+## GoogleGenAiTextToSpeechModel
+
+The `GoogleGenAiTextToSpeechModel` turns text into speech with the Gemini text-to-speech models, such as `gemini-3.8-flash-tts` and `gemini-3.8-flash-lite-tts`.
+
+```java
+TextToSpeechModel model = GoogleGenAiTextToSpeechModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash-tts")
+    .voice("Kore")
+    .build();
+
+TextToSpeechResponse response = model.synthesize("Have a wonderful day!");
+
+Files.write(Path.of("speech.wav"), response.audio().binaryData());
+```
+
+- `voice`: the prebuilt voice to speak with, such as `Kore` or `Puck`. A voice set on the `TextToSpeechRequest` takes precedence. When no voice is set, the API chooses one.
+- `languageCode`: the BCP-47 code of the language to speak, such as `de-DE`. When it is not set, the language is detected from the text.
+
+The audio is returned as WAV. Preview models such as `gemini-3.1-flash-tts-preview` answer with raw 16-bit PCM, which is wrapped in a WAV header so that every model returns a file you can play.
+
+With `gemini-3.8-flash-tts`, the whole text is spoken, including directions such as "Say cheerfully:".
+
+### Multiple speakers
+
+To voice a conversation, give each speaker a voice with `speaker`, and start every turn on a new line with the name of its speaker and a colon:
+
+```java
+TextToSpeechModel model = GoogleGenAiTextToSpeechModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash-tts")
+    .speaker("Joe", "Kore")
+    .speaker("Jane", "Puck")
+    .build();
+
+TextToSpeechResponse response = model.synthesize("""
+    Joe: How is the weather in Paris today?
+    Jane: Sunny and warm.
+    """);
+```
+
+A line that does not start with a speaker name belongs to the turn above it, so the text must start with a speaker: text before the first turn is rejected with an `IllegalArgumentException`. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
+
+To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
+
 ## Batch API
 
 The Google Gen AI integration provides support for the Batch API, allowing you to run operations asynchronously in the background. The following batch models are supported:
@@ -838,8 +884,9 @@ List<Audio> audioParts = response.aiMessage().audios();
 ```
 
 Each `Audio` holds one audio part exactly as the model returned it, with its `mimeType()` and `base64Data()`.
-Gemini TTS models return raw PCM audio (for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file,
-so add a WAV header before saving or playing it.
+The `gemini-3.8` TTS models return WAV (`audio/wav`). The preview TTS models return raw PCM audio
+(for example `audio/L16;codec=pcm;rate=24000`) rather than a playable file, so add a WAV header before saving or playing it,
+or use [`GoogleGenAiTextToSpeechModel`](#googlegenaitexttospeechmodel), which adds it.
 
 `GoogleGenAiStreamingChatModel` receives the audio in several chunks. The final `AiMessage` keeps every part,
 in the order they arrived, so join the bytes of all parts to get the complete audio.
