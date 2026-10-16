@@ -110,10 +110,12 @@ class SegmentBuilder {
     /**
      * Returns {@code true} if the current segment is not empty.
      *
-     * @return {@code true} if the current segment is not empty.
+     * @return {@code true} if the current segment is not empty; a buffer holding only whitespace counts as
+     *         empty, since {@link #toString()} trims it away and flushing it would otherwise produce an
+     *         empty {@link TextSegment} or a misleading "doesn't fit" error.
      */
     public boolean isNotEmpty() {
-        return segment.length() > 0;
+        return !segment.toString().trim().isEmpty();
     }
 
     @Override
