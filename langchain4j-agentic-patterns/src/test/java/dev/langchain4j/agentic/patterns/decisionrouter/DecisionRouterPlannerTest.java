@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -166,7 +167,7 @@ class DecisionRouterPlannerTest {
         router(model).ask(REQUEST);
 
         DecisionRequest request = model.request();
-        assertThat(request.input()).isEqualTo(Map.of("request", REQUEST));
+        assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST)));
         assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
         ChoiceQuestion question = (ChoiceQuestion) request.questions().get(QUESTION_NAME);
         assertThat(question.text()).isEqualTo("Which agent is best suited to handle this request?");
@@ -263,7 +264,7 @@ class DecisionRouterPlannerTest {
         multiRouter(model, 0.5).ask(REQUEST);
 
         DecisionRequest request = model.request();
-        assertThat(request.input()).isEqualTo(Map.of("request", REQUEST));
+        assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST)));
         assertThat(request.questions()).containsOnlyKeys("medical", "legal", "technical");
         assertThat(request.questions().values())
                 .allSatisfy(question -> assertThat(question)
@@ -392,7 +393,7 @@ class DecisionRouterPlannerTest {
                 .build();
 
         assertThat(pipeline.process(REQUEST)).isEqualTo("summary of legal answer");
-        assertThat(model.request().input()).isEqualTo(Map.of("request", REQUEST));
+        assertThat(model.request().input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST)));
     }
 
     @Test

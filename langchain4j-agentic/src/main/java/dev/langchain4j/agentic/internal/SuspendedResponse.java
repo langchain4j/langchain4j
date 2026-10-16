@@ -15,7 +15,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * <p>
  * Usage with {@link dev.langchain4j.agentic.workflow.HumanInTheLoop}:
  * <pre>{@code
- * HumanInTheLoop.builder()
+ * AgenticServices.humanInTheLoopBuilder()
  *     .responseProvider(scope -> new SuspendedResponse<>("user-approval"))
  *     .build();
  *
@@ -23,6 +23,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * scope.completePendingResponse("user-approval", "approved");
  * // Then re-invoke the agent method with the same memory ID
  * }</pre>
+ * <p>
+ * Do not call {@link #blockingGet()} (or {@code complete} on a privately cached instance)
+ * inside the {@code responseProvider}. That turns this into a thread-blocking wait and
+ * bypasses suspension; use {@link PendingResponse} when you intentionally want to block.
  *
  * @param <T> the type of the response value
  * @see PendingResponse for thread-blocking behavior (future-based)

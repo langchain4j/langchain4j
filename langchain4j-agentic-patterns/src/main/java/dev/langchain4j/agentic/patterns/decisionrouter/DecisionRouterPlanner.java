@@ -206,7 +206,7 @@ public class DecisionRouterPlanner implements Planner {
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 
         return decisionModel.decide(
-                DecisionRequest.builder().input(input).questions(questions).build());
+                DecisionRequest.builder().inputFields(input).questions(questions).build());
     }
 
     @Override

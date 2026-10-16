@@ -71,6 +71,43 @@ public interface ChatExecutor {
     }
 
     /**
+     * Like {@link #execute(List)}, but also returns the request that produced the response. When the response is the
+     * result of a tool-calling loop, the request is the last one sent to the model, with the tool calls and tool
+     * results of all rounds.
+     * <p>
+     * The default implementation calls {@link #execute(List)} and returns {@code null} as the request, because the
+     * request that the executor sent is not known.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return the response and the request that produced it; {@link ChatExchange#request()} is {@code null} when the
+     *         request is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    default ChatExchange exchange(List<ChatMessage> chatMessages) {
+        return new ChatExchange(null, execute(chatMessages));
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #exchange(List)}.
+     * <p>
+     * The default implementation calls {@link #executeAsync(List)} and returns {@code null} as the request, because
+     * the request that the executor sent is not known.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return a {@link CompletableFuture} that completes with the request and the response
+     * @since 1.23.0
+     */
+    @Experimental
+    default CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
+        try {
+            return ChatExchange.exchangeAsync(null, executeAsync(chatMessages));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
      * Creates a new {@link SynchronousBuilder} instance for constructing {@link ChatExecutor} objects
      * that perform synchronous chat requests.
      *

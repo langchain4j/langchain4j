@@ -1617,7 +1617,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
 
-Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the two examples of custom patterns, provided in the `langchain4j-agentic-patterns` module, that can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
+Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 
 ### Goal oriented agentic pattern
 
@@ -2914,7 +2914,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .build();
 ```
 
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+By doing so it internally sends a summarization prompt, similar to the one of the `ContextSummarizer` agent discussed before, to the same model of the agent where it has been defined. This also works for an agent configured with a `StreamingChatModel`: the summary is then generated with that streaming model, but it is fully collected before the agent sends its own request. In both cases the summarization is an additional, blocking LLM call that happens before the agent starts answering. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
 
 ### AgenticScope registry and persistence
 

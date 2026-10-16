@@ -6,8 +6,8 @@ sidebar_position: 2
 
 - [OpenAI Decisions API guide](https://developers.openai.com/api/docs/guides/decisions)
 
-The OpenAI Decisions API (`POST /v1/decisions`) answers yes/no, choice and scale questions about a text or image
-input, with probabilities. It implements the [`DecisionModel`](/tutorials/decision-models) API in two modules:
+The OpenAI Decisions API (`POST /v1/decisions`) answers yes/no, choice and scale questions about a text, image or
+conversation input, with probabilities. It implements the [`DecisionModel`](/tutorials/decision-models) API in two modules:
 
 - `OpenAiDecisionModel` in `langchain4j-open-ai`, which uses LangChain4j's HTTP client
 - `OpenAiOfficialDecisionModel` in `langchain4j-open-ai-official`, which uses the official OpenAI Java SDK
@@ -73,6 +73,43 @@ DecisionModel decisionModel = OpenAiOfficialDecisionModel.builder()
 It has the same client settings as the other models of the module, for example `baseUrl`, `timeout`, `maxRetries`
 and `openAIClient`.
 
+## Custom parameters
+
+To send a parameter that `OpenAiDecisionModel` does not support yet, set it with `customParameters(...)`. It is added to
+the JSON body of every request:
+
+```java
+DecisionModel decisionModel = OpenAiDecisionModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiDecisionModelName.GPT_6_LUNA)
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `OpenAiDecisionRequestParameters`
+(`OpenAiOfficialDecisionRequestParameters` for `OpenAiOfficialDecisionModel`, which supports custom parameters the
+same way). If not empty, they replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(OpenAiDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`input`.
+
+Use the parameters class of the model you call. For example, passing `OpenAiDecisionRequestParameters` to
+`OpenAiOfficialDecisionModel` fails with an `IllegalArgumentException`. `DecisionRequestParameters.builder()`, which
+has only the parameters common to all decision models, works with every model.
+
 ## Spring Boot
 
 Add the starter of the module you use:
@@ -125,31 +162,43 @@ langchain4j.open-ai-official.decision-model.custom-headers...=...
 
 `DecisionModelListener` beans are registered on the decision model automatically.
 
-With `langchain4j-open-ai`, the starter uses Spring's `RestClient`, which does not support non-blocking calls:
-`decideAsync(...)` then fails with an `AsyncNotSupportedException`. To decide asynchronously, provide an
-`HttpClientBuilder` bean named `openAiDecisionModelHttpClientBuilder` that supports them, for example
-`JdkHttpClient.builder()`.
+With `langchain4j-open-ai`, the starter sends blocking calls with Spring's `RestClient` and non-blocking calls, such
+as `decideAsync(...)`, with Spring's `WebClient`, which needs `spring-webflux` on the classpath: see
+[Spring Boot Integration](/tutorials/spring-boot-integration#http-client). Without it, `decideAsync(...)` fails with
+an `AsyncNotSupportedException`.
 
 ## Input
 
 The input can be:
-- text;
-- a `Map` of named values: each value is sent as a text part labeled with its name, with the value as JSON
+- text (`input(...)`);
+- named fields (`inputFields(...)`): each field is sent as a text part labeled with its name, with the value as JSON
   (`comment: "..."`), and each image right after a text part holding its name (`photo:`);
-- a list of `TextContent`s and `ImageContent`s, for example a photo together with a description:
+- a conversation (`inputMessages(...)`, see below);
+- a list of `TextContent`s and `ImageContent`s (`inputContents(...)`), for example a photo together with a
+  description:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
         .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
         .build();
 ```
 
-Images must be inline: base64 data, or a `data:` URL. Images referenced by an `http` or `https` URL are not supported
-by the API, and are rejected with an `UnsupportedFeatureException` before calling it. The detail levels `LOW`, `HIGH`
-and `AUTO` are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
+Images can be base64 data, a `data:` URL, or a publicly accessible `http` or `https` URL, which OpenAI downloads
+itself, for example `ImageContent.from("https://example.com/package.jpg")`. The detail levels `LOW`, `HIGH` and `AUTO`
+are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
+
+The input can also be a conversation, a list of `ChatMessage`s set with `inputMessages(...)`. It is sent as a
+[transcript in JSON](/tutorials/decision-models#conversations) in a user message, followed by the images of the
+conversation, each after a text part with its marker (`[image 1]:`). It is not sent as OpenAI `system`, `user` and
+`assistant` messages, so that a system message is judged as a part of the conversation instead of being followed as
+an instruction.
+
+An `AiMessage` with neither text nor tool execution requests is skipped, and a conversation with nothing left to send
+is rejected with an `IllegalArgumentException` before calling the API. Contents other than text and images, and a
+`CustomMessage`, are rejected with an `UnsupportedFeatureException`.
 
 ## Questions and answers
 

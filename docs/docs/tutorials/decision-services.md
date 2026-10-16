@@ -258,7 +258,8 @@ If a name is not available, `build()` fails and explains both options.
 
 Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
 sent as contents, for example images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai)):
+(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
+a vision model such as Clef):
 
 ```java
 interface DamageInspector {
@@ -586,7 +587,7 @@ Use the `DecisionModel` API directly: all checks of a test case are answered in 
 
 ```java
 DecisionRequest.Builder request = DecisionRequest.builder()
-        .input(Map.of("question", testCase.question(), "answer", answer));
+        .inputFields(Map.of("question", testCase.question(), "answer", answer));
 testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.of(check.text())));
 
 DecisionResponse response = decisionModel.decide(request.build());

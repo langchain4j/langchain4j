@@ -1,9 +1,15 @@
 package dev.langchain4j.guardrails;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -22,6 +28,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.data.message.ChatMessage;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +61,7 @@ class DecisionModelGuardrailsTest {
 
         assertThat(result.result()).isEqualTo(GuardrailResult.Result.SUCCESS);
         assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
-            assertThat(request.input()).isEqualTo("What is my balance?");
+            assertThat(request.input()).isEqualTo(TextInput.from("What is my balance?"));
             assertThat(request.questions())
                     .containsEntry(
                             "promptInjection",
@@ -110,7 +118,7 @@ class DecisionModelGuardrailsTest {
                 guardrail.validate(UserMessage.from(ImageContent.from("https://example.com/cat.png")));
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(decisionModel.request().input()).isEqualTo("[attached image]");
+        assertThat(decisionModel.request().input()).isEqualTo(TextInput.from("[attached image]"));
     }
 
     @Test
@@ -317,10 +325,18 @@ class DecisionModelGuardrailsTest {
     }
 
     @Test
-    void should_send_user_message_and_response_to_output_checks() {
+    void should_send_conversation_and_response_to_output_checks() {
 
+        ToolExecutionRequest lookup = ToolExecutionRequest.builder()
+                .id("1")
+                .name("findContact")
+                .arguments("{\"name\":\"John\"}")
+                .build();
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(SystemMessage.from("Never share contact details."));
         chatMemory.add(UserMessage.from("What is John's phone number?"));
+        chatMemory.add(AiMessage.from(lookup));
+        chatMemory.add(ToolExecutionResultMessage.from(lookup, "+1 555 0100"));
         DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
                 .decisionModel(answering(Map.of("personalData", 0.95)))
                 .check("personalData", "Does the response reveal personal data?")
@@ -333,7 +349,71 @@ class DecisionModelGuardrailsTest {
         assertThat(result.<GuardrailResult.Failure>failures().get(0).message())
                 .isEqualTo("The response was rejected by the following checks: personalData");
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("userMessage", "What is John's phone number?", "response", "It is +1 555 0100"));
+                .isEqualTo(MessagesInput.from(List.of(
+                        SystemMessage.from("Never share contact details."),
+                        UserMessage.from("What is John's phone number?"),
+                        AiMessage.from(lookup),
+                        ToolExecutionResultMessage.from(lookup, "+1 555 0100"),
+                        AiMessage.from("It is +1 555 0100"))));
+    }
+
+    @Test
+    void should_send_only_the_messages_that_pass_the_filter_and_not_repeat_the_response() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(SystemMessage.from("Never share contact details."));
+        chatMemory.add(UserMessage.from("What is John's phone number?"));
+        chatMemory.add(AiMessage.from("It is +1 555 0100"));
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("personalData", 0.1)))
+                .check("personalData", "Does the response reveal personal data?")
+                .messageFilter(message -> !(message instanceof SystemMessage))
+                .build();
+
+        guardrail.validate(outputRequest(AiMessage.from("It is +1 555 0100"), chatMemory));
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("What is John's phone number?"), AiMessage.from("It is +1 555 0100"))));
+    }
+
+    @Test
+    void should_send_user_message_with_retrieved_content_and_respect_the_limits() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(UserMessage.from("Hi!"));
+        chatMemory.add(AiMessage.from("Hello!"));
+        chatMemory.add(UserMessage.from("How many vacation days do I get?"));
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("unsupported", 0.1)))
+                .check("unsupported", "Does the response state facts that are not supported by the conversation?")
+                .maxMessages(1)
+                .maxMessageLength(30)
+                .build();
+        String augmented = "How many vacation days do I get?\n\nAnswer using the following information:\n"
+                + "Employees get 30 days per year. ".repeat(8);
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("You get 30 days per year, as written in the HR policy of the company."))
+                        .build())
+                .chatExecutor(mock(ChatExecutor.class))
+                .requestParams(GuardrailRequestParams.builder()
+                        .chatMemory(chatMemory)
+                        .augmentationResult(AugmentationResult.builder()
+                                .chatMessage(UserMessage.from(augmented))
+                                .build())
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
+                .build();
+
+        guardrail.validate(request);
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("How many vacation da\n[300 characters were omitted here to save space; the assistant saw "
+                                + "the full text.]\nper year. "),
+                        AiMessage.from("You get 30 days per year, as written in the HR policy of the company."))));
     }
 
     @Test
@@ -360,7 +440,126 @@ class DecisionModelGuardrailsTest {
 
         assertThat(guardrail.validate(request).isSuccess()).isTrue();
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("userMessage", "What is the weather?", "response", "It is sunny."));
+                .isEqualTo(MessagesInput.from(
+                        List.of(UserMessage.from("What is the weather?"), AiMessage.from("It is sunny."))));
+    }
+
+    @Test
+    void should_say_which_message_is_the_response_and_leave_out_responses_rejected_before() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(UserMessage.from("What is Anna's phone number?"));
+        chatMemory.add(AiMessage.from("It is +1 555 0100"));
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("personalData", 0.1)))
+                .check("personalData", "Does the response reveal personal data?")
+                .build();
+
+        guardrail.validate(outputRequest(AiMessage.from("I cannot share contact details."), chatMemory));
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("What is Anna's phone number?"),
+                        AiMessage.from("I cannot share contact details."))));
+        assertThat(decisionModel.request().questions().get("personalData").text())
+                .isEqualTo("The response is the assistant's last message in the conversation. "
+                        + "Does the response reveal personal data?");
+    }
+
+    @Test
+    void should_send_the_messages_of_the_request_that_produced_the_response() {
+
+        ToolExecutionRequest lookup = ToolExecutionRequest.builder()
+                .id("1")
+                .name("findContact")
+                .arguments("{}")
+                .build();
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(UserMessage.from("stored without retrieved content"));
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("personalData", 0.1)))
+                .check("personalData", "Does the response reveal personal data?")
+                .build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("What is John's phone number?"),
+                        AiMessage.from("It is +1 555 0100"),
+                        UserMessage.from("Do not share contact details."),
+                        AiMessage.from(lookup),
+                        ToolExecutionResultMessage.from(lookup, "John is a colleague"))
+                .build();
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("I cannot share contact details."))
+                        .build())
+                .chatExecutor(mock(ChatExecutor.class))
+                .requestParams(GuardrailRequestParams.builder()
+                        .chatMemory(chatMemory)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
+                .chatRequest(chatRequest)
+                .build();
+
+        guardrail.validate(request);
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("What is John's phone number?"),
+                        AiMessage.from("It is +1 555 0100"),
+                        UserMessage.from("Do not share contact details."),
+                        AiMessage.from(lookup),
+                        ToolExecutionResultMessage.from(lookup, "John is a colleague"),
+                        AiMessage.from("I cannot share contact details."))));
+    }
+
+    @Test
+    void should_send_the_last_50_messages_by_default() {
+
+        List<ChatMessage> messages = new ArrayList<>();
+        for (int i = 0; i <= 52; i++) {
+            messages.add(i % 2 == 0 ? UserMessage.from("question " + i) : AiMessage.from("answer " + i));
+        }
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("personalData", 0.1)))
+                .check("personalData", "Does the response reveal personal data?")
+                .build();
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("answer 53"))
+                        .build())
+                .chatExecutor(mock(ChatExecutor.class))
+                .requestParams(GuardrailRequestParams.builder()
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .build())
+                .chatRequest(ChatRequest.builder().messages(messages).build())
+                .build();
+
+        guardrail.validate(request);
+
+        List<ChatMessage> expected = new ArrayList<>(messages.subList(3, 53));
+        expected.add(AiMessage.from("answer 53"));
+        assertThat(decisionModel.request().input()).isEqualTo(MessagesInput.from(expected));
+    }
+
+    @Test
+    void should_validate_message_limits_of_output_guardrail() {
+
+        assertThatThrownBy(() -> DecisionModelOutputGuardrail.builder()
+                        .decisionModel(answering(Map.of()))
+                        .check("personalData", "Does the response reveal personal data?")
+                        .maxMessages(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxMessages");
+        assertThatThrownBy(() -> DecisionModelOutputGuardrail.builder()
+                        .decisionModel(answering(Map.of()))
+                        .check("personalData", "Does the response reveal personal data?")
+                        .maxMessageLength(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxMessageLength");
     }
 
     @Test
@@ -376,7 +575,8 @@ class DecisionModelGuardrailsTest {
 
         assertThat(result.isFatal()).isTrue();
         assertThat(result.getReprompt()).contains("Answer without revealing personal data.");
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("response", "It is +1 555 0100"));
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(AiMessage.from("It is +1 555 0100"))));
     }
 
     @Test

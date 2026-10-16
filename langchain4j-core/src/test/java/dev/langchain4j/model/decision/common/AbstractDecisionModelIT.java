@@ -106,7 +106,7 @@ public abstract class AbstractDecisionModelIT {
     void should_answer_several_questions_in_one_call() {
 
         DecisionResponse response = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "ticket", "I was charged twice this month and nobody answers my emails!",
                         "customer", Map.of("plan", "enterprise")))
                 .question("team", TEAM)
@@ -222,14 +222,14 @@ public abstract class AbstractDecisionModelIT {
     void should_decide_on_structured_input() {
 
         DecisionResponse spam = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "subject", "Congratulations, you won!",
                         "body", "Claim your free cruise now, click here!",
                         "sender", Map.of("known", false)))
                 .question("spam", SPAM)
                 .build());
         DecisionResponse notSpam = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "subject", "Meeting tomorrow",
                         "body", "Hi Anna, are we still meeting tomorrow at 10?",
                         "sender", Map.of("known", true)))
