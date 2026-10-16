@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
 import static java.util.Collections.emptyList;
 
@@ -45,6 +46,12 @@ import java.util.stream.Collectors;
  * - {@link #minScore}: the minimum score for {@link Content}s to be returned.
  * {@link Content}s scoring below this threshold (as determined by the {@link ScoringModel})
  * are excluded from the results.
+ * <br>
+ * - {@link #minResults}: the minimum number of {@link Content}s to return.
+ * When fewer than {@code minResults} {@link Content}s clear {@link #minScore},
+ * the highest-ranked remaining {@link Content}s are kept so the model still receives
+ * the best available context. Defaults to {@code 0}, which keeps the strict
+ * {@link #minScore} behavior.
  *
  * @see DefaultContentAggregator
  */
@@ -66,6 +73,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
     private final Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
     private final Double minScore;
     private final Integer maxResults;
+    private final Integer minResults;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
@@ -83,10 +91,22 @@ public class ReRankingContentAggregator implements ContentAggregator {
             Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
             Double minScore,
             Integer maxResults) {
+        this(scoringModel, querySelector, minScore, maxResults, null);
+    }
+
+    public ReRankingContentAggregator(
+            ScoringModel scoringModel,
+            Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
+            Double minScore,
+            Integer maxResults,
+            Integer minResults) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
         this.maxResults = getOrDefault(maxResults, Integer.MAX_VALUE);
+        this.minResults = getOrDefault(minResults, 0);
+        ensureTrue(this.minResults >= 0, "minResults must be greater than or equal to 0");
+        ensureTrue(this.minResults <= this.maxResults, "minResults must not be greater than maxResults");
     }
 
     public static ReRankingContentAggregatorBuilder builder() {
@@ -139,9 +159,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
         // Re-rank all the fused contents against the query selected by the query selector.
         // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
-        List<TextSegment> segments = fusedContents.stream()
-                .map(Content::textSegment)
-                .collect(Collectors.toList());
+        List<TextSegment> segments =
+                fusedContents.stream().map(Content::textSegment).collect(Collectors.toList());
 
         ScoringRequest scoringRequest = ScoringRequest.builder()
                 .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
@@ -180,11 +199,29 @@ public class ReRankingContentAggregator implements ContentAggregator {
             contentToScore.put(contents.get(i), scores.get(i));
         }
 
-        return contentToScore.entrySet().stream()
-                .filter(entry -> minScore == null || entry.getValue() >= minScore)
+        List<Map.Entry<Content, Double>> sortedByScore = contentToScore.entrySet().stream()
                 .sorted(Map.Entry.<Content, Double>comparingByValue().reversed())
-                .map(entry -> withReRankedScore(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        List<Content> selected = sortedByScore.stream()
+                .filter(entry -> minScore == null || entry.getValue() >= minScore)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        if (selected.size() < minResults) {
+            // Not enough candidates cleared minScore: fill up with the highest-ranked remaining ones
+            // so the model still gets the best available context. Every kept candidate scores at or
+            // above minScore and every fill-up below it, so appending preserves the descending order.
+            selected.addAll(sortedByScore.stream()
+                    .filter(entry -> minScore != null && entry.getValue() < minScore)
+                    .limit(minResults - selected.size())
+                    .map(Map.Entry::getKey)
+                    .toList());
+        }
+
+        return selected.stream()
                 .limit(maxResults)
+                .map(content -> withReRankedScore(content, contentToScore.get(content)))
                 .collect(Collectors.toList());
     }
 
@@ -199,6 +236,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         private Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
         private Double minScore;
         private Integer maxResults;
+        private Integer minResults;
 
         ReRankingContentAggregatorBuilder() {}
 
@@ -223,9 +261,14 @@ public class ReRankingContentAggregator implements ContentAggregator {
             return this;
         }
 
+        public ReRankingContentAggregatorBuilder minResults(Integer minResults) {
+            this.minResults = minResults;
+            return this;
+        }
+
         public ReRankingContentAggregator build() {
             return new ReRankingContentAggregator(
-                    this.scoringModel, this.querySelector, this.minScore, this.maxResults);
+                    this.scoringModel, this.querySelector, this.minScore, this.maxResults, this.minResults);
         }
     }
 }
