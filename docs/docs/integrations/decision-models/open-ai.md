@@ -162,10 +162,10 @@ langchain4j.open-ai-official.decision-model.custom-headers...=...
 
 `DecisionModelListener` beans are registered on the decision model automatically.
 
-With `langchain4j-open-ai`, the starter uses Spring's `RestClient`, which does not support non-blocking calls:
-`decideAsync(...)` then fails with an `AsyncNotSupportedException`. To decide asynchronously, provide an
-`HttpClientBuilder` bean named `openAiDecisionModelHttpClientBuilder` that supports them, for example
-`JdkHttpClient.builder()`.
+With `langchain4j-open-ai`, the starter sends blocking calls with Spring's `RestClient` and non-blocking calls, such
+as `decideAsync(...)`, with Spring's `WebClient`, which needs `spring-webflux` on the classpath: see
+[Spring Boot Integration](/tutorials/spring-boot-integration#http-client). Without it, `decideAsync(...)` fails with
+an `AsyncNotSupportedException`.
 
 ## Input
 
