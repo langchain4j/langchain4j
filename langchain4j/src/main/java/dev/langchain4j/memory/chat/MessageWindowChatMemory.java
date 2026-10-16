@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -51,6 +52,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxMessagesProvider;
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
+    private final boolean autoRecoverOrphanedToolMessages;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -58,6 +60,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
         this.store = ensureNotNull(builder.store(), "store");
         this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
+        this.autoRecoverOrphanedToolMessages = getOrDefault(builder.autoRecoverOrphanedToolMessages, false);
     }
 
     @Override
@@ -67,7 +70,10 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
+        List<ChatMessage> messages = autoRecoverOrphanedToolMessages && message instanceof ToolExecutionResultMessage
+                ? new LinkedList<>(store.getMessages(id))
+                : messages();
+
         if (appendMessage(messages, message)) {
             store.updateMessages(id, messages);
         }
@@ -76,15 +82,23 @@ public class MessageWindowChatMemory implements ChatMemory {
     @Override
     public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return store.getMessagesAsync(id).thenCompose(stored -> {
-            List<ChatMessage> messages = windowed(stored);
+            List<ChatMessage> messages = autoRecoverOrphanedToolMessages ? new LinkedList<>(stored) : windowed(stored);
+
             boolean changed = false;
+
             for (ChatMessage message : messagesToAdd) {
-                changed |= appendMessage(messages, message);
+                List<ChatMessage> candidate =
+                        autoRecoverOrphanedToolMessages && !(message instanceof ToolExecutionResultMessage)
+                                ? windowed(messages)
+                                : messages;
+
+                if (appendMessage(candidate, message)) {
+                    messages = candidate;
+                    changed = true;
+                }
             }
-            if (changed) {
-                return store.updateMessagesAsync(id, messages);
-            }
-            return CompletableFuture.completedFuture(null);
+
+            return changed ? store.updateMessagesAsync(id, messages) : CompletableFuture.completedFuture(null);
         });
     }
 
@@ -164,11 +178,30 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     private List<ChatMessage> windowed(List<ChatMessage> stored) {
+        return windowed(stored, autoRecoverOrphanedToolMessages);
+    }
+
+    private List<ChatMessage> windowed(List<ChatMessage> stored, boolean recoverInterrupted) {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
+
         List<ChatMessage> messages = new LinkedList<>(stored);
+        if (recoverInterrupted) {
+            ChatMemoryUtils.removeInterruptedToolExecutions(messages);
+        }
+
         ensureCapacity(messages, maxMessages);
         return messages;
+    }
+
+    @Internal
+    public List<ChatMessage> messagesForToolExecutionUpdate() {
+        return windowed(store.getMessages(id), false);
+    }
+
+    @Internal
+    public CompletableFuture<List<ChatMessage>> messagesForToolExecutionUpdateAsync() {
+        return store.getMessagesAsync(id).thenApply(stored -> windowed(stored, false));
     }
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxMessages) {
@@ -206,6 +239,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
         private Boolean alwaysKeepSystemMessageFirst;
+        private Boolean autoRecoverOrphanedToolMessages;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -258,6 +292,20 @@ public class MessageWindowChatMemory implements ChatMemory {
          */
         public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
             this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
+        }
+
+        /**
+         * Removes interrupted tool calls from the messages returned by {@link ChatMemory#messages()}.
+         * A later non-result message persists the cleanup, while tool result messages preserve an
+         * in-flight tool execution. Disabled by default.
+         *
+         * @param autoRecoverOrphanedToolMessages whether to remove interrupted tool calls
+         * @return builder
+         * @since 1.20.0
+         */
+        public Builder autoRecoverOrphanedToolMessages(Boolean autoRecoverOrphanedToolMessages) {
+            this.autoRecoverOrphanedToolMessages = autoRecoverOrphanedToolMessages;
             return this;
         }
 
