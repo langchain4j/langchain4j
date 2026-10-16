@@ -14,18 +14,17 @@ public class BedrockGuardrailConfiguration {
 
     public BedrockGuardrailConfiguration(
             String guardrailIdentifier, String guardrailVersion, ProcessingMode streamProcessingMode) {
-        this(guardrailIdentifier, guardrailVersion, streamProcessingMode, null);
-    }
-
-    public BedrockGuardrailConfiguration(
-            String guardrailIdentifier,
-            String guardrailVersion,
-            ProcessingMode streamProcessingMode,
-            BedrockGuardContentPlacement guardContentPlacement) {
         this.guardrailIdentifier = guardrailIdentifier;
         this.guardrailVersion = guardrailVersion;
         this.streamProcessingMode = streamProcessingMode;
-        this.guardContentPlacement = guardContentPlacement;
+        this.guardContentPlacement = null;
+    }
+
+    private BedrockGuardrailConfiguration(Builder builder) {
+        this.guardrailIdentifier = builder.guardrailIdentifier;
+        this.guardrailVersion = builder.guardrailVersion;
+        this.streamProcessingMode = builder.streamProcessingMode;
+        this.guardContentPlacement = builder.guardContentPlacement;
     }
 
     public String guardrailIdentifier() {
@@ -118,9 +117,14 @@ public class BedrockGuardrailConfiguration {
         }
 
         /**
-         * Sets which user messages should be wrapped in Bedrock Converse {@code guardContent} blocks.
+         * Sets which user messages the guardrail evaluates, by wrapping them in Bedrock Converse
+         * {@code guardContent} blocks.
+         * <p>
+         * When not set, the guardrail evaluates the entire request.
+         * When set, the guardrail evaluates <b>only</b> the selected user messages: the system prompt,
+         * other user messages, AI messages and tool results are not evaluated.
          *
-         * @param guardContentPlacement the guard content placement strategy; null disables guardContent wrapping
+         * @param guardContentPlacement the guard content placement; {@code null} means the entire request is evaluated
          * @return this builder
          */
         public Builder guardContentPlacement(BedrockGuardContentPlacement guardContentPlacement) {
@@ -129,8 +133,7 @@ public class BedrockGuardrailConfiguration {
         }
 
         public BedrockGuardrailConfiguration build() {
-            return new BedrockGuardrailConfiguration(
-                    guardrailIdentifier, guardrailVersion, streamProcessingMode, guardContentPlacement);
+            return new BedrockGuardrailConfiguration(this);
         }
     }
 }

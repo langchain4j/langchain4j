@@ -107,7 +107,13 @@ BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
         .build();
 ```
 
-Set these parameters as the model's `defaultRequestParameters`. Without `guardContentPlacement`, the guardrail applies to the entire request. Use `LAST_USER_MESSAGE` to guard only the last user message or `ALL_USER_MESSAGES` to guard all user messages.
+Set these parameters as the model's `defaultRequestParameters` to apply the guardrail to every request, or pass them in a `ChatRequest` to apply it to a single request.
+
+By default, the guardrail evaluates the entire request. To reduce cost and latency, set `guardContentPlacement` to select which user messages the guardrail evaluates:
+- `LAST_USER_MESSAGE`: only the last user message.
+- `ALL_USER_MESSAGES`: all user messages.
+
+When `guardContentPlacement` is set, the guardrail evaluates **only** the selected user messages. The system prompt, other user messages, AI messages and tool results are not evaluated.
 
 Selective guarding supports text and PNG/JPEG images. If a selected message contains content that cannot be represented as Bedrock `guardContent`, the model falls back to applying the guardrail to the entire request and logs a warning.
 

@@ -620,10 +620,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = fromByteArray(
-                nonNull(imageContent.image().base64Data())
-                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
-                        : readBytes(String.valueOf(imageContent.image().url())));
+        final SdkBytes bytes = imageBytes(imageContent);
         final String imgFormat = extractAndValidateFormat(imageContent.image());
         return ContentBlock.builder()
                 .image(ImageBlock.builder()
@@ -633,11 +630,15 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
-    protected ContentBlock createGuardedImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = fromByteArray(
+    private static SdkBytes imageBytes(ImageContent imageContent) {
+        return fromByteArray(
                 nonNull(imageContent.image().base64Data())
                         ? Base64.getDecoder().decode(imageContent.image().base64Data())
                         : readBytes(String.valueOf(imageContent.image().url())));
+    }
+
+    protected ContentBlock createGuardedImageBlock(ImageContent imageContent) {
+        final SdkBytes bytes = imageBytes(imageContent);
         final String imgFormat = extractAndValidateFormat(imageContent.image());
 
         return ContentBlock.builder()
