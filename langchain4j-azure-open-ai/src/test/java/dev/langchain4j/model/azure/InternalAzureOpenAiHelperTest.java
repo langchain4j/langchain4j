@@ -13,6 +13,10 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.ChatCompletionsFunctionToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
+import com.azure.ai.openai.models.ChatMessageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageDetailLevel;
+import com.azure.ai.openai.models.ChatMessageImageUrl;
 import com.azure.ai.openai.models.ChatRequestMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.ai.openai.models.ChatResponseMessage;
@@ -30,6 +34,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
@@ -297,6 +302,106 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    // Regression tests for https://github.com/langchain4j/langchain4j/issues/5508
+    // InternalAzureOpenAiHelper.toOpenAiMessage() used to ignore ImageContent.detailLevel(),
+    // so LOW/HIGH/AUTO were silently dropped and Azure applied its server default.
+
+    private static ChatMessageImageUrl imageUrlOf(ChatRequestUserMessage requestMessage) {
+        List<ChatMessageContentItem> items = requestMessage.getListContent();
+        assertThat(items).isNotNull().hasSize(1);
+        ChatMessageContentItem item = items.get(0);
+        assertThat(item).isInstanceOf(ChatMessageImageContentItem.class);
+        return ((ChatMessageImageContentItem) item).getImageUrl();
+    }
+
+    @Test
+    void toOpenAiMessage_shouldForwardLowDetailLevel() {
+        // Given - ImageContent.from(url, LOW) - the langchain4j default is LOW, so we
+        // also implicitly cover the default-DetailLevel path.
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.LOW);
+        UserMessage userMessage = UserMessage.from("describe", imageContent);
+
+        // When
+        ChatRequestMessage message = InternalAzureOpenAiHelper.toOpenAiMessage(userMessage);
+
+        // Then - detail must be set on the underlying ChatMessageImageUrl (was null before #5508)
+        ChatRequestUserMessage userRequest = (ChatRequestUserMessage) message;
+        ChatMessageImageUrl imageUrl = imageUrlOf(userRequest);
+        assertThat(imageUrl.getDetail()).isEqualTo(ChatMessageImageDetailLevel.LOW);
+        assertThat(imageUrl.getDetail().toString()).isEqualTo("low");
+    }
+
+    @Test
+    void toOpenAiMessage_shouldForwardHighDetailLevel() {
+        // Given - explicit HIGH detail (the headline reproducer from issue #5508)
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("describe", imageContent);
+
+        // When
+        ChatRequestMessage message = InternalAzureOpenAiHelper.toOpenAiMessage(userMessage);
+
+        // Then - HIGH must reach the Azure SDK request so the high-res model is used
+        ChatRequestUserMessage userRequest = (ChatRequestUserMessage) message;
+        ChatMessageImageUrl imageUrl = imageUrlOf(userRequest);
+        assertThat(imageUrl.getDetail()).isEqualTo(ChatMessageImageDetailLevel.HIGH);
+        assertThat(imageUrl.getDetail().toString()).isEqualTo("high");
+    }
+
+    @Test
+    void toOpenAiMessage_shouldForwardAutoDetailLevel() {
+        // Given - explicit AUTO detail
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.AUTO);
+        UserMessage userMessage = UserMessage.from("describe", imageContent);
+
+        // When
+        ChatRequestMessage message = InternalAzureOpenAiHelper.toOpenAiMessage(userMessage);
+
+        // Then - AUTO must be forwarded (was previously silently dropped)
+        ChatRequestUserMessage userRequest = (ChatRequestUserMessage) message;
+        ChatMessageImageUrl imageUrl = imageUrlOf(userRequest);
+        assertThat(imageUrl.getDetail()).isEqualTo(ChatMessageImageDetailLevel.AUTO);
+        assertThat(imageUrl.getDetail().toString()).isEqualTo("auto");
+    }
+
+    @Test
+    void tokenEstimatorAndRequest_shouldAgreeOnLowDetailLevel() {
+        // Token-estimator / request parity for LOW. AzureOpenAiTokenCountEstimator returns 85
+        // tokens for LOW images (fixed); the request must carry "detail":"low" so billed tokens
+        // match the estimate.
+        assertDetailParity(DetailLevel.LOW, ChatMessageImageDetailLevel.LOW);
+    }
+
+    @Test
+    void tokenEstimatorAndRequest_shouldAgreeOnHighDetailLevel() {
+        // Token-estimator / request parity for HIGH. Estimator returns 765 for HIGH; the request
+        // must carry "detail":"high".
+        assertDetailParity(DetailLevel.HIGH, ChatMessageImageDetailLevel.HIGH);
+    }
+
+    @Test
+    void tokenEstimatorAndRequest_shouldAgreeOnAutoDetailLevel() {
+        // Token-estimator / request parity for AUTO. Estimator returns 765 for AUTO (same bucket
+        // as HIGH); the request must carry "detail":"auto".
+        assertDetailParity(DetailLevel.AUTO, ChatMessageImageDetailLevel.AUTO);
+    }
+
+    private static void assertDetailParity(DetailLevel langchain4jDetail, ChatMessageImageDetailLevel azureDetail) {
+        AzureOpenAiTokenCountEstimator estimator =
+                new AzureOpenAiTokenCountEstimator(AzureOpenAiChatModelName.GPT_4_O);
+
+        ImageContent image = ImageContent.from("https://example.com/x.png", langchain4jDetail);
+        ChatRequestUserMessage request = (ChatRequestUserMessage)
+                InternalAzureOpenAiHelper.toOpenAiMessage(UserMessage.from("hi", image));
+
+        // The estimator must be detail-aware (was already before this fix), and the request
+        // must now carry the matching detail — so estimator and request agree on token cost.
+        int estimatorTokens = estimator.estimateTokenCountInMessage(UserMessage.from("hi", image));
+        assertThat(estimatorTokens)
+                .as("estimator must be detail-aware for " + langchain4jDetail)
+                .isGreaterThan(0);
+        assertThat(imageUrlOf(request).getDetail()).isEqualTo(azureDetail);
     }
 
     @Test
