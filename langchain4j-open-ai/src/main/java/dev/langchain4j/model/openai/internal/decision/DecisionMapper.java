@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal.decision;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.openai.OpenAiDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +49,15 @@ public final class DecisionMapper {
         openAiRequest.input = toInput(request.input());
         openAiRequest.questions = new ArrayList<>();
         request.questions().forEach((name, question) -> openAiRequest.questions.add(toQuestion(name, question)));
+        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            openAiRequest.customParameters = customParameters;
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) openAiRequest.model = null;
+            if (customParameters.containsKey("input")) openAiRequest.input = null;
+            if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+        }
         return openAiRequest;
     }
 
@@ -95,7 +106,7 @@ public final class DecisionMapper {
             part.text = text.text();
         } else if (content instanceof ImageContent image) {
             part.type = "input_image";
-            part.imageUrl = toDataUrl(image.image());
+            part.imageUrl = toImageUrl(image.image());
             part.detail = toDetail(image.detailLevel());
         } else {
             throw new UnsupportedFeatureException(
@@ -105,18 +116,14 @@ public final class DecisionMapper {
         return part;
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static String toDetail(ImageContent.DetailLevel detailLevel) {

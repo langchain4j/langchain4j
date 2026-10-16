@@ -24,6 +24,7 @@ https://github.com/googleapis/java-genai
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
+- [Code Execution](#code-execution)
 - [JSON Schema / Structured Outputs](#json-schema--structured-outputs)
 - [Grounding Metadata](#grounding-metadata)
 - [Custom Labels](#custom-labels)
@@ -134,6 +135,8 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .enableGoogleSearch(true)
     .enableGoogleMaps(true)
     .enableUrlContext(true)
+    .enableCodeExecution(true)
+    .includeCodeExecutionOutput(true)
     .allowedFunctionNames(List.of("getWeather"))
     .thinkingLevel("LOW")
     .listeners(...)
@@ -336,6 +339,63 @@ WeatherAssistant weatherAssistant = AiServices.builder(WeatherAssistant.class)
 
 String response = weatherAssistant.chat("What is the weather forecast for Tokyo?");
 ```
+
+## Code Execution
+
+With `enableCodeExecution(true)`, Gemini can write Python code, run it in a sandbox hosted by Google, and use the result in its answer.
+It suits calculations and data analysis, and nothing runs in your application.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash")
+    .enableCodeExecution(true)
+    .includeCodeExecutionOutput(true)
+    .build();
+
+String answer = gemini.chat("What is 2 to the power of 100? Generate and run code to compute it.");
+```
+
+By default, only the answer of the model is returned. With `includeCodeExecutionOutput(true)`, the executed code and its output are added to the `AiMessage` text, in the order Gemini returns them:
+
+````text
+Code executed:
+```python
+print(2**100)
+```
+
+Output:
+```
+1267650600228229401496703205376
+```
+
+2 to the power of 100 is 1267650600228229401496703205376.
+````
+
+When the code fails or runs too long, the outcome (`OUTCOME_FAILED` or `OUTCOME_DEADLINE_EXCEEDED`) and the error output are added instead of the output.
+
+- Charts the code draws, for example with matplotlib, are returned as images: see `response.aiMessage().images()`.
+- The code is Python, runs for at most 30 seconds, and can only use the libraries of the sandbox, such as numpy, pandas and matplotlib.
+- The current Gemini models reject a request that combines code execution with your own tools. The same applies to Google Search.
+
+To read the code and its result as SDK objects, use the raw response:
+
+```java
+ChatResponse response = gemini.chat(ChatRequest.builder()
+    .messages(UserMessage.from("What is 2 to the power of 100? Generate and run code to compute it."))
+    .build());
+
+GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) response.metadata();
+
+for (Part part : metadata.rawResponse().parts()) {
+    part.executableCode().ifPresent(code -> System.out.println(code.code().orElse("")));
+    part.codeExecutionResult().ifPresent(result ->
+        System.out.println(result.outcome().orElse(null) + ": " + result.output().orElse("")));
+}
+```
+
+`GoogleGenAiStreamingChatModel` accepts the same options, but its raw response only holds the last streamed chunk,
+so use `GoogleGenAiChatModel` to read the code and its result as SDK objects.
 
 ## JSON Schema / Structured Outputs
 

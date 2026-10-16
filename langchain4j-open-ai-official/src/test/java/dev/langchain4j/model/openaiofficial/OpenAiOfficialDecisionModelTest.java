@@ -12,11 +12,15 @@ import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.time.Duration;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -90,6 +94,101 @@ class OpenAiOfficialDecisionModelTest {
             .build();
 
     final OpenAiOfficialStubHttpClient httpClient = new OpenAiOfficialStubHttpClient();
+
+    @Test
+    void should_reject_parameters_of_another_decision_model_without_calling_the_api() {
+
+        // given
+        OpenAiOfficialDecisionModel model = model();
+        DecisionRequest request =
+                REQUEST.toBuilder().parameters(new OtherModelParameters()).build();
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(request))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("OtherModelParameters")
+                .hasMessageContaining("OpenAiOfficialDecisionRequestParameters");
+        assertThat(model.decideAsync(request))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(httpClient.recordedRequests()).isEmpty();
+    }
+
+    @Test
+    void should_send_custom_parameters_set_on_builder() throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", RESPONSE);
+        OpenAiOfficialDecisionModel model = OpenAiOfficialDecisionModel.builder()
+                .openAIClient(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(httpClient)
+                        .build()))
+                .modelName("gpt-6-luna")
+                .customParameters(Map.of(
+                        "new_parameter", "value",
+                        "model", "custom-model",
+                        "input", "custom input",
+                        "questions", List.of("custom question")))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        String body = httpClient.recordedRequests().get(0).body();
+        assertThat(OBJECT_MAPPER.readValue(body, Map.class))
+                .containsEntry("new_parameter", "value")
+                .containsEntry("model", "custom-model")
+                .containsEntry("input", "custom input")
+                .containsEntry("questions", List.of("custom question"));
+        assertThat(body).containsOnlyOnce("\"model\"");
+        assertThat(body).containsOnlyOnce("\"input\"");
+        assertThat(body).containsOnlyOnce("\"questions\"");
+    }
+
+    @Test
+    void should_replace_builder_custom_parameters_per_request() throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", RESPONSE);
+        httpClient.enqueue("decisions", RESPONSE);
+        httpClient.enqueue("decisions", RESPONSE);
+        OpenAiOfficialDecisionModel model = OpenAiOfficialDecisionModel.builder()
+                .openAIClient(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(httpClient)
+                        .build()))
+                .modelName("gpt-6-luna")
+                .customParameters(Map.of("a", "1", "b", "2"))
+                .build();
+
+        // when
+        model.decide(REQUEST.toBuilder()
+                .parameters(OpenAiOfficialDecisionRequestParameters.builder()
+                        .customParameters(Map.of("b", "3"))
+                        .build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(OpenAiOfficialDecisionRequestParameters.builder().customParameters(Map.of()).build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(0).body(), Map.class))
+                .containsEntry("b", "3")
+                .doesNotContainKey("a");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(1).body(), Map.class))
+                .containsEntry("a", "1")
+                .containsEntry("b", "2");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(2).body(), Map.class))
+                .containsEntry("a", "1")
+                .containsEntry("b", "2")
+                .containsEntry("model", "other-model");
+    }
 
     @Test
     void should_send_request_in_openai_format_and_map_answers() throws Exception {
@@ -330,15 +429,31 @@ class OpenAiOfficialDecisionModelTest {
     }
 
     @Test
-    void should_reject_images_referenced_by_url_without_calling_the_api() {
+    void should_send_images_referenced_by_url_as_is() throws Exception {
 
-        assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
-                        .input(List.of(ImageContent.from("https://example.com/package.png")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
-                        .build()))
-                .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("only inline images");
-        assertThat(httpClient.recordedRequests()).isEmpty();
+        // given
+        httpClient.enqueue(
+                "decisions",
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """);
+
+        // when
+        model().decide(DecisionRequest.builder()
+                .input(List.of(ImageContent.from("https://example.com/package.png")))
+                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER
+                        .readTree(httpClient.requestTo("decisions").body())
+                        .get("input")
+                        .get(0)
+                        .get("content"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{"type": "input_image", "image_url": "https://example.com/package.png", "detail": "low"}]
+                        """));
     }
 
     @Test
@@ -475,5 +590,12 @@ class OpenAiOfficialDecisionModelTest {
                         .build()))
                 .modelName("gpt-6-luna")
                 .build();
+    }
+
+    static class OtherModelParameters extends DefaultDecisionRequestParameters {
+
+        OtherModelParameters() {
+            super(DefaultDecisionRequestParameters.builder().modelName("other-model"));
+        }
     }
 }

@@ -271,6 +271,10 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
+Decision models can offer their own subclass of `DecisionRequestParameters` with more settings, for example
+`customParameters` to send parameters that LangChain4j does not support yet. See the page of each
+[decision model](/integrations/decision-models).
+
 ## Asynchronous calls
 
 `decideAsync(request)` returns a `CompletableFuture<DecisionResponse>`.

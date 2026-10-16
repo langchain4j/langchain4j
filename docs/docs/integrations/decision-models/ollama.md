@@ -65,9 +65,46 @@ rejected by Ollama, and the request fails with a `ModelNotFoundException`.
 Without a GPU, or while Ollama loads the model, a request can take several seconds, so consider a longer
 `timeout(...)`. Ollama unloads a model after 5 minutes without requests (unless configured otherwise on the server):
 to keep it loaded longer, set `keepAlive(...)` in seconds, or a negative value to keep it loaded. The other settings
-are `httpClientBuilder`, `maxRetries`, `logRequests`, `logResponses`, `logger`, `customHeaders` and `listeners`.
+are `httpClientBuilder`, `maxRetries`, `logRequests`, `logResponses`, `logger`, `customHeaders`, `customParameters`
+(see [Custom parameters](#custom-parameters)) and `listeners`.
 
 Both `decide()` and `decideAsync()` are supported.
+
+## Custom parameters
+
+To send a parameter that `OllamaDecisionModel` does not support yet, set it with `customParameters(...)`. It is added to
+the JSON body of every request:
+
+```java
+DecisionModel decisionModel = OllamaDecisionModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("nimble")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `OllamaDecisionRequestParameters`. If not empty, they
+replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(OllamaDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`state`.
+
+Passing the parameters class of another decision model to `OllamaDecisionModel` fails with an
+`IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
+decision models, works with every model.
 
 ## Input
 

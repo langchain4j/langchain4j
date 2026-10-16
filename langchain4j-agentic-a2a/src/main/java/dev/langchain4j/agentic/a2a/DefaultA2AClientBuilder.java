@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.compos
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
@@ -229,7 +230,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
             for (String inputKey : inputKeys) {
-                parts.add(new TextPart(params.get(inputKey).toString()));
+                Object value = params.get(inputKey);
+                if (value == null) {
+                    throw new MissingArgumentException(inputKey);
+                }
+                parts.add(new TextPart(value.toString()));
             }
         } else {
             java.lang.reflect.Parameter[] parameters = method.getParameters();

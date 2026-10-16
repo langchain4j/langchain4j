@@ -156,6 +156,22 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         assertThat(response).isNotBlank();
     }
 
+    @Test
+    void should_run_code_with_code_execution_tool() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        String answer = model.chat("What is 2 to the power of 100? Generate and run code to compute it.");
+
+        assertThat(answer)
+                .contains("Code executed:\n```python\n")
+                .contains("Output:\n```\n1267650600228229401496703205376");
+    }
+
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
         return GoogleGenAiTokenUsage.class;
