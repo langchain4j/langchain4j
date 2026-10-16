@@ -143,4 +143,31 @@ class PgVectorFilterMapperTest {
                 .isEqualTo("(metadata->>'name')::text is not null"
                         + " and position('O''Brien' in (metadata->>'name')::text) > 0");
     }
+
+    @Test
+    void mapGreaterThan_shouldCompareIntegerValueAsNumeric_jsonMapper() {
+        Filter filter = metadataKey("price").isGreaterThan(5);
+
+        String sql = jsonMapper.map(filter);
+
+        assertThat(sql).isEqualTo("(metadata->>'price')::numeric > 5");
+    }
+
+    @Test
+    void mapIn_shouldCompareNumbersAsNumeric_jsonMapper() {
+        Filter filter = metadataKey("price").isIn(20, 30L);
+
+        String sql = jsonMapper.map(filter);
+
+        assertThat(sql).isEqualTo("(metadata->>'price')::numeric in ('20','30')");
+    }
+
+    @Test
+    void mapNotIn_shouldCompareNumbersAsNumeric_columnMapper() {
+        Filter filter = metadataKey("price").isNotIn(2.5);
+
+        String sql = columnMapper.map(filter);
+
+        assertThat(sql).isEqualTo("(price::numeric is null or price::numeric not in ('2.5'))");
+    }
 }
