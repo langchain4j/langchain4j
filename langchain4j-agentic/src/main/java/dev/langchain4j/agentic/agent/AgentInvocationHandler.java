@@ -213,7 +213,12 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             } else if (streamingChatModelProvider != null) {
                 context.streamingChatModel = streamingChatModelProvider.apply(agenticScope);
             }
-            return method.invoke(agent, args);
+            try {
+                return method.invoke(agent, args);
+            } catch (Exception e) {
+                lastResponses.remove(agenticScope.memoryId());
+                throw e;
+            }
         }
         return invokeStandaloneAgent(method, args);
     }
@@ -238,8 +243,16 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             throw invocationException;
         } finally {
             LangChain4jManaged.removeCurrent();
+            LastResponse lastResponse = lastResponses.remove(standaloneAgenticScope.memoryId());
             if (result != null) {
-                afterAgentInvocation(agentListener, standaloneAgenticScope, this, namedArgs, result);
+                afterAgentInvocation(
+                        agentListener,
+                        standaloneAgenticScope,
+                        this,
+                        namedArgs,
+                        result,
+                        lastResponse == null ? null : lastResponse.event().request(),
+                        lastResponse == null ? null : lastResponse.chatResponse());
             }
         }
         return result;
