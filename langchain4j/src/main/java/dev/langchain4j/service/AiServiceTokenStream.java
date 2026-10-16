@@ -91,7 +91,8 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
-        this.toolExecutor = CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
+        this.toolExecutor =
+                CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
         this.completeResponseProcessingExecutor = CapturedContextSupport.restoringIn(
                 parameters.completeResponseProcessingExecutor(), parameters.invocationContext());
         this.retrievedContents = copy(parameters.retrievedContents());
@@ -202,6 +203,16 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
+        try {
+            doStart();
+        } catch (RuntimeException e) {
+            // The stream never got going, so no completed or error event will be fired for this invocation
+            context.eventListenerRegistrar.invocationEnded(invocationContext);
+            throw e;
+        }
+    }
+
+    private void doStart() {
         validateConfiguration();
 
         List<ToolSpecification> effectiveTools =

@@ -1,10 +1,15 @@
 package dev.langchain4j.observability.api;
 
-import java.util.Arrays;
-import java.util.ServiceLoader;
+import dev.langchain4j.Internal;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.spi.observability.AiServiceListenerRegistrarFactory;
+import java.util.Arrays;
+import java.util.ServiceLoader;
 
 /**
  * A registrar for registering {@link AiServiceListener}s.
@@ -82,6 +87,24 @@ public interface AiServiceListenerRegistrar {
      * @param event The event to be fired to the listeners. Must not be null.
      */
     <T extends AiServiceEvent> void fireEvent(T event);
+
+    /**
+     * Signals that the given AI Service invocation has ended and that no further events will be fired for it.
+     * <p>
+     * Most invocations end by firing an {@link AiServiceCompletedEvent} or an {@link AiServiceErrorEvent}, but some
+     * end without either, for example when an asynchronous or streaming invocation is canceled. AI Services call this
+     * method once such an invocation is over so that implementations can release any state held for it (for example
+     * the events collected for an {@link AiServiceInteractionEvent}). It may also be called for an invocation that
+     * has already fired an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent}, so implementations must
+     * treat it as idempotent.
+     * <p>
+     * This method is called by the AI Services infrastructure and is not intended to be called by application code.
+     * The default implementation does nothing.
+     *
+     * @param invocationContext The context of the invocation that ended. Must not be null.
+     */
+    @Internal
+    default void invocationEnded(InvocationContext invocationContext) {}
 
     /**
      * Configures whether exceptions should be thrown when an error occurs during event processing.

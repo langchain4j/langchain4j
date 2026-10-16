@@ -4,12 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
-import java.util.UUID;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -28,16 +22,16 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
-import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.observability.api.listener.AiServiceInteractionListener;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
+import dev.langchain4j.observability.api.listener.AiServiceInteractionListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -45,6 +39,16 @@ import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceListenerRegistrarTests {
@@ -180,8 +184,7 @@ class DefaultAiServiceListenerRegistrarTests {
             throw new RuntimeException("Some error");
         });
 
-        assertThatNoException()
-                .isThrownBy(() -> registrar.fireEvent(INVOCATION_STARTED_EVENT));
+        assertThatNoException().isThrownBy(() -> registrar.fireEvent(INVOCATION_STARTED_EVENT));
     }
 
     @Test
@@ -201,7 +204,6 @@ class DefaultAiServiceListenerRegistrarTests {
     @Test
     void shouldFireInteractionEventOnCompletion() {
         // From https://github.com/langchain4j/langchain4j/issues/4207
-        
         var registrar = AiServiceListenerRegistrar.newInstance();
         var listener = new TestAiServiceInteractionListener();
 
@@ -212,22 +214,22 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
         registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
 
-        assertThat(listener.count()).isEqualTo(1);
-        assertThat(listener.lastEvent()).isNotNull();
-        assertThat(listener.lastEvent().invocationContext()).isEqualTo(DEFAULT_INVOCATION_CONTEXT);
-        assertThat(listener.lastEvent().events())
+        assertThat(listener.count()).isOne();
+        assertThat(listener.lastEvent())
+                .isNotNull()
+                .extracting(AiServiceEvent::invocationContext, AiServiceInteractionEvent::events)
                 .containsExactly(
-                    INVOCATION_STARTED_EVENT,
-                    REQUEST_ISSUED_EVENT,
-                    RESPONSE_RECEIVED_EVENT,
-                    INVOCATION_COMPLETED_EVENT
-                );
+                        DEFAULT_INVOCATION_CONTEXT,
+                        List.of(
+                                INVOCATION_STARTED_EVENT,
+                                REQUEST_ISSUED_EVENT,
+                                RESPONSE_RECEIVED_EVENT,
+                                INVOCATION_COMPLETED_EVENT));
     }
 
     @Test
     void shouldFireInteractionEventOnError() {
         // From https://github.com/langchain4j/langchain4j/issues/4207
-        
         var registrar = AiServiceListenerRegistrar.newInstance();
         var listener = new TestAiServiceInteractionListener();
 
@@ -237,14 +239,25 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(REQUEST_ISSUED_EVENT);
         registrar.fireEvent(INVOCATION_ERROR_EVENT);
 
-        assertThat(listener.count()).isEqualTo(1);
-        assertThat(listener.lastEvent()).isNotNull();
-        assertThat(listener.lastEvent().events())
-                .containsExactly(
-                    INVOCATION_STARTED_EVENT,
-                    REQUEST_ISSUED_EVENT,
-                    INVOCATION_ERROR_EVENT
-                );
+        assertThat(listener.count()).isOne();
+        assertThat(listener.lastEvent())
+                .isNotNull()
+                .extracting(AiServiceInteractionEvent::events)
+                .isEqualTo(List.of(INVOCATION_STARTED_EVENT, REQUEST_ISSUED_EVENT, INVOCATION_ERROR_EVENT));
+    }
+
+    @Test
+    void shouldFireInteractionEventAfterTheEventThatEndedTheInvocation() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var notified = new CopyOnWriteArrayList<Class<?>>();
+
+        registrar.register((AiServiceCompletedListener) event -> notified.add(event.eventClass()));
+        registrar.register((AiServiceInteractionListener) event -> notified.add(event.eventClass()));
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+
+        assertThat(notified).containsExactly(AiServiceCompletedEvent.class, AiServiceInteractionEvent.class);
     }
 
     @Test
@@ -259,10 +272,10 @@ class DefaultAiServiceListenerRegistrarTests {
                 .isThrownBy(() -> registrar.fireEvent(interactionEvent))
                 .withMessageContaining("composite event");
     }
+
     @Test
     void shouldNotFireInteractionEventBeforeCompletionOrError() {
         // From https://github.com/langchain4j/langchain4j/issues/4207
-       
         var registrar = AiServiceListenerRegistrar.newInstance();
         var listener = new TestAiServiceInteractionListener();
 
@@ -272,8 +285,191 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(REQUEST_ISSUED_EVENT);
         registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
 
+        assertThat(listener)
+                .extracting(TestAiServiceInteractionListener::count, TestAiServiceInteractionListener::lastEvent)
+                .containsExactly(0, null);
+    }
+
+    @Test
+    void shouldNotTrackInvocationsStartedWithoutAnInteractionListener() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+
+        // Registering the listener part way through the invocation doesn't start tracking it
+        registrar.register(listener);
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+
         assertThat(listener.count()).isZero();
-        assertThat(listener.lastEvent()).isNull();
+    }
+
+    @Test
+    void shouldNotFireInteractionEventForAnInvocationThatNeverStarted() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.fireEvent(INVOCATION_ERROR_EVENT);
+
+        assertThat(listener.count()).isZero();
+    }
+
+    @Test
+    void shouldNotTrackEventsWithoutAnInvocationId() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+        var invocationContext =
+                DEFAULT_INVOCATION_CONTEXT.toBuilder().invocationId(null).build();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT.toBuilder()
+                .invocationContext(invocationContext)
+                .build());
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT.toBuilder()
+                .invocationContext(invocationContext)
+                .build());
+        registrar.invocationEnded(invocationContext);
+
+        assertThat(listener.count()).isZero();
+    }
+
+    @Test
+    void shouldIgnoreEventsFiredAfterTheInvocationEnded() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+
+        // A late event must neither start a new interaction nor be held on to
+        registrar.fireEvent(TOOL_EXECUTED_EVENT);
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+
+        assertThat(listener.count()).isOne();
+        assertThat(listener.lastEvent().events()).containsExactly(INVOCATION_STARTED_EVENT, INVOCATION_COMPLETED_EVENT);
+    }
+
+    @Test
+    void shouldFireInteractionEventWithTheCollectedEventsWhenTheInvocationEndsWithoutCompletingOrFailing() {
+        // e.g. an asynchronous or streaming invocation that was canceled
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+
+        // Ending the invocation again or firing a late terminal event doesn't fire another interaction event
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        registrar.fireEvent(INVOCATION_ERROR_EVENT);
+
+        assertThat(listener.count()).isOne();
+        assertThat(listener.lastEvent())
+                .isNotNull()
+                .extracting(AiServiceEvent::invocationContext, AiServiceInteractionEvent::events)
+                .containsExactly(DEFAULT_INVOCATION_CONTEXT, List.of(INVOCATION_STARTED_EVENT, REQUEST_ISSUED_EVENT));
+    }
+
+    @Test
+    void invocationEndedHasNoEffectOnACompletedInvocation() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+
+        assertThat(listener.count()).isOne();
+    }
+
+    @Test
+    void shouldStopTrackingTheInvocationEvenIfAListenerFails() {
+        var registrar = AiServiceListenerRegistrar.newInstance(true);
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+        registrar.register((AiServiceCompletedListener) event -> {
+            throw new RuntimeException("Some error");
+        });
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> registrar.fireEvent(INVOCATION_COMPLETED_EVENT))
+                .withMessage("Some error");
+
+        // The invocation is no longer tracked, so ending it has no effect
+        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+
+        assertThat(listener.count()).isZero();
+    }
+
+    @Test
+    void shouldKeepConcurrentInvocationsSeparate() throws InterruptedException {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var interactions = new CopyOnWriteArrayList<AiServiceInteractionEvent>();
+        var invocationCount = 50;
+        var start = new CountDownLatch(1);
+
+        registrar.register((AiServiceInteractionListener) interactions::add);
+
+        // ExecutorService isn't AutoCloseable on Java 17
+        var executor = Executors.newFixedThreadPool(8);
+
+        try {
+            IntStream.range(0, invocationCount)
+                    .forEach(i -> executor.submit(() -> {
+                        var invocationContext = DEFAULT_INVOCATION_CONTEXT.toBuilder()
+                                .invocationId(UUID.randomUUID())
+                                .build();
+
+                        start.await();
+                        registrar.fireEvent(INVOCATION_STARTED_EVENT.toBuilder()
+                                .invocationContext(invocationContext)
+                                .build());
+                        registrar.fireEvent(REQUEST_ISSUED_EVENT.toBuilder()
+                                .invocationContext(invocationContext)
+                                .build());
+                        registrar.fireEvent(RESPONSE_RECEIVED_EVENT.toBuilder()
+                                .invocationContext(invocationContext)
+                                .build());
+                        registrar.fireEvent(INVOCATION_COMPLETED_EVENT.toBuilder()
+                                .invocationContext(invocationContext)
+                                .build());
+                        return null;
+                    }));
+
+            start.countDown();
+            executor.shutdown();
+            assertThat(executor.awaitTermination(1, TimeUnit.MINUTES)).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(interactions)
+                .hasSize(invocationCount)
+                .allSatisfy(interaction -> assertThat(interaction.events())
+                        .allSatisfy(event ->
+                                assertThat(event.invocationContext()).isEqualTo(interaction.invocationContext()))
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceResponseReceivedEvent.class,
+                                AiServiceCompletedEvent.class))
+                .extracting(interaction -> interaction.invocationContext().invocationId())
+                .doesNotHaveDuplicates();
     }
 
     @Test
@@ -293,13 +489,16 @@ class DefaultAiServiceListenerRegistrarTests {
         ALL_EVENTS.forEach(registrar::fireEvent);
 
         // Ensure that all the listeners have been executed
-        assertThat(ALL_LISTENERS).allSatisfy(l -> assertThat(l)
-                .isNotNull()
-                .satisfies(el -> assertThat(el.count()).isOne(), el -> assertThat(el.lastEvent())
+        assertThat(ALL_LISTENERS)
+                .allSatisfy(l -> assertThat(l)
                         .isNotNull()
-                        .extracting(AiServiceEvent::invocationContext)
-                        .usingRecursiveComparison()
-                        .isEqualTo(DEFAULT_INVOCATION_CONTEXT)));
+                        .satisfies(
+                                el -> assertThat(el.count()).isOne(),
+                                el -> assertThat(el.lastEvent())
+                                        .isNotNull()
+                                        .extracting(AiServiceEvent::invocationContext)
+                                        .usingRecursiveComparison()
+                                        .isEqualTo(DEFAULT_INVOCATION_CONTEXT)));
 
         // Unregister all the listeners & reset their data
         ALL_LISTENERS.forEach(l -> {
@@ -315,10 +514,14 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     private static void assertListenersNotExecuted() {
-        assertThat(ALL_LISTENERS).isNotNull().hasSize(8 * 2).allSatisfy(l -> assertThat(l)
+        assertThat(ALL_LISTENERS)
                 .isNotNull()
-                .satisfies(el -> assertThat(el.count()).isZero(), el -> assertThat(el.lastEvent())
-                        .isNull()));
+                .hasSize(8 * 2)
+                .allSatisfy(l -> assertThat(l)
+                        .isNotNull()
+                        .satisfies(
+                                el -> assertThat(el.count()).isZero(),
+                                el -> assertThat(el.lastEvent()).isNull()));
     }
 
     private abstract static class AbstractTestEventListener<T extends AiServiceEvent> implements AiServiceListener<T> {
@@ -370,11 +573,11 @@ class DefaultAiServiceListenerRegistrarTests {
 
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
+
     private static class TestAiServiceInteractionListener extends AbstractTestEventListener<AiServiceInteractionEvent>
             implements AiServiceInteractionListener {}
 
     private static class IG implements InputGuardrail {}
 
     private static class OG implements OutputGuardrail {}
-
 }
