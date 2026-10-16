@@ -291,6 +291,7 @@ params with the builder pattern:
 | `think`                    | Controls [thinking](https://ollama.com/blog/thinking).                                                                                                                            | `Boolean`                 |                             |
 | `truncate`                 | Controls what the server does with a prompt that does not fit the context window. See below.                                                                                       | `Boolean`                 | `true` (server default)     |
 | `returnThinking`           |                                                                                                                                                                                   | `Boolean`                 |                             |
+| `sendThinking`             | Controls whether `AiMessage.thinking()` is sent back to the LLM in follow-up requests. See below.                                                                                 | `Boolean`                 | `false`                     |
 | `timeout`                  | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`                | PT60S                       |
 | `customHeaders`            | Custom HTTP headers.                                                                                                                                                              | `Map<String, String>`     |                             |
 | `logRequests`              |                                                                                                                                                                                   | `Boolean`                 |                             |
@@ -459,6 +460,9 @@ parameters:
 - `returnThinking`: controls whether `thinking` field from the API response is parsed
 and returned in the `AiMessage.thinking()` and whether to invoke the `StreamingChatResponseHandler.onPartialThinking()`
 and `TokenStream.onPartialThinking()` callbacks when using `OllamaStreamingChatModel`. Disabled by default.
+- `sendThinking`: controls whether the contents of `AiMessage.thinking()` are sent back to the LLM
+in the `thinking` field of assistant messages in follow-up requests. Some models use the thinking from previous turns
+when rendering the chat history. Disabled by default.
 
 Here is an example of how to configure thinking:
 ```java

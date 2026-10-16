@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -19,7 +20,7 @@ class InternalOllamaHelperTest {
         UserMessage userMessage =
                 UserMessage.from(TextContent.from("Hello"), TextContent.from("world"), TextContent.from("!"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), false);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEqualTo("Hello\nworld\n!");
@@ -33,7 +34,7 @@ class InternalOllamaHelperTest {
                 TextContent.from("two parts"),
                 ImageContent.from("aW1hZ2U=", "image/png"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), false);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEqualTo("Describe these\ntwo parts");
@@ -44,7 +45,7 @@ class InternalOllamaHelperTest {
     void toOllamaMessages_imageOnlyMessageHasEmptyContent() {
         UserMessage userMessage = UserMessage.from(ImageContent.from("aW1hZ2U=", "image/png"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), false);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEmpty();
@@ -88,7 +89,7 @@ class InternalOllamaHelperTest {
                         .build())
                 .build();
 
-        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false);
+        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, false);
 
         assertThat(result.getTruncate()).isFalse();
     }
@@ -102,7 +103,7 @@ class InternalOllamaHelperTest {
                         .build())
                 .build();
 
-        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false);
+        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, false);
 
         assertThat(result.getTruncate())
                 .as("the field must be absent from the request so the server default applies")
@@ -121,7 +122,7 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, false));
 
         // truncate is a sibling of model and messages, not a member of options, which carries num_ctx.
         assertThat(json).contains("\"truncate\":false");
@@ -139,8 +140,44 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, false));
 
         assertThat(json).doesNotContain("truncate");
+    }
+
+    @Test
+    void toOllamaMessages_omitsThinkingByDefault() throws Exception {
+        AiMessage aiMessage =
+                AiMessage.builder().text("4").thinking("2 + 2 is 4").build();
+
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(aiMessage), false);
+
+        assertThat(OllamaJsonUtils.toJsonWithoutIdent(messages.get(0))).doesNotContain("thinking");
+    }
+
+    @Test
+    void toOllamaMessages_omitsThinkingWhenMessageHasNone() throws Exception {
+        AiMessage aiMessage = AiMessage.from("4");
+
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(aiMessage), true);
+
+        assertThat(OllamaJsonUtils.toJsonWithoutIdent(messages.get(0))).doesNotContain("thinking");
+    }
+
+    @Test
+    void toOllamaChatRequest_serializesThinkingOnAssistantMessage() throws Exception {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("What is 2 + 2?"),
+                        AiMessage.builder().text("4").thinking("2 + 2 is 4").build(),
+                        UserMessage.from("And times 3?"))
+                .parameters(
+                        OllamaChatRequestParameters.builder().modelName("qwen3").build())
+                .build();
+
+        String json =
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, true));
+
+        assertThat(json).contains("{\"role\":\"assistant\",\"content\":\"4\",\"thinking\":\"2 + 2 is 4\"");
     }
 }
