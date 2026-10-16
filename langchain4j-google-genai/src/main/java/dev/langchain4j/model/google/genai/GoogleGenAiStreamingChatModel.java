@@ -216,7 +216,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(
-                            chunk, modelName, returnThinking, includeCodeExecutionOutput);
+                            chunk, modelName, returnThinking, includeCodeExecutionOutput, textBuilder);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
                     if (aiMessage.attributes() != null

@@ -1446,6 +1446,88 @@ class GoogleGenAiContentMapperTest {
                 .isEqualTo(Base64.getEncoder().encodeToString("answer-signature".getBytes()));
     }
 
+    @Test
+    void should_separate_executed_code_from_preceding_text() {
+        GenerateContentResponse response = responseWithParts(
+                Part.fromText("Let me calculate that with Python:"),
+                codePart("PYTHON", "print(6 * 7)"),
+                resultPart("OUTCOME_OK", "42\n"),
+                Part.fromText("6 times 7 is 42."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Let me calculate that with Python:\n\n"
+                        + "Code executed:\n```python\nprint(6 * 7)\n```\n\n"
+                        + "Output:\n```\n42\n```\n\n"
+                        + "6 times 7 is 42.");
+    }
+
+    @Test
+    void should_complete_the_blank_line_before_executed_code() {
+        GenerateContentResponse oneNewLine = responseWithParts(Part.fromText("First:\n"), codePart("PYTHON", "x = 1"));
+        GenerateContentResponse blankLine = responseWithParts(Part.fromText("First:\n\n"), codePart("PYTHON", "x = 1"));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(oneNewLine, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("First:\n\nCode executed:\n```python\nx = 1\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(blankLine, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("First:\n\nCode executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    @Test
+    void should_separate_each_round_of_code_execution_from_text_in_between() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "print(6 * 7)"),
+                resultPart("OUTCOME_OK", "42\n"),
+                Part.fromText("Now the square:"),
+                codePart("PYTHON", "print(42 ** 2)"),
+                resultPart("OUTCOME_OK", "1764\n"));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code executed:\n```python\nprint(6 * 7)\n```\n\n"
+                        + "Output:\n```\n42\n```\n\n"
+                        + "Now the square:\n\n"
+                        + "Code executed:\n```python\nprint(42 ** 2)\n```\n\n"
+                        + "Output:\n```\n1764\n```\n\n");
+    }
+
+    @Test
+    void should_separate_code_output_from_preceding_text() {
+        GenerateContentResponse succeeded =
+                responseWithParts(Part.fromText("It printed:"), resultPart("OUTCOME_OK", "42\n"));
+        GenerateContentResponse failed =
+                responseWithParts(Part.fromText("It failed:"), resultPart("OUTCOME_FAILED", null));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(succeeded, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("It printed:\n\nOutput:\n```\n42\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(failed, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("It failed:\n\nCode execution failed: **OUTCOME_FAILED**\n\n");
+    }
+
+    @Test
+    void should_separate_executed_code_from_text_streamed_before_it() {
+        GenerateContentResponse response = responseWithParts(codePart("PYTHON", "x = 1"));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true, "Let me check:")
+                        .aiMessage()
+                        .text())
+                .isEqualTo("\n\nCode executed:\n```python\nx = 1\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true, "Let me check:\n\n")
+                        .aiMessage()
+                        .text())
+                .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+    }
+
     private static Part codePart(String language, String code) {
         return Part.builder()
                 .executableCode(ExecutableCode.builder().language(language).code(code))

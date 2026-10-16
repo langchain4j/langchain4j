@@ -356,7 +356,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 String answer = gemini.chat("What is 2 to the power of 100? Generate and run code to compute it.");
 ```
 
-By default, only the answer of the model is returned. With `includeCodeExecutionOutput(true)`, the executed code and its output are added to the `AiMessage` text, before the answer:
+By default, only the answer of the model is returned. With `includeCodeExecutionOutput(true)`, the executed code and its output are added to the `AiMessage` text, in the order Gemini returns them:
 
 ````text
 Code executed:

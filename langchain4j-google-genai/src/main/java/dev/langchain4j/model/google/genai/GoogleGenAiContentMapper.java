@@ -294,6 +294,15 @@ class GoogleGenAiContentMapper {
             String modelName,
             boolean returnThinking,
             boolean includeCodeExecutionOutput) {
+        return toChatResponse(response, modelName, returnThinking, includeCodeExecutionOutput, "");
+    }
+
+    static ChatResponse toChatResponse(
+            GenerateContentResponse response,
+            String modelName,
+            boolean returnThinking,
+            boolean includeCodeExecutionOutput,
+            CharSequence precedingText) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
         GoogleGenAiTokenUsage usage = toTokenUsage(response);
 
@@ -334,8 +343,9 @@ class GoogleGenAiContentMapper {
                 }
 
                 if (includeCodeExecutionOutput) {
-                    part.executableCode().ifPresent(code -> appendExecutableCode(textBuilder, code));
-                    part.codeExecutionResult().ifPresent(result -> appendCodeExecutionResult(textBuilder, result));
+                    part.executableCode().ifPresent(code -> appendExecutableCode(textBuilder, precedingText, code));
+                    part.codeExecutionResult()
+                            .ifPresent(result -> appendCodeExecutionResult(textBuilder, precedingText, result));
                 }
 
                 if (part.functionCall().isPresent()) {
@@ -462,27 +472,32 @@ class GoogleGenAiContentMapper {
                 .build());
     }
 
-    private static void appendExecutableCode(StringBuilder textBuilder, ExecutableCode executableCode) {
+    private static void appendExecutableCode(
+            StringBuilder textBuilder, CharSequence precedingText, ExecutableCode executableCode) {
         String language = executableCode
                 .language()
                 .map(Object::toString)
                 .filter(name -> !name.equals("LANGUAGE_UNSPECIFIED"))
                 .map(name -> name.toLowerCase(Locale.ROOT))
                 .orElse("python");
+        separateFromPrecedingText(textBuilder, precedingText);
         textBuilder.append("Code executed:\n");
         appendCodeBlock(textBuilder, language, executableCode.code().orElse(""));
     }
 
-    private static void appendCodeExecutionResult(StringBuilder textBuilder, CodeExecutionResult result) {
+    private static void appendCodeExecutionResult(
+            StringBuilder textBuilder, CharSequence precedingText, CodeExecutionResult result) {
         Optional<Outcome> outcome = result.outcome();
         String output = result.output().orElse("");
         if (outcome.map(value -> value.knownEnum() == Outcome.Known.OUTCOME_OK).orElse(false)) {
             if (!output.isEmpty()) {
+                separateFromPrecedingText(textBuilder, precedingText);
                 textBuilder.append("Output:\n");
                 appendCodeBlock(textBuilder, "", output);
             }
             return;
         }
+        separateFromPrecedingText(textBuilder, precedingText);
         textBuilder
                 .append("Code execution failed: **")
                 .append(outcome.map(Object::toString).orElse("OUTCOME_UNSPECIFIED"))
@@ -492,6 +507,16 @@ class GoogleGenAiContentMapper {
         } else {
             textBuilder.append('\n');
         }
+    }
+
+    private static void separateFromPrecedingText(StringBuilder textBuilder, CharSequence precedingText) {
+        CharSequence preceding = textBuilder.length() > 0 ? textBuilder : precedingText;
+        int length = preceding.length();
+        if (length == 0
+                || (length > 1 && preceding.charAt(length - 1) == '\n' && preceding.charAt(length - 2) == '\n')) {
+            return;
+        }
+        textBuilder.append(preceding.charAt(length - 1) == '\n' ? "\n" : "\n\n");
     }
 
     private static void appendCodeBlock(StringBuilder textBuilder, String language, String content) {
