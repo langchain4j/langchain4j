@@ -9,6 +9,7 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -29,6 +30,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -163,8 +167,8 @@ public class ApacheHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture =
-                asyncClient().execute(apacheRequest, new FutureCallback<>() {
+        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture = asyncClient()
+                .execute(apacheRequest, new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse apacheResponse) {
                         if (!isSuccessful(apacheResponse)) {
@@ -212,42 +216,100 @@ public class ApacheHttpClient implements HttpClient {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
-        return ZeroPublisher.create(config, tube -> {
-            ServerSentEventListener listener = new ServerSentEventListener() {
-                @Override
-                public void onOpen(SuccessfulHttpResponse response) {
-                    if (!tube.cancelled()) {
-                        tube.send(new HttpResponseReceived(response));
-                    }
-                }
+        return subscriber -> {
+            CompletableFuture<Void> errorHeadDelivered = new CompletableFuture<>();
+            ZeroPublisher.<HttpStreamingEvent>create(config, tube -> {
+                        AtomicReference<java.util.concurrent.Future<Void>> futureRef = new AtomicReference<>();
+                        tube.whenCancelled(() -> errorHeadDelivered.complete(null));
+                        tube.whenTerminates(() -> {
+                            java.util.concurrent.Future<Void> current = futureRef.get();
+                            if (current != null) {
+                                current.cancel(true);
+                            }
+                        });
+                        if (tube.cancelled()) {
+                            return;
+                        }
+                        ServerSentEventListener listener = new ServerSentEventListener() {
+                            @Override
+                            public void onOpen(SuccessfulHttpResponse response) {
+                                if (!tube.cancelled()) {
+                                    tube.send(new HttpResponseReceived(response));
+                                }
+                            }
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                            @Override
+                            public void onEvent(ServerSentEvent event) {
+                                if (!tube.cancelled()) {
+                                    tube.send(event);
+                                }
+                            }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        tube.fail(throwable);
-                    }
-                }
+                            @Override
+                            public void onError(Throwable throwable) {
+                                if (!tube.cancelled()) {
+                                    tube.fail(throwable);
+                                }
+                            }
 
-                @Override
-                public void onClose() {
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
-                }
-            };
-            java.util.concurrent.Future<Void> future = asyncClient().execute(
-                    SimpleRequestProducer.create(toSimpleApacheRequest(request)),
-                    new SseResponseConsumer(parser, listener),
-                    null);
-            tube.whenTerminates(() -> future.cancel(true));
-        });
+                            @Override
+                            public void onClose() {
+                                if (!tube.cancelled()) {
+                                    tube.complete();
+                                }
+                            }
+                        };
+                        java.util.concurrent.Future<Void> future = asyncClient()
+                                .execute(
+                                        SimpleRequestProducer.create(toSimpleApacheRequest(request)),
+                                        new SseResponseConsumer(
+                                                parser,
+                                                listener,
+                                                response -> {
+                                                    if (tube.cancelled() || tube.outstandingRequests() == 0) {
+                                                        return null;
+                                                    }
+                                                    tube.send(new HttpErrorResponseReceived(
+                                                            response.getCode(), headersFrom(response)));
+                                                    return errorHeadDelivered;
+                                                },
+                                                tube::cancelled),
+                                        null);
+                        futureRef.set(future);
+                        if (tube.cancelled()) {
+                            future.cancel(true);
+                        }
+                    })
+                    .subscribe(new Flow.Subscriber<>() {
+                        @Override
+                        public void onSubscribe(Flow.Subscription subscription) {
+                            subscriber.onSubscribe(subscription);
+                        }
+
+                        @Override
+                        public void onNext(HttpStreamingEvent event) {
+                            if (event instanceof HttpErrorResponseReceived) {
+                                try {
+                                    subscriber.onNext(event);
+                                } finally {
+                                    errorHeadDelivered.complete(null);
+                                }
+                            } else {
+                                subscriber.onNext(event);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable error) {
+                            subscriber.onError(error);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            subscriber.onComplete();
+                        }
+                    });
+        };
     }
 
     /**
@@ -260,15 +322,24 @@ public class ApacheHttpClient implements HttpClient {
 
         private final ServerSentEventParser parser;
         private final ServerSentEventListener listener;
+        private final Function<HttpResponse, CompletableFuture<Void>> errorHeadPublisher;
+        private final BooleanSupplier cancelled;
 
         private ServerSentEventParser.Incremental incremental;
         private FutureCallback<Void> resultCallback;
         private int errorStatus;
         private ByteArrayOutputStream errorBody;
+        private volatile CompletableFuture<Void> errorHeadDelivered;
 
-        SseResponseConsumer(ServerSentEventParser parser, ServerSentEventListener listener) {
+        SseResponseConsumer(
+                ServerSentEventParser parser,
+                ServerSentEventListener listener,
+                Function<HttpResponse, CompletableFuture<Void>> errorHeadPublisher,
+                BooleanSupplier cancelled) {
             this.parser = parser;
             this.listener = listener;
+            this.errorHeadPublisher = errorHeadPublisher;
+            this.cancelled = cancelled;
         }
 
         @Override
@@ -290,6 +361,7 @@ public class ApacheHttpClient implements HttpClient {
             } else {
                 errorStatus = status;
                 errorBody = new ByteArrayOutputStream();
+                errorHeadDelivered = errorHeadPublisher.apply(response);
                 if (entityDetails == null) {
                     finishError();
                 }
@@ -301,11 +373,29 @@ public class ApacheHttpClient implements HttpClient {
 
         @Override
         public void updateCapacity(CapacityChannel capacityChannel) throws IOException {
-            capacityChannel.update(Integer.MAX_VALUE);
+            CompletableFuture<Void> delivered = errorHeadDelivered;
+            if (delivered == null || delivered.isDone()) {
+                if (!cancelled.getAsBoolean()) {
+                    capacityChannel.update(Integer.MAX_VALUE);
+                }
+            } else {
+                delivered.whenComplete((ignored, error) -> {
+                    if (!cancelled.getAsBoolean()) {
+                        try {
+                            capacityChannel.update(Integer.MAX_VALUE);
+                        } catch (IOException e) {
+                            failed(e);
+                        }
+                    }
+                });
+            }
         }
 
         @Override
         public void consume(ByteBuffer src) {
+            if (cancelled.getAsBoolean()) {
+                return;
+            }
             if (incremental != null) {
                 for (ServerSentEvent event : incremental.feed(src)) {
                     ignoringExceptions(() -> listener.onEvent(event));
@@ -355,15 +445,19 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     private static SuccessfulHttpResponse successfulResponseFrom(HttpResponse response, byte[] body) {
+        return SuccessfulHttpResponse.builder()
+                .statusCode(response.getCode())
+                .headers(headersFrom(response))
+                .body(body)
+                .build();
+    }
+
+    private static Map<String, List<String>> headersFrom(HttpResponse response) {
         Map<String, List<String>> headers = new HashMap<>();
         for (Header header : response.getHeaders()) {
             headers.computeIfAbsent(header.getName(), k -> new ArrayList<>()).add(header.getValue());
         }
-        return SuccessfulHttpResponse.builder()
-                .statusCode(response.getCode())
-                .headers(headers)
-                .body(body)
-                .build();
+        return headers;
     }
 
     @Override

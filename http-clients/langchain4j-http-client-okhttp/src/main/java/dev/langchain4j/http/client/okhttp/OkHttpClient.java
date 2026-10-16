@@ -2,6 +2,7 @@ package dev.langchain4j.http.client.okhttp;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -9,12 +10,24 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -25,18 +38,6 @@ import okhttp3.MultipartBody;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
 
@@ -127,48 +128,105 @@ public class OkHttpClient implements HttpClient {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
-        return ZeroPublisher.create(config, tube -> {
-            Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
-                @Override
-                public void onOpen(SuccessfulHttpResponse response) {
-                    if (!tube.cancelled()) {
-                        tube.send(new HttpResponseReceived(response));
-                    }
-                }
+        return subscriber -> {
+            CompletableFuture<Void> errorHeadDelivered = new CompletableFuture<>();
+            ZeroPublisher.<HttpStreamingEvent>create(config, tube -> {
+                        AtomicReference<Call> callRef = new AtomicReference<>();
+                        tube.whenCancelled(() -> errorHeadDelivered.complete(null));
+                        tube.whenTerminates(() -> {
+                            Call current = callRef.get();
+                            if (current != null) {
+                                current.cancel();
+                            }
+                        });
+                        if (tube.cancelled()) {
+                            return;
+                        }
+                        Call call = enqueueServerSentEvents(
+                                request,
+                                parser,
+                                new ServerSentEventListener() {
+                                    @Override
+                                    public void onOpen(SuccessfulHttpResponse response) {
+                                        if (!tube.cancelled()) {
+                                            tube.send(new HttpResponseReceived(response));
+                                        }
+                                    }
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                                    @Override
+                                    public void onEvent(ServerSentEvent event) {
+                                        if (!tube.cancelled()) {
+                                            tube.send(event);
+                                        }
+                                    }
 
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                                    @Override
+                                    public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                                        if (!tube.cancelled()) {
+                                            tube.send(event);
+                                        }
+                                    }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        tube.fail(throwable);
-                    }
-                }
+                                    @Override
+                                    public void onError(Throwable throwable) {
+                                        if (!tube.cancelled()) {
+                                            tube.fail(throwable);
+                                        }
+                                    }
 
-                @Override
-                public void onClose() {
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
-                }
-            });
-            // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
-            // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
-            // first event - also aborts a cancel that arrives before the first event.
-            tube.whenTerminates(call::cancel);
-        });
+                                    @Override
+                                    public void onClose() {
+                                        if (!tube.cancelled()) {
+                                            tube.complete();
+                                        }
+                                    }
+                                },
+                                response -> {
+                                    if (tube.cancelled()) {
+                                        return false;
+                                    }
+                                    if (tube.outstandingRequests() == 0) {
+                                        return true;
+                                    }
+                                    tube.send(new HttpErrorResponseReceived(response.code(), headersFrom(response)));
+                                    errorHeadDelivered.join();
+                                    return !tube.cancelled();
+                                });
+                        callRef.set(call);
+                        if (tube.cancelled()) {
+                            call.cancel();
+                        }
+                    })
+                    .subscribe(new Flow.Subscriber<>() {
+                        @Override
+                        public void onSubscribe(Flow.Subscription subscription) {
+                            subscriber.onSubscribe(subscription);
+                        }
+
+                        @Override
+                        public void onNext(HttpStreamingEvent event) {
+                            if (event instanceof HttpErrorResponseReceived) {
+                                try {
+                                    subscriber.onNext(event);
+                                } finally {
+                                    errorHeadDelivered.complete(null);
+                                }
+                            } else {
+                                subscriber.onNext(event);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable error) {
+                            subscriber.onError(error);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            subscriber.onComplete();
+                        }
+                    });
+        };
     }
 
     @Override
@@ -178,6 +236,14 @@ public class OkHttpClient implements HttpClient {
 
     private Call enqueueServerSentEvents(
             HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        return enqueueServerSentEvents(request, parser, listener, response -> true);
+    }
+
+    private Call enqueueServerSentEvents(
+            HttpRequest request,
+            ServerSentEventParser parser,
+            ServerSentEventListener listener,
+            Function<Response, Boolean> errorHead) {
         Request okRequest = toOkHttpRequest(request);
         Call call = client.newCall(okRequest);
         call.enqueue(new Callback() {
@@ -185,6 +251,9 @@ public class OkHttpClient implements HttpClient {
             public void onResponse(Call call, Response response) {
                 try (response) {
                     if (!response.isSuccessful()) {
+                        if (!errorHead.apply(response)) {
+                            return;
+                        }
                         HttpException exception = new HttpException(response.code(), readBody(response));
                         ignoringExceptions(() -> listener.onError(exception));
                         return;
@@ -237,16 +306,19 @@ public class OkHttpClient implements HttpClient {
      * The streaming path passes {@code null} here, so that the body is left for the SSE parser to read.
      */
     private SuccessfulHttpResponse fromOkHttpResponse(Response response, byte[] body) {
+        return SuccessfulHttpResponse.builder()
+                .statusCode(response.code())
+                .headers(headersFrom(response))
+                .body(body)
+                .build();
+    }
+
+    private Map<String, List<String>> headersFrom(Response response) {
         Map<String, List<String>> headers = new HashMap<>();
         for (String name : response.headers().names()) {
             headers.put(name, response.headers().values(name));
         }
-
-        return SuccessfulHttpResponse.builder()
-                .statusCode(response.code())
-                .headers(headers)
-                .body(body)
-                .build();
+        return headers;
     }
 
     private String readBody(Response response) {

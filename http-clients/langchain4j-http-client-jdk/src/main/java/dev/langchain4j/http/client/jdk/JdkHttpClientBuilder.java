@@ -2,7 +2,6 @@ package dev.langchain4j.http.client.jdk;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
-
 import java.time.Duration;
 
 public class JdkHttpClientBuilder implements HttpClientBuilder {
@@ -11,6 +10,7 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
     private Duration connectTimeout;
     private Duration readTimeout;
     private Integer streamingBufferSize;
+    private boolean streamingBackpressure;
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;
@@ -73,6 +73,7 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
      * slower than the server produces and the buffer overflows, the stream terminates with an error.
      * <p>
      * The default is {@value JdkHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+     * This setting is not used when {@link #streamingBackpressure(boolean)} is enabled.
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
@@ -81,6 +82,34 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
     @Experimental
     public JdkHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
         this.streamingBufferSize = streamingBufferSize;
+        return this;
+    }
+
+    /**
+     * @return whether streaming HTTP body reads follow downstream demand
+     * @since 1.23.0
+     */
+    @Experimental
+    public boolean streamingBackpressure() {
+        return streamingBackpressure;
+    }
+
+    /**
+     * Controls whether {@code stream(...)} propagates subscriber demand to HTTP body reads.
+     * When enabled, the client drains the parsed events from the current byte batch before requesting
+     * more body data. A slow subscriber pauses body consumption instead of overflowing the event buffer.
+     * The parser can still retain an incomplete event spanning several byte batches.
+     * <p>
+     * Disabled by default to retain the bounded event-buffer behavior used by existing integrations.
+     * This option applies only to the publisher streaming API, not blocking or callback-based requests.
+     *
+     * @param streamingBackpressure whether to make streaming body reads follow subscriber demand
+     * @return this builder
+     * @since 1.23.0
+     */
+    @Experimental
+    public JdkHttpClientBuilder streamingBackpressure(boolean streamingBackpressure) {
+        this.streamingBackpressure = streamingBackpressure;
         return this;
     }
 
