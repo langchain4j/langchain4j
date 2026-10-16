@@ -608,7 +608,7 @@ TextToSpeechResponse response = model.synthesize("""
     """);
 ```
 
-A line that does not start with a speaker name belongs to the turn above it. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
+A line that does not start with a speaker name belongs to the turn above it, so the text must start with a speaker: text before the first turn is rejected with an `IllegalArgumentException`. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
 
 To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
 

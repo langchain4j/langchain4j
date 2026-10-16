@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * the text is read as a conversation in which
  * every turn starts with the name of a configured speaker followed by a colon, for example
  * {@code "Joe: How is it going today, Jane?\nJane: Not too bad, how about you?"}, and every turn is spoken in the
- * voice of its speaker.
+ * voice of its speaker. Text before the first turn is rejected with an {@link IllegalArgumentException}.
  *
  * @since 1.23.0
  */
@@ -130,7 +130,8 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
         if (parts.isEmpty()) {
             throw new IllegalArgumentException("The text does not contain any speech turns to synthesize");
         }
-        List<Content> contents = List.of(Content.builder().parts(parts).build());
+        List<Content> contents =
+                List.of(Content.builder().role("user").parts(parts).build());
         GenerateContentConfig config = createGenerateContentConfig(request);
 
         if (logRequests) {
@@ -188,6 +189,11 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
                 speaker = lineSpeaker;
                 turn = new StringBuilder(stripped.substring(lineSpeaker.length() + 1));
             } else {
+                if (speaker == null && !line.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "The text must start with the name of a configured speaker followed by a colon (configured speakers: "
+                                    + String.join(", ", speakers) + ")");
+                }
                 if (!turn.isEmpty()) {
                     turn.append('\n');
                 }
@@ -493,6 +499,8 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
          * Sets the voice of each speaker of a conversation. The text is then split into turns: a line that starts
          * with the name of a configured speaker followed by a colon, such as {@code "Joe: Hello"}, starts a new turn
          * spoken in that speaker's voice, and the following lines without a speaker name belong to the same turn.
+         * The text must start with a turn: text before the first one is rejected with an
+         * {@link IllegalArgumentException}.
          * <p>
          * It requires a model that accepts a speaker per turn, such as {@code gemini-3.8-flash-tts}, and cannot be
          * combined with a voice set with {@link #voice(String)} or on the {@link TextToSpeechRequest}.

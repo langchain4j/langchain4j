@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.genai.Client;
@@ -118,6 +119,15 @@ class GoogleGenAiTextToSpeechModelTest {
     }
 
     @Test
+    void should_send_text_with_user_role() throws Exception {
+        returnAudio("audio/wav");
+
+        modelBuilder().build().synthesize("Hello world");
+
+        assertThat(contentsCaptor.getValue().get(0).role()).contains("user");
+    }
+
+    @Test
     void should_send_safety_settings_and_labels() throws Exception {
         returnAudio("audio/wav");
         SafetySetting safetySetting = SafetySetting.builder()
@@ -223,16 +233,42 @@ class GoogleGenAiTextToSpeechModelTest {
     }
 
     @Test
-    void should_send_text_before_first_speaker_without_speech_metadata() throws Exception {
+    void should_split_turns_on_windows_line_endings() throws Exception {
         returnAudio("audio/wav");
 
-        modelBuilder().multiSpeakerVoiceConfig(JOE_AND_JANE).build().synthesize("Intro\nJoe: Hi");
+        modelBuilder()
+                .multiSpeakerVoiceConfig(JOE_AND_JANE)
+                .build()
+                .synthesize("Joe: first line\r\nsecond line\r\nJane: reply\r\n");
 
         List<Part> parts = parts();
         assertThat(parts).hasSize(2);
-        assertThat(parts.get(0).text()).contains("Intro");
-        assertThat(parts.get(0).speechMetadata()).isEmpty();
-        assertTurn(parts.get(1), "Joe", "Hi");
+        assertTurn(parts.get(0), "Joe", "first line\nsecond line");
+        assertTurn(parts.get(1), "Jane", "reply");
+    }
+
+    @Test
+    void should_reject_text_before_first_speaker() throws Exception {
+        GoogleGenAiTextToSpeechModel model =
+                modelBuilder().multiSpeakerVoiceConfig(JOE_AND_JANE).build();
+
+        assertThatThrownBy(() -> model.synthesize("Intro\nJoe: Hi"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The text must start with the name of a configured speaker followed by a colon"
+                        + " (configured speakers: Joe, Jane)");
+        verifyNoInteractions(models);
+    }
+
+    @Test
+    void should_ignore_blank_lines_before_first_speaker() throws Exception {
+        returnAudio("audio/wav");
+
+        modelBuilder().multiSpeakerVoiceConfig(JOE_AND_JANE).build().synthesize("\n   \nJoe: Hi\nJane: Hello");
+
+        List<Part> parts = parts();
+        assertThat(parts).hasSize(2);
+        assertTurn(parts.get(0), "Joe", "Hi");
+        assertTurn(parts.get(1), "Jane", "Hello");
     }
 
     @Test
