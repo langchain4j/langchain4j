@@ -3,12 +3,17 @@ package dev.langchain4j.mcp.client.transport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.exception.JsonException;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 /**
@@ -17,11 +22,13 @@ import org.mockito.Mockito;
  */
 class McpOperationHandlerRobustnessTest {
 
+    private final McpTransport transport = Mockito.mock(McpTransport.class);
+
     private McpOperationHandler handler() {
         return new McpOperationHandler(
                 new ConcurrentHashMap<>(),
                 List::of,
-                Mockito.mock(McpTransport.class),
+                transport,
                 m -> {},
                 () -> {},
                 () -> {},
@@ -92,5 +99,48 @@ class McpOperationHandlerRobustnessTest {
     void an_empty_body_should_throw_like_any_other_unreadable_input() {
         assertThatThrownBy(() -> handler().onMessage(""))
                 .isInstanceOfAny(JsonException.class, IllegalArgumentException.class);
+    }
+
+    @Test
+    void answers_a_server_ping_whose_id_is_a_non_numeric_string() {
+        // the MCP Java SDK sends server-initiated requests with ids such as "<session id>-0"
+        handler().onMessage("{\"jsonrpc\":\"2.0\",\"id\":\"3f1c9a2e-0\",\"method\":\"ping\"}");
+
+        assertThat(idOfTheSentResponse()).isEqualTo("3f1c9a2e-0");
+    }
+
+    @Test
+    void answers_a_server_roots_list_whose_id_is_a_non_numeric_string() {
+        handler().onMessage("{\"jsonrpc\":\"2.0\",\"id\":\"3f1c9a2e-1\",\"method\":\"roots/list\"}");
+
+        assertThat(idOfTheSentResponse()).isEqualTo("3f1c9a2e-1");
+    }
+
+    @Test
+    void answers_a_server_request_whose_id_is_a_numeric_string_with_the_same_string() {
+        handler().onMessage("{\"jsonrpc\":\"2.0\",\"id\":\"7\",\"method\":\"ping\"}");
+
+        assertThat(idOfTheSentResponse()).isEqualTo("7");
+    }
+
+    @Test
+    void answers_a_server_request_whose_id_is_a_number_with_the_same_number() {
+        handler().onMessage("{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"ping\"}");
+
+        assertThat(idOfTheSentResponse()).isInstanceOf(Number.class).hasToString("7");
+    }
+
+    @Test
+    void does_not_answer_a_server_request_with_an_unusable_id() {
+        handler().onMessage("{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"ping\"}");
+
+        verify(transport, never()).sendMessage(Mockito.any(McpClientMessage.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object idOfTheSentResponse() {
+        ArgumentCaptor<McpClientMessage> response = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(response.capture());
+        return ((Map<String, Object>) McpJson.toValue(McpJson.serialize(response.getValue()))).get("id");
     }
 }

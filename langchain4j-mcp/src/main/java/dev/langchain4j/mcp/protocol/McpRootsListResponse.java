@@ -21,6 +21,14 @@ public class McpRootsListResponse extends McpClientResponse {
         result.put("roots", roots);
     }
 
+    /**
+     * @param requestId the id of the roots/list request exactly as the server sent it (a string or a number)
+     */
+    public McpRootsListResponse(Object requestId, List<McpRoot> roots) {
+        super(requestId);
+        result.put("roots", roots);
+    }
+
     public Map<String, Object> getResult() {
         return result;
     }

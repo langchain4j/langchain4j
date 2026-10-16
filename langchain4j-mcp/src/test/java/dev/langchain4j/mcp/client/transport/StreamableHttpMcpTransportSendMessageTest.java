@@ -116,6 +116,17 @@ class StreamableHttpMcpTransportSendMessageTest {
     }
 
     @Test
+    void a_response_to_a_server_request_with_a_string_id_keeps_that_id_on_the_wire() throws Exception {
+        startServer(false);
+
+        transport.sendMessage(new McpPingResponse("3f1c9a2e-0"));
+
+        assertThat(received.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(receivedBodies.get(0)).contains("\"id\":\"3f1c9a2e-0\"");
+        assertThat(pendingOperations).isEmpty();
+    }
+
+    @Test
     void a_request_is_still_registered_as_pending() throws Exception {
         startServer(true);
 
