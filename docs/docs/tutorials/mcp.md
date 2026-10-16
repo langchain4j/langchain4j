@@ -299,6 +299,14 @@ that is retrieved from annotations - that one is exposed under the `McpToolMetad
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
 
+### MCP tool result conversion
+
+When a tool response uses `content[]`, the default `McpToolResultConverter` preserves text items, embedded text resources and native images. Text-only responses are joined with newlines and remain accessible through `ToolExecutionResult.resultText()`, including empty responses. Responses containing images preserve server order as `TextContent` / `ImageContent` blocks in `ToolExecutionResult.resultContents()`; calling `resultText()` on them throws `IllegalStateException`.
+
+Image results require a model integration that supports native images in tool results, such as Anthropic or OpenAI Responses. OpenAI Chat Completions rejects non-text tool results with `UnsupportedFeatureException`. Image bytes are not encoded as plain base64 text in the prompt.
+
+Embedded binary resources, audio and other unsupported content types fail explicitly. Applications that need them can set a custom converter with `DefaultMcpClient.Builder.toolResultConverter(...)`. Responses with `structuredContent` are handled separately and do not invoke this converter. The deprecated `DefaultMcpToolResultExtractor` retains its historical text-only behavior.
+
 ### MCP tool result metadata
 
 Besides the actual result, an MCP server can attach a `_meta` object to the response of a tool call.
