@@ -122,8 +122,15 @@ abstract class PgVectorFilterMapper {
         return format("%s and %s", map(and.left()), map(and.right()));
     }
 
+    /**
+     * A comparison on a key that is missing from the metadata evaluates to {@code null} in SQL, and
+     * {@code not(null)} is {@code null} as well, so such rows would be dropped. {@link Not} is the
+     * complement of its expression ({@code !expression.test(metadata)}), so a row that does not match
+     * the expression, including one without the key, must match the negation. Treat {@code null} as
+     * {@code false} before negating.
+     */
     private String mapNot(Not not) {
-        return format("not(%s)", map(not.expression()));
+        return format("not(coalesce(%s, false))", map(not.expression()));
     }
 
     private String mapOr(Or or) {

@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -63,6 +65,14 @@ class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @ParameterizedTest
+    @MethodSource(
+            "dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStoreConfigIT#should_filter_by_not_when_key_is_missing")
+    void should_filter_by_not_when_key_is_missing(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
+        should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
     }
 
     @Test
