@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatException;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -179,7 +179,7 @@ class AzureCosmosDbNoSqlSearchQueryTest {
                 .thenReturn(emptyFlux);
 
         // the lookup finds no document, which is irrelevant here - the query it sent is what matters
-        catchThrowable(() -> store.removeAll(List.of("id' OR 1=1 OR c.id = 'x")));
+        assertThatException().isThrownBy(() -> store.removeAll(List.of("id' OR 1=1 OR c.id = 'x")));
 
         SqlQuerySpec sent = idQueryCaptor.getValue();
         assertThat(sent.getQueryText()).isEqualTo("SELECT * FROM c WHERE c.id = @id");
