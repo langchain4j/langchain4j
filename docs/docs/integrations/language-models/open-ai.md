@@ -552,7 +552,8 @@ More information can be found [here](/tutorials/customizable-http-client).
 
 ### Spring Boot
 When using the `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
-the Spring's `RestClient` is used as the default HTTP client.
+the Spring's `RestClient` is used as the default HTTP client. It is configured with Spring Boot's HTTP client settings,
+see [Spring Boot Integration](/tutorials/spring-boot-integration#http-client).
 
 You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).
