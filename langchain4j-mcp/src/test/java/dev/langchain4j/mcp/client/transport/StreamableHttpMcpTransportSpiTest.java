@@ -180,11 +180,13 @@ class StreamableHttpMcpTransportSpiTest {
         Exchange exchange = httpClient.nextExchange();
         exchange.open(200, Map.of("Content-Type", List.of("text/event-stream")));
         httpClient.onClose = () -> assertThat(exchange.cancelled).isTrue();
+        assertThat(pendingOperations).containsEntry(1L, result);
 
         transport.close();
         transport.close();
 
         assertThat(result).isCancelled();
+        assertThat(pendingOperations).isEmpty();
         assertThat(httpClient.closed).isTrue();
         assertThat(httpClient.closeCount).isEqualTo(1);
     }
@@ -395,8 +397,10 @@ class StreamableHttpMcpTransportSpiTest {
         assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
         assertThat(tools).isNotNull();
         assertThat(queued).isNotDone();
+        assertThat(pendingOperations).containsEntry(1L, queued);
         assertThat(queued.cancel(true)).isTrue();
         assertThat(tools.cancelled).isTrue();
+        assertThat(pendingOperations).isEmpty();
     }
 
     @Test
