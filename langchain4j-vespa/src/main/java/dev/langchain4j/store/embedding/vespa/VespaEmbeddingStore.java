@@ -30,6 +30,7 @@ import dev.langchain4j.store.embedding.vespa.Record.Fields;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -49,8 +50,9 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     // SNAKE_CASE matches the @JsonNaming that Record.Fields still carries for Retrofit's own mapper,
     // so both paths agree whichever JSON library backs this codec.
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(
-            ProviderJsonSpec.builder().propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE).build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
+            .build());
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     static final String DEFAULT_NAMESPACE = "namespace";
@@ -188,22 +190,19 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                 records.add(buildRecord(ids.get(i), embeddings.get(i), embedded != null ? embedded.get(i) : null));
             }
 
-            jsonFeeder.feedMany(
-                    new ByteArrayInputStream(
-                            CODEC.toJson(records).getBytes()),
-                    new JsonFeeder.ResultCallback() {
-                        @Override
-                        public void onNextResult(Result result, FeedException error) {
-                            if (error != null) {
-                                throw new RuntimeException(error.getMessage());
-                            }
-                        }
+            jsonFeeder.feedMany(toJsonStream(records), new JsonFeeder.ResultCallback() {
+                @Override
+                public void onNextResult(Result result, FeedException error) {
+                    if (error != null) {
+                        throw new RuntimeException(error.getMessage());
+                    }
+                }
 
-                        @Override
-                        public void onError(FeedException error) {
-                            throw new RuntimeException(error.getMessage());
-                        }
-                    });
+                @Override
+                public void onError(FeedException error) {
+                    throw new RuntimeException(error.getMessage());
+                }
+            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -293,6 +292,14 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
             api = createInstance(url, certPath, keyPath, logRequests, logResponses);
         }
         return api;
+    }
+
+    /**
+     * Serialises the records to the JSON payload sent to Vespa. Vespa expects UTF-8, so the
+     * bytes are encoded explicitly rather than with the JVM's default charset.
+     */
+    static ByteArrayInputStream toJsonStream(List<Record> records) {
+        return new ByteArrayInputStream(CODEC.toJson(records).getBytes(StandardCharsets.UTF_8));
     }
 
     private Record buildRecord(String id, Embedding embedding, TextSegment textSegment) {
