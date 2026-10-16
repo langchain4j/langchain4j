@@ -1,5 +1,14 @@
 package dev.langchain4j.observability.api;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -11,18 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
+import java.util.stream.Stream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
 
 /**
  * A default registrar for registering {@link AiServiceListener}s.
@@ -32,9 +34,11 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
 
-    // Holds the events for each invocationId
-    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
-    
+    // The events fired so far by each in-flight invocation that is being tracked for an AiServiceInteractionEvent,
+    // keyed by invocation id. A list is only ever mutated inside an atomic ConcurrentHashMap operation on its own key,
+    // so no additional locking is needed.
+    private final Map<UUID, List<AiServiceEvent>> interactions = new ConcurrentHashMap<>();
+
     // Defaults to false to preserve backwards compatibility
     private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
 
@@ -64,51 +68,106 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
+     * <p>
+     * If an {@link AiServiceInteractionEvent} listener is registered, the event is also recorded against its
+     * invocation. When the invocation ends with an {@link AiServiceCompletedEvent} or an {@link AiServiceErrorEvent},
+     * a single {@link AiServiceInteractionEvent} containing all of the recorded events is fired after the event itself.
      *
      * @param <T>   The type of the event, which must be a subtype of {@link AiServiceEvent}.
      * @param event The event to be fired to the listeners. Must not be null.
-     * 
+     * @throws IllegalArgumentException if the event is an {@link AiServiceInteractionEvent}, which is only ever fired
+     *                                  by the registrar itself
      */
     @Override
     public <T extends AiServiceEvent> void fireEvent(T event) {
         ensureNotNull(event, "event");
 
         if (event instanceof AiServiceInteractionEvent) {
-            throw new IllegalArgumentException("AiServiceInteractionEvent is a composite event and can only be fired internally");
+            throw new IllegalArgumentException(
+                    "%s is a composite event that is fired by the registrar itself and cannot be fired directly"
+                            .formatted(AiServiceInteractionEvent.class.getSimpleName()));
         }
-        Optional.ofNullable(this.listeners.get(event.eventClass()))
-                .map(l -> (EventListeners<T>) l)
-                .ifPresent(l -> l.fireEvent(event));
-          
 
-        // Tracks events per invocationId and emits a single AiServiceInteractionEvent
-        // when the invocation completes or errors. If invocationId is null, aggregation
-        // is skipped to preserve backward compatibility with existing events. 
-        UUID invocationId = event.invocationContext().invocationId();
-        if (invocationId != null) {
-            InvocationState state = this.invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
-            state.add(event);
-            if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
-                // Interaction is over; stop tracking it and fire the composite event
-                List<AiServiceEvent> events = state.events();
-                this.invocationStates.remove(invocationId);
+        // Track the event before notifying listeners so a failing listener can't leave a tracked interaction behind
+        var interactionEvent = trackInteraction(event);
+        notifyListeners(event);
+        interactionEvent.ifPresent(this::notifyListeners);
+    }
 
-                AiServiceInteractionEvent interactionEvent =
-                AiServiceInteractionEvent.builder()
-                    .invocationContext(event.invocationContext())
-                    .events(events)
-                    .build();
-
-                Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
-                    .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
-                    .ifPresent(l -> l.fireEvent(interactionEvent));
-            }            
-        }
+    /**
+     * Fires an {@link AiServiceInteractionEvent} containing the events recorded so far for the given invocation if it
+     * is still being tracked (i.e. it ended without an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent},
+     * for example because it was canceled), and stops tracking it.
+     *
+     * @param invocationContext The context of the invocation that ended. Must not be null.
+     */
+    @Override
+    public void invocationEnded(InvocationContext invocationContext) {
+        ensureNotNull(invocationContext, "invocationContext");
+        Optional.ofNullable(invocationContext.invocationId())
+                .flatMap(invocationId -> endInteraction(invocationId, invocationContext, Stream.empty()))
+                .ifPresent(this::notifyListeners);
     }
 
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
-        this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
+        this.shouldThrowExceptionOnEventError.compareAndSet(
+                !shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
+    }
+
+    private <T extends AiServiceEvent> void notifyListeners(T event) {
+        Optional.ofNullable(this.listeners.get(event.eventClass()))
+                .map(l -> (EventListeners<T>) l)
+                .ifPresent(l -> l.fireEvent(event));
+    }
+
+    private Optional<AiServiceInteractionEvent> trackInteraction(AiServiceEvent event) {
+        return Optional.ofNullable(event.invocationContext())
+                .map(InvocationContext::invocationId)
+                .flatMap(invocationId -> isInteractionEnd(event)
+                        ? endInteraction(invocationId, event.invocationContext(), Stream.of(event))
+                        : recordInteractionEvent(invocationId, event));
+    }
+
+    private Optional<AiServiceInteractionEvent> recordInteractionEvent(UUID invocationId, AiServiceEvent event) {
+        if (event instanceof AiServiceStartedEvent) {
+            startInteraction(invocationId, event);
+        } else {
+            // Events for invocations that aren't tracked (or are no longer tracked) are ignored
+            this.interactions.computeIfPresent(invocationId, (id, events) -> {
+                events.add(event);
+                return events;
+            });
+        }
+
+        // Recording an event never ends an interaction
+        return Optional.empty();
+    }
+
+    private void startInteraction(UUID invocationId, AiServiceEvent startedEvent) {
+        // Only pay the cost of holding on to the events if someone is listening for the interaction
+        if (hasInteractionListeners()) {
+            this.interactions.putIfAbsent(invocationId, new ArrayList<>(List.of(startedEvent)));
+        }
+    }
+
+    private Optional<AiServiceInteractionEvent> endInteraction(
+            UUID invocationId, InvocationContext invocationContext, Stream<AiServiceEvent> finalEvents) {
+        return Optional.ofNullable(this.interactions.remove(invocationId))
+                .map(events -> AiServiceInteractionEvent.builder()
+                        .invocationContext(invocationContext)
+                        .events(Stream.concat(events.stream(), finalEvents).toList())
+                        .build());
+    }
+
+    private boolean hasInteractionListeners() {
+        return Optional.ofNullable(this.listeners.get(AiServiceInteractionEvent.class))
+                .map(eventListeners -> !eventListeners.isEmpty())
+                .orElse(false);
+    }
+
+    private static boolean isInteractionEnd(AiServiceEvent event) {
+        return (event instanceof AiServiceCompletedEvent) || (event instanceof AiServiceErrorEvent);
     }
 
     private <T extends AiServiceEvent> EventListeners<T> addToExistingOrNewList(
@@ -121,32 +180,6 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         return list;
     }
 
-    // Holds ordered events for single invocationId
-    private static final class InvocationState {
-        private final List<AiServiceEvent> events = new ArrayList<>();
-        private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-        private void add(AiServiceEvent event){
-            var writeLock = this.lock.writeLock();
-            writeLock.lock();
-
-            try{
-                this.events.add(event);
-            } finally {
-                writeLock.unlock();
-            }
-        }
-        private  List<AiServiceEvent> events(){
-            var readLock = this.lock.readLock();
-            readLock.lock();
-
-            try{
-                return this.events;
-            } finally {
-                readLock.unlock();
-            }
-        }
-    }
     private class EventListeners<T extends AiServiceEvent> {
         private final Set<@NonNull AiServiceListener<T>> listeners = new LinkedHashSet<>();
         private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -175,6 +208,17 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 this.listeners.remove(ensureNotNull(listener, "listener"));
             } finally {
                 writeLock.unlock();
+            }
+        }
+
+        private boolean isEmpty() {
+            var readLock = this.lock.readLock();
+            readLock.lock();
+
+            try {
+                return this.listeners.isEmpty();
+            } finally {
+                readLock.unlock();
             }
         }
 

@@ -24,6 +24,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -183,7 +184,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         } else if (partialResponseHandler != null) {
             partialResponseHandler.accept(partialResponse.text());
         } else if (partialResponseWithContextHandler != null) {
-            partialResponseWithContextHandler.accept(partialResponse, context);
+            partialResponseWithContextHandler.accept(
+                    partialResponse, new PartialResponseContext(endingOnCancel(context.streamingHandle())));
         }
     }
 
@@ -202,7 +204,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (partialThinkingHandler != null) {
             partialThinkingHandler.accept(partialThinking);
         } else if (partialThinkingWithContextHandler != null) {
-            partialThinkingWithContextHandler.accept(partialThinking, context);
+            partialThinkingWithContextHandler.accept(
+                    partialThinking, new PartialThinkingContext(endingOnCancel(context.streamingHandle())));
         }
     }
 
@@ -221,7 +224,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (partialToolCallHandler != null) {
             partialToolCallHandler.accept(partialToolCall);
         } else if (partialToolCallWithContextHandler != null) {
-            partialToolCallWithContextHandler.accept(partialToolCall, context);
+            partialToolCallWithContextHandler.accept(
+                    partialToolCall, new PartialToolCallContext(endingOnCancel(context.streamingHandle())));
         }
     }
 
@@ -244,6 +248,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (rawEventHandler != null) {
             rawEventHandler.accept(rawEvent);
         }
+    }
+
+    // Canceling the stream ends the invocation without a completed or error event
+    private StreamingHandle endingOnCancel(StreamingHandle streamingHandle) {
+        return new InvocationEndingStreamingHandle(
+                streamingHandle, () -> context.eventListenerRegistrar.invocationEnded(invocationContext));
     }
 
     private <T> void fireInvocationComplete(T result) {
