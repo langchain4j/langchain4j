@@ -670,4 +670,31 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         callerList.add(userMessage("a4-injected"));
         assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
     }
+
+    @Test
+    void set_with_empty_list_should_reject_and_keep_existing_messages() {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(3);
+        chatMemory.add(userMessage("keep-me"));
+
+        List<dev.langchain4j.data.message.ChatMessage> empty = new ArrayList<>();
+        assertThatThrownBy(() -> chatMemory.set(empty))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("empty");
+        assertThatThrownBy(() -> chatMemory.set((Iterable<dev.langchain4j.data.message.ChatMessage>) empty))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("empty");
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep-me"));
+    }
+
+    @Test
+    void set_with_null_iterable_should_throw_illegal_argument_exception() {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(3);
+        chatMemory.add(userMessage("keep-me"));
+
+        assertThatThrownBy(() -> chatMemory.set((Iterable<dev.langchain4j.data.message.ChatMessage>) null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep-me"));
+    }
 }
