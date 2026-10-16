@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.audio.transcription;
 
+import java.util.List;
+
 /**
  * Represents the audio request.
  * Find description of parameters
@@ -23,6 +25,8 @@ public class OpenAiAudioTranscriptionRequest {
     private final String language;
     private final String prompt;
     private final Double temperature;
+    private final String responseFormat;
+    private final List<String> timestampGranularities;
 
     public OpenAiAudioTranscriptionRequest(Builder builder) {
         this.file = builder.file;
@@ -30,6 +34,8 @@ public class OpenAiAudioTranscriptionRequest {
         this.language = builder.language;
         this.prompt = builder.prompt;
         this.temperature = builder.temperature;
+        this.responseFormat = builder.responseFormat;
+        this.timestampGranularities = builder.timestampGranularities;
     }
 
     public AudioFile file() {
@@ -52,6 +58,14 @@ public class OpenAiAudioTranscriptionRequest {
         return temperature;
     }
 
+    public String responseFormat() {
+        return responseFormat;
+    }
+
+    public List<String> timestampGranularities() {
+        return timestampGranularities;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -63,6 +77,8 @@ public class OpenAiAudioTranscriptionRequest {
         private String language;
         private String prompt;
         private Double temperature;
+        private String responseFormat;
+        private List<String> timestampGranularities;
 
         public Builder file(AudioFile file) {
             this.file = file;
@@ -86,6 +102,16 @@ public class OpenAiAudioTranscriptionRequest {
 
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
+            return this;
+        }
+
+        public Builder responseFormat(String responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder timestampGranularities(List<String> timestampGranularities) {
+            this.timestampGranularities = timestampGranularities;
             return this;
         }
 
