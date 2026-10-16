@@ -117,7 +117,8 @@ public record HumanInTheLoop(
 
         /**
          * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system.
-         * When the condition is false the user is not asked anything and the agent is skipped.
+         * When the condition is false the user is not asked anything and the agent is skipped. It can be evaluated
+         * more than once, so it must be free of side effects.
          */
         public HumanInTheLoopBuilder activationCondition(Predicate<AgenticScope> activationCondition) {
             return activationCondition("<unknown>", activationCondition);
@@ -126,6 +127,7 @@ public record HumanInTheLoop(
         /**
          * Sets the condition, with its description, under which this agent runs when it is invoked as a subagent of
          * an agentic system. When the condition is false the user is not asked anything and the agent is skipped.
+         * It can be evaluated more than once, so it must be free of side effects.
          */
         public HumanInTheLoopBuilder activationCondition(
                 String description, Predicate<AgenticScope> activationCondition) {

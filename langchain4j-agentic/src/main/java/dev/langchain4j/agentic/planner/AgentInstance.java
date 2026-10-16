@@ -30,6 +30,9 @@ public interface AgentInstance {
      * runs. When the condition is false, the agent is skipped: it is not invoked, it writes nothing to the
      * {@link dev.langchain4j.agentic.scope.AgenticScope} and its parent's planner is notified of the skip. The
      * condition is ignored when the agent is invoked directly, as the root of an agentic system.
+     * <p>
+     * The condition can be evaluated more than once for a single invocation, by the planner of the parent while
+     * selecting its next agents and again when the agent is invoked, so it must be cheap and free of side effects.
      */
     default AgentCondition activationCondition() {
         return null;

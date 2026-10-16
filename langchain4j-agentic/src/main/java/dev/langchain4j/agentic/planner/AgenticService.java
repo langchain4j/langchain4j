@@ -125,7 +125,8 @@ public interface AgenticService<T, A> {
     /**
      * Sets the condition under which this agentic service runs when it is invoked as a subagent of another agentic
      * system. When the condition is false the service is skipped: none of its subagents is invoked and nothing is
-     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly.
+     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly. It can
+     * be evaluated more than once, so it must be free of side effects.
      *
      * @param activationCondition the predicate deciding whether this agentic service runs
      * @return this builder for fluent chaining
@@ -135,7 +136,8 @@ public interface AgenticService<T, A> {
     /**
      * Sets the condition under which this agentic service runs when it is invoked as a subagent of another agentic
      * system. When the condition is false the service is skipped: none of its subagents is invoked and nothing is
-     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly.
+     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly. It can
+     * be evaluated more than once, so it must be free of side effects.
      *
      * @param description a human-readable description of the condition, used in logs, listeners and reports
      * @param activationCondition the predicate deciding whether this agentic service runs

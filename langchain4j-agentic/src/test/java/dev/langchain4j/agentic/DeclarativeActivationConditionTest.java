@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
+import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.Map;
@@ -280,6 +282,32 @@ class DeclarativeActivationConditionTest {
         assertThat(sequence.run("Mario", false, true)).isEqualTo("*waves at Mario*");
         assertThat(GREETINGS).hasValue(1);
         assertThat(WAVES).hasValue(1);
+    }
+
+    // ── Arguments of a condition ──
+
+    public static class Counter {
+
+        @Agent(outputKey = "count")
+        public static int count(@V("count") int count) {
+            return count + 1;
+        }
+
+        @ActivationCondition(description = "the count is low")
+        public static boolean low(@V("count") int count) {
+            return count < 10;
+        }
+    }
+
+    @Test
+    void condition_reads_its_arguments_without_writing_converted_values_to_the_scope() {
+        AgentCondition condition = DeclarativeUtil.activationCondition(Counter.class);
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("count", "3");
+
+        assertThat(condition.test(scope)).isTrue();
+        // the agent itself would write back the converted value, the condition leaves the scope as it was
+        assertThat(scope.readState("count")).isEqualTo("3");
     }
 
     // ── Validation ──

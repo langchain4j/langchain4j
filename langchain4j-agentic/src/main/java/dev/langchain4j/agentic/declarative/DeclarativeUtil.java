@@ -285,7 +285,7 @@ public class DeclarativeUtil {
                 ? null
                 : new AgentCondition(
                         conditionMethod.getAnnotation(ActivationCondition.class).description(),
-                        agenticScopePredicate(conditionMethod));
+                        agenticScopeFunction(conditionMethod, Boolean.class, false)::apply);
     }
 
     private static Set<Method> staticMethodsAnnotatedWith(Class<?> type, Class<? extends Annotation> annotation) {
@@ -466,11 +466,19 @@ public class DeclarativeUtil {
     }
 
     public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
+        return agenticScopeFunction(functionMethod, targetClass, true);
+    }
+
+    private static <T> Function<AgenticScope, T> agenticScopeFunction(
+            Method functionMethod, Class<T> targetClass, boolean writeConvertedArguments) {
         List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         return agenticScope -> {
             try {
                 Object[] args = agentInvocationArguments(
-                                agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
+                                agenticScope,
+                                agentArguments,
+                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope),
+                                writeConvertedArguments)
                         .positionalArgs();
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {

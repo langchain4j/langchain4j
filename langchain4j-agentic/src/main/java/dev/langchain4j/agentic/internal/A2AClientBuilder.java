@@ -49,7 +49,8 @@ public interface A2AClientBuilder<T> {
 
     /**
      * Sets the condition under which the agent runs when it is invoked as a subagent of an agentic system. When the
-     * condition is false the remote agent is not called and the agent is skipped.
+     * condition is false the remote agent is not called and the agent is skipped. It can be evaluated more than once,
+     * so it must be free of side effects.
      *
      * @param activationCondition the predicate deciding whether the agent runs
      * @return this builder for method chaining
@@ -60,7 +61,8 @@ public interface A2AClientBuilder<T> {
 
     /**
      * Sets the condition under which the agent runs when it is invoked as a subagent of an agentic system. When the
-     * condition is false the remote agent is not called and the agent is skipped.
+     * condition is false the remote agent is not called and the agent is skipped. It can be evaluated more than once,
+     * so it must be free of side effects.
      *
      * @param description a human-readable description of the condition, used in logs, listeners and reports
      * @param activationCondition the predicate deciding whether the agent runs

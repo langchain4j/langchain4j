@@ -140,18 +140,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
         // a skipped agent produced no response, so the model is told why instead
         String plannerResponse = previousInvocation != null && previousInvocation.skipped()
-                ? skippedAgentResponse(previousInvocation)
+                ? "agent '" + previousInvocation.agentName() + "' was skipped: " + previousInvocation.skipReason()
                 : lastResponse;
         return nextSubagent(planningContext.agenticScope(), plannerResponse, lastResponse);
-    }
-
-    private String skippedAgentResponse(dev.langchain4j.agentic.scope.AgentInvocation skippedInvocation) {
-        AgentInstance agent = agents.get(skippedInvocation.agentId());
-        AgentCondition condition = agent != null ? agent.activationCondition() : null;
-        String reason = condition != null
-                ? "its activation condition is false: " + condition.description()
-                : "one of its arguments is missing";
-        return "agent '" + skippedInvocation.agentName() + "' was skipped: " + reason;
     }
 
     private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {

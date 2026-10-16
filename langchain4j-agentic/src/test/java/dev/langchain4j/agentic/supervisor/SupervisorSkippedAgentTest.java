@@ -72,6 +72,6 @@ class SupervisorSkippedAgentTest {
                 .last()
                 .asString()
                 .contains("The last received response is: 'agent 'bookFlight' was skipped: "
-                        + "its activation condition is false: the budget is approved'");
+                        + "activation condition is false: the budget is approved'");
     }
 }

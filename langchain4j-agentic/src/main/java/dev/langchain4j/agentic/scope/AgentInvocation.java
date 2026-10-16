@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.scope;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,9 +10,10 @@ import java.util.Map;
 /**
  * The invocation of an agent, as notified to the planner of its parent.
  *
- * @param skipped {@code true} when the agent was not invoked, because its activation condition was false or because
- *        it is optional and one of its arguments was missing: its output is then the current value of its output key.
- *        Skipped invocations are not registered in the {@link AgenticScope}.
+ * @param skipReason why the agent was not invoked, because its activation condition was false or because it is
+ *        optional and one of its arguments was missing, or {@code null} when it was invoked. The output of a skipped
+ *        agent is the current value of its output key. Skipped invocations are not registered in the
+ *        {@link AgenticScope}.
  */
 @JsonInclude(NON_NULL)
 public record AgentInvocation(
@@ -22,11 +22,18 @@ public record AgentInvocation(
         @JsonProperty("agentId") String agentId,
         @JsonProperty("input") Map<String, Object> input,
         @JsonProperty("output") Object output,
-        @JsonProperty("skipped") @JsonInclude(NON_DEFAULT) boolean skipped) {
+        @JsonProperty("skipReason") String skipReason) {
 
     public AgentInvocation(
             Class<?> agentType, String agentName, String agentId, Map<String, Object> input, Object output) {
-        this(agentType, agentName, agentId, input, output, false);
+        this(agentType, agentName, agentId, input, output, null);
+    }
+
+    /**
+     * Returns {@code true} if the agent was skipped instead of being invoked.
+     */
+    public boolean skipped() {
+        return skipReason != null;
     }
 
     @Override
@@ -39,7 +46,7 @@ public record AgentInvocation(
         return "AgentInvocation{" + "agentName="
                 + agentName + ", input="
                 + input + ", output="
-                + output + (skipped ? ", skipped" : "")
+                + output + (skipped() ? ", skipped: " + skipReason : "")
                 + '}';
     }
 }

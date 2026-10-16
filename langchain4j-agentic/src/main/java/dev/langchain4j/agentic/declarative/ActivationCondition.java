@@ -12,7 +12,9 @@ import java.lang.annotation.Target;
  * Without a {@link #value()}, it is the condition of the agent declared by the class or interface containing the
  * method: when that agent is invoked as a subagent and the condition is false, the agent is skipped. This works for
  * any kind of agent: AI agents, workflows, planners, non-AI agents, human-in-the-loop, A2A and MCP client agents.
- * The condition is ignored when the agent is invoked directly, as the root of an agentic system.
+ * The condition is ignored when the agent is invoked directly, as the root of an agentic system. It can be evaluated
+ * more than once for a single invocation, so it must be cheap and free of side effects; its arguments are read from the
+ * {@code AgenticScope} without writing back the values converted to their declared types.
  * <pre>
  * {@code
  *     public interface ContextGatherer {

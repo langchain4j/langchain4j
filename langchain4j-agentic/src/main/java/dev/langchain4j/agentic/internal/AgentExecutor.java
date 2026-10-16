@@ -28,8 +28,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
-    private static final String ACTIVATION_MARKER_PREFIX = "__activated_";
-
     public Object execute(DefaultAgenticScope agenticScope, PlannerExecutor planner) {
         return execute(agenticScope, planner, agentInvoker.async());
     }
@@ -56,7 +54,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> {
-                clearActivation(agenticScope);
+                ActivationConditions.clearActivation(this, agenticScope);
                 throw e;
             }
             case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
@@ -72,11 +70,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         AgentInvocationArguments args = null;
         try {
             AgentCondition condition = agentInvoker.activationCondition();
-            if (condition != null && !activationMarked(agenticScope)) {
+            if (condition != null && !ActivationConditions.isActivated(this, agenticScope)) {
                 if (!isActive(condition, agenticScope)) {
                     return skip(agenticScope, planner, "activation condition is false: " + condition.description());
                 }
-                markActivation(agenticScope);
+                ActivationConditions.markActivated(this, agenticScope);
             }
 
             try {
@@ -132,34 +130,9 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         Object response = outputKey == null || outputKey.isBlank() ? null : agenticScope.readState(outputKey);
         agentSkipped(agentInvoker.listener(), agenticScope, agentInvoker, reason);
         if (planner != null) {
-            planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response, true));
+            planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response, reason));
         }
         return response;
-    }
-
-    /**
-     * A composite agent whose condition held is marked as activated in the scope until it completes, so that, when
-     * it is resumed after a suspension or a crash, it isn't skipped halfway because its own subagents changed the
-     * state its condition reads. Leaf agents don't need the marker since they never partially complete.
-     */
-    private boolean activationMarked(DefaultAgenticScope agenticScope) {
-        return !leaf() && agenticScope.hasState(activationMarkerKey());
-    }
-
-    private void markActivation(DefaultAgenticScope agenticScope) {
-        if (!leaf()) {
-            agenticScope.writeState(activationMarkerKey(), true);
-        }
-    }
-
-    private void clearActivation(DefaultAgenticScope agenticScope) {
-        if (agentInvoker.activationCondition() != null && !leaf()) {
-            agenticScope.writeState(activationMarkerKey(), null);
-        }
-    }
-
-    private String activationMarkerKey() {
-        return ACTIVATION_MARKER_PREFIX + agentId();
     }
 
     private Object completeAgentInvocation(
@@ -168,7 +141,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             Object invokedAgent,
             PlannerExecutor planner,
             AgentInvocationArguments args) {
-        clearActivation(agenticScope);
+        ActivationConditions.clearActivation(this, agenticScope);
         String outputKey = agentInvoker.outputKey();
         if (outputKey != null && !outputKey.isBlank()) {
             Object stateValue = response instanceof ResultWithAgenticScope<?> r ? r.result() : response;

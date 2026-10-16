@@ -608,6 +608,8 @@ When an agent is skipped:
 
 The condition is evaluated each time the agent is about to be invoked as a subagent, so inside a loop it is evaluated at every iteration, and in a parallel mapper the condition of the mapped agent is evaluated once per item, with a skipped item producing a `null` at its position in the result. Conversely, it is ignored when the agent is invoked directly, as the root of an agentic system, so that the same agent can be used in both ways.
 
+A condition can also be evaluated more than once for a single invocation: some planners, like the [peer-to-peer](#peer-to-peer-agentic-pattern), [blackboard](#blackboard-agentic-pattern) and [goal oriented](#goal-oriented-agentic-pattern) ones, evaluate it while selecting their next agents, and it is evaluated again when the agent is invoked. For this reason a condition must be cheap and free of side effects. In particular the arguments of a condition declared with `@ActivationCondition` are only read from the `AgenticScope`: unlike what happens for the arguments of an agent, the values converted to their declared types are not written back to the scope.
+
 A condition throwing an exception is handled as a failure of the agent: the exception is wrapped in an `AgentInvocationException` and passed to the [error handler](#error-handling) of the parent, so that, for instance, retrying the agent evaluates the condition again.
 
 The condition of a workflow or of a planner gates all its subagents together: when it is false, none of them is invoked. Once its condition holds, a composite agent is considered activated until it completes, so that, when it is resumed after a suspension, for instance waiting for a human, or recovered after a crash, it continues where it stopped even if its own subagents made the condition false in the meantime.
@@ -1685,6 +1687,8 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
 
+A planner doesn't need to care about the [activation conditions](#activation-conditions) of its subagents, since they are enforced when the agents are invoked: an inactive agent is skipped, and the `AgentInvocation` that the planner then receives as `previousAgentInvocation()` has a `skipped()` method returning `true` and a `skipReason()` telling why. Its output is the current value of the output key of the agent, so a planner that interprets the outputs of its subagents, for instance by counting votes, should leave the skipped ones out. A planner selecting its candidates from the state of the `AgenticScope` can also call `isActive(agent)` on the `PlanningContext` to avoid selecting inactive agents, as the peer-to-peer and blackboard patterns discussed below do. This check takes care of composite agents already activated before a suspension or a crash, which must be resumed even if their condition no longer holds, but it is advisory: the condition is evaluated again when the agent is invoked, and the state may have changed in between, so the planner must handle skipped invocations anyway.
+
 Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 
 ### Goal oriented agentic pattern
@@ -1893,7 +1897,7 @@ public class P2PPlanner implements Planner {
 }
 ```
 
-Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action. An agent whose [activation condition](#activation-conditions) is false is never activated, even when all its inputs are available.
+Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action. An agent whose [activation condition](#activation-conditions) is false is never activated, even when all its inputs are available, and an agent skipped anyway when invoked, because its condition changed in the meantime, doesn't count as a change of its output that could activate other agents.
 
 To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
 
@@ -2097,7 +2101,7 @@ public class BlackboardPlanner implements Planner {
 }
 ```
 
-The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated. An agent whose [activation condition](#activation-conditions) is false is never a candidate, even when all its inputs are available.
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated. An agent whose [activation condition](#activation-conditions) is false is never a candidate, even when all its inputs are available, and an agent skipped anyway when invoked doesn't count as a change of its output that could activate other agents.
 
 ```java
 @FunctionalInterface

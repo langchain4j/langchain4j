@@ -18,7 +18,8 @@ public interface McpClientBuilder<T> {
 
     /**
      * Sets the condition under which the agent runs when it is invoked as a subagent of an agentic system. When the
-     * condition is false the MCP tool is not called and the agent is skipped.
+     * condition is false the MCP tool is not called and the agent is skipped. It can be evaluated more than once, so
+     * it must be free of side effects.
      */
     default McpClientBuilder<T> activationCondition(Predicate<AgenticScope> activationCondition) {
         return activationCondition("<unknown>", activationCondition);
@@ -26,7 +27,8 @@ public interface McpClientBuilder<T> {
 
     /**
      * Sets the condition, with its description, under which the agent runs when it is invoked as a subagent of an
-     * agentic system. When the condition is false the MCP tool is not called and the agent is skipped.
+     * agentic system. When the condition is false the MCP tool is not called and the agent is skipped. It can be
+     * evaluated more than once, so it must be free of side effects.
      */
     McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
 
