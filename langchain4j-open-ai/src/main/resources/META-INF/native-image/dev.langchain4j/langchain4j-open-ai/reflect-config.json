@@ -945,6 +945,24 @@
     "allPublicFields": true
   },
   {
+    "name": "dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest$FunctionCall",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest$FunctionCallOutput",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.decision.DecisionCreateResponse",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,

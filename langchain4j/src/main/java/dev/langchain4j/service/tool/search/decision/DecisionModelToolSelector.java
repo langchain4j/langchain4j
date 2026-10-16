@@ -104,7 +104,7 @@ public final class DecisionModelToolSelector {
         if (input instanceof String text) {
             decisionRequest.input(text);
         } else {
-            decisionRequest.input((Map<String, ?>) input);
+            decisionRequest.inputFields((Map<String, ?>) input);
         }
     }
 

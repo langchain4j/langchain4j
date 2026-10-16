@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
@@ -43,7 +44,7 @@ class DecisionScoringModelTest {
                 List.of(TextSegment.from("a relevant document"), TextSegment.from("something else")), "the query");
 
         assertThat(response.content()).containsExactly(0.9, 0.1);
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "the query"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "the query")));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "document1",

@@ -6,8 +6,8 @@ sidebar_position: 2
 
 - [OpenAI Decisions API guide](https://developers.openai.com/api/docs/guides/decisions)
 
-The OpenAI Decisions API (`POST /v1/decisions`) answers yes/no, choice and scale questions about a text or image
-input, with probabilities. It implements the [`DecisionModel`](/tutorials/decision-models) API in two modules:
+The OpenAI Decisions API (`POST /v1/decisions`) answers yes/no, choice and scale questions about a text, image or
+conversation input, with probabilities. It implements the [`DecisionModel`](/tutorials/decision-models) API in two modules:
 
 - `OpenAiDecisionModel` in `langchain4j-open-ai`, which uses LangChain4j's HTTP client
 - `OpenAiOfficialDecisionModel` in `langchain4j-open-ai-official`, which uses the official OpenAI Java SDK
@@ -170,14 +170,16 @@ an `AsyncNotSupportedException`.
 ## Input
 
 The input can be:
-- text;
-- a `Map` of named values: each value is sent as a text part labeled with its name, with the value as JSON
+- text (`input(...)`);
+- named fields (`inputFields(...)`): each field is sent as a text part labeled with its name, with the value as JSON
   (`comment: "..."`), and each image right after a text part holding its name (`photo:`);
-- a list of `TextContent`s and `ImageContent`s, for example a photo together with a description:
+- a conversation (`inputMessages(...)`, see below);
+- a list of `TextContent`s and `ImageContent`s (`inputContents(...)`), for example a photo together with a
+  description:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
         .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
@@ -187,6 +189,31 @@ DecisionRequest request = DecisionRequest.builder()
 Images can be base64 data, a `data:` URL, or a publicly accessible `http` or `https` URL, which OpenAI downloads
 itself, for example `ImageContent.from("https://example.com/package.jpg")`. The detail levels `LOW`, `HIGH` and `AUTO`
 are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
+
+The input can also be a conversation, a list of `ChatMessage`s set with `inputMessages(...)` (see
+[Conversations](/tutorials/decision-models#conversations)). The messages are sent in order:
+
+| LangChain4j | OpenAI |
+|---|---|
+| `SystemMessage` | `system` message (OpenAI treats it as a `developer` message) |
+| `UserMessage` | `user` message with text and images |
+| `AiMessage` | `assistant` message with its text, followed by a `function_call` for each tool execution request |
+| `ToolExecutionResultMessage` | `function_call_output` with text and images |
+
+The IDs of the tool execution requests and results are sent as they are, so a result must have the ID of the request
+it answers. OpenAI requires these IDs: a conversation recorded with a model provider that does not return tool call
+IDs is rejected by OpenAI. A tool execution request without arguments is sent with `{}` as its arguments.
+
+Some parts of the messages are not sent:
+- the thinking of an `AiMessage`; an `AiMessage` with neither text nor tool execution requests is skipped, and a
+  conversation with nothing left to send is rejected with an `IllegalArgumentException` before calling the API;
+- the `isError()` flag of a `ToolExecutionResultMessage`: if a tool failed, say so in the text of its result;
+- the name of a `UserMessage`.
+
+The decision model sees the names and arguments of the tool calls, but not the tool specifications: if a decision
+depends on what a tool does, describe it in a `SystemMessage` or in the question.
+Contents other than text and images, and messages other than the four above (such as a `CustomMessage`), are
+rejected with an `UnsupportedFeatureException`.
 
 ## Questions and answers
 

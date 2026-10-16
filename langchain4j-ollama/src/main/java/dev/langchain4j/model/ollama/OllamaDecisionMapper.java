@@ -10,9 +10,14 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -60,10 +65,12 @@ class OllamaDecisionMapper {
         return ollamaRequest;
     }
 
-    private static Object state(Object input, List<String> images) {
-        if (input instanceof Map<?, ?> map) {
-            Map<Object, Object> state = new LinkedHashMap<>();
-            map.forEach((name, value) -> {
+    private static Object state(DecisionInput input, List<String> images) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
+            Map<String, Object> state = new LinkedHashMap<>();
+            fields.fields().forEach((name, value) -> {
                 if (value instanceof Content content) {
                     state.put(name, text(List.of(content), images));
                 } else if (isContents(value)) {
@@ -73,8 +80,14 @@ class OllamaDecisionMapper {
                 }
             });
             return state;
+        } else if (input instanceof ContentsInput contents) {
+            return text(contents.contents(), images);
+        } else if (input instanceof MessagesInput) {
+            throw new UnsupportedFeatureException(
+                    "Ollama decision models do not support a conversation (a list of ChatMessages) as input");
         }
-        return input instanceof List<?> contents ? text(contents, images) : input;
+        throw new UnsupportedFeatureException(
+                "Ollama decision models do not support " + input.getClass().getName() + " as input");
     }
 
     private static boolean isContents(Object value) {

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -23,6 +25,7 @@ import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.DecisionInputType;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -77,7 +80,7 @@ class TypeSafeDecisionModelTest {
             """;
 
     private static final DecisionRequest REQUEST = DecisionRequest.builder()
-            .input(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
+            .inputFields(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
             .question(
                     "team",
                     ChoiceQuestion.builder()
@@ -288,13 +291,55 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .input(List.of(TextContent.from("Hi,"), TextContent.from("are we still meeting tomorrow?")))
+                .inputContents(List.of(TextContent.from("Hi,"), TextContent.from("are we still meeting tomorrow?")))
                 .question("spam", YesNoQuestion.of("Is this spam?"))
                 .build());
 
         // then
         Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
         assertThat(body.get("state")).isEqualTo("Hi,\n\nare we still meeting tomorrow?");
+    }
+
+    @Test
+    void should_reject_custom_input_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageStartingWith("TypeSafe does not support ");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_messages_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputMessages(List.of(UserMessage.from("Where is my order?"), AiMessage.from("It arrives tomorrow.")))
+                .question("answered", YesNoQuestion.of("Did the assistant answer the question?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("TypeSafe does not support a conversation (a list of ChatMessages) as input");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
@@ -306,7 +351,7 @@ class TypeSafeDecisionModelTest {
 
         // when-then
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
-                        .input(List.of(TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .inputContents(List.of(TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
                         .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
@@ -352,13 +397,13 @@ class TypeSafeDecisionModelTest {
 
         // when-then
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
-                        .input(Map.of("comment", "Arrived like this", "photo", ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .inputFields(Map.of("comment", "Arrived like this", "photo", ImageContent.from("iVBORw0KGgo=", "image/png")))
                         .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
-                        .input(Map.of("photos", List.of(ImageContent.from("iVBORw0KGgo=", "image/png"))))
+                        .inputFields(Map.of("photos", List.of(ImageContent.from("iVBORw0KGgo=", "image/png"))))
                         .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class);
@@ -377,7 +422,7 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .input(Map.of("message", TextContent.from("Hi, are we still meeting tomorrow?")))
+                .inputFields(Map.of("message", TextContent.from("Hi, are we still meeting tomorrow?")))
                 .question("spam", YesNoQuestion.of("Is this spam?"))
                 .build());
 
@@ -398,7 +443,7 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .input(state)
+                .inputFields(state)
                 .questions(REQUEST.questions())
                 .build());
 

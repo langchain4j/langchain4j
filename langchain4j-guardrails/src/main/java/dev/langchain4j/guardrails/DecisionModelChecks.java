@@ -61,7 +61,7 @@ final class DecisionModelChecks {
     }
 
     List<String> failedChecks(Map<String, ?> input) {
-        return failedChecks(DecisionRequest.builder().input(input));
+        return failedChecks(DecisionRequest.builder().inputFields(input));
     }
 
     private List<String> failedChecks(DecisionRequest.Builder request) {

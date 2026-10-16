@@ -587,7 +587,7 @@ Use the `DecisionModel` API directly: all checks of a test case are answered in 
 
 ```java
 DecisionRequest.Builder request = DecisionRequest.builder()
-        .input(Map.of("question", testCase.question(), "answer", answer));
+        .inputFields(Map.of("question", testCase.question(), "answer", answer));
 testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.of(check.text())));
 
 DecisionResponse response = decisionModel.decide(request.build());

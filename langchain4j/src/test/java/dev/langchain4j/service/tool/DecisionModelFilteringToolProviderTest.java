@@ -1,8 +1,10 @@
 package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.SearchBehavior;
@@ -76,7 +78,7 @@ class DecisionModelFilteringToolProviderTest {
                 .extracting(AiServiceTool::name)
                 .containsExactly("get_weather", "get_forecast");
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
+                .isEqualTo(FieldsInput.from(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?")))));
         assertThat(toolProvider.isDynamic()).isFalse();
     }
 
@@ -234,12 +236,12 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "Will it rain in Paris?"),
                                 Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                                Map.of("role", "user", "text", "Do the same for Berlin")))));
     }
 
     @Test
@@ -266,12 +268,12 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "Will it rain in Paris?"),
                                 Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                                Map.of("role", "user", "text", "Do the same for Berlin")))));
     }
 
     @Test
@@ -294,12 +296,12 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "Will it rain in Paris?"),
                                 Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                                Map.of("role", "user", "text", "Do the same for Berlin")))));
     }
 
     @Test
@@ -375,7 +377,7 @@ class DecisionModelFilteringToolProviderTest {
                         .extracting(ToolSpecification::name)
                         .containsExactlyInAnyOrder("get_weather", "get_forecast"));
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
+                .isEqualTo(FieldsInput.from(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?")))));
     }
 
     @Test
@@ -395,7 +397,7 @@ class DecisionModelFilteringToolProviderTest {
         assistant.chat("Will it rain?");
 
         assertThat(chatModel.request().messages().get(0).toString()).contains("INV-1");
-        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
+        assertThat(decisionModel.request().input()).isEqualTo(TextInput.from("Will it rain?"));
     }
 
     @Test
