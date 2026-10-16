@@ -79,9 +79,14 @@ class ToolServiceTest {
     void findTools_should_execute_tool_through_overriding_method() {
         InterceptedDateTool objectWithTools = new InterceptedDateTool();
 
-        ToolExecutor toolExecutor = ToolService.findTools(objectWithTools).get(0).toolExecutor();
+        ToolExecutor toolExecutor =
+                ToolService.findTools(objectWithTools).get(0).toolExecutor();
         String result = toolExecutor.execute(
-                ToolExecutionRequest.builder().name("getCurrentDate").arguments("{}").build(), null);
+                ToolExecutionRequest.builder()
+                        .name("getCurrentDate")
+                        .arguments("{}")
+                        .build(),
+                null);
 
         assertThat(result).isEqualTo("2024-04-29");
         assertThat(objectWithTools.intercepted).isTrue();
@@ -187,6 +192,73 @@ class ToolServiceTest {
         assertThatThrownBy(() ->
                         executeWithErrorHandling(DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler))
                 .isSameAs(original);
+    }
+
+    @SuppressWarnings("unused")
+    public static class ToolsDeclaredOutOfOrder {
+
+        @Tool
+        public String searchOrders(String query) {
+            return query;
+        }
+
+        @Tool
+        public String getWeather(String city) {
+            return city;
+        }
+
+        @Tool
+        public String createTicket(String title) {
+            return title;
+        }
+
+        @Tool
+        public String refund(String orderId) {
+            return orderId;
+        }
+    }
+
+    @Test
+    void tools_should_be_registered_sorted_by_name() {
+        ToolService toolService = new ToolService();
+        List<Object> objectsWithTools = List.of(new ToolsDeclaredOutOfOrder());
+
+        toolService.tools(objectsWithTools);
+
+        assertThat(toolService.toolSpecifications())
+                .extracting(ToolSpecification::name)
+                .containsExactly("createTicket", "getWeather", "refund", "searchOrders");
+    }
+
+    @SuppressWarnings("unused")
+    public static class RenamedTools {
+
+        @Tool(name = "b_search")
+        public String alpha() {
+            return "alpha";
+        }
+
+        @Tool(name = "a_refund")
+        public String zulu() {
+            return "zulu";
+        }
+    }
+
+    @Test
+    void findTools_should_keep_each_tool_paired_with_its_own_method() {
+        List<AiServiceTool> tools = ToolService.findTools(new RenamedTools());
+
+        assertThat(tools)
+                .extracting(
+                        tool -> tool.toolSpecification().name(),
+                        tool -> tool.toolExecutor()
+                                .execute(
+                                        ToolExecutionRequest.builder()
+                                                .name(tool.toolSpecification().name())
+                                                .arguments("{}")
+                                                .build(),
+                                        null))
+                .containsExactlyInAnyOrder(tuple("a_refund", "zulu"), tuple("b_search", "alpha"));
     }
 
     // --- callback getter tests ---
