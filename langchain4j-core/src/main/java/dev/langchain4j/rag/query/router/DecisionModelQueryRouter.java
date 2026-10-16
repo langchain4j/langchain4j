@@ -28,6 +28,11 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Predicate;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.rag.query.Metadata;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +45,10 @@ import org.slf4j.LoggerFactory;
  * routed to every retriever whose probability of "yes" reaches the minimum probability (0.5 by default). When no
  * retriever qualifies, no retrieval is performed, which is useful for queries that do not need retrieval at all
  * (e.g. "Hi!"). The decision model receives the query ({@code {"query": ...}}) and, when the query comes from a
- * conversation, the previous messages ({@code "messages"}, see {@link Builder#maxMessages(Integer)}), so that
- * follow-up questions such as "and for contractors?" are understood.
+ * conversation, the system message and the previous messages ({@code "messages"}, see
+ * {@link Builder#maxMessages(Integer)}, {@link Builder#maxMessageLength(Integer)} and
+ * {@link Builder#messageFilter(Predicate)}), including tool calls and tool results, so that follow-up questions such
+ * as "and for contractors?" are understood.
  * <pre>{@code
  * QueryRouter queryRouter = DecisionModelQueryRouter.builder()
  *         .decisionModel(decisionModel)
@@ -67,7 +74,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
             "Could the following data source contain information that helps answer the query?\n{{description}}");
     private static final double DEFAULT_MIN_PROBABILITY = 0.5;
-    private static final int DEFAULT_MAX_MESSAGES = 3;
+    private static final int DEFAULT_MAX_MESSAGES = 10;
+    private static final int DEFAULT_MAX_MESSAGE_LENGTH = 2000;
 
     /**
      * What the router does when the decision model fails.
@@ -96,6 +104,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
     private final double minProbability;
     private final FallbackStrategy fallbackStrategy;
     private final int maxMessages;
+    private final int maxMessageLength;
+    private final Predicate<? super ChatMessage> messageFilter;
 
     public DecisionModelQueryRouter(DecisionModel decisionModel, Map<ContentRetriever, String> retrieverToDescription) {
         this(builder().decisionModel(decisionModel).retrieverToDescription(retrieverToDescription));
@@ -110,6 +120,9 @@ public class DecisionModelQueryRouter implements QueryRouter {
                 getOrDefault(builder.minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DO_NOT_ROUTE);
         this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
+        this.maxMessageLength = ensureGreaterThanZero(
+                getOrDefault(builder.maxMessageLength, DEFAULT_MAX_MESSAGE_LENGTH), "maxMessageLength");
+        this.messageFilter = getOrDefault(builder.messageFilter, message -> true);
 
         Map<String, ContentRetriever> retrievers = new LinkedHashMap<>();
         Map<String, YesNoQuestion> questions = new LinkedHashMap<>();
@@ -182,26 +195,39 @@ public class DecisionModelQueryRouter implements QueryRouter {
     private DecisionRequest toRequest(Query query) {
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("query", query.text());
-        List<Map<String, String>> previousMessages = previousMessages(query);
+        List<ChatMessage> previousMessages = previousMessages(query);
         if (!previousMessages.isEmpty()) {
-            input.put("messages", previousMessages);
+            input.put("messages", DecisionModelInputUtils.transcript(previousMessages).messages());
         }
         return DecisionRequest.builder().inputFields(input).questions(questions).build();
     }
 
     /**
-     * The last {@code maxMessages - 1} messages of the conversation before the query, if the query comes from one.
+     * The system message and the last {@code maxMessages - 1} messages of the conversation before the query, if the
+     * query comes from one.
      */
-    private List<Map<String, String>> previousMessages(Query query) {
-        if (maxMessages == 1 || query.metadata() == null || query.metadata().chatMemory() == null) {
+    private List<ChatMessage> previousMessages(Query query) {
+        Metadata metadata = query.metadata();
+        if (metadata == null) {
             return List.of();
         }
-        List<Map<String, String>> messages = DecisionModelInputUtils.messages(query.metadata().chatMemory());
-        if (!messages.isEmpty()
-                && messages.get(messages.size() - 1).equals(Map.of("role", "user", "text", query.text()))) {
-            messages = messages.subList(0, messages.size() - 1);
+        List<ChatMessage> messages = new ArrayList<>();
+        if (metadata.systemMessage() != null) {
+            messages.add(metadata.systemMessage());
         }
-        return messages.subList(Math.max(0, messages.size() - (maxMessages - 1)), messages.size());
+        if (metadata.chatMemory() != null) {
+            for (ChatMessage message : metadata.chatMemory()) {
+                if (!(message instanceof SystemMessage) || metadata.systemMessage() == null) {
+                    messages.add(message);
+                }
+            }
+            if (!messages.isEmpty()
+                    && messages.get(messages.size() - 1) instanceof UserMessage userMessage
+                    && DecisionModelInputUtils.text(userMessage).equals(query.text())) {
+                messages.remove(messages.size() - 1);
+            }
+        }
+        return DecisionModelInputUtils.window(messages, messageFilter, maxMessages - 1, maxMessageLength);
     }
 
     private Collection<ContentRetriever> select(DecisionResponse response) {
@@ -247,6 +273,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
         private Double minProbability;
         private FallbackStrategy fallbackStrategy;
         private Integer maxMessages;
+        private Integer maxMessageLength;
+        private Predicate<? super ChatMessage> messageFilter;
 
         /**
          * Sets the decision model that decides which retrievers to use. Required.
@@ -297,17 +325,51 @@ public class DecisionModelQueryRouter implements QueryRouter {
 
         /**
          * Sets how many of the last messages of the conversation are taken into account, including the query itself:
-         * the previous messages (user messages and text responses of the AI) are sent together with the query, so
-         * that follow-up questions are understood. System messages, tool calls and tool results are never sent, and
-         * do not count. Only applies when the query comes from a conversation with a chat memory.
+         * the previous messages (plus the previous user message, if it is older) are sent together with the query, so
+         * that follow-up questions are understood. An AI message with tool calls and each tool result count as one
+         * message each. Tool results whose AI message does not fit are left out. With parallel tool calls, set it
+         * higher than the number of tool calls in one round. The previous messages are only sent when the query comes
+         * from a conversation with a chat memory. The system message, if any, is sent in addition and does not count.
          * <p>
-         * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGES}: the query and the 2 previous
+         * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGES}: the query and the 9 previous
          * messages. More messages can make an older topic of the conversation outweigh the query. When the queries are
          * already made self-contained, for example by a
-         * {@link dev.langchain4j.rag.query.transformer.CompressingQueryTransformer}, set it to 1.
+         * {@link dev.langchain4j.rag.query.transformer.CompressingQueryTransformer}, set it to 1. The system message is
+         * still sent then; leave it out with {@link #messageFilter(Predicate)}.
          */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;
+            return this;
+        }
+
+        /**
+         * Sets the maximum length, in characters, of the text of each message the decision model receives, other than
+         * system messages, and of the arguments of each tool call. A longer text is shortened in the middle:
+         * its beginning and its end are kept, with a note of about 90 characters saying how many characters were left
+         * out. Long tool results and user messages with retrieved content are
+         * the usual cases. As a rough guide, 4 characters make one token in English text.
+         * <p>
+         * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGE_LENGTH}.
+         * @since 1.23.0
+         */
+        public Builder maxMessageLength(Integer maxMessageLength) {
+            this.maxMessageLength = maxMessageLength;
+            return this;
+        }
+
+        /**
+         * Sets which messages of the conversation the decision model receives; it also applies to the last user
+         * message. For example,
+         * {@code message -> !(message instanceof SystemMessage)} leaves out the system message, and
+         * {@code message -> !(message instanceof ToolExecutionResultMessage)} leaves out tool results, which can be
+         * large.
+         * <p>
+         * By default, all messages are sent: system messages, user messages, AI messages with their tool calls, and
+         * tool results.
+         * @since 1.23.0
+         */
+        public Builder messageFilter(Predicate<? super ChatMessage> messageFilter) {
+            this.messageFilter = messageFilter;
             return this;
         }
 

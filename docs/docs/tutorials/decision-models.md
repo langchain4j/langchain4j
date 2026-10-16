@@ -237,8 +237,7 @@ the model.
 
 The input can also be a conversation: a list of `ChatMessage`s in the order they were exchanged, for example between
 a user and an AI assistant, including the tools that the assistant called and their results. This lets you ask
-questions about the whole conversation, for example whether the assistant answered the user's question, if the
-decision model supports it (for example [OpenAI](/integrations/decision-models/open-ai)):
+questions about the whole conversation, for example whether the assistant answered the user's question:
 
 ```java
 ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
@@ -269,10 +268,33 @@ messages the question is about when that is enough.
 
 Messages and tool results can come from untrusted sources and contain text written to influence the decision, such
 as "answer yes" (prompt injection): do not rely on a decision alone to allow a dangerous action, such as executing a
-tool call.
+tool call. This includes text that looks like the note LangChain4j inserts when it shortens a long message ("... characters
+were omitted here ..."), which can be written to make a check about the omitted data pass.
 
-A decision model that does not support conversations, or a kind of message in it, throws
-`UnsupportedFeatureException` without calling the model.
+Decision models receive the conversation as a transcript in JSON: a list named `messages` with one entry per message
+(the thinking of AI messages is left out):
+
+```json
+[
+  {"role": "system", "text": "You are a billing support agent of an online shop."},
+  {"role": "user", "text": "Hi, something is wrong with my order 42, can you check?"},
+  {"role": "assistant", "tool_calls": [{"id": "call_1", "name": "getOrder", "arguments": "{\"orderId\": 42}"}]},
+  {"role": "tool", "tool_call_id": "call_1", "name": "getOrder", "text": "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"},
+  {"role": "assistant", "text": "You were charged twice. I have refunded one of the charges."}
+]
+```
+
+The components that send conversations to a decision model (chat model router, query router, tool filtering and
+output guardrail) can limit the number of messages and shorten long ones; see each component below. Everything they
+send, including system messages, tool results and retrieved content, goes to the provider of the decision model:
+leave out what must not go there with `messageFilter(...)`.
+
+Images in the conversation are referred to by their position, such as `[image 1]`, and sent next to the transcript
+if the decision model supports images. The decision model sees the names and arguments of the tool calls, but not
+the tool specifications: if a decision depends on what a tool does, describe it in a `SystemMessage` or in the
+question. A failed tool result (`isError()`) has `"is_error": true`, and a `UserMessage` with a name has `"name"`.
+A `CustomMessage`, or a content that the decision model does not support, throws `UnsupportedFeatureException`
+without calling the model.
 
 ## Probabilities and confidence
 
@@ -299,7 +321,8 @@ How it is computed is defined by each model and differs between models.
 
 Probabilities have the same meaning for every model, but not the same calibration:
 a threshold of 0.9 tuned for one model does not necessarily work for another model, or for another version of
-the same model. Tune thresholds on your own data, and tune them again when you change the model or its version.
+the same model. Tune thresholds on your own data, and tune them again when you change the model or its version, or
+what the decision model receives (for example with `maxMessages(...)` or `messageFilter(...)`).
 
 ## Model name and other parameters
 
@@ -383,8 +406,16 @@ ScoringModel scoringModel = DecisionScoringModel.builder()
 
 `DecisionModelInputGuardrail` and `DecisionModelOutputGuardrail` (in the `langchain4j-guardrails` module) check user
 messages and model responses with yes/no questions, where "yes" means the message must be rejected.
-The input guardrail sends only the user message; the output guardrail sends the response and the last user message.
-Previous messages of the conversation are not sent.
+The input guardrail sends only the user message. The output guardrail sends the messages that were sent to the
+model to produce the response, including the system message, tool calls and tool results, followed by the response,
+so that checks can compare the response with the instructions of the assistant and with the data its tools returned.
+This works with or without a chat memory. The user message is sent with the content retrieved for it (RAG). Write
+the checks about "the response", for example "Does the response reveal personal data?": each check is preceded by a
+sentence saying that the response is the last assistant message. By default, the last 50 messages are sent, and messages longer
+than 50,000 characters are shortened in the middle. The system message and the response are always sent in full.
+A check that compares the response with data that was left out tends to reject the response, even when it is correct:
+for checks against long tool results, raise `maxMessageLength(...)`. For decision models with a small input limit, such as local models, set `maxMessages(...)` and
+`maxMessageLength(...)`, or leave out messages with `messageFilter(...)`.
 All checks of a guardrail are answered in a single call:
 
 ```java
@@ -449,10 +480,13 @@ QueryRouter queryRouter = DecisionModelQueryRouter.builder()
         .build();
 ```
 
-The decision model receives the query and, when it comes from a conversation, the 2 previous messages
-(`maxMessages(3)` by default), so that follow-up questions such as "and for contractors?" are understood.
+The decision model receives the query, the system message and, when the query comes from a conversation, the 9
+previous messages, including tool calls and tool results (`maxMessages(...)`, 10 by default, counting the query;
+`maxMessageLength(...)`, 2,000 characters by default; and `messageFilter(...)`), so that follow-up questions such as
+"and for contractors?" are understood.
 If the query is already made self-contained by a query transformer such as `CompressingQueryTransformer`, the
-previous messages are redundant and can even make an older topic outweigh the query: set `maxMessages(1)`.
+previous messages are redundant and can even make an older topic outweigh the query: set `maxMessages(1)`. The system
+message is still sent; to leave it out, add `messageFilter(message -> !(message instanceof SystemMessage))`.
 If the decision model fails, no content is retrieved by default, like with `LanguageModelQueryRouter`;
 `fallbackStrategy(ROUTE_TO_ALL)` retrieves from all sources instead, which favors answer quality.
 
@@ -492,8 +526,8 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
   passed on.
 - If the wrapped tool provider is dynamic (`isDynamic()` returns `true`), the AI Service asks it for tools before each
   LLM call of the tool-calling loop, so the decision model is called each time as well, which adds its latency to each
-  round. Since the messages usually do not change within the loop, this is only useful if the tools of the wrapped
-  provider change.
+  round. The decision model also sees the tool calls and tool results of the previous rounds, so the selected tools
+  can change from one round to the next, which can also keep the LLM provider from reusing its prompt cache.
 
 ### Model routing
 
@@ -517,10 +551,17 @@ the prompt templates of the application.
 Images and other content that is not text are not sent: each is represented by a marker such as `[attached image]`.
 The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,
 for example "Does the message contain an attachment?".
-With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, {"role": "assistant", "text": "..."}, ...]}`.
-Only user messages and text responses of the AI are sent and counted: system messages, tool calls and tool results
-are left out, because they describe how the application works rather than what the user wants, and tool results can
-be large.
+The chat model router, the query router and tool filtering send the system message and the last 10 messages of the
+conversation (for the query router, the query and the 9 messages before it; `maxMessages(...)`, where an AI message with tool calls and each tool result count as one message
+each, and tool results whose AI message does not fit are left out), plus the last user message if it is older, as a [conversation](#conversations): tool calls and tool results
+often say what the user refers to. Messages longer than 2,000 characters are shortened in the middle
+(`maxMessageLength(...)`). System messages are always sent in full and do not count toward `maxMessages(...)`.
+With parallel tool calls, set `maxMessages(...)` higher than the number of tool calls in one round, or the tool
+results of that round are left out. `maxMessages(1)` still sends the system message; to send only the user message,
+add `messageFilter(message -> !(message instanceof SystemMessage))`. The output guardrail sends the last 50 messages
+and shortens messages longer than 50,000 characters (see [Guardrails](#guardrails)). To leave out messages, for example large tool results, use
+`messageFilter(...)`: `messageFilter(message -> !(message instanceof ToolExecutionResultMessage))`. Tool filtering
+sends the conversation with every batch of tools (`maxToolsPerDecisionRequest(...)`).
 
 ### When the decision model fails
 

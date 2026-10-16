@@ -39,9 +39,7 @@ import java.util.concurrent.CompletableFuture;
  * publicly accessible {@code http(s)} URLs. The image detail levels {@code LOW}, {@code HIGH} and {@code AUTO} are
  * supported.
  * <p>
- * A conversation is sent in order as {@code system}, {@code user} and {@code assistant} messages,
- * {@code function_call}s and {@code function_call_output}s. The IDs of tool calls and their results are sent as they
- * are.
+ * A conversation is sent as a JSON transcript in a user message, followed by its images.
  * <p>
  * The API can refuse to answer a single question, for example because it goes against the usage policies of
  * OpenAI: the answer to that question is then a {@link dev.langchain4j.model.decision.response.RefusalAnswer}.

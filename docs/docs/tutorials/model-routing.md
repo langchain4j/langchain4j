@@ -43,10 +43,12 @@ calls a model is unsure or fails.
 ### Decision model router
 
 `DecisionModelChatModelRouter` uses a [decision model](/tutorials/decision-models) to choose the route whose
-description fits the request best. It sends the last 3 messages of the conversation (`maxMessages`), so that short
-follow-ups such as "yes, go ahead" are understood. Only user messages and text responses of the AI are sent and
-counted: system messages, tool calls and tool results are left out. Content other than text, such as an image, is represented by a
-marker (for example `[attached image]`), so that a route whose description mentions images can be chosen for it.
+description fits the request best. It sends the system message and the last 10 messages of the conversation,
+including tool calls and tool results (`maxMessages`), plus the last user message if it is older, so that short
+follow-ups such as "yes, go ahead" are understood. Messages longer than 2,000 characters are shortened in the middle
+(`maxMessageLength`); the system message is always sent in full, and `messageFilter(...)` leaves out messages, for example large tool results. Content other
+than text, such as an image, is represented by a marker (for example `[attached image]`), so that a route whose
+description mentions images can be chosen for it.
 Decision models are typically much faster and cheaper than chat models, so routing adds little latency and cost
 compared to the chat model call. Describe each route well; a route without a description is described by its name.
 

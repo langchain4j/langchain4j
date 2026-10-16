@@ -416,6 +416,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                         toolServiceContext,
                                         this::executeSynchronously))
                                 .requestParams(newCommonParams)
+                                .chatRequest(chatRequest)
                                 .build();
 
                         finalChatResponse =

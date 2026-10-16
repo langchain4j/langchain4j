@@ -45,9 +45,23 @@ abstract class AbstractChatExecutor implements ChatExecutor {
 
     @Override
     public ChatResponse execute(List<ChatMessage> chatMessages) {
-        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+        return exchange(chatMessages).response();
+    }
 
-        return executeInternal(newChatRequest);
+    @Override
+    public ChatExchange exchange(List<ChatMessage> chatMessages) {
+        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+        return new ChatExchange(newChatRequest, executeInternal(newChatRequest));
+    }
+
+    @Override
+    public CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
+        try {
+            var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+            return ChatExchange.exchangeAsync(newChatRequest, executeInternalAsync(newChatRequest));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override

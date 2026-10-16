@@ -190,30 +190,15 @@ Images can be base64 data, a `data:` URL, or a publicly accessible `http` or `ht
 itself, for example `ImageContent.from("https://example.com/package.jpg")`. The detail levels `LOW`, `HIGH` and `AUTO`
 are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
 
-The input can also be a conversation, a list of `ChatMessage`s set with `inputMessages(...)` (see
-[Conversations](/tutorials/decision-models#conversations)). The messages are sent in order:
+The input can also be a conversation, a list of `ChatMessage`s set with `inputMessages(...)`. It is sent as a
+[transcript in JSON](/tutorials/decision-models#conversations) in a user message, followed by the images of the
+conversation, each after a text part with its marker (`[image 1]:`). It is not sent as OpenAI `system`, `user` and
+`assistant` messages, so that a system message is judged as a part of the conversation instead of being followed as
+an instruction.
 
-| LangChain4j | OpenAI |
-|---|---|
-| `SystemMessage` | `system` message (OpenAI treats it as a `developer` message) |
-| `UserMessage` | `user` message with text and images |
-| `AiMessage` | `assistant` message with its text, followed by a `function_call` for each tool execution request |
-| `ToolExecutionResultMessage` | `function_call_output` with text and images |
-
-The IDs of the tool execution requests and results are sent as they are, so a result must have the ID of the request
-it answers. OpenAI requires these IDs: a conversation recorded with a model provider that does not return tool call
-IDs is rejected by OpenAI. A tool execution request without arguments is sent with `{}` as its arguments.
-
-Some parts of the messages are not sent:
-- the thinking of an `AiMessage`; an `AiMessage` with neither text nor tool execution requests is skipped, and a
-  conversation with nothing left to send is rejected with an `IllegalArgumentException` before calling the API;
-- the `isError()` flag of a `ToolExecutionResultMessage`: if a tool failed, say so in the text of its result;
-- the name of a `UserMessage`.
-
-The decision model sees the names and arguments of the tool calls, but not the tool specifications: if a decision
-depends on what a tool does, describe it in a `SystemMessage` or in the question.
-Contents other than text and images, and messages other than the four above (such as a `CustomMessage`), are
-rejected with an `UnsupportedFeatureException`.
+An `AiMessage` with neither text nor tool execution requests is skipped, and a conversation with nothing left to send
+is rejected with an `IllegalArgumentException` before calling the API. Contents other than text and images, and a
+`CustomMessage`, are rejected with an `UnsupportedFeatureException`.
 
 ## Questions and answers
 
