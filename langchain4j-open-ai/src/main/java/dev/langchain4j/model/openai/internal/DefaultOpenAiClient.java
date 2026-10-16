@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
@@ -36,6 +37,15 @@ import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenUsage;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiDeleteVoiceConsentResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiListVoiceConsentsRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiUpdateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentId;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentListResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -523,5 +533,100 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, ModelsListResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> createVoiceConsent(OpenAiCreateVoiceConsentRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voice_consents")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                .addHeaders(buildRequestHeaders());
+
+        httpRequestBuilder.addFormDataField("name", request.name());
+        httpRequestBuilder.addFormDataField("language", request.language());
+
+        AudioFile recording = request.recording();
+        httpRequestBuilder.addFormDataFile(
+                "recording", recording.fileName(), recording.mimeType(), recording.content());
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentListResponse> listVoiceConsents(OpenAiListVoiceConsentsRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "audio/voice_consents")
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders());
+
+        if (request != null && request.after() != null) {
+            httpRequestBuilder.addQueryParam("after", request.after());
+        }
+        if (request != null && request.limit() != null) {
+            httpRequestBuilder.addQueryParam("limit", Integer.toString(request.limit()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiVoiceConsentListResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiCreateVoiceResponse> createVoice(OpenAiCreateVoiceRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voices")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiCreateVoiceResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> retrieveVoiceConsent(OpenAiVoiceConsentId request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> updateVoiceConsent(OpenAiUpdateVoiceConsentRequest request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiDeleteVoiceConsentResponse> deleteVoiceConsent(OpenAiVoiceConsentId request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(DELETE)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiDeleteVoiceConsentResponse.class);
     }
 }

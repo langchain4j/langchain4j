@@ -8,6 +8,7 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechVoice;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("gpt-4o-mini-tts")
                 .text("Hello")
-                .customVoiceId("voice_1234")
+                .voice(OpenAiTextToSpeechVoice.custom("voice_1234"))
                 .instructions("Speak cheerfully")
                 .responseFormat("wav")
                 .speed(1.5)
@@ -59,7 +60,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("tts-1")
                 .text("Hello")
-                .voice("alloy")
+                .voice(OpenAiTextToSpeechVoice.BuiltIn.ALLOY)
                 .build();
 
         client(httpClient).textToSpeech(request).execute();
@@ -86,7 +87,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("gpt-4o-mini-tts")
                 .text("Hello")
-                .voice("coral")
+                .voice(OpenAiTextToSpeechVoice.BuiltIn.CORAL)
                 .responseFormat("pcm")
                 .streamFormat("sse")
                 .build();

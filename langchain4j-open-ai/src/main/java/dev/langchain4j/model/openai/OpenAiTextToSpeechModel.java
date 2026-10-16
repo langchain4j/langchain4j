@@ -19,6 +19,7 @@ import dev.langchain4j.model.audio.TextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechVoice;
 import dev.langchain4j.model.openai.spi.OpenAiTextToSpeechModelBuilderFactory;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
     private final OpenAiClient client;
     private final int maxRetries;
     private final String modelName;
-    private final String voice;
+    private final OpenAiTextToSpeechVoice voice;
 
     public OpenAiTextToSpeechModel(Builder builder) {
         this.client = OpenAiClient.builder()
@@ -60,7 +61,7 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
-        this.voice = getOrDefault(builder.voice, "alloy");
+        this.voice = getOrDefault(builder.voice, OpenAiTextToSpeechVoice.BuiltIn.ALLOY);
     }
 
     @Override
@@ -75,8 +76,8 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
 
         OpenAiTextToSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
 
-        OpenAiTextToSpeechResponse openAiResponse =
-                withRetryMappingExceptions(() -> client.textToSpeech(openAiRequest).execute(), maxRetries);
+        OpenAiTextToSpeechResponse openAiResponse = withRetryMappingExceptions(
+                () -> client.textToSpeech(openAiRequest).execute(), maxRetries);
 
         Audio audio = Audio.builder()
                 .binaryData(openAiResponse.audio())
@@ -89,7 +90,25 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
         return OpenAiTextToSpeechRequest.builder()
                 .model(modelName)
                 .text(request.text())
-                .voice(getOrDefault(request.voice(), voice));
+                .voice(request.voice() != null ? toApiVoice(OpenAiTextToSpeechVoiceName.from(request.voice())) : voice);
+    }
+
+    private static OpenAiTextToSpeechVoice.BuiltIn toApiVoice(OpenAiTextToSpeechVoiceName voiceName) {
+        return switch (voiceName) {
+            case ALLOY -> OpenAiTextToSpeechVoice.BuiltIn.ALLOY;
+            case ASH -> OpenAiTextToSpeechVoice.BuiltIn.ASH;
+            case BALLAD -> OpenAiTextToSpeechVoice.BuiltIn.BALLAD;
+            case CORAL -> OpenAiTextToSpeechVoice.BuiltIn.CORAL;
+            case ECHO -> OpenAiTextToSpeechVoice.BuiltIn.ECHO;
+            case FABLE -> OpenAiTextToSpeechVoice.BuiltIn.FABLE;
+            case ONYX -> OpenAiTextToSpeechVoice.BuiltIn.ONYX;
+            case NOVA -> OpenAiTextToSpeechVoice.BuiltIn.NOVA;
+            case SAGE -> OpenAiTextToSpeechVoice.BuiltIn.SAGE;
+            case SHIMMER -> OpenAiTextToSpeechVoice.BuiltIn.SHIMMER;
+            case VERSE -> OpenAiTextToSpeechVoice.BuiltIn.VERSE;
+            case MARIN -> OpenAiTextToSpeechVoice.BuiltIn.MARIN;
+            case CEDAR -> OpenAiTextToSpeechVoice.BuiltIn.CEDAR;
+        };
     }
 
     @Override
@@ -98,7 +117,8 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
     }
 
     public static Builder builder() {
-        for (OpenAiTextToSpeechModelBuilderFactory factory : loadFactories(OpenAiTextToSpeechModelBuilderFactory.class)) {
+        for (OpenAiTextToSpeechModelBuilderFactory factory :
+                loadFactories(OpenAiTextToSpeechModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -112,7 +132,7 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
         private String organizationId;
         private String projectId;
         private String modelName;
-        private String voice;
+        private OpenAiTextToSpeechVoice voice;
 
         private Duration timeout;
         private Integer maxRetries;
@@ -159,8 +179,33 @@ public class OpenAiTextToSpeechModel implements TextToSpeechModel {
             return this;
         }
 
+        /**
+         * Sets the default built-in voice by name (e.g. {@code alloy}).
+         * It is used when the {@link TextToSpeechRequest} does not specify a voice.
+         *
+         * @throws IllegalArgumentException if there is no built-in voice with that name
+         * @see OpenAiTextToSpeechVoiceName
+         */
         public Builder voice(String voice) {
-            this.voice = voice;
+            this.voice = voice == null ? null : toApiVoice(OpenAiTextToSpeechVoiceName.from(voice));
+            return this;
+        }
+
+        /**
+         * Sets the default built-in voice.
+         * It is used when the {@link TextToSpeechRequest} does not specify a voice.
+         */
+        public Builder voice(OpenAiTextToSpeechVoiceName voice) {
+            this.voice = voice == null ? null : toApiVoice(voice);
+            return this;
+        }
+
+        /**
+         * Sets a custom voice as the default voice.
+         * It is used when the {@link TextToSpeechRequest} does not specify a voice.
+         */
+        public Builder voice(OpenAiCustomVoice voice) {
+            this.voice = voice == null ? null : OpenAiTextToSpeechVoice.custom(voice.id());
             return this;
         }
 

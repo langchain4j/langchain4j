@@ -29,13 +29,12 @@ public class OpenAiTextToSpeechRequest {
     private final String model;
 
     /**
-     * The voice to use when generating the audio. Either the name of a built-in voice ({@link String})
-     * or a custom voice ({@link CustomVoice}).
-     * Supported built-in voices are alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer,
-     * verse, marin, and cedar.
+     * The voice to use when generating the audio: a built-in voice
+     * (alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse, marin, or cedar)
+     * or a custom voice.
      */
     @JsonProperty
-    private final Object voice;
+    private final OpenAiTextToSpeechVoice voice;
 
     /**
      * Control the voice of your generated audio with additional instructions.
@@ -82,10 +81,7 @@ public class OpenAiTextToSpeechRequest {
         return model;
     }
 
-    /**
-     * @return the name of a built-in voice ({@link String}) or a {@link CustomVoice}
-     */
-    public Object voice() {
+    public OpenAiTextToSpeechVoice voice() {
         return voice;
     }
 
@@ -109,30 +105,12 @@ public class OpenAiTextToSpeechRequest {
         return new Builder();
     }
 
-    /**
-     * A custom voice, referenced by its ID (e.g. {@code voice_1234}).
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class CustomVoice {
-
-        @JsonProperty
-        private final String id;
-
-        public CustomVoice(String id) {
-            this.id = id;
-        }
-
-        public String id() {
-            return id;
-        }
-    }
-
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
 
         private String text;
         private String model;
-        private Object voice;
+        private OpenAiTextToSpeechVoice voice;
         private String instructions;
         private String responseFormat;
         private Double speed;
@@ -148,27 +126,8 @@ public class OpenAiTextToSpeechRequest {
             return this;
         }
 
-        /**
-         * Sets a built-in voice by name.
-         */
-        public Builder voice(String voice) {
+        public Builder voice(OpenAiTextToSpeechVoice voice) {
             this.voice = voice;
-            return this;
-        }
-
-        /**
-         * Sets a custom voice.
-         */
-        public Builder voice(CustomVoice voice) {
-            this.voice = voice;
-            return this;
-        }
-
-        /**
-         * Sets a custom voice by its ID (e.g. {@code voice_1234}).
-         */
-        public Builder customVoiceId(String voiceId) {
-            this.voice = voiceId == null ? null : new CustomVoice(voiceId);
             return this;
         }
 
