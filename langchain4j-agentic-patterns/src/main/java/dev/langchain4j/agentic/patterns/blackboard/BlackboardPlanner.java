@@ -1,22 +1,23 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
-import static java.util.stream.Collectors.toMap;
-
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.util.stream.Collectors.toMap;
 
 /**
  * A blackboard planner that activates agents based on data availability in the shared scope.
@@ -63,15 +64,11 @@ public class BlackboardPlanner implements Planner {
         this(goalPredicate, maxInvocations, ConflictResolutionStrategy.DECLARATION_ORDER);
     }
 
-    public BlackboardPlanner(
-            Predicate<AgenticScope> goalPredicate, ConflictResolutionStrategy conflictResolutionStrategy) {
+    public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, ConflictResolutionStrategy conflictResolutionStrategy) {
         this(goalPredicate, DEFAULT_MAX_INVOCATIONS, conflictResolutionStrategy);
     }
 
-    public BlackboardPlanner(
-            Predicate<AgenticScope> goalPredicate,
-            int maxInvocations,
-            ConflictResolutionStrategy conflictResolutionStrategy) {
+    public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, int maxInvocations, ConflictResolutionStrategy conflictResolutionStrategy) {
         this.goalPredicate = goalPredicate;
         this.maxInvocations = maxInvocations;
         this.conflictResolutionStrategy = conflictResolutionStrategy;
@@ -113,8 +110,9 @@ public class BlackboardPlanner implements Planner {
         }
 
         if (invocationCounter >= maxInvocations) {
-            throw new IllegalStateException("Maximum invocations (" + maxInvocations
-                    + ") reached without satisfying goal. " + "Increase maxInvocations or check goal predicate.");
+            throw new IllegalStateException(
+                    "Maximum invocations (" + maxInvocations + ") reached without satisfying goal. " +
+                    "Increase maxInvocations or check goal predicate.");
         }
 
         return selectAndCall(planningContext);
@@ -146,12 +144,10 @@ public class BlackboardPlanner implements Planner {
     private AgentActivator selectActivator(List<AgentActivator> ready, AgenticScope scope) {
         List<AgentInstance> candidates = ready.stream().map(a -> a.agent).toList();
         AgentInstance selected = conflictResolutionStrategy.resolve(scope, candidates);
-        return selected == null
-                ? null
-                : ready.stream()
-                        .filter(a -> a.agent == selected)
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Agent not found in ready list"));
+        return selected == null ? null : ready.stream()
+                .filter(a -> a.agent == selected)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Agent not found in ready list"));
     }
 
     @Override
@@ -180,8 +176,7 @@ public class BlackboardPlanner implements Planner {
 
         AgentActivator(AgentInstance agent) {
             this.agent = agent;
-            this.argumentNames =
-                    agent.arguments().stream().map(AgentArgument::name).toList();
+            this.argumentNames = agent.arguments().stream().map(AgentArgument::name).toList();
         }
 
         private boolean canActivate(PlanningContext planningContext) {

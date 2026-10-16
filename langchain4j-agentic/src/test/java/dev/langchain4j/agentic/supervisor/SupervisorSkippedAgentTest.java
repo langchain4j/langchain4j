@@ -6,45 +6,22 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.ArrayList;
-import java.util.Iterator;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class SupervisorSkippedAgentTest {
 
-    /** Replies with the given responses in order, capturing the last user message of each request. */
-    static class ScriptedChatModel implements ChatModel {
-
-        private final Iterator<String> responses;
-        final List<String> userMessages = new ArrayList<>();
-
-        ScriptedChatModel(String... responses) {
-            this.responses = List.of(responses).iterator();
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            userMessages.add(((UserMessage)
-                            chatRequest.messages().get(chatRequest.messages().size() - 1))
-                    .singleText());
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(responses.next()))
-                    .build();
-        }
-    }
-
     @Test
     void supervisor_is_told_why_an_agent_was_skipped() {
-        ScriptedChatModel plannerModel = new ScriptedChatModel("""
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("""
                 {"agentName": "bookFlight", "arguments": {"destination": "Rome"}}
-                """, """
+                """),
+                AiMessage.from("""
                 {"agentName": "done", "arguments": {"response": "no flight booked"}}
-                """);
+                """));
         AtomicInteger invocations = new AtomicInteger();
         AgenticScopeFunction<String> bookFlight = AgenticServices.nonAiAgentBuilder(scope -> {
                     invocations.incrementAndGet();
@@ -67,7 +44,10 @@ class SupervisorSkippedAgentTest {
 
         assertThat(result).isEqualTo("no flight booked");
         assertThat(invocations).hasValue(0);
-        assertThat(plannerModel.userMessages)
+        List<String> userMessages = plannerModel.requests().stream()
+                .map(request -> ((UserMessage) request.messages().get(request.messages().size() - 1)).singleText())
+                .toList();
+        assertThat(userMessages)
                 .hasSize(2)
                 .last()
                 .asString()

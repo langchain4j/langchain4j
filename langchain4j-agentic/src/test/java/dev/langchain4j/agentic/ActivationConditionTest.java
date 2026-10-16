@@ -24,8 +24,7 @@ import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
@@ -40,16 +39,11 @@ import org.junit.jupiter.api.Test;
 
 class ActivationConditionTest {
 
-    static final ChatModel ECHO_MODEL = new ChatModel() {
-        @Override
-        public ChatResponse chat(ChatRequest chatRequest) {
-            var userMessage = (dev.langchain4j.data.message.UserMessage)
-                    chatRequest.messages().get(chatRequest.messages().size() - 1);
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from("echo " + userMessage.singleText()))
-                    .build();
-        }
-    };
+    static final ChatModel ECHO_MODEL = ChatModelMock.thatResponds(chatRequest -> {
+        var userMessage = (dev.langchain4j.data.message.UserMessage)
+                chatRequest.messages().get(chatRequest.messages().size() - 1);
+        return AiMessage.from("echo " + userMessage.singleText());
+    });
 
     public interface EchoAgent {
 
