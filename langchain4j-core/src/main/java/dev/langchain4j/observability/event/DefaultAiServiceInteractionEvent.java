@@ -1,8 +1,8 @@
 package dev.langchain4j.observability.event;
 
-import java.util.List;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import java.util.List;
 
 /**
  * Default implementation of {@link AiServiceInteractionEvent}.
