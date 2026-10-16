@@ -54,4 +54,40 @@ class SupervisorSkippedAgentTest {
                 .contains("The last received response is: 'agent 'bookFlight' was skipped: "
                         + "activation condition is false: the budget is approved'");
     }
+
+    @Test
+    void skip_before_done_does_not_replace_the_last_response() {
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("""
+                {"agentName": "draftTrip", "arguments": {"destination": "Rome"}}
+                """),
+                AiMessage.from("""
+                {"agentName": "bookFlight", "arguments": {"destination": "Rome"}}
+                """),
+                AiMessage.from("""
+                {"agentName": "done", "arguments": {}}
+                """));
+        AgenticScopeFunction<String> draftTrip = AgenticServices.nonAiAgentBuilder(scope -> "trip to Rome drafted")
+                .name("draftTrip")
+                .description("Drafts a trip")
+                .inputKey(String.class, "destination")
+                .outputKey("draft")
+                .build();
+        AgenticScopeFunction<String> bookFlight = AgenticServices.nonAiAgentBuilder(scope -> "flight booked")
+                .name("bookFlight")
+                .description("Books a flight")
+                .inputKey(String.class, "destination")
+                .outputKey("booking")
+                .activationCondition("the budget is approved", scope -> scope.readState("approved", false))
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel)
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(draftTrip, bookFlight)
+                .build();
+
+        // the last response is the one of the last agent actually invoked, not the empty one of the skipped agent
+        assertThat(supervisor.invoke("Plan a trip to Rome")).isEqualTo("trip to Rome drafted");
+    }
 }

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentSkipped;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
 import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
@@ -112,6 +114,7 @@ class SkippedSubagentsTest {
     // ── P2P and blackboard: a ping-pong where pong is inactive ──
 
     private final AtomicInteger pingInvocations = new AtomicInteger();
+    private final AtomicInteger pongSkips = new AtomicInteger();
 
     private AgenticScopeFunction<String> ping() {
         return AgenticServices.nonAiAgentBuilder(scope -> {
@@ -137,6 +140,12 @@ class SkippedSubagentsTest {
                 .inputKey(String.class, "ping")
                 .outputKey("pong")
                 .activationCondition("pong is needed", activationCondition)
+                .listener(new AgentListener() {
+                    @Override
+                    public void onAgentSkipped(AgentSkipped agentSkipped) {
+                        pongSkips.incrementAndGet();
+                    }
+                })
                 .build();
     }
 
@@ -158,9 +167,10 @@ class SkippedSubagentsTest {
 
         ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("pong", "seed"));
 
-        // the skipped pong never changes its output, so ping isn't activated again
+        // the inactive pong is never selected, so it is never even skipped
         assertThat(pingInvocations).hasValue(1);
         assertThat(skippedInvocations).hasValue(0);
+        assertThat(pongSkips).hasValue(0);
         assertThat(result.agenticScope().readState("pong")).isEqualTo("seed");
     }
 
@@ -176,6 +186,7 @@ class SkippedSubagentsTest {
         // pong was selected but skipped, so its output didn't change and ping isn't activated again
         assertThat(pingInvocations).hasValue(1);
         assertThat(skippedInvocations).hasValue(0);
+        assertThat(pongSkips).hasValue(1);
     }
 
     @Test
@@ -191,6 +202,7 @@ class SkippedSubagentsTest {
         // pong was selected but skipped, so its output didn't change and ping isn't activated again
         assertThat(pingInvocations).hasValue(1);
         assertThat(skippedInvocations).hasValue(0);
+        assertThat(pongSkips).hasValue(1);
     }
 
     @Test
@@ -201,11 +213,12 @@ class SkippedSubagentsTest {
                 .planner(() -> new BlackboardPlanner(scope -> false, 5))
                 .build();
 
-        // without the condition in the selection, ping and the skipped pong would alternate until maxInvocations
         system.invoke(Map.of("pong", "seed"));
 
+        // the inactive pong is never selected, so it is never even skipped
         assertThat(pingInvocations).hasValue(1);
         assertThat(skippedInvocations).hasValue(0);
+        assertThat(pongSkips).hasValue(0);
     }
 
     // ── GOAP ──

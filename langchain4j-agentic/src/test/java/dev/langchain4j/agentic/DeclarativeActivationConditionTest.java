@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
+import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -369,5 +370,24 @@ class DeclarativeActivationConditionTest {
         assertThatThrownBy(() -> AgenticServices.sequenceBuilder().subAgents(NonBooleanCondition.class))
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining("must return a boolean");
+    }
+
+    public interface GatedRegistryAgent {
+
+        @RegistryAgent("greeter")
+        String greet(@V("name") String name);
+
+        @ActivationCondition(description = "the user is polite")
+        static boolean polite(@V("polite") boolean polite) {
+            return polite;
+        }
+    }
+
+    @Test
+    void condition_is_not_supported_on_a_registry_agent() {
+        assertThatThrownBy(() -> AgenticServices.sequenceBuilder().subAgents(GatedRegistryAgent.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("not supported on the @RegistryAgent")
+                .hasMessageContaining("'greeter'");
     }
 }

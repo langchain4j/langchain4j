@@ -103,6 +103,29 @@ class ActivationConditionTest {
     }
 
     // ---------------------------------------------------------------
+    // Configuration
+    // ---------------------------------------------------------------
+
+    @Test
+    void null_condition_is_rejected_when_configured() {
+        assertThatThrownBy(() -> AgenticServices.agentBuilder(EchoAgent.class).activationCondition(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationCondition");
+        assertThatThrownBy(() -> AgenticServices.sequenceBuilder().activationCondition("description", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationCondition");
+        assertThatThrownBy(() -> AgenticServices.supervisorBuilder().activationCondition(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationCondition");
+        assertThatThrownBy(() -> AgenticServices.nonAiAgentBuilder(scope -> "x").activationCondition(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationCondition");
+        assertThatThrownBy(() -> AgenticServices.humanInTheLoopBuilder().activationCondition(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationCondition");
+    }
+
+    // ---------------------------------------------------------------
     // Evaluation
     // ---------------------------------------------------------------
 

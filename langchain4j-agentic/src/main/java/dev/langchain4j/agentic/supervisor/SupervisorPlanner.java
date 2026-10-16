@@ -52,6 +52,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private final int maxAgentsInvocations;
     private int loopCount = 0;
+    private String lastResponse = "";
 
     private ResponseAgent responseAgent;
 
@@ -130,10 +131,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         dev.langchain4j.agentic.scope.AgentInvocation previousInvocation = planningContext.previousAgentInvocation();
-        String lastResponse =
-                previousInvocation == null || previousInvocation.skipped() || previousInvocation.output() == null
-                        ? ""
-                        : previousInvocation.output().toString();
+        if (previousInvocation != null && !previousInvocation.skipped()) {
+            lastResponse = previousInvocation.output() == null
+                    ? ""
+                    : previousInvocation.output().toString();
+        }
 
         if (loopCount++ >= maxAgentsInvocations) {
             return doneAction(planningContext.agenticScope(), lastResponse, null);

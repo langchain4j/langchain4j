@@ -49,6 +49,7 @@ import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
@@ -747,7 +748,7 @@ public class AgenticServices {
 
         Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
         if (registryAgentMethod.isPresent()) {
-            return createRegistryAgent(registryAgentMethod.get());
+            return createRegistryAgent(agentServiceClass, registryAgentMethod.get());
         }
 
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
@@ -773,7 +774,13 @@ public class AgenticServices {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
     }
 
-    private static AgentExecutor createRegistryAgent(Method registryMethod) {
+    private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
+        if (activationCondition(agentServiceClass) != null) {
+            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
+                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
+                    + "Set the activation condition when building the agent registered as '"
+                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+        }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
         return agentToExecutor(agent);

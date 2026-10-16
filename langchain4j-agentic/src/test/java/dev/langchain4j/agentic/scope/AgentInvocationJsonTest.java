@@ -24,4 +24,25 @@ class AgentInvocationJsonTest {
             assertThat(invocation.skipped()).isFalse();
         });
     }
+
+    @Test
+    void invocation_persisted_by_a_previous_version_is_read_back_as_not_skipped() {
+        String json = """
+                {"memoryId":"f5fd3fb3-f323-43f5-b88f-29d615b88b02","kind":"PERSISTENT",\
+                "state":["java.util.concurrent.ConcurrentHashMap",{}],\
+                "agentInvocations":["java.util.Collections$SynchronizedRandomAccessList",[\
+                {"agentType":"java.lang.String","agentName":"writer","agentId":"writer$0",\
+                "input":["java.util.ImmutableCollections$Map1",{"topic":"dragons"}],"output":"story"}]],\
+                "context":["java.util.Collections$SynchronizedRandomAccessList",[]]}""";
+
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.agentInvocations()).singleElement().satisfies(invocation -> {
+            assertThat(invocation.agentName()).isEqualTo("writer");
+            assertThat(invocation.input()).containsEntry("topic", "dragons");
+            assertThat(invocation.output()).isEqualTo("story");
+            assertThat(invocation.skipped()).isFalse();
+            assertThat(invocation.skipReason()).isNull();
+        });
+    }
 }

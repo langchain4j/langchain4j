@@ -187,9 +187,12 @@
         {
           "ignore": true,
           "code": "java.annotation.removed",
+          "old": {
+            "matcher": "regex",
+            "match": "parameter void dev\\.langchain4j\\.agentic\\.scope\\.AgentInvocation::<init>\\(.*\\)"
+          },
           "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
-          "package": "dev.langchain4j.agentic.scope",
-          "justification": "AgentInvocation gained a 'skipped' record component, so the five-argument constructor is no longer the canonical one and its parameters lost the @JsonProperty annotations, which moved to the new canonical constructor. The five-argument constructor is kept for compatibility, and a persisted invocation without the 'skipped' property is still read, as not skipped."
+          "justification": "AgentInvocation gained a 'skipReason' record component, so the five-argument constructor is no longer the canonical one and its parameters lost the @JsonProperty annotations, which moved to the new canonical constructor. The five-argument constructor is kept for compatibility, and a persisted invocation without the 'skipReason' property is still read, as not skipped."
         },
         {
           "code": "java.annotation.added",

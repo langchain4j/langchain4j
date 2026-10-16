@@ -516,7 +516,7 @@ A conditional workflow is the right tool to choose among alternatives, like in t
 
 ## Optional agents
 
-In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
+In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is skipped when any of its arguments is missing, instead of making the whole workflow fail.
 
 This can be done by using the `optional` method of the agent builder. For example, considering the sequential workflow defined above, it is possible to make the `AudienceEditor` agent optional, so that the story is still generated and style-edited even when no audience is provided in the input.
 
@@ -573,7 +573,7 @@ AudienceEditor audienceEditor = AgenticServices
         .build();
 ```
 
-The description of the condition is optional, defaults to `<unknown>`, and is shown in the logs, by the `AgentMonitor` and in the HTML reports discussed in the [monitoring](#monitoring) section. The `activationCondition` method is available on the builders of all kinds of agents: AI agents, all the workflows and planners, including the supervisor, non-AI agents created with `nonAiAgentBuilder`, human-in-the-loop agents, and A2A and MCP client agents.
+The description of the condition is optional, defaults to `<unknown>`, and is shown in the logs, by the `AgentMonitor` and in the HTML reports discussed in the [monitoring](#monitoring) section. When a subagent of a [supervisor](#supervisor-design-and-customization) is skipped, the description is also sent to the supervisor's model, as the reason of the skip, so it shouldn't contain anything that mustn't reach the model. The `activationCondition` method is available on the builders of all kinds of agents: AI agents, all the workflows and planners, including the supervisor, non-AI agents created with `nonAiAgentBuilder`, human-in-the-loop agents, and A2A and MCP client agents.
 
 The same condition can also be declared on the agent interface, with a static method returning a `boolean` and annotated with `@ActivationCondition` without any value.
 
@@ -591,13 +591,13 @@ public interface AudienceEditor {
     String editStory(@V("story") String story, @V("audience") String audience);
 
     @ActivationCondition(description = "the story targets a specific audience")
-    static boolean hasSpecificAudience(@V("audience") String audience) {
-        return !audience.equals("everyone");
+    static boolean hasSpecificAudience(AgenticScope agenticScope) {
+        return !agenticScope.readState("audience", "everyone").equals("everyone");
     }
 }
 ```
 
-As for the other annotated static methods, the arguments of the condition are read from the `AgenticScope`, or the method can receive the `AgenticScope` itself, which is preferable when a key may be absent, because a missing argument makes the condition fail. A condition can be declared in this way on any kind of agent: AI agents, classes with a static `@Agent` method, workflows and planners defined through the [declarative API](#declarative-api), and agents annotated with `@HumanInTheLoop`, `@A2AClientAgent` or `@McpClientAgent`. It is not supported on a `@RegistryAgent`, whose agent is taken already built from the [agents registry](#agents-registry). An `@ActivationCondition` with a value is instead only allowed on a `@ConditionalAgent`, where it selects the subagents to activate, and using it on any other class is a configuration error.
+Here the method receives the `AgenticScope` itself, which is preferable when a key may be absent. As for the other annotated static methods, it can instead declare arguments read from the `AgenticScope`, like `@V("audience") String audience`, but then a missing argument makes the condition fail, and with it the invocation of the agent. A condition can be declared in this way on any kind of agent: AI agents, classes with a static `@Agent` method, workflows and planners defined through the [declarative API](#declarative-api), and agents annotated with `@HumanInTheLoop`, `@A2AClientAgent` or `@McpClientAgent`. It is not supported on a `@RegistryAgent`, whose agent is taken already built from the [agents registry](#agents-registry). An `@ActivationCondition` with a value is instead only allowed on a `@ConditionalAgent`, where it selects the subagents to activate, and using it on any other class is a configuration error.
 
 When an agent is skipped:
 
