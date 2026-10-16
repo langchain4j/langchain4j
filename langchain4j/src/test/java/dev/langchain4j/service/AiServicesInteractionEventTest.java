@@ -1,0 +1,402 @@
+package dev.langchain4j.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceInteractionListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests that an {@link AiServiceInteractionEvent} is fired exactly once for every way an AI Service invocation can end,
+ * including the ones that don't fire an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent}.
+ */
+class AiServicesInteractionEventTest {
+
+    interface AsyncAssistant {
+        CompletableFuture<String> chat(String message);
+    }
+
+    interface ReactiveAssistant {
+        Flow.Publisher<AiServiceStreamingEvent> chat(String message);
+    }
+
+    interface StreamingAssistant {
+        TokenStream chat(String message);
+    }
+
+    interface Assistant {
+        String chat(String message);
+    }
+
+    interface InnerAssistant {
+        String chat(String message);
+    }
+
+    private final List<AiServiceInteractionEvent> interactions = new CopyOnWriteArrayList<>();
+    private final AiServiceInteractionListener interactionListener = interactions::add;
+
+    @Test
+    void canceledAsyncInvocationFiresInteractionEventWithTheEventsCollectedSoFar() {
+        var modelCalled = new CountDownLatch(1);
+        ChatModel neverRespondingModel = new ChatModel() {
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                modelCalled.countDown();
+                return new CompletableFuture<>();
+            }
+        };
+
+        var assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(neverRespondingModel)
+                .registerListener(interactionListener)
+                .build();
+
+        var future = assistant.chat("Hi");
+        awaitLatch(modelCalled);
+
+        future.cancel(true);
+
+        assertThatThrownBy(future::join).isInstanceOf(CancellationException.class);
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
+    }
+
+    @Test
+    void completedAsyncInvocationFiresASingleInteractionEvent() {
+        var assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(new ChatModel() {
+                    @Override
+                    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                        return CompletableFuture.completedFuture(ChatResponse.builder()
+                                .aiMessage(AiMessage.from("Hello"))
+                                .build());
+                    }
+                })
+                .registerListener(interactionListener)
+                .build();
+
+        assertThat(assistant.chat("Hi").join()).isEqualTo("Hello");
+
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceResponseReceivedEvent.class,
+                                AiServiceCompletedEvent.class));
+    }
+
+    @Test
+    void canceledReactiveInvocationFiresInteractionEventWithTheEventsCollectedSoFar() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .retrievalAugmentor(neverCompletingAugmentor())
+                .registerListener(interactionListener)
+                .build();
+
+        var subscriber = new RecordingSubscriber();
+        assistant.chat("Hi").subscribe(subscriber);
+
+        subscriber.subscription.get().cancel();
+        subscriber.subscription.get().cancel();
+
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class));
+    }
+
+    @Test
+    void reactiveInvocationCanceledFromWithinOnSubscribeFiresInteractionEvent() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .retrievalAugmentor(neverCompletingAugmentor())
+                .registerListener(interactionListener)
+                .build();
+
+        assistant.chat("Hi").subscribe(new RecordingSubscriber() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.cancel();
+            }
+        });
+
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class));
+    }
+
+    @Test
+    void rejectedSecondReactiveSubscriptionDoesNotEndTheFirstSubscriptionsInteraction() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .retrievalAugmentor(neverCompletingAugmentor())
+                // With a chat memory, the publisher can only be subscribed to once
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .registerListener(interactionListener)
+                .build();
+
+        var publisher = assistant.chat("Hi");
+        var first = new RecordingSubscriber();
+        var second = new RecordingSubscriber();
+
+        publisher.subscribe(first);
+        publisher.subscribe(second);
+
+        awaitLatch(second.done);
+        assertThat(interactions).isEmpty();
+
+        first.subscription.get().cancel();
+
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class));
+    }
+
+    @Test
+    void completedReactiveInvocationFiresASingleInteractionEvent() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .registerListener(interactionListener)
+                .build();
+
+        var subscriber = new RecordingSubscriber();
+        assistant.chat("Hi").subscribe(subscriber);
+
+        awaitLatch(subscriber.done);
+        assertThat(subscriber.completed).isTrue();
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .startsWith(AiServiceStartedEvent.class)
+                        .endsWith(AiServiceCompletedEvent.class)
+                        .doesNotContain(AiServiceErrorEvent.class));
+    }
+
+    @Test
+    void canceledTokenStreamFiresInteractionEventWithTheEventsCollectedSoFar() {
+        var handle = new TestStreamingHandle();
+        StreamingChatModel model = new StreamingChatModel() {
+            @Override
+            public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+                // Streams one token, then stops for good once canceled
+                handler.onPartialResponse(new PartialResponse("Hel"), new PartialResponseContext(handle));
+            }
+        };
+
+        var assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .registerListener(interactionListener)
+                .build();
+
+        assistant
+                .chat("Hi")
+                .onPartialResponseWithContext(
+                        (partialResponse, context) -> context.streamingHandle().cancel())
+                .ignoreErrors()
+                .start();
+
+        assertThat(handle.isCancelled()).isTrue();
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
+    }
+
+    @Test
+    void tokenStreamThatFailsToStartFiresInteractionEvent() {
+        var assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .registerListener(interactionListener)
+                .build();
+
+        // Neither onError nor ignoreErrors was configured, so start() fails
+        var tokenStream = assistant.chat("Hi").onPartialResponse(partialResponse -> {});
+
+        assertThatThrownBy(tokenStream::start).isInstanceOf(IllegalConfigurationException.class);
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class));
+    }
+
+    @Test
+    void failedSynchronousInvocationFiresASingleInteractionEvent() {
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(new ChatModel() {
+                    @Override
+                    public ChatResponse doChat(ChatRequest chatRequest) {
+                        throw new RuntimeException("LLM invocation failed");
+                    }
+                })
+                .registerListener(interactionListener)
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hi")).hasMessage("LLM invocation failed");
+
+        assertThat(interactions)
+                .singleElement()
+                .satisfies(interaction -> assertThat(interaction.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceErrorEvent.class));
+    }
+
+    @Test
+    void nestedInvocationFiresItsOwnInteractionEvent() {
+        var inner = AiServices.builder(InnerAssistant.class)
+                .chatModel(respondingWith("inner"))
+                .registerListener(interactionListener)
+                .build();
+
+        // The outer AI Service calls the inner one while its own invocation is in progress
+        var outer = AiServices.builder(Assistant.class)
+                .chatModel(new ChatModel() {
+                    @Override
+                    public ChatResponse doChat(ChatRequest chatRequest) {
+                        return ChatResponse.builder()
+                                .aiMessage(AiMessage.from("outer: " + inner.chat("Hi")))
+                                .build();
+                    }
+                })
+                .registerListener(interactionListener)
+                .build();
+
+        assertThat(outer.chat("Hi")).isEqualTo("outer: inner");
+
+        assertThat(interactions)
+                .hasSize(2)
+                .allSatisfy(interaction -> assertThat(interaction.events())
+                        .allSatisfy(event -> assertThat(
+                                        event.invocationContext().invocationId())
+                                .isEqualTo(interaction.invocationContext().invocationId()))
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceResponseReceivedEvent.class,
+                                AiServiceCompletedEvent.class))
+                .extracting(interaction -> interaction.invocationContext().interfaceName())
+                // The inner invocation ends first
+                .containsExactly(InnerAssistant.class.getName(), Assistant.class.getName());
+    }
+
+    private static ChatModel respondingWith(String response) {
+        return new ChatModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from(response))
+                        .build();
+            }
+        };
+    }
+
+    // A RAG augmentor that never completes, so the invocation can be canceled while it's in flight
+    private static RetrievalAugmentor neverCompletingAugmentor() {
+        return new RetrievalAugmentor() {
+            @Override
+            public AugmentationResult augment(AugmentationRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest request) {
+                return new CompletableFuture<>();
+            }
+        };
+    }
+
+    private static void awaitLatch(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static class TestStreamingHandle implements StreamingHandle {
+        private final AtomicBoolean cancelled = new AtomicBoolean(false);
+
+        @Override
+        public void cancel() {
+            this.cancelled.set(true);
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return this.cancelled.get();
+        }
+    }
+
+    private static class RecordingSubscriber implements Flow.Subscriber<AiServiceStreamingEvent> {
+        private final AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+        private final CountDownLatch done = new CountDownLatch(1);
+        private volatile boolean completed;
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            this.subscription.set(subscription);
+            subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public void onNext(AiServiceStreamingEvent item) {}
+
+        @Override
+        public void onError(Throwable throwable) {
+            this.done.countDown();
+        }
+
+        @Override
+        public void onComplete() {
+            this.completed = true;
+            this.done.countDown();
+        }
+    }
+}
