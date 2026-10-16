@@ -762,8 +762,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         /**
          * Adds the code the model executed, and the output of that code, to the {@link AiMessage} text as Markdown code
          * blocks. When the code fails, the outcome and the error output are added instead. Defaults to {@code false}:
-         * only the answer of the model is returned, and the code and its output can be read from
-         * {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         * only the answer of the model is returned.
          *
          * @param includeCodeExecutionOutput whether to add the executed code and its output to the text
          * @return {@code this}
