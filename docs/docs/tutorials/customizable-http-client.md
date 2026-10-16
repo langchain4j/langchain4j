@@ -79,11 +79,9 @@ See [Non-blocking and Reactive](/tutorials/non-blocking).
 ## Customizing Spring's `RestClient`
 
 ```java
-RestClient.Builder restClientBuilder = RestClient.builder()
-        .requestFactory(new HttpComponentsClientHttpRequestFactory());
-
 SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
-        .restClientBuilder(restClientBuilder)
+        .restClientBuilder(RestClient.builder())
+        .clientHttpRequestFactoryBuilder(ClientHttpRequestFactoryBuilder.httpComponents())
         .streamingRequestExecutor(new VirtualThreadTaskExecutor());
 
 OpenAiChatModel model = OpenAiChatModel.builder()
@@ -104,15 +102,28 @@ SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
         .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.reactor()); // optional: pins the connector
 ```
 
+`SpringRestClient` builds the request factory and the connector itself, to apply its timeouts. So a request factory
+set on the `RestClient.Builder`, or a connector set on the `WebClient.Builder`, is not used: choose the HTTP client
+with `clientHttpRequestFactoryBuilder(...)` and `clientHttpConnectorBuilder(...)` instead.
+
+To apply Spring Boot's HTTP client settings, such as the SSL bundle and redirects, inject the settings beans that
+Spring Boot configures and pass them on: `HttpClientSettings` with `httpClientSettings(...)` on Spring Boot 4, or
+`ClientHttpRequestFactorySettings` with `clientHttpRequestFactorySettings(...)` and `ClientHttpConnectorSettings`
+with `clientHttpConnectorSettings(...)` on Spring Boot 3. The timeouts in these settings are not used by LangChain4j
+models, which always set their own: set the timeout on the model builder instead.
+
 ### HTTP version with the JDK client
 
-When Spring picks the JDK `HttpClient` (no Apache HttpComponents, Jetty or Reactor Netty on the classpath),
+When the JDK `HttpClient` is used, whether Spring picks it (no Apache HttpComponents, Jetty or Reactor Netty on the
+classpath) or you set it with `clientHttpRequestFactoryBuilder(...)` or `clientHttpConnectorBuilder(...)`,
 `SpringRestClient` behaves like `JdkHttpClient`: plain `http://` requests are sent over HTTP/1.1, and `https://`
 requests use HTTP/2 when the server supports it. This applies to both blocking and non-blocking requests.
 See [HTTP version](#http-version) for why plain HTTP does not use HTTP/2.
 
-A builder you set with `clientHttpRequestFactoryBuilder(...)` or `clientHttpConnectorBuilder(...)` is used as is.
-The JDK client defaults to HTTP/2, so to use HTTP/1.1 with it, set the version explicitly:
+:::note
+Before version 1.23.0-beta33, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
+If you use an older version and see the symptoms described in [HTTP version](#http-version),
+set the version explicitly:
 
 ```java
 SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
@@ -121,11 +132,6 @@ SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
         .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.jdk() // only needed for non-blocking requests
                 .withHttpClientCustomizer(builder -> builder.version(HttpClient.Version.HTTP_1_1)));
 ```
-
-:::note
-Before version 1.23.0-beta33, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
-If you use an older version and see the symptoms described in [HTTP version](#http-version),
-set `clientHttpRequestFactoryBuilder(...)` as shown above.
 :::
 
 ## Customizing Apache's `HttpClient`
