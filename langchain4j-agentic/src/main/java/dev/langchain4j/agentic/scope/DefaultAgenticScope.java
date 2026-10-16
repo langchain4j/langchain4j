@@ -181,8 +181,14 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void writeStates(Map<String, Object> newState) {
-        withReadLock(() -> state.putAll(newState));
+        withReadLock(() -> newState.forEach((key, value) -> {
+            Object old = state.put(key, value);
+            if (old != value && old instanceof DeferredResponse<?> pending && !pending.isDone()) {
+                ((DeferredResponse<Object>) pending).complete(value);
+            }
+        }));
     }
 
     @Override
@@ -373,7 +379,8 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
+        StringBuilder sb =
+                new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
         boolean first = true;
         for (Map.Entry<String, Object> e : state.entrySet()) {
             if (!first) sb.append(", ");
