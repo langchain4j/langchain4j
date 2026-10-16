@@ -1106,6 +1106,7 @@ public class AgenticServices {
         /**
          * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system.
          * When the condition is false the agent is skipped, without writing anything to the {@link AgenticScope}.
+         * It can be evaluated more than once, so it must be free of side effects.
          */
         public NonAiAgentBuilder<T> activationCondition(Predicate<AgenticScope> activationCondition) {
             return activationCondition("<unknown>", activationCondition);
@@ -1114,7 +1115,7 @@ public class AgenticServices {
         /**
          * Sets the condition, with its description, under which this agent runs when it is invoked as a subagent of
          * an agentic system. When the condition is false the agent is skipped, without writing anything to the
-         * {@link AgenticScope}.
+         * {@link AgenticScope}. It can be evaluated more than once, so it must be free of side effects.
          */
         public NonAiAgentBuilder<T> activationCondition(
                 String description, Predicate<AgenticScope> activationCondition) {

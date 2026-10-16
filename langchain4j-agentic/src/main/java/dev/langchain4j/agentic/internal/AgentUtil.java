@@ -299,6 +299,20 @@ public class AgentUtil {
     public static AgentInvocationArguments agentInvocationArguments(
             AgenticScope agenticScope, List<AgentArgument> agentArguments, Map<String, Object> additionalArgs)
             throws MissingArgumentException {
+        return agentInvocationArguments(agenticScope, agentArguments, additionalArgs, true);
+    }
+
+    /**
+     * Resolves the arguments from the {@link AgenticScope}, converting each value to the type of its argument. When
+     * {@code writeConvertedValues} is {@code false} the converted values are not written back to the scope, for
+     * functions that must leave the scope unchanged, like activation conditions.
+     */
+    public static AgentInvocationArguments agentInvocationArguments(
+            AgenticScope agenticScope,
+            List<AgentArgument> agentArguments,
+            Map<String, Object> additionalArgs,
+            boolean writeConvertedValues)
+            throws MissingArgumentException {
         Map<String, Object> namedArgs = new HashMap<>();
         Object[] positionalArgs = new Object[agentArguments.size()];
 
@@ -323,14 +337,15 @@ public class AgentUtil {
                 continue;
             }
 
-            Object argValue = argumentFromAgenticScope(agenticScope, arg);
+            Object argValue = argumentFromAgenticScope(agenticScope, arg, writeConvertedValues);
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
         return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
-    private static Object argumentFromAgenticScope(AgenticScope agenticScope, AgentArgument arg) {
+    private static Object argumentFromAgenticScope(
+            AgenticScope agenticScope, AgentArgument arg, boolean writeConvertedValue) {
         Object argValue = agenticScope.readState(arg.name());
         if (argValue == null) {
             argValue = arg.defaultValue();
@@ -342,7 +357,7 @@ public class AgentUtil {
             }
         }
         Object parsedArgument = adaptValueToType(argValue, arg.rawType(), arg.name());
-        if (argValue != parsedArgument) {
+        if (writeConvertedValue && argValue != parsedArgument) {
             agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;

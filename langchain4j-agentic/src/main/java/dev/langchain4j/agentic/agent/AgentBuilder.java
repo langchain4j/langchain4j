@@ -714,7 +714,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
      * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
-     * is ignored when this agent is invoked directly.
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
      *
      * @param activationCondition the predicate deciding whether this agent runs
      * @return {@code this}
@@ -726,7 +727,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
      * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
-     * is ignored when this agent is invoked directly.
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
      *
      * @param description a human-readable description of the condition, used in logs, listeners and reports
      * @param activationCondition the predicate deciding whether this agent runs

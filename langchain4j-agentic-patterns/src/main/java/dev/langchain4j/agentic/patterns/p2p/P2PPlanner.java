@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
@@ -84,7 +85,7 @@ public class P2PPlanner implements Planner {
             vars.forEach(planningContext.agenticScope()::writeState);
         }
 
-        return nextCallAction(planningContext.agenticScope());
+        return nextCallAction(planningContext);
     }
 
     @Override
@@ -93,19 +94,22 @@ public class P2PPlanner implements Planner {
             return done();
         }
 
-        AgentActivator lastExecutedAgent =
-                agentActivators.get(planningContext.previousAgentInvocation().agentId());
+        AgentInvocation lastInvocation = planningContext.previousAgentInvocation();
+        AgentActivator lastExecutedAgent = agentActivators.get(lastInvocation.agentId());
         if (lastExecutedAgent != null) {
             lastExecutedAgent.finishExecution();
-            agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+            // a skipped agent didn't change the state, so it doesn't activate other agents
+            if (!lastInvocation.skipped()) {
+                agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+            }
         }
 
-        return nextCallAction(planningContext.agenticScope());
+        return nextCallAction(planningContext);
     }
 
-    private Action nextCallAction(AgenticScope agenticScope) {
+    private Action nextCallAction(PlanningContext planningContext) {
         AgentInstance[] agentsToCall = agentActivators.values().stream()
-                .filter(agentActivator -> agentActivator.canActivate(agenticScope))
+                .filter(agentActivator -> agentActivator.canActivate(planningContext))
                 .peek(AgentActivator::startExecution)
                 .map(AgentActivator::agent)
                 .toArray(AgentInstance[]::new);
@@ -142,12 +146,11 @@ public class P2PPlanner implements Planner {
             return agent;
         }
 
-        private boolean canActivate(AgenticScope agenticScope) {
+        private boolean canActivate(PlanningContext planningContext) {
             return !executing
                     && shouldExecute
-                    && argumentNames.stream().allMatch(agenticScope::hasState)
-                    && (agent.activationCondition() == null
-                            || agent.activationCondition().test(agenticScope));
+                    && argumentNames.stream().allMatch(planningContext.agenticScope()::hasState)
+                    && planningContext.isActive(agent);
         }
 
         private void startExecution() {

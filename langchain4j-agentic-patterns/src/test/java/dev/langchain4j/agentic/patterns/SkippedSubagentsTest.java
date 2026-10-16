@@ -125,6 +125,10 @@ class SkippedSubagentsTest {
     }
 
     private AgenticScopeFunction<String> inactivePong() {
+        return pong(NEVER);
+    }
+
+    private AgenticScopeFunction<String> pong(Predicate<AgenticScope> activationCondition) {
         return AgenticServices.nonAiAgentBuilder(scope -> {
                     skippedInvocations.incrementAndGet();
                     return "pong-" + scope.readState("ping");
@@ -132,8 +136,17 @@ class SkippedSubagentsTest {
                 .name("pong")
                 .inputKey(String.class, "ping")
                 .outputKey("pong")
-                .activationCondition("never", NEVER)
+                .activationCondition("pong is needed", activationCondition)
                 .build();
+    }
+
+    /**
+     * A condition holding only the first time it is evaluated: when the planner selects pong, and no more when pong
+     * is invoked, as if the state changed in between.
+     */
+    private static Predicate<AgenticScope> holdingOnlyWhenSelected() {
+        AtomicInteger evaluations = new AtomicInteger();
+        return scope -> evaluations.incrementAndGet() == 1;
     }
 
     @Test
@@ -149,6 +162,35 @@ class SkippedSubagentsTest {
         assertThat(pingInvocations).hasValue(1);
         assertThat(skippedInvocations).hasValue(0);
         assertThat(result.agenticScope().readState("pong")).isEqualTo("seed");
+    }
+
+    @Test
+    void p2p_does_not_activate_other_agents_after_a_skip() {
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(ping(), pong(holdingOnlyWhenSelected()))
+                .planner(() -> new P2PPlanner(10))
+                .build();
+
+        system.invoke(Map.of("pong", "seed"));
+
+        // pong was selected but skipped, so its output didn't change and ping isn't activated again
+        assertThat(pingInvocations).hasValue(1);
+        assertThat(skippedInvocations).hasValue(0);
+    }
+
+    @Test
+    void blackboard_does_not_activate_other_agents_after_a_skip() {
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(ping(), pong(holdingOnlyWhenSelected()))
+                .outputKey("never-written")
+                .planner(() -> new BlackboardPlanner(scope -> false, 5))
+                .build();
+
+        system.invoke(Map.of("pong", "seed"));
+
+        // pong was selected but skipped, so its output didn't change and ping isn't activated again
+        assertThat(pingInvocations).hasValue(1);
+        assertThat(skippedInvocations).hasValue(0);
     }
 
     @Test

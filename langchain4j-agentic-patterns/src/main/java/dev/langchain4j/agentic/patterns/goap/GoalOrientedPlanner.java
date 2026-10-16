@@ -6,7 +6,6 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.List;
 import java.util.Map;
 
@@ -27,14 +26,11 @@ public class GoalOrientedPlanner implements Planner {
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        AgenticScope agenticScope = planningContext.agenticScope();
         // an agent whose activation condition is false can't be part of the path
-        List<AgentInstance> activeAgents = subagents.stream()
-                .filter(agent -> agent.activationCondition() == null
-                        || agent.activationCondition().test(agenticScope))
-                .toList();
+        List<AgentInstance> activeAgents =
+                subagents.stream().filter(planningContext::isActive).toList();
         path = new GoalOrientedSearchGraph(activeAgents)
-                .search(agenticScope.state().keySet(), goal);
+                .search(planningContext.agenticScope().state().keySet(), goal);
         if (path.isEmpty()) {
             throw new IllegalStateException("No path found for goal: " + goal);
         }
