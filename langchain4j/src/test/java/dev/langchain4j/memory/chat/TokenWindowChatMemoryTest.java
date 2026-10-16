@@ -21,6 +21,7 @@ import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
@@ -879,5 +880,31 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // and further mutation of the caller's list must not affect stored memory
         callerList.add(userMessageWithTokens(10));
         assertThat(chatMemory.messages()).containsExactly(m2, m3);
+    }
+
+    @Test
+    void set_rejects_null_and_empty_without_clearing_history() {
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(100, TOKEN_COUNT_ESTIMATOR);
+        chatMemory.add(userMessage("keep me"));
+
+        assertThatThrownBy(() -> chatMemory.set((Iterable<ChatMessage>) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("null");
+        assertThatThrownBy(() -> chatMemory.set(Collections.<ChatMessage>emptyList()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+        assertThatThrownBy(() -> chatMemory.set(() -> Collections.emptyIterator()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
+
+        assertThatThrownBy(() -> ((TokenWindowChatMemory) chatMemory)
+                        .setAsync(Collections.emptyList())
+                        .join())
+                .cause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
     }
 }
