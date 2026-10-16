@@ -93,29 +93,64 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
-## Guardrails
+## Amazon Bedrock Guardrails
 
-`BedrockChatModel` and `BedrockStreamingChatModel` support [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html). Configure a guardrail through `BedrockChatRequestParameters`:
+`BedrockChatModel` and `BedrockStreamingChatModel` support [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html).
+They are evaluated by Amazon Bedrock and are separate from LangChain4j [guardrails](/tutorials/guardrails); you can use both together.
+
+Configure a guardrail through `BedrockChatRequestParameters` and set them as the model's `defaultRequestParameters`
+to apply the guardrail to every request, or pass them in a `ChatRequest` to apply it to a single request:
 
 ```java
 BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
         .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
                 .guardrailIdentifier("guardrail-id")
                 .guardrailVersion("1")
-                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
                 .build())
+        .build();
+
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .defaultRequestParameters(parameters)
         .build();
 ```
 
-Set these parameters as the model's `defaultRequestParameters` to apply the guardrail to every request, or pass them in a `ChatRequest` to apply it to a single request.
+When the guardrail intervenes, the response's `finishReason()` is `FinishReason.CONTENT_FILTER`,
+and the assessment details are available via `((BedrockChatResponseMetadata) response.metadata()).guardrailAssessmentSummary()`.
 
-By default, the guardrail evaluates the entire request. To reduce cost and latency, set `guardContentPlacement` to select which user messages the guardrail evaluates:
+### Evaluating only selected user messages
+
+By default, the guardrail evaluates the text of all user and AI messages in the request.
+Bedrock never evaluates tool results, tool definitions, tool calls or the system prompt.
+
+To reduce cost and latency, set `guardContentPlacement` to select which user messages the guardrail evaluates:
 - `LAST_USER_MESSAGE`: only the last user message.
-- `ALL_USER_MESSAGES`: all user messages.
+- `ALL_USER_MESSAGES`: only the user messages, all of them.
 
-When `guardContentPlacement` is set, the guardrail evaluates **only** the selected user messages. The system prompt, other user messages, AI messages and tool results are not evaluated.
+```java
+BedrockGuardrailConfiguration guardrailConfiguration = BedrockGuardrailConfiguration.builder()
+        .guardrailIdentifier("guardrail-id")
+        .guardrailVersion("1")
+        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+        .build();
+```
 
-Selective guarding supports text and PNG/JPEG images. If a selected message contains content that cannot be represented as Bedrock `guardContent`, the model falls back to applying the guardrail to the entire request and logs a warning.
+The selected user messages are sent as Bedrock [`guardContent`](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-use-converse-api.html) blocks,
+and the guardrail evaluates **only** those as input: other user messages and AI messages are not evaluated.
+The model's response is still evaluated.
+Depending on the policies the guardrail uses, Bedrock may still evaluate some content outside `guardContent` blocks.
+
+:::warning
+Content outside the selected messages is not checked.
+For example, with `LAST_USER_MESSAGE` and [chat memory](/tutorials/chat-memory), a user message that the guardrail blocked
+is sent to the model without evaluation on later turns.
+If you use the guardrail as a security control rather than to reduce cost, prefer the default (no `guardContentPlacement`).
+:::
+
+Only text and PNG/JPEG images can be sent as `guardContent`.
+If a selected message contains other content (for example, a PDF or a GIF image),
+`guardContentPlacement` is ignored for that request, the guardrail evaluates all user and AI messages as by default,
+and a warning is logged. The same default applies when the request contains no user message.
 
 ## Additional Model Request Fields
 

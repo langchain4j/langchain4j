@@ -5,11 +5,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
@@ -150,6 +153,71 @@ class BedrockGuardContentExtractionTest {
         assertThat(currentContent.get(0).guardContent().text().text()).isEqualTo("current");
         assertThat(currentContent.get(1).guardContent().image().formatAsString())
                 .isEqualTo("png");
+    }
+
+    @Test
+    void should_guard_only_user_message_in_tool_calling_loop() {
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("tool-1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+
+        List<Message> messages = extractor.testExtractRegularMessages(
+                List.of(
+                        UserMessage.from("question"),
+                        AiMessage.from(toolExecutionRequest),
+                        ToolExecutionResultMessage.from(toolExecutionRequest, "tool result")),
+                null,
+                null,
+                BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+
+        assertThat(messages).hasSize(3);
+        assertThat(messages.get(0).content().get(0).guardContent().text().text())
+                .isEqualTo("question");
+        assertThat(messages.get(1).content().get(0).toolUse()).isNotNull();
+        assertThat(messages.get(2).content().get(0).toolResult()).isNotNull();
+        assertThat(List.of(messages.get(1), messages.get(2)))
+                .flatExtracting(Message::content)
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+    }
+
+    @Test
+    void should_not_guard_ai_messages_when_all_user_messages_are_selected() {
+        List<Message> messages = extractor.testExtractRegularMessages(
+                List.of(UserMessage.from("first"), AiMessage.from("answer"), UserMessage.from("second")),
+                null,
+                null,
+                BedrockGuardContentPlacement.ALL_USER_MESSAGES);
+
+        assertThat(messages.get(0).content().get(0).guardContent().text().text())
+                .isEqualTo("first");
+        assertThat(messages.get(1).content().get(0).text()).isEqualTo("answer");
+        assertThat(messages.get(1).content().get(0).guardContent()).isNull();
+        assertThat(messages.get(2).content().get(0).guardContent().text().text())
+                .isEqualTo("second");
+    }
+
+    @Test
+    void should_not_add_guard_content_when_placement_is_not_set() {
+        AtomicReference<ConverseRequest> capturedRequest = new AtomicReference<>();
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenAnswer(invocation -> {
+            capturedRequest.set(invocation.getArgument(0));
+            return minimalConverseResponse();
+        });
+        BedrockChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        model.doChat(chatRequestWithGuardContentPlacement(null));
+
+        ConverseRequest request = capturedRequest.get();
+        assertThat(request.guardrailConfig().guardrailIdentifier()).isEqualTo("guardrail-id");
+        assertThat(request.messages())
+                .flatExtracting(Message::content)
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
     }
 
     @Test

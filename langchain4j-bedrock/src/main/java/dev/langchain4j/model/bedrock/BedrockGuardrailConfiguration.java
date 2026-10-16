@@ -117,14 +117,16 @@ public class BedrockGuardrailConfiguration {
         }
 
         /**
-         * Sets which user messages the guardrail evaluates, by wrapping them in Bedrock Converse
+         * Sets which user messages the guardrail evaluates as input, by wrapping them in Bedrock Converse
          * {@code guardContent} blocks.
          * <p>
-         * When not set, the guardrail evaluates the entire request.
-         * When set, the guardrail evaluates <b>only</b> the selected user messages: the system prompt,
-         * other user messages, AI messages and tool results are not evaluated.
+         * When not set, the guardrail evaluates all user and AI messages.
+         * When set, the guardrail evaluates <b>only</b> the selected user messages as input:
+         * other user messages and AI messages are not evaluated. The model response is still evaluated.
+         * See {@link BedrockGuardContentPlacement} for details.
          *
-         * @param guardContentPlacement the guard content placement; {@code null} means the entire request is evaluated
+         * @param guardContentPlacement the guard content placement;
+         *                              {@code null} means all user and AI messages are evaluated
          * @return this builder
          */
         public Builder guardContentPlacement(BedrockGuardContentPlacement guardContentPlacement) {

@@ -279,7 +279,7 @@ abstract class AbstractBedrockChatModel {
         return extractRegularMessages(messages, cachePointPlacement, cacheTtl, null);
     }
 
-    protected List<Message> extractRegularMessages(
+    List<Message> extractRegularMessages(
             List<ChatMessage> messages,
             BedrockCachePointPlacement cachePointPlacement,
             CacheTTL cacheTtl,
@@ -516,7 +516,7 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
-    protected Message createGuardedUserMessage(UserMessage message) {
+    private Message createGuardedUserMessage(UserMessage message) {
         return Message.builder()
                 .role(ConversationRole.USER)
                 .content(convertContentsWithGuardContent(message.contents()))
@@ -572,7 +572,7 @@ abstract class AbstractBedrockChatModel {
         return contents.stream().map(this::convertContent).toList();
     }
 
-    protected List<ContentBlock> convertContentsWithGuardContent(List<Content> contents) {
+    private List<ContentBlock> convertContentsWithGuardContent(List<Content> contents) {
         if (isNullOrEmpty(contents)) {
             return emptyList();
         }
@@ -603,7 +603,7 @@ abstract class AbstractBedrockChatModel {
         throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
     }
 
-    protected ContentBlock convertContentWithGuardContent(Content content) {
+    private ContentBlock convertContentWithGuardContent(Content content) {
         if (content instanceof TextContent text) {
             return ContentBlock.builder()
                     .guardContent(GuardrailConverseContentBlock.builder()
@@ -637,7 +637,7 @@ abstract class AbstractBedrockChatModel {
                         : readBytes(String.valueOf(imageContent.image().url())));
     }
 
-    protected ContentBlock createGuardedImageBlock(ImageContent imageContent) {
+    private ContentBlock createGuardedImageBlock(ImageContent imageContent) {
         final SdkBytes bytes = imageBytes(imageContent);
         final String imgFormat = extractAndValidateFormat(imageContent.image());
 
@@ -662,8 +662,8 @@ abstract class AbstractBedrockChatModel {
         }
 
         throw new UnsupportedFeatureException(String.format(
-                "Bedrock guardContent image supports only png | jpeg. Image format: %s, Mime type: %s, URI: %s",
-                imgFormat, imageContent.image().mimeType(), imageContent.image().url()));
+                "Bedrock guardContent image supports only png | jpeg. Image format: %s, Mime type: %s",
+                imgFormat, imageContent.image().mimeType()));
     }
 
     private boolean isGuardContentImageFormatSupported(String imgFormat) {
