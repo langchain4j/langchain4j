@@ -1,6 +1,8 @@
 package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.invocation.InvocationContext;
+import java.time.Instant;
+import org.jspecify.annotations.Nullable;
 
 public interface AiServiceEvent {
     /**
@@ -8,6 +10,16 @@ public interface AiServiceEvent {
      * about where and how the invocation originated.
      */
     InvocationContext invocationContext();
+
+    /**
+     * The instant at which this event was created.
+     *
+     * @return the creation instant, or {@code null} if this event does not record one
+     */
+    @Nullable
+    default Instant timestamp() {
+        return null;
+    }
 
     /**
      * Retrieves the class type of the event, representing the specific category
@@ -33,11 +45,13 @@ public interface AiServiceEvent {
      */
     abstract class Builder<T extends AiServiceEvent> {
         private InvocationContext invocationContext;
+        private Instant timestamp;
 
         protected Builder() {}
 
         protected Builder(T src) {
             this.invocationContext = src.invocationContext();
+            this.timestamp = src.timestamp();
         }
 
         public InvocationContext invocationContext() {
@@ -46,6 +60,18 @@ public interface AiServiceEvent {
 
         public Builder<T> invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
+            return this;
+        }
+
+        public Instant timestamp() {
+            return this.timestamp;
+        }
+
+        /**
+         * Overrides the event timestamp. If not set, the time of construction is used.
+         */
+        public Builder<T> timestamp(Instant timestamp) {
+            this.timestamp = timestamp;
             return this;
         }
 
