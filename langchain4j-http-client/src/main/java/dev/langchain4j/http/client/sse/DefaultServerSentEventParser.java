@@ -74,13 +74,14 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
 
     /**
      * Byte-driven SSE parser that mirrors the line-based logic of {@link #parse(InputStream, ServerSentEventListener)}.
-     * Splits on {@code \n} byte boundaries (UTF-8 safe — {@code 0x0A} never appears as a continuation byte),
-     * stripping an optional trailing {@code \r} per line.
+     * Recognizes {@code \r}, {@code \n}, and {@code \r\n} line endings, including CRLF split across feeds.
+     * These ASCII bytes cannot occur inside a multibyte UTF-8 sequence.
      */
     private static final class DefaultIncremental implements Incremental {
 
         private final ByteArrayOutputStream pending = new ByteArrayOutputStream();
         private String currentEvent;
+        private boolean skipLineFeed;
         private final StringBuilder currentData = new StringBuilder();
 
         @Override
@@ -94,14 +95,18 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             List<ServerSentEvent> events = new ArrayList<>();
             int start = 0;
             for (int i = 0; i < all.length; i++) {
-                if (all[i] == '\n') {
-                    int end = i;
-                    if (end > start && all[end - 1] == '\r') {
-                        end--;
+                if (skipLineFeed) {
+                    skipLineFeed = false;
+                    if (all[i] == '\n') {
+                        start = i + 1;
+                        continue;
                     }
-                    String line = new String(all, start, end - start, UTF_8);
+                }
+                if (all[i] == '\r' || all[i] == '\n') {
+                    String line = new String(all, start, i - start, UTF_8);
                     processLine(line, events);
                     start = i + 1;
+                    skipLineFeed = all[i] == '\r';
                 }
             }
             pending.reset();
