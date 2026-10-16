@@ -457,73 +457,12 @@ class OpenAiDecisionModelTest {
     }
 
     @Test
-    void should_send_messages_as_conversation_items() throws Exception {
+    void should_send_conversation_as_transcript() throws Exception {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
                 """
                 {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "resolved", "probability": 0.9}]}
-                """));
-        ToolExecutionRequest toolCall = ToolExecutionRequest.builder()
-                .id("call_1")
-                .name("getOrder")
-                .arguments("{\"id\":42}")
-                .build();
-
-        // when
-        model(httpClient)
-                .decide(DecisionRequest.builder()
-                        .inputMessages(List.of(
-                                SystemMessage.from("You are a billing support agent."),
-                                UserMessage.from("I was charged twice for order 42."),
-                                AiMessage.builder()
-                                        .text("Let me check.")
-                                        .thinking("The user mentions order 42.")
-                                        .toolExecutionRequests(List.of(toolCall))
-                                        .build(),
-                                ToolExecutionResultMessage.from(toolCall, "{\"charges\":[19.99,19.99]}"),
-                                AiMessage.from("I have refunded one of the charges.")))
-                        .question("resolved", YesNoQuestion.of("Did the assistant resolve the user's problem?"))
-                        .build());
-
-        // then
-        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input"))
-                .isEqualTo(OBJECT_MAPPER.readTree(
-                        """
-                        [
-                          {
-                            "type": "message",
-                            "role": "system",
-                            "content": [{"type": "input_text", "text": "You are a billing support agent."}]
-                          },
-                          {
-                            "type": "message",
-                            "role": "user",
-                            "content": [{"type": "input_text", "text": "I was charged twice for order 42."}]
-                          },
-                          {
-                            "type": "message",
-                            "role": "assistant",
-                            "content": [{"type": "output_text", "text": "Let me check."}]
-                          },
-                          {"type": "function_call", "call_id": "call_1", "name": "getOrder", "arguments": "{\\"id\\":42}"},
-                          {"type": "function_call_output", "call_id": "call_1", "output": "{\\"charges\\":[19.99,19.99]}"},
-                          {
-                            "type": "message",
-                            "role": "assistant",
-                            "content": [{"type": "output_text", "text": "I have refunded one of the charges."}]
-                          }
-                        ]
-                        """));
-    }
-
-    @Test
-    void should_send_parallel_tool_calls_in_order_and_missing_arguments_as_empty_object() throws Exception {
-
-        // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
-                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "answered", "probability": 0.9}]}
                 """));
         ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
                 .id("call_1")
@@ -538,85 +477,85 @@ class OpenAiDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .inputMessages(List.of(
-                                UserMessage.from("Where is my order?"),
-                                AiMessage.from(getOrder, getCustomer),
-                                ToolExecutionResultMessage.from(getOrder, "shipped"),
-                                ToolExecutionResultMessage.from(getCustomer, "Anna")))
-                        .question("answered", YesNoQuestion.of("Did the assistant answer the question?"))
+                        .inputMessages(
+                                SystemMessage.from("You are a billing support agent."),
+                                UserMessage.from("Anna", "Where is my order 42?"),
+                                AiMessage.builder()
+                                        .text("Let me check.")
+                                        .thinking("The user mentions order 42.")
+                                        .toolExecutionRequests(List.of(getOrder, getCustomer))
+                                        .build(),
+                                ToolExecutionResultMessage.from(getOrder, "{\"status\":\"shipped\"}"),
+                                ToolExecutionResultMessage.builder()
+                                        .id("call_2")
+                                        .toolName("getCustomer")
+                                        .text("timeout")
+                                        .isError(true)
+                                        .build(),
+                                AiMessage.from("Your order has shipped."))
+                        .question("resolved", YesNoQuestion.of("Did the assistant answer the question?"))
                         .build());
 
         // then
-        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input"))
+        JsonNode input = OBJECT_MAPPER.readTree(httpClient.request().body()).get("input");
+        assertThat(input).hasSize(1);
+        assertThat(input.get(0).get("role").asText()).isEqualTo("user");
+        JsonNode content = input.get(0).get("content");
+        assertThat(content).hasSize(1);
+        String text = content.get(0).get("text").asText();
+        assertThat(text).startsWith("messages: ");
+        assertThat(OBJECT_MAPPER.readTree(text.substring("messages: ".length())))
                 .isEqualTo(OBJECT_MAPPER.readTree(
                         """
                         [
+                          {"role": "system", "text": "You are a billing support agent."},
+                          {"role": "user", "name": "Anna", "text": "Where is my order 42?"},
                           {
-                            "type": "message",
-                            "role": "user",
-                            "content": [{"type": "input_text", "text": "Where is my order?"}]
+                            "role": "assistant",
+                            "text": "Let me check.",
+                            "tool_calls": [
+                              {"id": "call_1", "name": "getOrder", "arguments": "{\\"id\\":42}"},
+                              {"id": "call_2", "name": "getCustomer"}
+                            ]
                           },
-                          {"type": "function_call", "call_id": "call_1", "name": "getOrder", "arguments": "{\\"id\\":42}"},
-                          {"type": "function_call", "call_id": "call_2", "name": "getCustomer", "arguments": "{}"},
-                          {"type": "function_call_output", "call_id": "call_1", "output": "shipped"},
-                          {"type": "function_call_output", "call_id": "call_2", "output": "Anna"}
+                          {"role": "tool", "tool_call_id": "call_1", "name": "getOrder", "text": "{\\"status\\":\\"shipped\\"}"},
+                          {"role": "tool", "tool_call_id": "call_2", "name": "getCustomer", "text": "timeout", "is_error": true},
+                          {"role": "assistant", "text": "Your order has shipped."}
                         ]
                         """));
     }
 
     @Test
-    void should_send_tool_result_with_image_and_user_message_with_image_as_parts() throws Exception {
+    void should_send_images_of_conversation_after_transcript() throws Exception {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
                 """
-                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.9}]}
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "resolved", "probability": 0.9}]}
                 """));
-        ToolExecutionRequest toolCall = ToolExecutionRequest.builder()
-                .id("call_1")
-                .name("getDeliveryPhoto")
-                .arguments("{}")
-                .build();
         ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
 
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .inputMessages(List.of(
-                                UserMessage.from(TextContent.from("It arrived like this:"), photo),
-                                AiMessage.from(toolCall),
-                                ToolExecutionResultMessage.builder()
-                                        .id("call_1")
-                                        .toolName("getDeliveryPhoto")
-                                        .contents(TextContent.from("Photo taken at delivery:"), photo)
-                                        .build()))
-                        .question("damaged", YesNoQuestion.of("Was the item damaged after the delivery?"))
+                        .inputMessages(UserMessage.from(TextContent.from("It arrived like this:"), photo))
+                        .question("resolved", YesNoQuestion.of("Is the item damaged?"))
                         .build());
 
         // then
-        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input"))
+        JsonNode content = OBJECT_MAPPER.readTree(httpClient.request().body()).get("input").get(0).get("content");
+        assertThat(content).hasSize(3);
+        assertThat(OBJECT_MAPPER.readTree(content.get(0).get("text").asText().substring("messages: ".length())))
                 .isEqualTo(OBJECT_MAPPER.readTree(
                         """
-                        [
-                          {
-                            "type": "message",
-                            "role": "user",
-                            "content": [
-                              {"type": "input_text", "text": "It arrived like this:"},
-                              {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"}
-                            ]
-                          },
-                          {"type": "function_call", "call_id": "call_1", "name": "getDeliveryPhoto", "arguments": "{}"},
-                          {
-                            "type": "function_call_output",
-                            "call_id": "call_1",
-                            "output": [
-                              {"type": "input_text", "text": "Photo taken at delivery:"},
-                              {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"}
-                            ]
-                          }
-                        ]
+                        [{"role": "user", "text": "It arrived like this:\\n[image 1]"}]
                         """));
+        assertThat(content.get(1)).isEqualTo(OBJECT_MAPPER.readTree(
+                """
+                {"type": "input_text", "text": "[image 1]:"}
+                """));
+        assertThat(content.get(2).get("type").asText()).isEqualTo("input_image");
+        assertThat(content.get(2).get("image_url").asText()).isEqualTo("data:image/png;base64,iVBORw0KGgo=");
     }
 
     @Test
@@ -675,8 +614,8 @@ class OpenAiDecisionModelTest {
                                 .question("urgent", YesNoQuestion.of("Does this need attention today?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessage("The OpenAI Decisions API does not support CustomMessage. Supported messages: "
-                        + "SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
+                .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
+                        + "messages: SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
         assertThat(model(httpClient)
                         .decideAsync(DecisionRequest.builder()
                                 .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
@@ -685,7 +624,7 @@ class OpenAiDecisionModelTest {
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseInstanceOf(UnsupportedFeatureException.class)
-                .withMessageContaining("The OpenAI Decisions API supports only text and image input, but the input contains PDF");
+                .withMessageContaining("The OpenAI Decisions API supports only text and images in a conversation, but it contains PDF");
         assertThat(httpClient.requests()).isEmpty();
     }
 

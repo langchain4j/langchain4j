@@ -7,8 +7,12 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ContentsInput;
 import dev.langchain4j.model.decision.request.DecisionInput;
@@ -79,9 +83,20 @@ public final class TypeSafeMapper {
             return state;
         } else if (input instanceof ContentsInput contents) {
             return text(contents.contents());
-        } else if (input instanceof MessagesInput) {
-            throw new UnsupportedFeatureException(
-                    "TypeSafe does not support a conversation (a list of ChatMessages) as input");
+        } else if (input instanceof MessagesInput messages) {
+            for (ChatMessage message : messages.messages()) {
+                List<Content> contents = message instanceof UserMessage userMessage
+                        ? userMessage.contents()
+                        : message instanceof ToolExecutionResultMessage result ? result.contents() : List.of();
+                for (Content content : contents) {
+                    if (!(content instanceof TextContent)) {
+                        throw new UnsupportedFeatureException(
+                                "TypeSafe supports only text input, but the input contains " + content.type());
+                    }
+                }
+            }
+            // a conversation is sent as a transcript
+            return Map.of("messages", DecisionModelInputUtils.transcript(messages.messages(), "TypeSafe").messages());
         }
         throw new UnsupportedFeatureException("TypeSafe does not support " + input.getClass().getName() + " as input");
     }

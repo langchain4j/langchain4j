@@ -87,7 +87,8 @@ In the TypeSafe documentation, yes/no questions are called "noul" questions, sca
 questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
 sent as an object with a `label` and a `description`.
 The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
-without calling the API. A conversation (`inputMessages(...)`) is not supported either and throws an
+without calling the API. A conversation (`inputMessages(...)`) is sent as a
+[transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`; images in it throw an
 `UnsupportedFeatureException`.
 The confidence of choice and scale answers is computed by the server.
 

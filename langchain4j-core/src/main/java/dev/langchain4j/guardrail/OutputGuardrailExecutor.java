@@ -86,11 +86,12 @@ public non-sealed class OutputGuardrailExecutor
                         .orElseGet(ArrayList::new);
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-                var response = accumulatedRequest.chatExecutor().execute(chatMessages);
+                var exchange = accumulatedRequest.chatExecutor().exchange(chatMessages);
                 accumulatedRequest = OutputGuardrailRequest.builder()
-                        .responseFromLLM(response)
+                        .responseFromLLM(exchange.response())
                         .chatExecutor(accumulatedRequest.chatExecutor())
                         .requestParams(accumulatedRequest.requestParams())
+                        .chatRequest(exchange.request())
                         .build();
             }
         }
@@ -165,12 +166,13 @@ public non-sealed class OutputGuardrailExecutor
                     var chatMessages = new ArrayList<>(currentMessages);
                     result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-                    return chain.track(accumulatedRequest.chatExecutor().executeAsync(chatMessages))
-                            .thenCompose(response -> {
+                    return chain.track(accumulatedRequest.chatExecutor().exchangeAsync(chatMessages))
+                            .thenCompose(exchange -> {
                                 var nextRequest = OutputGuardrailRequest.builder()
-                                        .responseFromLLM(response)
+                                        .responseFromLLM(exchange.response())
                                         .chatExecutor(accumulatedRequest.chatExecutor())
                                         .requestParams(accumulatedRequest.requestParams())
+                                        .chatRequest(exchange.request())
                                         .build();
                                 return attemptAsync(request, nextRequest, nextAttempt, maxAttempts, chain);
                             });

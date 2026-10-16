@@ -36,8 +36,8 @@ import org.slf4j.Logger;
  *         .build();
  * }</pre>
  * The input can be text, named fields (sent as a JSON object), or a list of
- * {@link dev.langchain4j.data.message.TextContent}s and {@link dev.langchain4j.data.message.ImageContent}s; a
- * conversation is not supported and throws an {@link dev.langchain4j.exception.UnsupportedFeatureException}.
+ * {@link dev.langchain4j.data.message.TextContent}s and {@link dev.langchain4j.data.message.ImageContent}s, or a
+ * conversation (sent as a JSON transcript, {@code {"messages": [...]}}).
  * Images can be judged only by models with vision, such as Clef: they are sent alongside the input, which refers to
  * each of them by its position, for example {@code [image 1]}. Images are numbered from 1 in the order they appear
  * in the input, across all fields.

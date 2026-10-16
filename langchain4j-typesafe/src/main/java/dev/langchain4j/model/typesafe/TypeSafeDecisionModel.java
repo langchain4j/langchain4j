@@ -40,8 +40,9 @@ import org.slf4j.Logger;
  *         .modelName("jev-latest")
  *         .build();
  * }</pre>
- * The input can be text, named fields (sent as a JSON object) or a list of text contents; images and conversations
- * are not supported and throw an {@link dev.langchain4j.exception.UnsupportedFeatureException}.
+ * The input can be text, named fields (sent as a JSON object), a list of text contents, or a conversation (sent as a
+ * JSON transcript, {@code {"messages": [...]}}); images are not supported and throw an
+ * {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  *
  * @since 1.21.0
  */

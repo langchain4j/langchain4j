@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
@@ -322,23 +324,54 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
-    void should_reject_messages_without_calling_the_api() {
+    void should_send_conversation_as_transcript_in_state() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
+                .id("call_1")
+                .name("getOrder")
+                .arguments("{}")
+                .build();
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .inputMessages(
+                                UserMessage.from("Where is my order?"),
+                                AiMessage.from(getOrder),
+                                ToolExecutionResultMessage.from(getOrder, "shipped"))
+                        .questions(REQUEST.questions())
+                        .build());
+
+        // then
+        assertThat(Json.fromJson(httpClient.request().body(), Map.class).get("state"))
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Where is my order?"),
+                                Map.of(
+                                        "role",
+                                        "assistant",
+                                        "tool_calls",
+                                        List.of(Map.of("id", "call_1", "name", "getOrder", "arguments", "{}"))),
+                                Map.of("role", "tool", "tool_call_id", "call_1", "name", "getOrder", "text", "shipped"))));
+    }
+
+    @Test
+    void should_reject_images_in_conversation_without_calling_the_api() {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
-                .inputMessages(List.of(UserMessage.from("Where is my order?"), AiMessage.from("It arrives tomorrow.")))
-                .question("answered", YesNoQuestion.of("Did the assistant answer the question?"))
+                .inputMessages(UserMessage.from(ImageContent.from("iVBORw0KGgo=", "image/png")))
+                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                 .build();
 
         // when-then
         assertThatThrownBy(() -> model(httpClient).decide(request))
                 .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessage("TypeSafe does not support a conversation (a list of ChatMessages) as input");
-        assertThat(model(httpClient).decideAsync(request))
-                .failsWithin(Duration.ofSeconds(5))
-                .withThrowableOfType(ExecutionException.class)
-                .withCauseInstanceOf(UnsupportedFeatureException.class);
+                .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
         assertThat(httpClient.requests()).isEmpty();
     }
 

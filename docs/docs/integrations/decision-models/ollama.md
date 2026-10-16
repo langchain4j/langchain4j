@@ -113,7 +113,13 @@ The input can be:
 - named fields (`inputFields(...)`), which are sent as a JSON object;
 - a list of `TextContent`s and `ImageContent`s (`inputContents(...)`), whose texts are joined with blank lines.
 
-A conversation (`inputMessages(...)`) is not supported and throws an `UnsupportedFeatureException`.
+A conversation (`inputMessages(...)`) is sent as a [transcript](/tutorials/decision-models#conversations), as
+`{"messages": [...]}`, with its images sent like the other images. The output guardrail sends the last 50 messages of the conversation by default:
+with Ollama, set `maxMessages(...)` and `maxMessageLength(...)` on it, for example `maxMessages(4)` and
+`maxMessageLength(4000)`, to help keep its requests under the 64 KiB limit. The chat model router, the query router
+and tool filtering send up to 10 messages of up to 2,000 characters each. In all of them, the system message is sent
+in full: with a long system message, or with text in scripts that take several bytes per character, lower these
+limits or leave out messages with `messageFilter(...)`.
 
 The whole input must fit in the context window the model is loaded with (it depends on the model and on the Ollama
 server's configuration): Ollama never truncates it. The request body must also be at most 64 KiB, or 32 MiB with

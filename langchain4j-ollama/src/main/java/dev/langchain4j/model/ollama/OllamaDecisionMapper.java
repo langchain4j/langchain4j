@@ -8,6 +8,8 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ContentsInput;
@@ -82,9 +84,11 @@ class OllamaDecisionMapper {
             return state;
         } else if (input instanceof ContentsInput contents) {
             return text(contents.contents(), images);
-        } else if (input instanceof MessagesInput) {
-            throw new UnsupportedFeatureException(
-                    "Ollama decision models do not support a conversation (a list of ChatMessages) as input");
+        } else if (input instanceof MessagesInput messages) {
+            // a conversation is sent as a transcript, its images are sent like other images
+            Transcript transcript = DecisionModelInputUtils.transcript(messages.messages(), "The Ollama decision model");
+            transcript.images().forEach(image -> images.add(ImageUtils.base64Image(image.image())));
+            return Map.of("messages", transcript.messages());
         }
         throw new UnsupportedFeatureException(
                 "Ollama decision models do not support " + input.getClass().getName() + " as input");
