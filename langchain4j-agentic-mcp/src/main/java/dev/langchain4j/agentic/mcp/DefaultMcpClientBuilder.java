@@ -15,10 +15,12 @@ import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -32,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +60,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private boolean async;
 
     private AgentListener agentListener;
+    private AgentCondition activationCondition;
 
     DefaultMcpClientBuilder(McpClient mcpClient, Class<T> agentServiceClass) {
         this.mcpClient = mcpClient;
@@ -90,6 +94,12 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     @Override
     public McpClientBuilder<T> listener(AgentListener agentListener) {
         this.agentListener = compose(this.agentListener, agentListener);
+        return this;
+    }
+
+    @Override
+    public McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
         return this;
     }
 
@@ -291,6 +301,11 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     @Override
     public boolean async() {
         return async;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
     }
 
     @Override

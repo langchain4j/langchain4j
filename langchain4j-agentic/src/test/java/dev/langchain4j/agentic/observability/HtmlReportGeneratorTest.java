@@ -93,6 +93,25 @@ class HtmlReportGeneratorTest {
     }
 
     @Test
+    void generates_topology_with_the_activation_condition_of_an_agent() {
+        UntypedAgent router = AgenticServices.conditionalBuilder()
+                .subAgents(
+                        "is medical",
+                        agenticScope -> true,
+                        AgenticServices.nonAiAgentBuilder(scope -> "medical answer")
+                                .name("medical")
+                                .activationCondition("the request is urgent", scope -> true)
+                                .build())
+                .outputKey("response")
+                .build();
+
+        String html = HtmlReportGenerator.generateTopology(router);
+
+        // the condition of the branch and the one of the agent itself are shown separately
+        assertThat(html).contains("when: is medical").contains(">if: the request is urgent</span>");
+    }
+
+    @Test
     void generates_execution_timeline_bars_in_a_locale_independent_way() {
         Locale defaultLocale = Locale.getDefault();
         Locale.setDefault(Locale.forLanguageTag("de-DE"));

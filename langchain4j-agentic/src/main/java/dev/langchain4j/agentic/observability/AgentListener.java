@@ -11,6 +11,12 @@ public interface AgentListener {
     default void afterAgentInvocation(AgentResponse agentResponse) { }
     default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
 
+    /**
+     * Called when an agent is skipped instead of being invoked, because its activation condition is false or because
+     * it is optional and one of its arguments is missing. A skipped agent is not followed by any other callback.
+     */
+    default void onAgentSkipped(AgentSkipped agentSkipped) { }
+
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 

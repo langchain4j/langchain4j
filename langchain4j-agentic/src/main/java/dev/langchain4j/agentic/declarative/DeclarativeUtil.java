@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -25,6 +26,7 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -32,9 +34,11 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -181,6 +185,11 @@ public class DeclarativeUtil {
             agentBuilder.userMessageProvider(memoryId -> invokeStatic(method, memoryId));
         });
 
+        AgentCondition activationCondition = activationCondition(agentType);
+        if (activationCondition != null) {
+            agentBuilder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
+
         if (agentConfigurator.agentInstanceFactory() != null) {
             agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
         }
@@ -232,6 +241,72 @@ public class DeclarativeUtil {
         buildBeforeCall(agentServiceClass).ifPresent(builder::beforeCall);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildListener(agentServiceClass, builder);
+        AgentCondition activationCondition = activationCondition(agentServiceClass);
+        if (activationCondition != null) {
+            builder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
+    }
+
+    /**
+     * Reads the activation condition of the agent declared by the given class or interface: the static method
+     * annotated with {@link ActivationCondition} without a value. An {@link ActivationCondition} with a value is
+     * allowed only on a {@link ConditionalAgent}, where it selects the subagents to activate.
+     *
+     * @return the activation condition of the agent, or {@code null} when it has none
+     * @throws AgenticSystemConfigurationException if there is more than one such method, if it doesn't return a
+     *         boolean, or if a condition with a value is declared on a class that is not a conditional agent
+     */
+    public static AgentCondition activationCondition(Class<?> agentClass) {
+        boolean conditionalAgent =
+                getAnnotatedMethodOnClass(agentClass, ConditionalAgent.class).isPresent();
+        Method conditionMethod = null;
+        for (Method method : staticMethodsAnnotatedWith(agentClass, ActivationCondition.class)) {
+            if (method.getAnnotation(ActivationCondition.class).value().length > 0) {
+                if (!conditionalAgent) {
+                    throw new AgenticSystemConfigurationException("The @ActivationCondition method " + method
+                            + " names the subagents it activates, but " + agentClass.getName()
+                            + " is not a @ConditionalAgent. Remove its value to make it the activation condition of "
+                            + agentClass.getSimpleName() + " itself.");
+                }
+                continue;
+            }
+            if (method.getReturnType() != boolean.class && method.getReturnType() != Boolean.class) {
+                throw new AgenticSystemConfigurationException(
+                        "The @ActivationCondition method " + method + " must return a boolean");
+            }
+            if (conditionMethod != null) {
+                throw new AgenticSystemConfigurationException("Only one @ActivationCondition method without value is "
+                        + "allowed in " + agentClass.getName() + ", but found " + conditionMethod.getName() + " and "
+                        + method.getName());
+            }
+            conditionMethod = method;
+        }
+        return conditionMethod == null
+                ? null
+                : new AgentCondition(
+                        conditionMethod.getAnnotation(ActivationCondition.class).description(),
+                        agenticScopeFunction(conditionMethod, Boolean.class, false)::apply);
+    }
+
+    private static Set<Method> staticMethodsAnnotatedWith(Class<?> type, Class<? extends Annotation> annotation) {
+        Set<Method> methods = new LinkedHashSet<>();
+        collectStaticMethodsAnnotatedWith(type, annotation, methods);
+        return methods;
+    }
+
+    private static void collectStaticMethodsAnnotatedWith(
+            Class<?> type, Class<? extends Annotation> annotation, Set<Method> methods) {
+        for (Method method : type.getMethods()) {
+            if (method.isAnnotationPresent(annotation) && Modifier.isStatic(method.getModifiers())) {
+                methods.add(method);
+            }
+        }
+        if (type.getSuperclass() != null) {
+            collectStaticMethodsAnnotatedWith(type.getSuperclass(), annotation, methods);
+        }
+        for (Class<?> interf : type.getInterfaces()) {
+            collectStaticMethodsAnnotatedWith(interf, annotation, methods);
+        }
     }
 
     private static Optional<Consumer<AgenticScope>> buildBeforeCall(Class<?> agentServiceClass) {
@@ -391,11 +466,19 @@ public class DeclarativeUtil {
     }
 
     public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
+        return agenticScopeFunction(functionMethod, targetClass, true);
+    }
+
+    private static <T> Function<AgenticScope, T> agenticScopeFunction(
+            Method functionMethod, Class<T> targetClass, boolean writeConvertedArguments) {
         List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         return agenticScope -> {
             try {
                 Object[] args = agentInvocationArguments(
-                                agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
+                                agenticScope,
+                                agentArguments,
+                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope),
+                                writeConvertedArguments)
                         .positionalArgs();
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {
