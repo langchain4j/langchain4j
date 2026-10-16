@@ -1,7 +1,5 @@
 package dev.langchain4j.rag.content.retriever;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -10,19 +8,21 @@ import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.invocation.CapturedContextSupport;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -88,7 +88,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     // When the embedding model or store is not genuinely async (its doEmbedAsync/searchAsync throws), retrieveAsync
     // fails loudly by default (surfacing that exception) rather than silently offloading it. Set offloadBlocking(true)
-    // to instead offload only the blocking component to the shared default executor (virtual threads on Java 21+, platform threads on 17-20).
+    // to instead offload only the blocking component to the shared default executor (virtual threads on Java 21+,
+    // platform threads on 17-20).
     private final boolean offloadBlocking;
 
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
@@ -337,8 +338,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
         CompletableFuture<List<Content>> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
-        chain.track(nativeOrOffload(
-                        query, () -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
+        chain.track(nativeOrOffload(query, () -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
                 .thenCompose(embedding -> {
                     EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                             .query(query.text())
@@ -385,11 +385,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                             query.metadata() != null ? query.metadata().invocationContext() : null;
                     return CompletableFuture.supplyAsync(
                             blockingCall,
-                            CapturedContextSupport.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
+                            CapturedContextSupport.restoringIn(
+                                    DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
                 }
-                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
-                        + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"
-                        + " to offload this blocking component to a default executor (virtual threads on Java 21+, platform threads on 17-20) instead."));
+                return CompletableFuture.failedFuture(
+                        new UnsupportedFeatureException(
+                                cause.getMessage()
+                                        + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"
+                                        + " to offload this blocking component to a default executor (virtual threads on Java 21+, platform threads on 17-20) instead."));
             }
             return CompletableFuture.failedFuture(error);
         });
@@ -403,11 +406,15 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         if (embeddingInputType != null) {
             builder.inputType(embeddingInputType);
         }
-        return embeddingModel.embedAsync(builder.build()).thenApply(response -> response.embeddings().get(0));
+        return embeddingModel
+                .embedAsync(builder.build())
+                .thenApply(response -> response.embeddings().get(0));
     }
 
     private List<Content> toContents(EmbeddingSearchResult<TextSegment> searchResult) {
         return searchResult.matches().stream()
+                // a match without a text segment carries no content, so there is nothing to retrieve
+                .filter(embeddingMatch -> embeddingMatch.embedded() != null)
                 .map(embeddingMatch -> Content.from(
                         embeddingMatch.embedded(),
                         Map.of(

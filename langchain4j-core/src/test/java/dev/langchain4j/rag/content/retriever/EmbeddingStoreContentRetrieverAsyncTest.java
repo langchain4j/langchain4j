@@ -12,6 +12,7 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -118,8 +119,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         AtomicInteger nativeSearchAsyncCalls = new AtomicInteger();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
-                    EmbeddingSearchRequest request) {
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
                 nativeSearchAsyncCalls.incrementAndGet();
                 return java.util.concurrent.CompletableFuture.completedFuture(search(request));
             }
@@ -137,14 +137,46 @@ class EmbeddingStoreContentRetrieverAsyncTest {
     }
 
     @Test
+    void retrieveAsync_should_ignore_vector_only_matches_on_the_native_async_path() throws Exception {
+        // A native-async model and store where every hit has no text segment: the null guard lives in the shared
+        // toContents, so it must hold on the async path too, leaving nothing to retrieve.
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(new NativeAsyncEmbeddingModel())
+                .embeddingStore(matchesStore(new EmbeddingMatch<TextSegment>(0.9, "vector-only", null, null)))
+                .build();
+
+        List<Content> contents = retriever.retrieveAsync(Query.from("hello")).get(5, SECONDS);
+
+        assertThat(contents).isEmpty();
+    }
+
+    @Test
+    void retrieveAsync_should_keep_the_score_and_embedding_id_of_retained_matches() throws Exception {
+        // Content.equals ignores metadata, so the retained match's score and embedding ID are asserted explicitly
+        // while its vector-only neighbour is dropped.
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(new NativeAsyncEmbeddingModel())
+                .embeddingStore(matchesStore(
+                        new EmbeddingMatch<TextSegment>(0.9, "vector-only", null, null),
+                        new EmbeddingMatch<>(0.8, "with-text", null, TextSegment.from("relevant"))))
+                .build();
+
+        List<Content> contents = retriever.retrieveAsync(Query.from("hello")).get(5, SECONDS);
+
+        assertThat(contents).extracting(c -> c.textSegment().text()).containsExactly("relevant");
+        assertThat(contents.get(0).metadata())
+                .containsEntry(ContentMetadata.SCORE, 0.8)
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "with-text");
+    }
+
+    @Test
     void retrieveAsync_cancellation_aborts_the_in_flight_search() {
         // async model (embed completes instantly) + a store whose search never completes, exposed to assert cancel
         CompletableFuture<EmbeddingSearchResult<TextSegment>> pendingSearch =
                 new java.util.concurrent.CompletableFuture<>();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
-                    EmbeddingSearchRequest request) {
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
                 return pendingSearch;
             }
         };
@@ -165,11 +197,28 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         assertThat(pendingSearch).isCancelled();
     }
 
+    // A genuinely async store that returns exactly the given matches.
+    @SafeVarargs
+    private static FakeEmbeddingStore matchesStore(EmbeddingMatch<TextSegment>... matches) {
+        return new FakeEmbeddingStore() {
+            @Override
+            public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+                return new EmbeddingSearchResult<>(List.of(matches));
+            }
+
+            @Override
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
+                return CompletableFuture.completedFuture(search(request));
+            }
+        };
+    }
+
     static class FakeEmbeddingModel implements EmbeddingModel {
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            return Response.from(
-                    textSegments.stream().map(s -> Embedding.from(new float[] {1f, 0f, 0f})).toList());
+            return Response.from(textSegments.stream()
+                    .map(s -> Embedding.from(new float[] {1f, 0f, 0f}))
+                    .toList());
         }
     }
 
