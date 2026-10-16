@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+
 import dev.langchain4j.agentic.planner.AgentCondition;
 import java.util.List;
 

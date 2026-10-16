@@ -296,7 +296,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
     }
 
     /**
@@ -838,7 +838,8 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Object.class))
                 .orElseThrow(
                         () -> new IllegalArgumentException(
