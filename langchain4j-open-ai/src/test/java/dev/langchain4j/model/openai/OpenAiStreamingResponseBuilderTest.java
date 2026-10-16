@@ -3,7 +3,10 @@ package dev.langchain4j.model.openai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.*;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -333,6 +336,56 @@ class OpenAiStreamingResponseBuilderTest {
                         .index(0)
                         .delta(Delta.builder().toolCalls(List.of(toolCall)).build())
                         .build()))
+                .build();
+    }
+
+    @Test
+    void should_detect_in_band_error_sent_as_bare_error_event() {
+        // Given: vLLM/LiteLLM-style error chunk without choices
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(sseEvent(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Half an ans\"}}]}"));
+        builder.append(sseEvent(
+                "{\"error\":{\"message\":\"Internal server error\",\"type\":\"InternalServerError\",\"param\":null,\"code\":500}}"));
+
+        // Then: the provider error is surfaced
+        assertThat(builder.errorMessage()).isEqualTo("Chat completion failed: Internal server error");
+    }
+
+    @Test
+    void should_detect_in_band_error_chunk_carrying_choices_with_error_finish_reason() {
+        // Given: OpenRouter-style chunk with a top-level "error" object AND choices
+        // (finish_reason "error")
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(sseEvent(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Half an ans\"}}]}"));
+        builder.append(sseEvent(
+                "{\"id\":\"cmpl-abc123\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"x\","
+                        + "\"error\":{\"code\":\"server_error\",\"message\":\"Provider disconnected unexpectedly\"},"
+                        + "\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":\"error\"}]}"));
+
+        // Then: the provider error is surfaced instead of completing the stream
+        assertThat(builder.errorMessage())
+                .isEqualTo("Chat completion failed: Provider disconnected unexpectedly");
+    }
+
+    @Test
+    void should_not_treat_error_keyword_in_content_as_provider_error() {
+        // Given: a normal chunk whose content merely mentions "error"
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(sseEvent(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"She said \\\"error\\\" loudly\"}}]}"));
+
+        // Then: no provider error is reported
+        assertThat(builder.errorMessage()).isNull();
+    }
+
+    private static ParsedAndRawResponse<ChatCompletionResponse> sseEvent(String data) {
+        // Same deserialization as DefaultOpenAiClient.ChatCompletionEventSink.onEvent
+        ChatCompletionResponse parsed = Json.fromJson(data, ChatCompletionResponse.class);
+        return ParsedAndRawResponse.<ChatCompletionResponse>builder()
+                .parsedResponse(parsed)
+                .rawServerSentEvent(new ServerSentEvent(null, data))
                 .build();
     }
 }
