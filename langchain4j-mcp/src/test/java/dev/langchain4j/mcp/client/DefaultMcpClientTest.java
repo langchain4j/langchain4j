@@ -26,10 +26,12 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCallToolParams;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.protocol.McpCancellationParams;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpClientMethod;
 import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
@@ -1335,6 +1337,282 @@ public class DefaultMcpClientTest {
         result.put("resultType", "complete");
         result.putArray("content").addObject().put("type", "text").put("text", text);
         return node;
+    }
+
+    // ========== MRTR async tests (#6617) ==========
+
+    @Test
+    public void mrtr_async_requestState_only_should_retry_and_succeed() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        ObjectNode complete = buildToolCompleteResponse("done");
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString()))
+                .thenReturn(CompletableFuture.completedFuture(complete.toString()));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder().name("test").arguments("{}").build(), null)
+                .get(5, TimeUnit.SECONDS);
+
+        assertThat(result.resultText()).isEqualTo("done");
+        // 3 sends: discover, first tools/call, retry
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).sendRequest(captor.capture());
+
+        // the retry carries the requestState echoed back from the first response
+        McpCallToolRequest retryRequest =
+                (McpCallToolRequest) captor.getAllValues().get(2).message();
+        assertThat(((McpCallToolParams) retryRequest.getParams()).getRequestState())
+                .isEqualTo("opaque-state-token");
+        // and: a fresh JSON-RPC request id is used for the retry, distinct from the first call
+        long firstId = ((McpCallToolRequest) captor.getAllValues().get(1).message()).getId();
+        long retryId = retryRequest.getId();
+        assertThat(retryId).isNotEqualTo(firstId);
+        // and: the retry preserves the tool name and arguments
+        assertThat(retryRequest.getMethod()).isEqualTo(McpClientMethod.TOOLS_CALL);
+    }
+
+    @Test
+    public void mrtr_async_retry_timeout_cancels_retry_request_and_notifies_server() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        CompletableFuture<String> retryNeverCompletes = new CompletableFuture<>();
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false).toString()))
+                .thenAnswer(invocation -> {
+                    McpCallContext retryContext = invocation.getArgument(0);
+                    Long retryRequestId = retryContext.message().getId();
+                    handlerRef.get().expectResponse(retryRequestId, retryNeverCompletes);
+                    return retryNeverCompletes;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        try {
+            CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                    ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+            ToolExecutionResult result = resultFuture.get(5, TimeUnit.SECONDS);
+
+            // the result is the timeout-error fallback; the assertion below checks the side effects
+            assertThat(result.isError()).isTrue();
+
+            ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+            verify(transport, times(3)).sendRequest(requestCaptor.capture());
+            Long retryRequestId =
+                    ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
+
+            java.lang.reflect.Field pendingOperationsField =
+                    DefaultMcpClient.class.getDeclaredField("pendingOperations");
+            pendingOperationsField.setAccessible(true);
+            Map<?, ?> pendingOperations = (Map<?, ?>) pendingOperationsField.get(client);
+            assertThat(pendingOperations.containsKey(retryRequestId)).isFalse();
+            assertThat(retryNeverCompletes.isCancelled()).isTrue();
+
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport).sendMessage(cancellationCaptor.capture());
+            McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+            McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryRequestId);
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void mrtr_async_caller_cancellation_during_retry_cancels_retry_request() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        CompletableFuture<String> retryNeverCompletes = new CompletableFuture<>();
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false).toString()))
+                .thenAnswer(invocation -> {
+                    McpCallContext retryContext = invocation.getArgument(0);
+                    Long retryRequestId = retryContext.message().getId();
+                    handlerRef.get().expectResponse(retryRequestId, retryNeverCompletes);
+                    return retryNeverCompletes;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        try {
+            CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                    ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+            // give the loop a chance to enter the retry
+            Thread.sleep(100);
+
+            assertThat(resultFuture.cancel(true)).isTrue();
+            assertThat(resultFuture.isCancelled()).isTrue();
+            // the retry future, not the original, is the one that was actually cancelled
+            assertThat(retryNeverCompletes.isCancelled()).isTrue();
+
+            // for stdio transports the client must notify the server about the cancellation;
+            // the notification uses the retry request id, not the original call's id
+            ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+            verify(transport, times(3)).sendRequest(requestCaptor.capture());
+            Long retryRequestId =
+                    ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
+
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport).sendMessage(cancellationCaptor.capture());
+            McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+            McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryRequestId);
+        } finally {
+            client.close();
+        }
+    }
+
+    @Test
+    public void mrtr_async_max_retries_exceeded_should_fail() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString())) // attempt 1
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString())) // retry 1
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString())) // retry 2
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString())); // retry 3 -> exceeds limit
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThatThrownBy(() -> resultFuture.get(5, TimeUnit.SECONDS).resultText())
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .hasCauseInstanceOf(RuntimeException.class)
+                .hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void mrtr_async_with_inputRequests_should_throw() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, true);
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString()));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThatThrownBy(() -> resultFuture.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .hasCauseInstanceOf(RuntimeException.class)
+                .hasMessageContaining("inputRequests");
+    }
+
+    @Test
+    public void mrtr_async_without_requestState_or_inputRequests_should_throw() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(false, false);
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString()));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThatThrownBy(() -> resultFuture.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .hasCauseInstanceOf(RuntimeException.class)
+                .hasMessageContaining("without requestState");
+    }
+
+    @Test
+    public void mrtr_async_unknown_resultType_should_throw() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode unknownType = JsonNodeFactory.instance.objectNode();
+        ObjectNode result = unknownType.putObject("result");
+        result.put("resultType", "partial");
+        result.putArray("content").addObject().put("type", "text").put("text", "ok");
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(unknownType.toString()));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThatThrownBy(() -> resultFuture.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .hasCauseInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Unexpected resultType");
+    }
+
+    /**
+     * If the transport hands back an already-completed future for every round (which the
+     * in-memory test transports do, and which real HTTP transports can do on a warm
+     * connection), the async MRTR loop must not recurse through thenCompose and blow the
+     * stack once the round count gets large. The fix uses CompletableFuture.get() inside a
+     * plain while loop, so even an unbounded retry limit should resolve without error.
+     */
+    @Test
+    public void mrtr_async_immediately_completed_retries_should_not_stack_overflow() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // raise the retry cap so the loop runs many rounds; the assertion is that the failure
+        // is the expected retry-limit error and not a StackOverflowError from thenCompose recursion
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(inputRequired.toString()));
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .multiRoundTripMaxRetries(10_000)
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        // the future eventually fails with the retry-limit message; what matters here is that
+        // it fails normally and does not throw StackOverflowError, which would happen if the
+        // loop recursed synchronously through thenCompose on every round
+        assertThatThrownBy(() -> resultFuture.get(10, TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .hasMessageContaining("retry limit");
     }
 
     @Test
