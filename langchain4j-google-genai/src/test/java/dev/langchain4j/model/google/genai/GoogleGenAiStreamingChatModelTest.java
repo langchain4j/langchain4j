@@ -13,7 +13,9 @@ import com.google.genai.ResponseStream;
 import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
+import com.google.genai.types.CodeExecutionResult;
 import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
@@ -990,5 +992,128 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(onCompleteCalled.get()).isFalse();
         assertThat(onErrorCalled.get()).isFalse();
         verify(stream, atLeastOnce()).close();
+    }
+
+    @Test
+    void should_stream_executed_code_and_its_output_when_requested() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(
+                                chunkWith(Part.builder()
+                                        .executableCode(ExecutableCode.builder()
+                                                .language("PYTHON")
+                                                .code("print(6 * 7)"))
+                                        .build()),
+                                chunkWith(Part.builder()
+                                        .codeExecutionResult(CodeExecutionResult.builder()
+                                                .outcome("OUTCOME_OK")
+                                                .output("42\n"))
+                                        .build()),
+                                chunkWith(Part.fromText("6 times 7 is 42.")))
+                        .iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, new ArrayList<>());
+
+        assertThat(partialResponses)
+                .containsExactly(
+                        "Code executed:\n```python\nprint(6 * 7)\n```\n\n",
+                        "Output:\n```\n42\n```\n\n",
+                        "6 times 7 is 42.");
+        assertThat(response.aiMessage().text()).isEqualTo(String.join("", partialResponses));
+    }
+
+    @Test
+    void should_separate_streamed_code_from_text_streamed_before_it() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(
+                                chunkWith(Part.fromText("Let me calculate that with Python:")),
+                                chunkWith(Part.builder()
+                                        .executableCode(ExecutableCode.builder()
+                                                .language("PYTHON")
+                                                .code("print(6 * 7)"))
+                                        .build()))
+                        .iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, new ArrayList<>());
+
+        assertThat(partialResponses)
+                .containsExactly(
+                        "Let me calculate that with Python:", "\n\nCode executed:\n```python\nprint(6 * 7)\n```\n\n");
+        assertThat(response.aiMessage().text()).isEqualTo(String.join("", partialResponses));
+    }
+
+    @Test
+    void should_send_code_execution_tool_when_enabled() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(chunkWith(Part.fromText("42"))).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .build();
+
+        stream(model, new ArrayList<>(), new ArrayList<>());
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+        assertThat(configCaptor.getValue().tools().get())
+                .anySatisfy(tool -> assertThat(tool.codeExecution()).isPresent());
+    }
+
+    private static GenerateContentResponse chunkWith(Part part) {
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(part))
+                                .build())
+                        .build()))
+                .build();
     }
 }
