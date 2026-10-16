@@ -370,7 +370,7 @@ import dev.langchain4j.community.data.document.graph.GraphDocument;
 import dev.langchain4j.community.data.document.graph.GraphNode;
 import dev.langchain4j.community.data.document.graph.GraphEdge;
 import dev.langchain4j.community.data.document.transformer.graph.GraphTransformer;
-import dev.langchain4j.community.data.document.transformer.graph.llm.LLMGraphTransformer;
+import dev.langchain4j.community.data.document.transformer.graph.LLMGraphTransformer;
 
 import java.time.Duration;
 import java.util.Set;
