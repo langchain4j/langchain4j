@@ -896,4 +896,82 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.responseSchema()).isEmpty();
         assertThat(config.responseJsonSchema()).isPresent();
     }
+
+    @Test
+    void should_enable_code_execution_when_no_tools() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.tools().get()).hasSize(1);
+        assertThat(config.tools().get().get(0).codeExecution()).isPresent();
+    }
+
+    @Test
+    void should_add_code_execution_after_the_other_google_tools() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true,
+                true,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.tools().get()).hasSize(4);
+        assertThat(config.tools().get().get(0).googleSearch()).isPresent();
+        assertThat(config.tools().get().get(1).googleMaps()).isPresent();
+        assertThat(config.tools().get().get(2).urlContext()).isPresent();
+        assertThat(config.tools().get().get(3).codeExecution()).isPresent();
+    }
+
+    @Test
+    void should_not_enable_code_execution_through_the_overloads_without_it() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, true, true, true, null, null, null, null);
+
+        assertThat(config.tools().get())
+                .hasSize(3)
+                .allSatisfy(tool -> assertThat(tool.codeExecution()).isEmpty());
+    }
 }

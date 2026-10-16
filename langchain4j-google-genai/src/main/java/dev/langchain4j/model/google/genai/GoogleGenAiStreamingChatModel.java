@@ -73,6 +73,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
+    private final boolean codeExecutionEnabled;
+    private final boolean includeCodeExecutionOutput;
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
@@ -91,6 +93,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
+        this.codeExecutionEnabled = getOrDefault(builder.codeExecution, false);
+        this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
@@ -167,6 +171,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                codeExecutionEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
@@ -210,8 +215,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     }
                     trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
-                    ChatResponse partialResponse =
-                            GoogleGenAiContentMapper.toChatResponse(chunk, modelName, returnThinking);
+                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(
+                            chunk, modelName, returnThinking, includeCodeExecutionOutput, textBuilder);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
                     if (aiMessage.attributes() != null
@@ -399,6 +404,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Boolean googleSearch;
         private Boolean googleMaps;
         private Boolean urlContext;
+        private Boolean codeExecution;
+        private Boolean includeCodeExecutionOutput;
         private List<SafetySetting> safetySettings;
         private ResponseFormat responseFormat;
         private List<String> allowedFunctionNames;
@@ -735,6 +742,33 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder enableUrlContext(boolean urlContext) {
             this.urlContext = urlContext;
+            return this;
+        }
+
+        /**
+         * Enables the code execution tool: the model can write Python code, run it in a sandbox hosted by Google, and use
+         * the result in its answer. Charts the code draws are returned as images, see {@link AiMessage#images()}.
+         * The current Gemini models reject a request that combines this tool with your own tools.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/code-execution">code execution docs</a>.
+         *
+         * @param codeExecution whether to enable code execution
+         * @return {@code this}
+         */
+        public Builder enableCodeExecution(boolean codeExecution) {
+            this.codeExecution = codeExecution;
+            return this;
+        }
+
+        /**
+         * Adds the code the model executed, and the output of that code, to the {@link AiMessage} text as Markdown code
+         * blocks. When the code fails, the outcome and the error output are added instead. Defaults to {@code false}:
+         * only the answer of the model is returned.
+         *
+         * @param includeCodeExecutionOutput whether to add the executed code and its output to the text
+         * @return {@code this}
+         */
+        public Builder includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
+            this.includeCodeExecutionOutput = includeCodeExecutionOutput;
             return this;
         }
 

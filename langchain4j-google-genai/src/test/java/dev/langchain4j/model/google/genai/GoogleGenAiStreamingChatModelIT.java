@@ -131,6 +131,23 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         assertThat(handler.get().aiMessage().text()).isNotBlank();
     }
 
+    @Test
+    void should_stream_code_run_with_code_execution_tool() {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is 2 to the power of 100? Generate and run code to compute it.", handler);
+
+        assertThat(handler.get().aiMessage().text())
+                .contains("Code executed:\n```python\n")
+                .contains("Output:\n```\n1267650600228229401496703205376");
+    }
+
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
         return GoogleGenAiTokenUsage.class;

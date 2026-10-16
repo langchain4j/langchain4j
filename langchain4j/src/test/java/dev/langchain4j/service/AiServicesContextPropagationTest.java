@@ -7,7 +7,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -232,6 +235,44 @@ class AiServicesContextPropagationTest {
         // when
         CompletableFuture<ChatResponse> response = new CompletableFuture<>();
         withRequestId("request-42", () -> assistant.chatTokenStream(USER_MESSAGE))
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(response::complete)
+                .onError(response::completeExceptionally)
+                .start();
+
+        // then
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("Berlin");
+        assertThat(tools.requestIdsSeen).containsExactly("request-42");
+    }
+
+    @Test
+    void should_process_complete_responses_of_a_token_stream_with_the_captured_context() throws Exception {
+
+        // given: no concurrent tool execution, so the tool runs on the complete response processing executor
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        Tools tools = new Tools();
+        AiServiceContext context = AiServiceContext.create(Assistant.class);
+        context.streamingChatModel =
+                StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin"));
+        context.toolService.tools(List.of(tools));
+        UserMessage userMessage = UserMessage.from(USER_MESSAGE);
+        InvocationContext invocationContext = withRequestId("request-42", () -> CapturedContextSupport.captureInto(
+                        InvocationContext.builder().chatMemoryId("default").userMessage(userMessage))
+                .build());
+        TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                .messages(List.of(userMessage))
+                .toolServiceContext(
+                        context.toolService.createContext(invocationContext, userMessage, List.of(userMessage)))
+                .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                .completeResponseProcessingExecutor(executor)
+                .context(context)
+                .invocationContext(invocationContext)
+                .build());
+
+        // when
+        CompletableFuture<ChatResponse> response = new CompletableFuture<>();
+        tokenStream
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(response::complete)
                 .onError(response::completeExceptionally)

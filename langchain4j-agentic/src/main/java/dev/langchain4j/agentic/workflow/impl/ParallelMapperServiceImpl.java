@@ -36,6 +36,11 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
 
     @Override
     public T build() {
+        if (subagents.size() != 1) {
+            throw new AgenticSystemConfigurationException(
+                    "A parallel mapper service requires exactly one subagent, but " + subagents.size()
+                            + " were provided.");
+        }
         boolean isArrayResult = isArrayResult();
         Class<? extends Object[]> arrayclass =
                 isArrayResult ? (Class<? extends Object[]>) agenticMethod.getReturnType() : null;
