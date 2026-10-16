@@ -17,7 +17,8 @@ public class DecisionCreateRequest {
     public String model;
 
     /**
-     * A {@link String}, or a {@link List} of {@link InputMessage}s.
+     * A {@link String}, or a {@link List} of {@link InputMessage}s, {@link FunctionCall}s and
+     * {@link FunctionCallOutput}s.
      */
     public Object input;
 
@@ -70,5 +71,26 @@ public class DecisionCreateRequest {
         public String text;
         public String imageUrl;
         public String detail;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class FunctionCall {
+
+        public String type = "function_call";
+        public String callId;
+        public String name;
+        public String arguments;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class FunctionCallOutput {
+
+        public String type = "function_call_output";
+        public String callId;
+
+        /**
+         * A {@link String}, or a {@link List} of {@link InputPart}s.
+         */
+        public Object output;
     }
 }

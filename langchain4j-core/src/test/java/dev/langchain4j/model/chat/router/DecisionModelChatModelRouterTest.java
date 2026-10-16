@@ -1,8 +1,10 @@
 package dev.langchain4j.model.chat.router;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -60,12 +62,12 @@ class DecisionModelChatModelRouterTest {
 
         assertThat(route).isEqualTo(ChatModelRoutingResult.route("complex"));
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "Hi!"),
                                 Map.of("role", "assistant", "text", "Hello!"),
-                                Map.of("role", "user", "text", "Write a parser for this grammar"))));
+                                Map.of("role", "user", "text", "Write a parser for this grammar")))));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "route",
@@ -129,12 +131,12 @@ class DecisionModelChatModelRouterTest {
                 UserMessage.from("And tomorrow?")));
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "What is the weather?"),
                                 Map.of("role", "assistant", "text", "It is sunny."),
-                                Map.of("role", "user", "text", "And tomorrow?"))));
+                                Map.of("role", "user", "text", "And tomorrow?")))));
     }
 
     @Test
@@ -298,10 +300,10 @@ class DecisionModelChatModelRouterTest {
 
         router.route(request(UserMessage.from(
                 TextContent.from("What is in this picture?"), ImageContent.from("https://example.com/cat.png"))));
-        assertThat(decisionModel.request().input()).isEqualTo("What is in this picture?\n[attached image]");
+        assertThat(decisionModel.request().input()).isEqualTo(TextInput.from("What is in this picture?\n[attached image]"));
 
         router.route(request(UserMessage.from(ImageContent.from("https://example.com/cat.png"))));
-        assertThat(decisionModel.requests().get(1).input()).isEqualTo("[attached image]");
+        assertThat(decisionModel.requests().get(1).input()).isEqualTo(TextInput.from("[attached image]"));
     }
 
     @Test
@@ -321,12 +323,12 @@ class DecisionModelChatModelRouterTest {
                 UserMessage.from("Java")));
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "Can you write a parser for this grammar?"),
                                 Map.of("role", "assistant", "text", "Sure, which language?"),
-                                Map.of("role", "user", "text", "Java"))));
+                                Map.of("role", "user", "text", "Java")))));
     }
 
     @Test

@@ -10,9 +10,14 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -60,18 +65,25 @@ public final class TypeSafeMapper {
         return typeSafeRequest;
     }
 
-    private static Object state(Object input) {
-        if (input instanceof Map<?, ?> map) {
+    private static Object state(DecisionInput input) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
             // text contents are sent as their text, other contents (such as images) are not supported
-            Map<Object, Object> state = new LinkedHashMap<>();
-            map.forEach((name, value) -> state.put(
+            Map<String, Object> state = new LinkedHashMap<>();
+            fields.fields().forEach((name, value) -> state.put(
                     name,
                     value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
                             ? text(value instanceof Content ? List.of(value) : (List<?>) value)
                             : value));
             return state;
+        } else if (input instanceof ContentsInput contents) {
+            return text(contents.contents());
+        } else if (input instanceof MessagesInput) {
+            throw new UnsupportedFeatureException(
+                    "TypeSafe does not support a conversation (a list of ChatMessages) as input");
         }
-        return input instanceof List<?> contents ? text(contents) : input;
+        throw new UnsupportedFeatureException("TypeSafe does not support " + input.getClass().getName() + " as input");
     }
 
     private static String text(List<?> contents) {

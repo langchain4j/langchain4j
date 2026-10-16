@@ -160,7 +160,7 @@ public class DecisionScoringModel implements ScoringModel {
 
     private DecisionRequest toRequest(List<String> batch, String query, DecisionRequestParameters parameters) {
         DecisionRequest.Builder request =
-                DecisionRequest.builder().input(Map.of("query", query)).parameters(parameters);
+                DecisionRequest.builder().inputFields(Map.of("query", query)).parameters(parameters);
         for (int i = 1; i <= batch.size(); i++) {
             request.question(
                     questionName(i),

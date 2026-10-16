@@ -224,7 +224,7 @@ public final class DecisionMethod {
                             inputParameters.stream().map(InputParameter::name).toList()));
         }
         return DecisionRequest.builder()
-                .input(input)
+                .inputFields(input)
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();

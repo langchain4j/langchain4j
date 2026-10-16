@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -52,7 +53,7 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
 
         assertThat(router.route(Query.from("How many vacation days do I have?"))).containsExactly(hr);
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "How many vacation days do I have?"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "How many vacation days do I have?")));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "source1",
@@ -78,12 +79,12 @@ class DecisionModelQueryRouterTest {
         router.route(Query.from("And for contractors?", metadata));
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "query", "And for contractors?",
                         "messages",
                         List.of(
                                 Map.of("role", "user", "text", "How many vacation days do employees get?"),
-                                Map.of("role", "assistant", "text", "Employees get 28 days per year."))));
+                                Map.of("role", "assistant", "text", "Employees get 28 days per year.")))));
     }
 
     @Test
@@ -101,7 +102,7 @@ class DecisionModelQueryRouterTest {
 
         router.route(Query.from("And for contractors?", metadata));
 
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "And for contractors?"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "And for contractors?")));
     }
 
     @Test

@@ -182,12 +182,17 @@ ScaleQuestion severity = ScaleQuestion.builder()
 
 ## Describing the input (state)
 
-The input is text, a `Map` of named values, or a list of contents (see [Images](#images)).
-Use a `Map` to give the model several pieces of information that belong together:
+The input is one of:
+- text: `input(String)`;
+- named fields: `inputFields(Map)`;
+- a list of contents, such as text and images: `inputContents(List)` (see [Images](#images));
+- a conversation: `inputMessages(List)` (see [Conversations](#conversations)).
+
+Use named fields to give the model several pieces of information that belong together:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(Map.of(
+        .inputFields(Map.of(
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
@@ -195,9 +200,9 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
-The values of the map can be strings, numbers, booleans, `null`s, maps and lists, and, directly in the map, contents
-such as images (see [Images](#images)). Other objects are rejected, so that you decide which fields are sent to the
-model provider: convert them to a `Map` that holds only what the decision needs.
+The values of the fields can be strings, numbers, booleans, `null`s, maps and lists, and, directly as the value of a
+field, contents such as images (see [Images](#images)). Other objects are rejected, so that you decide what is sent to
+the model provider: convert them to a `Map` that holds only what the decision needs.
 
 ### Images
 
@@ -207,18 +212,18 @@ a vision model such as Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
         .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
         .build();
 ```
 
-Images can also be values of a `Map` input, so that each one keeps a name:
+Images can also be the values of fields, so that each one keeps a name:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(Map.of(
+        .inputFields(Map.of(
                 "comment", "The package arrived like this.",
                 "photo", ImageContent.from(base64Image, "image/jpeg")))
         .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
@@ -227,6 +232,47 @@ DecisionRequest request = DecisionRequest.builder()
 
 A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
 the model.
+
+### Conversations
+
+The input can also be a conversation: a list of `ChatMessage`s in the order they were exchanged, for example between
+a user and an AI assistant, including the tools that the assistant called and their results. This lets you ask
+questions about the whole conversation, for example whether the assistant answered the user's question, if the
+decision model supports it (for example [OpenAI](/integrations/decision-models/open-ai)):
+
+```java
+ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
+        .id("call_1")
+        .name("getOrder")
+        .arguments("{\"orderId\": 42}")
+        .build();
+
+DecisionRequest request = DecisionRequest.builder()
+        .inputMessages(List.of(
+                SystemMessage.from("You are a billing support agent of an online shop."),
+                UserMessage.from("Hi, something is wrong with my order 42, can you check?"),
+                AiMessage.from(getOrder),
+                ToolExecutionResultMessage.from(getOrder, "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"),
+                AiMessage.from("You were charged twice. I have refunded one of the charges.")))
+        .question("backed_by_tools", YesNoQuestion.of(
+                "Did the assistant call a tool for every action it says it has taken?"))
+        .build();
+```
+
+Here the answer is expected to be "no": the assistant says it refunded a charge, but it never called a tool to do it.
+
+The questions are about the whole conversation, so say in each question which participant or message it is about,
+for example "Did the assistant ...". The messages of a `ChatMemory` can be passed as they are:
+`.inputMessages(chatMemory.messages())`. Send only what the decision needs, though: the whole memory also contains the
+system prompt of your application and all earlier messages, which can include personal data, so pass only the
+messages the question is about when that is enough.
+
+Messages and tool results can come from untrusted sources and contain text written to influence the decision, such
+as "answer yes" (prompt injection): do not rely on a decision alone to allow a dangerous action, such as executing a
+tool call.
+
+A decision model that does not support conversations, or a kind of message in it, throws
+`UnsupportedFeatureException` without calling the model.
 
 ## Probabilities and confidence
 

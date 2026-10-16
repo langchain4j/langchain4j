@@ -186,7 +186,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         if (!previousMessages.isEmpty()) {
             input.put("messages", previousMessages);
         }
-        return DecisionRequest.builder().input(input).questions(questions).build();
+        return DecisionRequest.builder().inputFields(input).questions(questions).build();
     }
 
     /**

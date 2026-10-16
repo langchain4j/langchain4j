@@ -195,7 +195,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         if (maxMessages == 1) {
             decisionRequest.input(DecisionModelInputUtils.text(messages.get(lastUserMessage)));
         } else {
-            decisionRequest.input(Map.of("messages", conversation(messages, lastUserMessage)));
+            decisionRequest.inputFields(Map.of("messages", conversation(messages, lastUserMessage)));
         }
         return decisionRequest.build();
     }

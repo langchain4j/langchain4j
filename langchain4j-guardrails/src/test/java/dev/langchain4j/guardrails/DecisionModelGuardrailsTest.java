@@ -1,9 +1,11 @@
 package dev.langchain4j.guardrails;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -53,7 +55,7 @@ class DecisionModelGuardrailsTest {
 
         assertThat(result.result()).isEqualTo(GuardrailResult.Result.SUCCESS);
         assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
-            assertThat(request.input()).isEqualTo("What is my balance?");
+            assertThat(request.input()).isEqualTo(TextInput.from("What is my balance?"));
             assertThat(request.questions())
                     .containsEntry(
                             "promptInjection",
@@ -110,7 +112,7 @@ class DecisionModelGuardrailsTest {
                 guardrail.validate(UserMessage.from(ImageContent.from("https://example.com/cat.png")));
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(decisionModel.request().input()).isEqualTo("[attached image]");
+        assertThat(decisionModel.request().input()).isEqualTo(TextInput.from("[attached image]"));
     }
 
     @Test
@@ -333,7 +335,7 @@ class DecisionModelGuardrailsTest {
         assertThat(result.<GuardrailResult.Failure>failures().get(0).message())
                 .isEqualTo("The response was rejected by the following checks: personalData");
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("userMessage", "What is John's phone number?", "response", "It is +1 555 0100"));
+                .isEqualTo(FieldsInput.from(Map.of("userMessage", "What is John's phone number?", "response", "It is +1 555 0100")));
     }
 
     @Test
@@ -360,7 +362,7 @@ class DecisionModelGuardrailsTest {
 
         assertThat(guardrail.validate(request).isSuccess()).isTrue();
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("userMessage", "What is the weather?", "response", "It is sunny."));
+                .isEqualTo(FieldsInput.from(Map.of("userMessage", "What is the weather?", "response", "It is sunny.")));
     }
 
     @Test
@@ -376,7 +378,7 @@ class DecisionModelGuardrailsTest {
 
         assertThat(result.isFatal()).isTrue();
         assertThat(result.getReprompt()).contains("Answer without revealing personal data.");
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("response", "It is +1 555 0100"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("response", "It is +1 555 0100")));
     }
 
     @Test

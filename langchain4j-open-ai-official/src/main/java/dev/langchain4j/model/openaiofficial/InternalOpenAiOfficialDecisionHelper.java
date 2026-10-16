@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import com.openai.core.JsonField;
 import com.openai.core.JsonValue;
@@ -13,17 +14,28 @@ import com.openai.models.decisions.DecisionInputMessage;
 import com.openai.models.decisions.DecisionInputPart;
 import com.openai.models.decisions.DecisionInputText;
 import com.openai.errors.OpenAIInvalidDataException;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -33,6 +45,7 @@ import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -53,38 +66,56 @@ class InternalOpenAiOfficialDecisionHelper {
                     + "with modelName(...) or on the request with DecisionRequestParameters.builder().modelName(...)");
         }
         DecisionCreateParams.Builder params = DecisionCreateParams.builder().model(request.modelName());
-        Object input = request.input();
-        if (input instanceof String text) {
-            params.input(text);
-        } else if (input instanceof Map<?, ?> map) {
-            // each value is labeled with its name, contents such as images follow their label
-            List<DecisionInputPart> parts = new ArrayList<>();
-            map.forEach((name, value) -> {
-                if (value instanceof Content content) {
-                    parts.add(textPart(name + ":"));
-                    parts.add(toInputPart(content));
-                } else if (isContents(value)) {
-                    parts.add(textPart(name + ":"));
-                    ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
-                } else {
-                    parts.add(textPart(name + ": " + Json.toJson(value)));
-                }
-            });
-            params.inputOfDecisionInputMessages(
-                    List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
-        } else {
-            List<DecisionInputPart> parts = new ArrayList<>();
-            for (Object content : (List<?>) input) {
-                parts.add(toInputPart((Content) content));
-            }
-            params.inputOfDecisionInputMessages(
-                    List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
-        }
+        addInput(params, request.input());
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
             parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
         }
         return params.build();
+    }
+
+    private static void addInput(DecisionCreateParams.Builder params, DecisionInput input) {
+        if (input instanceof TextInput text) {
+            params.input(text.text());
+        } else if (input instanceof FieldsInput fields) {
+            params.inputOfDecisionInputMessages(List.of(userMessage(toLabeledParts(fields.fields()))));
+        } else if (input instanceof ContentsInput contents) {
+            params.inputOfDecisionInputMessages(List.of(userMessage(toInputParts(contents.contents()))));
+        } else if (input instanceof MessagesInput messages) {
+            params.input(jsonField(toItems(messages.messages())));
+        } else {
+            throw new UnsupportedFeatureException(
+                    "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
+        }
+    }
+
+    private static DecisionInputMessage userMessage(List<DecisionInputPart> parts) {
+        return DecisionInputMessage.builder().contentOfParts(parts).build();
+    }
+
+    /**
+     * Each field is labeled with its name, contents such as images follow their label.
+     */
+    private static List<DecisionInputPart> toLabeledParts(Map<String, Object> fields) {
+        List<DecisionInputPart> parts = new ArrayList<>();
+        fields.forEach((name, value) -> {
+            if (value instanceof Content content) {
+                parts.add(textPart(name + ":"));
+                parts.add(toInputPart(content));
+            } else if (isContents(value)) {
+                parts.add(textPart(name + ":"));
+                ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
+            } else {
+                parts.add(textPart(name + ": " + Json.toJson(value)));
+            }
+        });
+        return parts;
+    }
+
+    private static List<DecisionInputPart> toInputParts(List<Content> contents) {
+        List<DecisionInputPart> parts = new ArrayList<>();
+        contents.forEach(content -> parts.add(toInputPart(content)));
+        return parts;
     }
 
     /**
@@ -103,6 +134,91 @@ class InternalOpenAiOfficialDecisionHelper {
     @SuppressWarnings("unchecked")
     private static <T> JsonField<T> jsonField(Object value) {
         return (JsonField<T>) (JsonField<?>) JsonValue.from(value);
+    }
+
+    /**
+     * The OpenAI Java SDK has no types for messages other than user messages and for tool calls yet, so the
+     * conversation is sent as JSON.
+     */
+    private static List<Map<String, Object>> toItems(List<ChatMessage> messages) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage systemMessage) {
+                items.add(message("system", List.of(part("input_text", systemMessage.text()))));
+            } else if (message instanceof UserMessage userMessage) {
+                items.add(message("user", toParts(userMessage.contents())));
+            } else if (message instanceof AiMessage aiMessage) {
+                if (!isNullOrEmpty(aiMessage.text())) {
+                    items.add(message("assistant", List.of(part("output_text", aiMessage.text()))));
+                }
+                if (aiMessage.hasToolExecutionRequests()) {
+                    aiMessage.toolExecutionRequests().forEach(request -> items.add(toFunctionCall(request)));
+                }
+            } else if (message instanceof ToolExecutionResultMessage result) {
+                items.add(toFunctionCallOutput(result));
+            } else {
+                throw new UnsupportedFeatureException("The OpenAI Decisions API does not support "
+                        + message.getClass().getSimpleName() + ". Supported messages: SystemMessage, UserMessage, "
+                        + "AiMessage and ToolExecutionResultMessage");
+            }
+        }
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("The conversation has nothing to send: AiMessages without text and tool "
+                    + "execution requests are skipped");
+        }
+        return items;
+    }
+
+    private static Map<String, Object> message(String role, List<Map<String, Object>> content) {
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("type", "message");
+        message.put("role", role);
+        message.put("content", content);
+        return message;
+    }
+
+    private static Map<String, Object> toFunctionCall(ToolExecutionRequest request) {
+        Map<String, Object> functionCall = new LinkedHashMap<>();
+        functionCall.put("type", "function_call");
+        functionCall.put("call_id", request.id());
+        functionCall.put("name", request.name());
+        functionCall.put("arguments", isNullOrBlank(request.arguments()) ? "{}" : request.arguments());
+        return functionCall;
+    }
+
+    private static Map<String, Object> toFunctionCallOutput(ToolExecutionResultMessage result) {
+        Map<String, Object> output = new LinkedHashMap<>();
+        output.put("type", "function_call_output");
+        output.put("call_id", result.id());
+        output.put("output", result.hasSingleText() ? result.text() : toParts(result.contents()));
+        return output;
+    }
+
+    private static List<Map<String, Object>> toParts(List<Content> contents) {
+        List<Map<String, Object>> parts = new ArrayList<>();
+        for (Content content : contents) {
+            if (content instanceof TextContent text) {
+                parts.add(part("input_text", text.text()));
+            } else if (content instanceof ImageContent image) {
+                Map<String, Object> part = new LinkedHashMap<>();
+                part.put("type", "input_image");
+                part.put("image_url", toImageUrl(image.image()));
+                part.put("detail", toDetail(image.detailLevel()).asString());
+                parts.add(part);
+            } else {
+                throw new UnsupportedFeatureException(
+                        "The OpenAI Decisions API supports only text and image input, but the input contains "
+                                + content.type());
+            }
+        }
+        return parts;
+    }
+
+    private static Map<String, Object> part(String type, String text) {
+        Map<String, Object> part = new LinkedHashMap<>();
+        part.put("type", type);
+        part.put("text", text);
+        return part;
     }
 
     private static boolean isContents(Object value) {
