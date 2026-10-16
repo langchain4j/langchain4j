@@ -81,16 +81,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 args = agentInvoker.toInvocationArguments(agenticScope);
             } catch (MissingArgumentException e) {
                 if (optional()) {
-                    LOG.info(
-                            "Skipping optional agent '{}' because of missing argument '{}'",
-                            agentInvoker.name(),
-                            e.argumentName());
-                    // a skipped agent that stores its result nowhere has no output key to read back
-                    String outputKey = agentInvoker.outputKey();
-                    Object response = outputKey == null ? null : agenticScope.readState(outputKey);
-                    if (planner != null) {
-                        planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
-                    }
                     return skip(agenticScope, planner, "missing argument '" + e.argumentName() + "'");
                 }
                 throw e;
