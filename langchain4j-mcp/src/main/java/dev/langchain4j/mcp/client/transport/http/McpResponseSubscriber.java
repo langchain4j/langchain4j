@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.transport.http;
 
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -18,6 +19,7 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
     private boolean draining;
     private boolean terminal;
     private boolean stopped;
+    private boolean errorHeadQueued;
 
     McpResponseSubscriber(Flow.Subscriber<? super HttpStreamingEvent> delegate, Executor executor) {
         this.delegate = delegate;
@@ -58,6 +60,12 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
 
     @Override
     public void onNext(HttpStreamingEvent event) {
+        boolean errorHead = event instanceof HttpErrorResponseReceived;
+        if (errorHead) {
+            synchronized (this) {
+                errorHeadQueued = true;
+            }
+        }
         enqueue(
                 () -> {
                     delegate.onNext(event);
@@ -67,6 +75,17 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
                     requestNext();
                 },
                 false);
+        if (errorHead) {
+            // The executor may still be processing another callback. Stop the HTTP body read now,
+            // while leaving the queued head in place for the transport's status handling.
+            Flow.Subscription subscription;
+            synchronized (this) {
+                subscription = upstream;
+            }
+            if (subscription != null) {
+                subscription.cancel();
+            }
+        }
     }
 
     @Override
@@ -82,7 +101,7 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
     private void requestNext() {
         Flow.Subscription subscription;
         synchronized (this) {
-            if (stopped || terminal || requested || demand == 0 || upstream == null) {
+            if (stopped || terminal || errorHeadQueued || requested || demand == 0 || upstream == null) {
                 return;
             }
             requested = true;

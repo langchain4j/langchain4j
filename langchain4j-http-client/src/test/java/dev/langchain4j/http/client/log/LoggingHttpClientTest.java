@@ -1,31 +1,33 @@
 package dev.langchain4j.http.client.log;
 
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.MockHttpClient;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.HttpResponseReceived;
-import dev.langchain4j.http.client.sse.HttpStreamingEvent;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.slf4j.Logger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.when;
+
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.Logger;
 
 class LoggingHttpClientTest {
 
@@ -197,6 +199,69 @@ class LoggingHttpClientTest {
         LoggingHttpClient client = new LoggingHttpClient(delegate, true, true, mock(Logger.class));
 
         assertThatThrownBy(() -> collect(client.stream(REQUEST))).hasCause(failure);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false", "true"})
+    void stream_forwards_error_head_and_synchronous_cancellation(boolean logResponses) {
+        HttpErrorResponseReceived head = new HttpErrorResponseReceived(401, Map.of());
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicBoolean bodyRead = new AtomicBoolean();
+        HttpClient delegate = mock(HttpClient.class);
+        ServerSentEventParser parser = new DummyParser();
+        Flow.Publisher<HttpStreamingEvent> publisher = subscriber -> subscriber.onSubscribe(new Flow.Subscription() {
+            private boolean sent;
+
+            @Override
+            public void request(long n) {
+                if (sent || cancelled.get()) {
+                    return;
+                }
+                sent = true;
+                subscriber.onNext(head);
+                if (!cancelled.get()) {
+                    bodyRead.set(true);
+                    subscriber.onError(new IllegalStateException("error body was read"));
+                }
+            }
+
+            @Override
+            public void cancel() {
+                cancelled.set(true);
+            }
+        });
+        when(delegate.stream(REQUEST, parser)).thenReturn(publisher);
+        List<HttpStreamingEvent> received = new ArrayList<>();
+        new LoggingHttpClient(delegate, false, logResponses, mock(Logger.class))
+                .stream(REQUEST, parser).subscribe(new Flow.Subscriber<>() {
+                    private Flow.Subscription subscription;
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        this.subscription = subscription;
+                        subscription.request(1);
+                    }
+
+                    @Override
+                    public void onNext(HttpStreamingEvent event) {
+                        received.add(event);
+                        subscription.cancel();
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        throw new AssertionError("unexpected terminal error", error);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        throw new AssertionError("unexpected completion");
+                    }
+                });
+
+        assertThat(received).containsExactly(head);
+        assertThat(cancelled).isTrue();
+        assertThat(bodyRead).isFalse();
     }
 
     // ---------- helpers ----------

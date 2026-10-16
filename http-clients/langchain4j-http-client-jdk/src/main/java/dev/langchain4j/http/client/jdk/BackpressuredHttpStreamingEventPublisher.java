@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -60,7 +61,7 @@ final class BackpressuredHttpStreamingEventPublisher implements Publisher<HttpSt
         private CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future;
         private Subscription bodySubscription;
         private ServerSentEventParser.Incremental incremental;
-        private HttpResponseReceived responseEvent;
+        private HttpStreamingEvent responseEvent;
         private Iterator<ByteBuffer> buffers = Collections.emptyIterator();
         private Iterator<ServerSentEvent> events = Collections.emptyIterator();
         private ByteArrayOutputStream errorBody;
@@ -120,6 +121,10 @@ final class BackpressuredHttpStreamingEventPublisher implements Publisher<HttpSt
                             incremental = parser.incremental();
                         } else {
                             errorBody = new ByteArrayOutputStream();
+                            if (demand > 0) {
+                                responseEvent = new HttpErrorResponseReceived(
+                                        statusCode, response.headers().map());
+                            }
                         }
                     }
                 }

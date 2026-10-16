@@ -96,6 +96,12 @@ JSON responses, SSE responses, initialization, notifications, and the optional s
 Framework integrations can supply an implementation backed by their own HTTP client without
 reimplementing MCP protocol handling.
 
+Updated backends emit `HttpErrorResponseReceived` for a non-2xx response when subscriber demand
+is available, before reading the error body. MCP cancels that response immediately and handles
+its status, including legacy 404 session recovery. Other HTTP consumers can ignore the advisory
+event and still receive the usual terminal `HttpException` with its error body. Backends that
+do not emit the event remain supported, with their existing error-response timing.
+
 The default backend makes HTTP body reads follow subscriber demand, so a temporarily busy
 progress or notification callback pauses consumption instead of overflowing an event queue.
 When supplying a backend, select its demand-driven streaming mode where available; for

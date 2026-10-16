@@ -3,10 +3,10 @@ package dev.langchain4j.mcp.client.transport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -163,7 +163,7 @@ class StreamableHttpMcpTransportContextTest {
         Exchange rejected = httpClient.nextExchange();
         assertScope(rejected, "user-a");
         identity.remove();
-        onOtherThread(() -> rejected.fail(new HttpException(404, "Session expired")));
+        onOtherThread(() -> rejected.errorHead(404));
 
         Exchange reinitialization = httpClient.nextExchange();
         assertThat(reinitialization.request.body()).contains("\"method\":\"initialize\"");
@@ -463,6 +463,10 @@ class StreamableHttpMcpTransportContextTest {
                     .build()));
         }
 
+        void errorHead(int status) {
+            subscriber.onNext(new HttpErrorResponseReceived(status, Map.of()));
+        }
+
         void body(String body) {
             for (byte value : body.getBytes(StandardCharsets.UTF_8)) {
                 parser.feed(ByteBuffer.wrap(new byte[] {value})).forEach(subscriber::onNext);
@@ -480,10 +484,6 @@ class StreamableHttpMcpTransportContextTest {
                 body(body);
             }
             complete();
-        }
-
-        void fail(Throwable failure) {
-            subscriber.onError(failure);
         }
 
         @Override

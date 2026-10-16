@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -36,7 +37,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -287,7 +290,44 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                     .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                     .withBufferSize(bufferSize);
 
+            CompletableFuture<Void> errorHeadDelivered = new CompletableFuture<>();
+            Subscriber<HttpStreamingEvent> trackingSubscriber = new Subscriber<>() {
+                private Subscription subscription;
+
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    this.subscription = subscription;
+                    subscriber.onSubscribe(subscription);
+                }
+
+                @Override
+                public void onNext(HttpStreamingEvent event) {
+                    try {
+                        subscriber.onNext(event);
+                        if (event instanceof HttpErrorResponseReceived) {
+                            errorHeadDelivered.complete(null);
+                        }
+                    } catch (Throwable error) {
+                        errorHeadDelivered.completeExceptionally(error);
+                        subscription.cancel();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    subscriber.onError(error);
+                }
+
+                @Override
+                public void onComplete() {
+                    subscriber.onComplete();
+                }
+            };
+
             Publisher<HttpStreamingEvent> publisher = ZeroPublisher.create(config, tube -> {
+                if (tube.cancelled()) {
+                    return;
+                }
                 CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =
                         client.sendAsync(request, BodyHandlers.ofPublisher());
 
@@ -297,33 +337,76 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                 // so a slow consumer that overflows the buffer aborts the socket read instead of draining it to EOF.
                 // On a normal completion the future/subscription are already done, so the cancels are no-ops.
                 AtomicReference<Subscription> bodySubRef = new AtomicReference<>();
-                tube.whenTerminates(() -> {
-                    future.cancel(true);
+                AtomicReference<Publisher<List<ByteBuffer>>> bodyPublisherRef = new AtomicReference<>();
+                AtomicBoolean bodySubscribed = new AtomicBoolean();
+                Runnable cancelBody = () -> {
                     Subscription bodySub = bodySubRef.get();
                     if (bodySub != null) {
                         bodySub.cancel();
+                    } else {
+                        Publisher<List<ByteBuffer>> body = bodyPublisherRef.get();
+                        if (body != null && bodySubscribed.compareAndSet(false, true)) {
+                            subscribeAndCancel(body, bodySubRef);
+                        }
                     }
+                };
+                tube.whenTerminates(() -> {
+                    future.cancel(true);
+                    cancelBody.run();
+                    errorHeadDelivered.cancel(false);
                 });
+                // Cancellation may have won after sendAsync started but before the termination
+                // action was registered. Tube does not replay termination to late listeners.
+                if (tube.cancelled()) {
+                    future.cancel(true);
+                    cancelBody.run();
+                    errorHeadDelivered.cancel(false);
+                }
 
                 future.thenAccept(jdkResponse -> {
+                            Publisher<List<ByteBuffer>> body = jdkResponse.body();
+                            bodyPublisherRef.set(body);
                             if (tube.cancelled()) {
+                                cancelBody.run();
                                 return;
                             }
                             if (!isSuccessful(jdkResponse)) {
-                                readErrorBodyAsync(jdkResponse.body(), bodySubRef)
-                                        .whenComplete((body, err) -> {
-                                            if (err != null) {
-                                                tube.fail(err);
-                                            } else {
-                                                tube.fail(new HttpException(jdkResponse.statusCode(), body));
-                                            }
-                                        });
+                                Runnable readErrorBody = () -> {
+                                    if (tube.cancelled() || !bodySubscribed.compareAndSet(false, true)) {
+                                        return;
+                                    }
+                                    readErrorBodyAsync(body, bodySubRef, tube::cancelled)
+                                            .whenComplete((bodyText, err) -> {
+                                                if (err != null) {
+                                                    tube.fail(err);
+                                                } else {
+                                                    tube.fail(new HttpException(jdkResponse.statusCode(), bodyText));
+                                                }
+                                            });
+                                };
+                                if (tube.outstandingRequests() > 0) {
+                                    tube.send(new HttpErrorResponseReceived(
+                                            jdkResponse.statusCode(),
+                                            jdkResponse.headers().map()));
+                                    errorHeadDelivered.whenComplete((ignored, error) -> {
+                                        if (error == null) {
+                                            readErrorBody.run();
+                                        } else {
+                                            cancelBody.run();
+                                        }
+                                    });
+                                } else {
+                                    readErrorBody.run();
+                                }
                                 return;
                             }
                             tube.send(new HttpResponseReceived(fromJdkResponse(jdkResponse, null)));
 
                             ServerSentEventParser.Incremental incremental = parser.incremental();
-                            jdkResponse.body().subscribe(new Subscriber<>() {
+                            if (!bodySubscribed.compareAndSet(false, true)) {
+                                return;
+                            }
+                            body.subscribe(new Subscriber<>() {
 
                                 @Override
                                 public void onSubscribe(Subscription subscription) {
@@ -395,11 +478,31 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                         });
             });
 
-            publisher.subscribe(subscriber);
+            publisher.subscribe(trackingSubscriber);
+        }
+
+        private static void subscribeAndCancel(
+                Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef) {
+            body.subscribe(new Subscriber<>() {
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    bodySubRef.set(subscription);
+                    subscription.cancel();
+                }
+
+                @Override
+                public void onNext(List<ByteBuffer> ignored) {}
+
+                @Override
+                public void onError(Throwable ignored) {}
+
+                @Override
+                public void onComplete() {}
+            });
         }
 
         private static CompletableFuture<String> readErrorBodyAsync(
-                Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef) {
+                Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef, BooleanSupplier cancelled) {
             CompletableFuture<String> future = new CompletableFuture<>();
             body.subscribe(new Subscriber<>() {
                 private final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -407,7 +510,11 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     bodySubRef.set(subscription);
-                    subscription.request(Long.MAX_VALUE);
+                    if (cancelled.getAsBoolean()) {
+                        subscription.cancel();
+                    } else {
+                        subscription.request(Long.MAX_VALUE);
+                    }
                 }
 
                 @Override

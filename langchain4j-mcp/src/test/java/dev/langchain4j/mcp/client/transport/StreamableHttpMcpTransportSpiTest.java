@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -18,6 +19,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -38,6 +40,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -194,6 +197,56 @@ class StreamableHttpMcpTransportSpiTest {
         httpClient.nextExchange().subscriber.onError(failure);
 
         assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCause(failure);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 503})
+    void should_fail_as_soon_as_error_response_headers_arrive(int status) throws Exception {
+        start(builder());
+        CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+        Exchange exchange = httpClient.nextExchange();
+
+        exchange.errorHead(status);
+
+        ExecutionException failure = assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+        assertThat(failure.getCause()).isInstanceOf(HttpException.class);
+        assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(status);
+        assertThat(exchange.cancelled).isTrue();
+    }
+
+    @Test
+    void should_reinitialize_and_retry_after_404_headers_without_waiting_for_error_body() throws Exception {
+        start(builder());
+        CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
+        Exchange initialization = httpClient.nextExchange();
+        initialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        initialization.body(INITIALIZE_RESULT);
+        initialization.complete();
+        Exchange notification = httpClient.nextExchange();
+        notification.open(202, Map.of());
+        notification.complete();
+        assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
+
+        CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+        Exchange expired = httpClient.nextExchange();
+        expired.errorHead(404);
+        assertThat(expired.cancelled).isTrue();
+
+        Exchange reinitialization = httpClient.nextExchange();
+        assertThat(reinitialization.request.body()).contains("\"method\":\"initialize\"");
+        reinitialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        reinitialization.body(INITIALIZE_RESULT);
+        reinitialization.complete();
+        Exchange reinitializationNotification = httpClient.nextExchange();
+        reinitializationNotification.open(202, Map.of());
+        reinitializationNotification.complete();
+        Exchange retry = httpClient.nextExchange();
+        assertThat(retry.request.body()).contains("\"id\":1");
+        retry.open(200, Map.of("Content-Type", List.of("application/json")));
+        retry.body(TOOLS_RESULT);
+        retry.complete();
+
+        assertThat(result.get(5, TimeUnit.SECONDS)).isEqualTo(TOOLS_RESULT);
     }
 
     @Test
@@ -689,6 +742,10 @@ class StreamableHttpMcpTransportSpiTest {
                     .statusCode(status)
                     .headers(headers)
                     .build()));
+        }
+
+        void errorHead(int status) {
+            subscriber.onNext(new HttpErrorResponseReceived(status, Map.of()));
         }
 
         void body(String body) {
