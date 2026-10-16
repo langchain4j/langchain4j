@@ -27,7 +27,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j--
                         """;
 
-        assertEquals(normalize(expected), body);
+        assertEquals(normalize(expected, publisher), body);
     }
 
     @Test
@@ -50,7 +50,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j--
                         """;
 
-        assertEquals(normalize(expected), body);
+        assertEquals(normalize(expected, publisher), body);
     }
 
     @Test
@@ -78,7 +78,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j--
                         """;
 
-        assertEquals(normalize(expected), body);
+        assertEquals(normalize(expected, publisher), body);
     }
 
     @Test
@@ -100,7 +100,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j--
                         """;
 
-        assertEquals(normalize(expected), body);
+        assertEquals(normalize(expected, publisher), body);
     }
 
     @Test
@@ -122,7 +122,7 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j--
                         """;
 
-        assertEquals(normalize(expected), body);
+        assertEquals(normalize(expected, publisher), body);
     }
 
     @Test
@@ -133,9 +133,10 @@ class MultipartBodyPublisherTest {
 
         // The Content-Type header must advertise the same boundary the body is delimited with, otherwise the
         // server cannot parse the payload.
-        assertEquals("multipart/form-data; boundary=----LangChain4j", MultipartBodyPublisher.contentType());
         org.junit.jupiter.api.Assertions.assertTrue(
-                bodyAsString(publisher.parts()).contains("------LangChain4j"));
+                publisher.contentType().startsWith("multipart/form-data; boundary="));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                bodyAsString(publisher.parts()).contains("--" + boundary(publisher)));
     }
 
     private static String bodyAsString(List<byte[]> parts) {
@@ -146,7 +147,11 @@ class MultipartBodyPublisherTest {
         return out.toString(UTF_8);
     }
 
-    private static String normalize(String s) {
-        return s.replace("\n", "\r\n");
+    private static String boundary(MultipartBodyPublisher publisher) {
+        return publisher.contentType().substring("multipart/form-data; boundary=".length());
+    }
+
+    private static String normalize(String s, MultipartBodyPublisher publisher) {
+        return s.replace("\n", "\r\n").replace("----LangChain4j", boundary(publisher));
     }
 }
