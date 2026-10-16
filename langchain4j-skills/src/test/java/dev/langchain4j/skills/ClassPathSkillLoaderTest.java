@@ -11,10 +11,13 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ClassPathSkillLoaderTest {
 
@@ -73,6 +76,35 @@ class ClassPathSkillLoaderTest {
 
         assertThat(skill.resources()).hasSize(1);
         assertThat(skill.resources().get(0).relativePath()).isEqualTo("references/processing-result.md");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_preserve_resources_with_scripts_prefix(boolean fromJar, @TempDir Path tempDir) throws IOException {
+        Path skillsDirectory = tempDir.resolve("skills");
+        Path skillDirectory = skillsDirectory.resolve("test-skill");
+        Map<String, String> files = Map.of(
+                "SKILL.md", "---\nname: test-skill\ndescription: Test skill\n---\nInstructions",
+                "scripts/run.sh", "echo hello",
+                "scripts/nested/helper.sh", "echo helper",
+                "scripts-guide.md", "Script usage guide",
+                "scripts-examples/readme.md", "Script examples",
+                "references/guide.md", "Reference guide");
+        for (Map.Entry<String, String> file : files.entrySet()) {
+            Path path = skillDirectory.resolve(file.getKey());
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, file.getValue());
+        }
+
+        Path classpathEntry = fromJar ? createSkillsJar(tempDir, skillsDirectory) : tempDir;
+        try (URLClassLoader classLoader =
+                new URLClassLoader(new URL[] {classpathEntry.toUri().toURL()}, null)) {
+            Skill skill = ClassPathSkillLoader.loadSkill("skills/test-skill", classLoader);
+
+            assertThat(skill.resources())
+                    .extracting(SkillResource::relativePath)
+                    .containsExactlyInAnyOrder("scripts-guide.md", "scripts-examples/readme.md", "references/guide.md");
+        }
     }
 
     @Test
@@ -136,7 +168,10 @@ class ClassPathSkillLoaderTest {
      * works properly when skills are packaged inside a JAR.
      */
     private static Path createSkillsJar(Path directory) throws IOException {
-        Path sourceDir = Path.of("src/test/resources/skills");
+        return createSkillsJar(directory, Path.of("src/test/resources/skills"));
+    }
+
+    private static Path createSkillsJar(Path directory, Path sourceDir) throws IOException {
         Path jarFile = directory.resolve("skills.jar");
         try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(jarFile))) {
             Files.walkFileTree(sourceDir, new SimpleFileVisitor<>() {
