@@ -16,6 +16,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.junit.jupiter.api.Test;
 
@@ -182,11 +183,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Keep your answer to one sentence."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Keep your answer to one sentence."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -204,11 +206,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Method: answer."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Method: answer."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -226,11 +229,10 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(systemMessage("You are a helpful assistant."), userMessage("What is 2 + 2?"))
+                        .build());
     }
 
     @Test
@@ -249,10 +251,35 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant. Always be concise."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a helpful assistant. Always be concise."),
+                                userMessage("What is 2 + 2?"))
+                        .build());
+    }
+
+    interface ChatResponseAssistant {
+
+        ChatResponse chat(String message);
+    }
+
+    @Test
+    void should_not_append_output_format_instructions_when_return_type_is_ChatResponse() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+
+        ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        ChatResponse chatResponse = assistant.chat("Hello");
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 }
