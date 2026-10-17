@@ -145,14 +145,14 @@
         {
           "code": "java.method.returnTypeChanged",
           "old": "method java.lang.String dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest::voice()",
-          "new": "method dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechVoice dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest::voice()",
-          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiTextToSpeechVoice type. Affects an internal wire DTO only."
+          "new": "method dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiVoice dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest::voice()",
+          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiVoice type. Affects an internal wire DTO only."
         },
         {
           "code": "java.method.parameterTypeChanged",
           "old": "parameter dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder::voice(===java.lang.String===)",
-          "new": "parameter dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder::voice(===dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechVoice===)",
-          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiTextToSpeechVoice type. Affects an internal wire DTO only."
+          "new": "parameter dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder::voice(===dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiVoice===)",
+          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiVoice type. Affects an internal wire DTO only."
         }
       ]
     }

@@ -212,10 +212,6 @@ public class OpenAiVoiceConsentModel {
             return this;
         }
 
-        /**
-         * @param logger an alternate {@link Logger} to be used instead of the default one provided by Langchain4J for logging requests and responses.
-         * @return {@code this}.
-         */
         public Builder logger(Logger logger) {
             this.logger = logger;
             return this;

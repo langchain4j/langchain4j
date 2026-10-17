@@ -8,7 +8,7 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
-import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechVoice;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiVoice;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +27,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("gpt-4o-mini-tts")
                 .text("Hello")
-                .voice(OpenAiTextToSpeechVoice.custom("voice_1234"))
+                .voice(OpenAiVoice.custom("voice_1234"))
                 .instructions("Speak cheerfully")
                 .responseFormat("wav")
                 .speed(1.5)
@@ -60,7 +60,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("tts-1")
                 .text("Hello")
-                .voice(OpenAiTextToSpeechVoice.BuiltIn.ALLOY)
+                .voice(OpenAiVoice.BuiltIn.ALLOY)
                 .build();
 
         client(httpClient).textToSpeech(request).execute();
@@ -87,7 +87,7 @@ class DefaultOpenAiClientTextToSpeechTest {
         OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
                 .model("gpt-4o-mini-tts")
                 .text("Hello")
-                .voice(OpenAiTextToSpeechVoice.BuiltIn.CORAL)
+                .voice(OpenAiVoice.BuiltIn.CORAL)
                 .responseFormat("pcm")
                 .streamFormat("sse")
                 .build();
@@ -100,6 +100,24 @@ class DefaultOpenAiClientTextToSpeechTest {
         assertThat(response.usage().inputTokens()).isEqualTo(14);
         assertThat(response.usage().outputTokens()).isEqualTo(101);
         assertThat(response.usage().totalTokens()).isEqualTo(115);
+    }
+
+    @Test
+    void should_copy_all_fields_from_request() {
+        OpenAiTextToSpeechRequest request = OpenAiTextToSpeechRequest.builder()
+                .model("gpt-4o-mini-tts")
+                .text("Hello")
+                .voice(OpenAiVoice.BuiltIn.CORAL)
+                .instructions("Speak cheerfully")
+                .responseFormat("wav")
+                .speed(1.5)
+                .streamFormat("audio")
+                .build();
+
+        OpenAiTextToSpeechRequest copy =
+                OpenAiTextToSpeechRequest.builder().from(request).build();
+
+        assertThat(Json.toJson(copy)).isEqualTo(Json.toJson(request));
     }
 
     private static OpenAiClient client(MockHttpClient httpClient) {

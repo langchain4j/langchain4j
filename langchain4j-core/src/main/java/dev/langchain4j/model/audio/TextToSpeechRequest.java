@@ -1,8 +1,11 @@
 package dev.langchain4j.model.audio;
 
-import dev.langchain4j.Experimental;
-
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import java.util.Objects;
 
 @Experimental
 public class TextToSpeechRequest {
@@ -21,6 +24,27 @@ public class TextToSpeechRequest {
 
     public String voice() {
         return voice;
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TextToSpeechRequest that = (TextToSpeechRequest) o;
+        return Objects.equals(this.text, that.text) && Objects.equals(this.voice, that.voice);
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public int hashCode() {
+        return Objects.hash(text, voice);
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public String toString() {
+        return "TextToSpeechRequest {" + " text = " + quoted(text) + ", voice = " + quoted(voice) + " }";
     }
 
     public static Builder builder() {

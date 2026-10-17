@@ -23,14 +23,20 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OpenAiVoiceConsentListResponse {
 
+    @JsonProperty
+    private final List<OpenAiVoiceConsentResponse> data;
+
+    /**
+     * Whether there are more consents after this page.
+     */
+    @JsonProperty
+    private final Boolean hasMore;
+
     /**
      * The object type, which is always list.
      */
     @JsonProperty
     private final String object;
-
-    @JsonProperty
-    private final List<OpenAiVoiceConsentResponse> data;
 
     /**
      * The ID of the first consent of this page, or {@code null}.
@@ -44,12 +50,6 @@ public class OpenAiVoiceConsentListResponse {
      */
     @JsonProperty
     private final String lastId;
-
-    /**
-     * Whether there are more consents after this page.
-     */
-    @JsonProperty
-    private final Boolean hasMore;
 
     @JsonCreator
     public OpenAiVoiceConsentListResponse(Builder builder) {

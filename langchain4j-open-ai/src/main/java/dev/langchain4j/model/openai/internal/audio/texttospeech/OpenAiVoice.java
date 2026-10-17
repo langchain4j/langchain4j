@@ -12,17 +12,16 @@ import java.util.Objects;
  *     <li>a custom voice, serialized as an object: {@code {"id": "voice_1234"}}</li>
  * </ul>
  */
-public sealed interface OpenAiTextToSpeechVoice
-        permits OpenAiTextToSpeechVoice.BuiltIn, OpenAiTextToSpeechVoice.Custom {
+public sealed interface OpenAiVoice permits OpenAiVoice.BuiltIn, OpenAiVoice.Custom {
 
-    static OpenAiTextToSpeechVoice custom(String id) {
+    static OpenAiVoice custom(String id) {
         return new Custom(id);
     }
 
     /**
      * A built-in voice, serialized as its name.
      */
-    enum BuiltIn implements OpenAiTextToSpeechVoice {
+    enum BuiltIn implements OpenAiVoice {
         @JsonProperty("alloy")
         ALLOY,
         @JsonProperty("ash")
@@ -54,7 +53,7 @@ public sealed interface OpenAiTextToSpeechVoice
     /**
      * A custom voice, serialized as an object holding its ID.
      */
-    final class Custom implements OpenAiTextToSpeechVoice {
+    final class Custom implements OpenAiVoice {
 
         @JsonProperty
         private final String id;

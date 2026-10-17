@@ -19,7 +19,7 @@ public class OpenAiTextToSpeechRequest {
      * The text to generate audio for. The maximum length is 4096 characters.
      */
     @JsonProperty
-    private final String input;
+    private final String text;
 
     /**
      * ID of the model to use. The options are : <br/>
@@ -34,10 +34,10 @@ public class OpenAiTextToSpeechRequest {
      * or a custom voice.
      */
     @JsonProperty
-    private final OpenAiTextToSpeechVoice voice;
+    private final OpenAiVoice voice;
 
     /**
-     * Control the voice of your generated audio with additional instructions.
+     * Control the voice of your generated audio with additional instructions (Optional).
      * Does not work with tts-1 or tts-1-hd.
      */
     @JsonProperty
@@ -50,7 +50,7 @@ public class OpenAiTextToSpeechRequest {
     private final String responseFormat;
 
     /**
-     * The speed of the generated audio. Select a value from 0.25 to 4.0. 1.0 is the default.
+     * The speed of the generated audio (Optional). Select a value from 0.25 to 4.0. 1.0 is the default.
      */
     @JsonProperty
     private final Double speed;
@@ -64,7 +64,7 @@ public class OpenAiTextToSpeechRequest {
 
     @JsonCreator
     public OpenAiTextToSpeechRequest(Builder builder) {
-        this.input = builder.text;
+        this.text = builder.text;
         this.model = builder.model;
         this.voice = builder.voice;
         this.instructions = builder.instructions;
@@ -74,14 +74,14 @@ public class OpenAiTextToSpeechRequest {
     }
 
     public String text() {
-        return input;
+        return text;
     }
 
     public String model() {
         return model;
     }
 
-    public OpenAiTextToSpeechVoice voice() {
+    public OpenAiVoice voice() {
         return voice;
     }
 
@@ -110,11 +110,22 @@ public class OpenAiTextToSpeechRequest {
 
         private String text;
         private String model;
-        private OpenAiTextToSpeechVoice voice;
+        private OpenAiVoice voice;
         private String instructions;
         private String responseFormat;
         private Double speed;
         private String streamFormat;
+
+        public Builder from(OpenAiTextToSpeechRequest request) {
+            text(request.text);
+            model(request.model);
+            voice(request.voice);
+            instructions(request.instructions);
+            responseFormat(request.responseFormat);
+            speed(request.speed);
+            streamFormat(request.streamFormat);
+            return this;
+        }
 
         public Builder text(String text) {
             this.text = text;
@@ -126,7 +137,7 @@ public class OpenAiTextToSpeechRequest {
             return this;
         }
 
-        public Builder voice(OpenAiTextToSpeechVoice voice) {
+        public Builder voice(OpenAiVoice voice) {
             this.voice = voice;
             return this;
         }
