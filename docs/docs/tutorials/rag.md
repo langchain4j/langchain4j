@@ -507,6 +507,107 @@ One technique that works quite well for improving retrieval is to include the `D
 in each `TextSegment`.
 
 
+### Embedding Input Mapper
+
+`EmbeddingInputMapper` is a standalone transformation layer that maps one `TextSegment` to zero or more
+`TextSegment`s used **only as inputs for embedding**. By default, each `TextSegment` is embedded as-is, and the same segment is stored in the `EmbeddingStore`.
+`EmbeddingInputMapper` decouples these two concerns: the mapped segments are embedded, while the original
+segment is what gets stored and returned by retrieval.
+
+This is useful when the text a user searches for is not the same as the text you want to give to the LLM.
+A common example is code. General-purpose embedding models are trained mostly on natural language, and raw
+source code is quite different from that training distribution: identifiers, syntax, and control flow carry
+meaning that a text embedding model may not represent well. As a result, embedding raw code directly often
+retrieves poorly.
+
+A better retrieval representation is usually a natural-language description of the code: what it does, which
+problem it solves, when it should be used (the application scenario), what its inputs and outputs are, and what
+questions it answers. This bridges the vocabulary gap between a natural-language query and the code. For example,
+a user may ask "How do I parse a CSV file?", while the code only contains `CsvParser.parse(...)`. A description
+that says "parses CSV files into rows" contains the query vocabulary; the raw code may not. Generating several
+different descriptions for the same code gives the retriever multiple chances to match the user's wording and
+intent.
+
+The same idea applies to non-code text: a summary, a contextualized chunk, or a set of hypothetical questions
+can be a better retrieval representation than the raw text.
+
+```java
+public class CodeDescriptionMapping implements EmbeddingInputMapper {
+
+    @Override
+    public List<TextSegment> map(TextSegment segment) {
+        String code = segment.text();
+        String filePath = segment.metadata().getString("file_path");
+        String context = (filePath == null ? "" : filePath + "\n") + code;
+
+        // These helpers are application-specific. They can call a ChatModel,
+        // read a precomputed cache, or be generated offline.
+        String explanation = explainWhatItDoes(context);
+        String usage = describeWhenToUseIt(context);
+        String questions = generateQuestionsUsersMayAsk(context);
+
+        return List.of(
+                // Keep the original code (and its path) as one of the representations
+                // so exact identifiers, class names, and signatures remain searchable.
+                TextSegment.from(context),
+                TextSegment.from("What this code does:\n" + explanation),
+                TextSegment.from("When to use this code:\n" + usage),
+                TextSegment.from("Questions this code answers:\n" + questions)
+        );
+    }
+}
+```
+
+Then, you can call `map` for one segment or `mapAll` for a batch, then pass the result to an `EmbeddingModel`:
+
+```java
+EmbeddingInputMapper codeMapping = new CodeDescriptionMapping();
+
+List<TextSegment> embeddingInputs = codeMapping.map(codeSegment);
+List<Embedding> embeddings = embeddingModel.embedAll(embeddingInputs).content();
+
+// The original segment must be stored once per embedding.
+List<TextSegment> segmentsToStore = codeMapping.originalSegmentList(codeSegment, embeddingInputs);
+embeddingStore.addAll(embeddings, segmentsToStore);
+```
+
+For a batch, `originalSegmentList(segments, mappedSegments)` returns the same nested shape as
+`mappedSegments`, with each inner list containing the corresponding original segment.
+
+`map` may return an empty list or `null` to skip a segment. For a single representation, return a
+single-element list.
+
+#### LLMBasedEmbeddingInputMapper
+
+`LLMBasedEmbeddingInputMapper` is a ready-to-use implementation that asks a `ChatModel` to generate
+retrieval-oriented descriptions for each segment. The LLM decides how many descriptions are useful, and the
+original segment is always included as one of the mapped segments.
+
+```java
+EmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
+```
+
+Each call invokes the LLM, so cache generated descriptions when the same content is ingested repeatedly.
+
+#### Possible negative impacts on retrieval
+
+Because one segment can produce multiple vectors, increase the retriever's `maxResults` to at least
+`desiredDistinctResults * representationsPerSegment` to ensure enough distinct segments are retrieved.
+Otherwise, with the default `maxResults = 3` and three representations per segment, all result slots
+may be occupied by vectors belonging to the same segment, which the aggregator then fuses into a 
+single `Content`. Both `DefaultContentAggregator` and `ReRankingContentAggregator` combine duplicate 
+`Content` by adding their reciprocal-rank scores, boosting segments that match through multiple
+representations. To avoid this behavior, deduplicate results before aggregation or use a single
+representation per segment; when querying an `EmbeddingStore` directly, deduplicate by original text
+or a stable metadata key such as `parent_id`.
+
+:::note
+- Recall is not guaranteed; measure Recall@K on your own data.
+- Cost scales with the number of representations.
+- LLM-generated descriptions make ingestion non-idempotent; cache them.
+  :::
+
+
 ### Embedding
 The `Embedding` class encapsulates a numerical vector that represents the "semantic meaning"
 of the content that has been embedded (usually text, such as a `TextSegment`).
@@ -680,6 +781,10 @@ of similarity searches and reduce the size and cost of a prompt sent to the LLM.
 Optionally, the `EmbeddingStoreIngestor` can transform `TextSegment`s using a specified `TextSegmentTransformer`.
 This can be useful if you want to clean, enrich, or format `TextSegment`s before embedding them.
 
+Optionally, the `EmbeddingStoreIngestor` can map each `TextSegment` to one or more embedding inputs using an
+`EmbeddingInputMapper`. Mapped segments are embedded, while the original segments are stored in the
+`EmbeddingStore`.
+
 An example:
 ```java
 EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
@@ -697,6 +802,15 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .textSegmentTransformer(textSegment -> TextSegment.from(
             textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
             textSegment.metadata()
+    ))
+        
+        
+    // explain segments from different perspectives
+    .embeddingInputMapper(segment -> List.of(
+            segment,
+            explainWhatItDoes(segment),
+            describeWhenToUseIt(segment),
+            generateQuestionsUsersMayAsk(segment)
     ))
 
     .embeddingModel(embeddingModel)
