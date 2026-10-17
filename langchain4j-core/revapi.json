@@ -19,6 +19,11 @@
           "code": "java.class.nonFinalClassInheritsFromNewClass",
           "old": "class dev.langchain4j.exception.UnsupportedFeatureException",
           "justification": "UnsupportedFeatureException now extends NonRetriableException instead of extending LangChain4jException directly. NonRetriableException is itself a LangChain4jException, so the type is still assignable everywhere it was before and every existing catch clause keeps compiling and catching; only an intermediate supertype is inserted. The behavioural effect is that RetryUtils stops retrying it, which is the intended fix: a provider that does not support a feature will not begin to support it on a retry, so the retries only added latency before the same failure."
+        },
+        {
+          "code": "java.method.visibilityIncreased",
+          "new": "method void dev.langchain4j.store.embedding.EmbeddingStoreIngestor::<init>(dev.langchain4j.data.document.DocumentTransformer, dev.langchain4j.data.document.DocumentSplitter, dev.langchain4j.data.segment.TextSegmentTransformer, dev.langchain4j.data.segment.EmbeddingInputMapper, dev.langchain4j.model.embedding.EmbeddingModel, dev.langchain4j.store.embedding.EmbeddingStore<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "This constructor is a new overload that accepts the optional EmbeddingInputMapper. It was added next to the existing public constructor, not widened from a previously private member; revapi reports the visibility increase because a private constructor with the same arity existed before. The class is not designed for subclassing, and the previous constructor remains unchanged, so no existing caller is affected."
         }
       ]
     }
