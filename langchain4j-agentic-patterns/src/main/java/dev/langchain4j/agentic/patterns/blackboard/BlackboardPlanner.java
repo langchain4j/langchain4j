@@ -1,23 +1,24 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.stream.Collectors.toMap;
+
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-
-import static java.util.stream.Collectors.toMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A blackboard planner that activates agents based on data availability in the shared scope.
@@ -26,6 +27,12 @@ import static java.util.stream.Collectors.toMap;
  * After each agent completes, the planner inspects the blackboard and activates whichever single agent
  * can contribute next. When multiple agents are ready, a {@link ConflictResolutionStrategy} determines
  * which one fires; if no strategy is provided, declaration order is used.
+ * <p>
+ * The planner needs a goal to know when the work is over. The goal is either the
+ * {@link Predicate goal predicate} passed to the constructor, or, when none is given, the output key of
+ * the planner agent: the goal is then considered reached once that key is present in the scope. A
+ * blackboard without an output key has no goal and no reason to run, so configuring neither is rejected
+ * with an {@link AgenticSystemConfigurationException}.
  * <p>
  * The planner terminates successfully when:
  * <ul>
@@ -64,11 +71,15 @@ public class BlackboardPlanner implements Planner {
         this(goalPredicate, maxInvocations, ConflictResolutionStrategy.DECLARATION_ORDER);
     }
 
-    public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, ConflictResolutionStrategy conflictResolutionStrategy) {
+    public BlackboardPlanner(
+            Predicate<AgenticScope> goalPredicate, ConflictResolutionStrategy conflictResolutionStrategy) {
         this(goalPredicate, DEFAULT_MAX_INVOCATIONS, conflictResolutionStrategy);
     }
 
-    public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, int maxInvocations, ConflictResolutionStrategy conflictResolutionStrategy) {
+    public BlackboardPlanner(
+            Predicate<AgenticScope> goalPredicate,
+            int maxInvocations,
+            ConflictResolutionStrategy conflictResolutionStrategy) {
         this.goalPredicate = goalPredicate;
         this.maxInvocations = maxInvocations;
         this.conflictResolutionStrategy = conflictResolutionStrategy;
@@ -78,6 +89,14 @@ public class BlackboardPlanner implements Planner {
     public void init(InitPlanningContext initPlanningContext) {
         if (goalPredicate == null) {
             String outputKey = initPlanningContext.plannerAgent().outputKey();
+            if (isNullOrBlank(outputKey)) {
+                throw new AgenticSystemConfigurationException("A BlackboardPlanner needs a goal to know when to"
+                        + " stop, but the agent '"
+                        + initPlanningContext.plannerAgent().name()
+                        + "' declares no output key. Either set an output key on the planner agent, so that the"
+                        + " goal is considered reached once that key is present in the scope, or pass an explicit"
+                        + " goal predicate to a BlackboardPlanner constructor that accepts one.");
+            }
             this.goalPredicate = scope -> scope.hasState(outputKey);
         }
         this.agentActivators = initPlanningContext.subagents().stream()
@@ -110,9 +129,8 @@ public class BlackboardPlanner implements Planner {
         }
 
         if (invocationCounter >= maxInvocations) {
-            throw new IllegalStateException(
-                    "Maximum invocations (" + maxInvocations + ") reached without satisfying goal. " +
-                    "Increase maxInvocations or check goal predicate.");
+            throw new IllegalStateException("Maximum invocations (" + maxInvocations
+                    + ") reached without satisfying goal. " + "Increase maxInvocations or check goal predicate.");
         }
 
         return selectAndCall(planningContext);
@@ -144,10 +162,12 @@ public class BlackboardPlanner implements Planner {
     private AgentActivator selectActivator(List<AgentActivator> ready, AgenticScope scope) {
         List<AgentInstance> candidates = ready.stream().map(a -> a.agent).toList();
         AgentInstance selected = conflictResolutionStrategy.resolve(scope, candidates);
-        return selected == null ? null : ready.stream()
-                .filter(a -> a.agent == selected)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Agent not found in ready list"));
+        return selected == null
+                ? null
+                : ready.stream()
+                        .filter(a -> a.agent == selected)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Agent not found in ready list"));
     }
 
     @Override
@@ -176,7 +196,8 @@ public class BlackboardPlanner implements Planner {
 
         AgentActivator(AgentInstance agent) {
             this.agent = agent;
-            this.argumentNames = agent.arguments().stream().map(AgentArgument::name).toList();
+            this.argumentNames =
+                    agent.arguments().stream().map(AgentArgument::name).toList();
         }
 
         private boolean canActivate(PlanningContext planningContext) {
