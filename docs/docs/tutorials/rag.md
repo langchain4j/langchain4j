@@ -577,14 +577,17 @@ For a batch, `originalSegmentList(segments, mappedSegments)` returns the same ne
 `map` may return an empty list or `null` to skip a segment. For a single representation, return a
 single-element list.
 
-In the future, commonly used mappers may be provided, such as LLM based code and multi angle interpretation
-of segment input mappers.
+#### LLMBasedEmbeddingInputMapper
 
-:::note
-- Recall is not guaranteed; measure Recall@K on your own data.
-- Cost scales with the number of representations.
-- LLM-generated descriptions make ingestion non-idempotent; cache them.
-:::
+`LLMBasedEmbeddingInputMapper` is a ready-to-use implementation that asks a `ChatModel` to generate
+retrieval-oriented descriptions for each segment. The LLM decides how many descriptions are useful, and the
+original segment is always included as one of the mapped segments.
+
+```java
+EmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
+```
+
+Each call invokes the LLM, so cache generated descriptions when the same content is ingested repeatedly.
 
 #### Possible negative impacts on retrieval
 
@@ -597,6 +600,13 @@ single `Content`. Both `DefaultContentAggregator` and `ReRankingContentAggregato
 representations. To avoid this behavior, deduplicate results before aggregation or use a single
 representation per segment; when querying an `EmbeddingStore` directly, deduplicate by original text
 or a stable metadata key such as `parent_id`.
+
+:::note
+- Recall is not guaranteed; measure Recall@K on your own data.
+- Cost scales with the number of representations.
+- LLM-generated descriptions make ingestion non-idempotent; cache them.
+  :::
+
 
 ### Embedding
 The `Embedding` class encapsulates a numerical vector that represents the "semantic meaning"
