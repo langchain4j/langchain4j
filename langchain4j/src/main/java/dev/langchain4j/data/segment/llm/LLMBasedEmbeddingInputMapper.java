@@ -11,6 +11,10 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 
 /**
  * An {@link EmbeddingInputMapper} that uses a {@link ChatModel} to generate retrieval-oriented
@@ -22,6 +26,8 @@ import java.util.List;
  * <p>
  * Every call to {@link #map(TextSegment)} invokes the LLM. If the same content is ingested repeatedly,
  * cache the generated descriptions to avoid unnecessary calls.
+ * <p>
+ * {@link #mapAll(List)} maps segments concurrently using the configured {@link Executor}.
  *
  * @since 1.21.0
  */
@@ -29,15 +35,29 @@ import java.util.List;
 public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
 
     private final DescriptionGenerator descriptionGenerator;
+    private final Executor executor;
+
+    /**
+     * Creates a mapper that uses the given chat model to generate embedding inputs.
+     * <p>
+     * Uses {@link ForkJoinPool#commonPool()} for concurrent {@link #mapAll(List)} calls.
+     *
+     * @param chatModel the chat model to use.
+     */
+    public LLMBasedEmbeddingInputMapper(ChatModel chatModel) {
+        this(chatModel, ForkJoinPool.commonPool());
+    }
 
     /**
      * Creates a mapper that uses the given chat model to generate embedding inputs.
      *
      * @param chatModel the chat model to use.
+     * @param executor  the executor used to run {@link #mapAll(List)} calls concurrently.
      */
-    public LLMBasedEmbeddingInputMapper(ChatModel chatModel) {
+    public LLMBasedEmbeddingInputMapper(ChatModel chatModel, Executor executor) {
         ensureNotNull(chatModel, "chatModel");
         this.descriptionGenerator = AiServices.create(DescriptionGenerator.class, chatModel);
+        this.executor = ensureNotNull(executor, "executor");
     }
 
     @Override
@@ -56,6 +76,54 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
             }
         }
         return mapped;
+    }
+
+    /**
+     * Maps all the given segments concurrently.
+     * <p>
+     * The returned list preserves the order of the input segments. If one mapping fails, the remaining
+     * tasks are cancelled and the failure is propagated.
+     *
+     * @param segments the original segments.
+     * @return one list of embedding inputs per input segment, in the same order.
+     */
+    @Override
+    public List<List<TextSegment>> mapAll(List<TextSegment> segments) {
+        ensureNotNull(segments, "segments");
+        if (segments.isEmpty()) {
+            return List.of();
+        }
+
+        List<CompletableFuture<List<TextSegment>>> futures = new ArrayList<>(segments.size());
+        for (TextSegment segment : segments) {
+            futures.add(CompletableFuture.supplyAsync(() -> map(segment), executor));
+        }
+
+        List<List<TextSegment>> mappedSegments = new ArrayList<>(segments.size());
+        try {
+            for (CompletableFuture<List<TextSegment>> future : futures) {
+                mappedSegments.add(join(future));
+            }
+        } catch (RuntimeException | Error e) {
+            futures.forEach(future -> future.cancel(true));
+            throw e;
+        }
+        return mappedSegments;
+    }
+
+    private static <T> T join(CompletableFuture<T> future) {
+        try {
+            return future.join();
+        } catch (CompletionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw e;
+        }
     }
 
     /**
