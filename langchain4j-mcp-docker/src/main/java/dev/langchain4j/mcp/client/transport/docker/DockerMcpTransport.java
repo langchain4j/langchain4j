@@ -149,6 +149,9 @@ public class DockerMcpTransport implements McpTransport {
             dockerClient.startContainerCmd(containerId).exec();
             dockerClient.waitContainerCmd(containerId).start().awaitStarted();
             log.debug("ID of the started container: {}", exec.getId());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
