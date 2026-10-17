@@ -1,12 +1,13 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.NO_CHOICES_ERROR_MESSAGE;
@@ -19,21 +20,32 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechStreamEvent;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
+import dev.langchain4j.model.openai.internal.audio.transcription.AudioTokenUsage;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiDeleteVoiceConsentResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiListVoiceConsentsRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiUpdateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentId;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentListResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -49,13 +61,18 @@ import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-import mutiny.zero.Tube;
-
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import mutiny.zero.Tube;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
@@ -218,7 +235,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
             this.tubeHandler = new TubeBackedStreamingChatResponseHandler(tube);
             this.handler = new MappingTrackingStreamingChatResponseHandler(tubeHandler);
             this.options = ensureNotNull(options, "options");
-            this.responseBuilder = new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
+            this.responseBuilder =
+                    new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
         }
 
         @Override
@@ -240,11 +258,11 @@ public class DefaultOpenAiClient extends OpenAiClient {
             try {
                 ChatCompletionResponse parsed = Json.fromJson(sse.data(), ChatCompletionResponse.class);
                 ParsedAndRawResponse<ChatCompletionResponse> parsedAndRaw = ParsedAndRawResponse.builder()
-                                .parsedResponse(parsed)
-                                .rawHttpResponse(rawHttpResponse)
-                                .rawServerSentEvent(sse)
-                                .streamingHandle(tubeHandler.streamingHandle())
-                                .build();
+                        .parsedResponse(parsed)
+                        .rawHttpResponse(rawHttpResponse)
+                        .rawServerSentEvent(sse)
+                        .streamingHandle(tubeHandler.streamingHandle())
+                        .build();
                 responseBuilder.append(parsedAndRaw);
 
                 handler.resetMappingTracking();
@@ -437,10 +455,72 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .body(Json.toJson(request))
                 .build();
 
-        return new RequestExecutor<>(
-                httpClient,
-                httpRequest,
-                response -> OpenAiTextToSpeechResponse.from(response.bodyBytes(), response.contentType()));
+        return new RequestExecutor<>(httpClient, httpRequest, response -> toTextToSpeechResponse(request, response));
+    }
+
+    private static OpenAiTextToSpeechResponse toTextToSpeechResponse(
+            OpenAiTextToSpeechRequest request, SuccessfulHttpResponse response) {
+        String contentType = response.contentType();
+        boolean sse = "sse".equalsIgnoreCase(request.streamFormat())
+                || (contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("text/event-stream"));
+        if (!sse) {
+            return OpenAiTextToSpeechResponse.from(response.bodyBytes(), contentType);
+        }
+
+        // In "sse" mode, the audio arrives base64-encoded in "speech.audio.delta" events,
+        // and the token usage in the final "speech.audio.done" event
+        ByteArrayOutputStream audio = new ByteArrayOutputStream();
+        AtomicReference<AudioTokenUsage> usage = new AtomicReference<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        new DefaultServerSentEventParser()
+                .parse(new ByteArrayInputStream(response.bodyBytes()), new ServerSentEventListener() {
+
+                    @Override
+                    public void onEvent(ServerSentEvent event) {
+                        if ("[DONE]".equals(event.data())) {
+                            return;
+                        }
+                        try {
+                            OpenAiTextToSpeechStreamEvent speechEvent =
+                                    Json.fromJson(event.data(), OpenAiTextToSpeechStreamEvent.class);
+                            if (!isNullOrEmpty(speechEvent.audio())) {
+                                audio.writeBytes(Base64.getDecoder().decode(speechEvent.audio()));
+                            }
+                            if (speechEvent.usage() != null) {
+                                usage.set(speechEvent.usage());
+                            }
+                        } catch (Exception e) {
+                            error.compareAndSet(null, e);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        error.compareAndSet(null, throwable);
+                    }
+                });
+
+        if (error.get() != null) {
+            throw new RuntimeException("Failed to parse the speech event stream", error.get());
+        }
+
+        return OpenAiTextToSpeechResponse.from(
+                audio.toByteArray(), audioMimeType(request.responseFormat()), usage.get());
+    }
+
+    private static String audioMimeType(String responseFormat) {
+        if (responseFormat == null) {
+            return "audio/mpeg"; // mp3 is the API default
+        }
+        return switch (responseFormat.toLowerCase(Locale.ROOT)) {
+            case "mp3" -> "audio/mpeg";
+            case "opus" -> "audio/opus";
+            case "aac" -> "audio/aac";
+            case "flac" -> "audio/flac";
+            case "wav" -> "audio/wav";
+            case "pcm" -> "audio/pcm";
+            default -> "audio/" + responseFormat;
+        };
     }
 
     @Override
@@ -453,5 +533,100 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, ModelsListResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> createVoiceConsent(OpenAiCreateVoiceConsentRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voice_consents")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                .addHeaders(buildRequestHeaders());
+
+        httpRequestBuilder.addFormDataField("name", request.name());
+        httpRequestBuilder.addFormDataField("language", request.language());
+
+        AudioFile recording = request.recording();
+        httpRequestBuilder.addFormDataFile(
+                "recording", recording.fileName(), recording.mimeType(), recording.content());
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentListResponse> listVoiceConsents(OpenAiListVoiceConsentsRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "audio/voice_consents")
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders());
+
+        if (request != null && request.after() != null) {
+            httpRequestBuilder.addQueryParam("after", request.after());
+        }
+        if (request != null && request.limit() != null) {
+            httpRequestBuilder.addQueryParam("limit", Integer.toString(request.limit()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiVoiceConsentListResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiCreateVoiceResponse> createVoice(OpenAiCreateVoiceRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voices")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiCreateVoiceResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> retrieveVoiceConsent(OpenAiVoiceConsentId request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiVoiceConsentResponse> updateVoiceConsent(OpenAiUpdateVoiceConsentRequest request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiVoiceConsentResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiDeleteVoiceConsentResponse> deleteVoiceConsent(OpenAiVoiceConsentId request) {
+        String consentId = request.consentId();
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(DELETE)
+                .url(baseUrl, "audio/voice_consents/" + consentId)
+                .addQueryParams(customQueryParams)
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, OpenAiDeleteVoiceConsentResponse.class);
     }
 }
