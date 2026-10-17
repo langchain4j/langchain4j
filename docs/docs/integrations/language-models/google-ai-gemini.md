@@ -143,6 +143,7 @@ GoogleAiGeminiChatRequestParameters parameters = GoogleAiGeminiChatRequestParame
     .modelName("gemini-2.5-flash")
     .temperature(1.0)
     .maxOutputTokens(8192)
+    .seed(42)
     .aspectRatio("16:9") // Gemini-specific
     .imageSize("2K")     // Gemini-specific
     .build();
