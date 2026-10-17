@@ -56,6 +56,7 @@ class GoogleAiGeminiStreamingChatModelTest {
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
             assertThatCharSequence(Json.toJson(result.generationConfig())).contains("\"seed\" : 42");
+            assertThat(chatModel.defaultRequestParameters().seed()).isEqualTo(42);
         }
 
         @Test
