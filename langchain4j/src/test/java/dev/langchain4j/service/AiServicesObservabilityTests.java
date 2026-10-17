@@ -38,6 +38,9 @@ import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -47,9 +50,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -575,6 +580,99 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class));
     }
 
+    @Test
+    void errorEventFiredForAsyncInputGuardrailFailure() {
+        var errorListener = new MyAiServiceErrorListener();
+        Assistant assistant = Assistant.create(false, false, List.of(errorListener));
+
+        assertThatExceptionOfType(InputGuardrailException.class)
+                .isThrownBy(() -> await(assistant.chatAsyncWithInputGuardrails("Hello!")))
+                .withMessage(
+                        "The guardrail %s failed with this message: User message is not valid",
+                        FailureInputGuardrail.class.getName());
+
+        // The async invocation must not be left "dangling": a terminal error event is fired
+        assertThat(errorListener.count()).isEqualTo(1);
+        assertThat(errorListener.event()).isNotNull();
+        assertThat(errorListener.event().invocationContext().methodName())
+                .isEqualTo("chatAsyncWithInputGuardrails");
+        assertThat(errorListener.event().error())
+                .isNotNull()
+                .hasMessageContaining("User message is not valid");
+    }
+
+    @Test
+    void errorEventFiredForReactiveInputGuardrailFailure() throws Exception {
+        var errorListener = new MyAiServiceErrorListener();
+        Assistant assistant = Assistant.create(false, true, List.of(errorListener));
+
+        Throwable error = awaitReactiveError(assistant.reactiveChatWithInputGuardrails("Hello!"));
+
+        assertThat(error).isNotNull().hasMessageContaining("User message is not valid");
+        // The reactive invocation must not be left "dangling": a terminal error event is fired
+        assertThat(errorListener.count()).isEqualTo(1);
+        assertThat(errorListener.event()).isNotNull();
+        assertThat(errorListener.event().invocationContext().methodName())
+                .isEqualTo("reactiveChatWithInputGuardrails");
+    }
+
+    @Test
+    void errorEventFiredForAsyncRagFailure() {
+        var errorListener = new MyAiServiceErrorListener();
+        Assistant assistant = Assistant.createWithFailingRetriever(false, List.of(errorListener));
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> await(assistant.chatAsyncWithRag("Hello!")))
+                .withMessageContaining("Retrieval failed");
+
+        // The async invocation must not be left "dangling": a terminal error event is fired
+        assertThat(errorListener.count()).isEqualTo(1);
+        assertThat(errorListener.event()).isNotNull();
+        assertThat(errorListener.event().invocationContext().methodName()).isEqualTo("chatAsyncWithRag");
+        assertThat(errorListener.event().error()).isNotNull().hasMessageContaining("Retrieval failed");
+    }
+
+    @Test
+    void errorEventFiredForReactiveRagFailure() throws Exception {
+        var errorListener = new MyAiServiceErrorListener();
+        Assistant assistant = Assistant.createWithFailingRetriever(true, List.of(errorListener));
+
+        Throwable error = awaitReactiveError(assistant.reactiveChatWithRag("Hello!"));
+
+        assertThat(error).isNotNull().hasMessageContaining("Retrieval failed");
+        // The reactive invocation must not be left "dangling": a terminal error event is fired
+        assertThat(errorListener.count()).isEqualTo(1);
+        assertThat(errorListener.event()).isNotNull();
+        assertThat(errorListener.event().invocationContext().methodName()).isEqualTo("reactiveChatWithRag");
+    }
+
+    private static Throwable awaitReactiveError(Flow.Publisher<String> publisher) throws InterruptedException {
+        var latch = new CountDownLatch(1);
+        var errorRef = new AtomicReference<Throwable>();
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                errorRef.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+        assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
+        return errorRef.get();
+    }
+
     private static <T> T await(CompletableFuture<T> future) {
         try {
             return future.get(1, TimeUnit.MINUTES);
@@ -697,6 +795,16 @@ class AiServicesObservabilityTests {
         @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
         TokenStream streamingChatWithOutputGuardrails(String message);
 
+        @InputGuardrails({SuccessInputGuardrail.class, FailureInputGuardrail.class})
+        CompletableFuture<String> chatAsyncWithInputGuardrails(String message);
+
+        @InputGuardrails({SuccessInputGuardrail.class, FailureInputGuardrail.class})
+        Flow.Publisher<String> reactiveChatWithInputGuardrails(String message);
+
+        CompletableFuture<String> chatAsyncWithRag(String message);
+
+        Flow.Publisher<String> reactiveChatWithRag(String message);
+
         static Assistant create(boolean shouldHaveToolAccess, boolean streaming) {
             return create(shouldHaveToolAccess, streaming, List.of());
         }
@@ -740,6 +848,18 @@ class AiServicesObservabilityTests {
             return createFailingService(streaming, List.of());
         }
 
+        static Assistant createWithFailingRetriever(
+                boolean streaming, Collection<? extends AiServiceListener<? extends AiServiceEvent>> listeners) {
+            var builder = AiServices.builder(Assistant.class).registerListeners(listeners);
+            if (streaming) {
+                builder.streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(DEFAULT_EXPECTED_RESPONSE)));
+            } else {
+                builder.chatModel(ChatModelMock.thatAlwaysResponds(DEFAULT_EXPECTED_RESPONSE));
+            }
+            return builder.retrievalAugmentor(new FailingRetrievalAugmentor()).build();
+        }
+
         static Assistant createFailingService(
                 boolean streaming, Collection<? extends AiServiceListener<? extends AiServiceEvent>> listeners) {
             var builder = AiServices.builder(Assistant.class).registerListeners(listeners);
@@ -757,6 +877,18 @@ class AiServicesObservabilityTests {
         @Tool("calculates the square root of the provided number")
         public double squareRoot(double number) {
             return Math.sqrt(number);
+        }
+    }
+
+    public static class FailingRetrievalAugmentor implements RetrievalAugmentor {
+        @Override
+        public AugmentationResult augment(AugmentationRequest augmentationRequest) {
+            throw new UnsupportedOperationException("Not expected to be called in these tests");
+        }
+
+        @Override
+        public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
+            return CompletableFuture.failedFuture(new RuntimeException("Retrieval failed"));
         }
     }
 

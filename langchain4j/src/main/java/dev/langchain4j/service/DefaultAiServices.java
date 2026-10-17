@@ -423,7 +423,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             propagateCancellation(result, augmentation);
                             augmentation.whenComplete((augmentationResult, augmentationError) -> {
                                 if (augmentationError != null) {
-                                    completeExceptionallyAsFailure(result, augmentationError);
+                                    fireErrorEventAndComplete(result, baseInvocationContext, augmentationError);
                                     return;
                                 }
                                 try {
@@ -453,7 +453,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     asyncAppendOutputFormat))
                                             .whenComplete((guardedInput, guardrailError) -> {
                                                 if (guardrailError != null) {
-                                                    completeExceptionallyAsFailure(result, guardrailError);
+                                                    fireErrorEventAndComplete(
+                                                            result, baseInvocationContext, guardrailError);
                                                     return;
                                                 }
                                                 assembleMessagesAsync(
@@ -463,7 +464,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 originalUserMessage)
                                                         .whenComplete((assembledMessages, assemblyError) -> {
                                                             if (assemblyError != null) {
-                                                                completeExceptionallyAsFailure(result, assemblyError);
+                                                                fireErrorEventAndComplete(
+                                                                        result,
+                                                                        baseInvocationContext,
+                                                                        assemblyError);
                                                                 return;
                                                             }
                                                             try {
@@ -483,12 +487,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         returnsImage,
                                                                         isReturnTypeResult);
                                                             } catch (Throwable t) {
-                                                                completeExceptionallyAsFailure(result, t);
+                                                                fireErrorEventAndComplete(result, baseInvocationContext, t);
                                                             }
                                                         });
                                             });
                                 } catch (Throwable t) {
-                                    completeExceptionallyAsFailure(result, t);
+                                    fireErrorEventAndComplete(result, baseInvocationContext, t);
                                 }
                             });
                             return completableFutureAdapter != null
@@ -544,7 +548,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         return;
                                     }
                                     if (augmentationError != null) {
-                                        subscriber.onError(unwrapCompletionException(augmentationError));
+                                        fireErrorEventAndOnError(subscriber, baseInvocationContext, augmentationError);
                                         return;
                                     }
                                     final UserMessage reactiveInputUserMessage;
@@ -565,7 +569,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .variables(variables)
                                                 .build();
                                     } catch (Throwable t) {
-                                        subscriber.onError(unwrapCompletionException(t));
+                                        fireErrorEventAndOnError(subscriber, baseInvocationContext, t);
                                         return;
                                     }
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
@@ -582,7 +586,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     return;
                                                 }
                                                 if (guardrailError != null) {
-                                                    subscriber.onError(unwrapCompletionException(guardrailError));
+                                                    fireErrorEventAndOnError(
+                                                            subscriber, baseInvocationContext, guardrailError);
                                                     return;
                                                 }
                                                 assembleMessagesAsync(
@@ -595,7 +600,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 return;
                                                             }
                                                             if (assemblyError != null) {
-                                                                subscriber.onError(unwrapCompletionException(assemblyError));
+                                                                fireErrorEventAndOnError(
+                                                                        subscriber,
+                                                                        baseInvocationContext,
+                                                                        assemblyError);
                                                                 return;
                                                             }
                                                             AiServiceStreamingEventPublisher publisher;
@@ -627,7 +635,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         streamingEventStreamParameters,
                                                                         context.streamingBufferSize);
                                                             } catch (Throwable t) {
-                                                                subscriber.onError(unwrapCompletionException(t));
+                                                                fireErrorEventAndOnError(
+                                                                        subscriber, baseInvocationContext, t);
                                                                 return;
                                                             }
                                                             if (subscription.isCancelled()) {
@@ -861,16 +870,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         commonGuardrailParam))
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
-                                        Throwable cause = unwrapCompletionException(error);
-                                        if (!result.isCancelled() && !(cause instanceof CancellationException)) {
-                                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                                    .invocationContext(invocationContext)
-                                                    .error(cause instanceof Exception exception
-                                                            ? exception
-                                                            : new RuntimeException(cause))
-                                                    .build());
-                                        }
-                                        completeExceptionallyAsFailure(result, error);
+                                        fireErrorEventAndComplete(result, invocationContext, error);
                                     } else {
                                         result.complete(value);
                                     }
@@ -1447,6 +1447,43 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static void completeExceptionallyAsFailure(CompletableFuture<?> result, Throwable error) {
         Throwable cause = unwrapCompletionException(error);
         result.completeExceptionally(cause instanceof CancellationException ? new CompletionException(cause) : cause);
+    }
+
+    /**
+     * Fires an {@link AiServiceErrorEvent} for a failed invocation, then completes {@code result} exceptionally, so
+     * listeners observe a terminal error event for every failed (non-cancelled) async invocation regardless of which
+     * stage failed (RAG augmentation, input guardrails, message assembly or dispatch). Cancellation is not a failure:
+     * no error event is fired when the invocation was already cancelled by the caller or the error is a bare
+     * {@link CancellationException} - mirroring the model-call completion path.
+     */
+    private void fireErrorEventAndComplete(
+            CompletableFuture<?> result, InvocationContext invocationContext, Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        if (!result.isCancelled() && !(cause instanceof CancellationException)) {
+            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                    .invocationContext(invocationContext)
+                    .error(cause instanceof Exception exception ? exception : new RuntimeException(cause))
+                    .build());
+        }
+        completeExceptionallyAsFailure(result, error);
+    }
+
+    /**
+     * Reactive counterpart of {@link #fireErrorEventAndComplete}: fires an {@link AiServiceErrorEvent} for a failed
+     * invocation, then fails the stream, so listeners observe a terminal error event for every failed reactive
+     * invocation regardless of which pre-model-call stage failed (RAG augmentation, input guardrails, message
+     * assembly or publisher creation).
+     */
+    private void fireErrorEventAndOnError(
+            Flow.Subscriber<? super AiServiceStreamingEvent> subscriber,
+            InvocationContext invocationContext,
+            Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                .invocationContext(invocationContext)
+                .error(cause instanceof Exception exception ? exception : new RuntimeException(cause))
+                .build());
+        subscriber.onError(cause);
     }
 
     private static boolean resolvesToType(Object o, Type returnType) {
