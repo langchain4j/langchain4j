@@ -60,7 +60,7 @@ Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-skills</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -91,17 +91,17 @@ src/main/resources/
 
 ```java
 // Load all skills from a classpath directory:
-List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills");
+List<Skill> skills = ClassPathSkillLoader.loadSkills("skills");
 
 // Or load a single skill:
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx");
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx");
 ```
 
 By default, `ClassPathSkillLoader` uses the thread's context class loader.
 You can pass a custom `ClassLoader` if needed:
 
 ```java
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
 ```
 
 The same `SKILL.md` format, resource loading rules, and `scripts/` exclusion apply
@@ -465,7 +465,7 @@ Shell execution lives in a separate experimental artifact — add it to your bui
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-experimental-skills-shell</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

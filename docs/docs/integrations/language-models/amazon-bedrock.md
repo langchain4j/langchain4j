@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.20.1</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -19,10 +19,6 @@ In order to use Amazon Bedrock models, you need to configure AWS credentials.
 One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables. More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html). Alternatively, set the `AWS_BEARER_TOKEN_BEDROCK` environment variable locally for API Key authentication. For additional API key details, refer to [docs](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html).
 
 ## BedrockChatModel
-:::note
-Guardrails is not supported by the current implementation.
-:::
-
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
 Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
@@ -62,11 +58,6 @@ ChatModel model = BedrockChatModel.builder()
 - [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
 
 ## BedrockStreamingChatModel
-
-:::note
-Guardrails is not supported by the current implementation.
-:::
-
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
 Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
@@ -103,6 +94,154 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 ### Examples
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
+
+## Amazon Bedrock Guardrails
+
+`BedrockChatModel` and `BedrockStreamingChatModel` support [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html).
+They are evaluated by Amazon Bedrock and are separate from LangChain4j [guardrails](/tutorials/guardrails); you can use both together.
+
+Configure a guardrail through `BedrockChatRequestParameters` and set them as the model's `defaultRequestParameters`
+to apply the guardrail to every request, or pass them in a `ChatRequest` to apply it to a single request:
+
+```java
+BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+        .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                .guardrailIdentifier("guardrail-id")
+                .guardrailVersion("1")
+                .build())
+        .build();
+
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .defaultRequestParameters(parameters)
+        .build();
+```
+
+When the guardrail intervenes, the response's `finishReason()` is `FinishReason.CONTENT_FILTER`,
+and the assessment details are available via `((BedrockChatResponseMetadata) response.metadata()).guardrailAssessmentSummary()`.
+
+### Evaluating only selected user messages
+
+By default, the guardrail evaluates the text of all user and AI messages in the request.
+Bedrock never evaluates tool results, tool definitions, tool calls or the system prompt.
+
+To reduce cost and latency, set `guardContentPlacement` to select which user messages the guardrail evaluates:
+- `LAST_USER_MESSAGE`: only the last user message.
+- `ALL_USER_MESSAGES`: only the user messages, all of them.
+
+```java
+BedrockGuardrailConfiguration guardrailConfiguration = BedrockGuardrailConfiguration.builder()
+        .guardrailIdentifier("guardrail-id")
+        .guardrailVersion("1")
+        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+        .build();
+```
+
+The selected user messages are sent as Bedrock [`guardContent`](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-use-converse-api.html) blocks,
+and the guardrail evaluates **only** those as input: other user messages and AI messages are not evaluated.
+The model's response is still evaluated.
+Depending on the policies the guardrail uses, Bedrock may still evaluate some content outside `guardContent` blocks.
+
+:::warning
+Content outside the selected messages is not checked.
+For example, with `LAST_USER_MESSAGE` and [chat memory](/tutorials/chat-memory), a user message that the guardrail blocked
+is sent to the model without evaluation on later turns.
+If you use the guardrail as a security control rather than to reduce cost, prefer the default (no `guardContentPlacement`).
+:::
+
+Only text and PNG/JPEG images can be sent as `guardContent`.
+If a selected message contains other content (for example, a PDF or a GIF image),
+`guardContentPlacement` is ignored for that request, the guardrail evaluates all user and AI messages as by default,
+and a warning is logged. The same default applies when the request contains no user message.
+
+## BedrockBatchChatModel
+
+`BedrockBatchChatModel` implements the core `BatchChatModel` interface on top of the Bedrock
+[batch inference API](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html), which processes
+many chat requests asynchronously at a lower price than on-demand inference for supported models. See
+[Batch Processing](/tutorials/batch-processing) for how batching works in LangChain4j.
+
+Requests are written as a JSONL file to S3, a model invocation job is submitted, and the results are read back from
+the S3 output location. It requires an S3 bucket in the same region as the job and a
+[service role](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-iam-sr.html) that Bedrock assumes to read
+the input and write the output. The input and output files are not deleted afterwards, so they stay in the bucket
+until you remove them.
+
+:::note
+Bedrock batch inference does not support tool calling, structured output or prompt caching, so a request that
+specifies tools, a JSON response format or cache points is rejected with an `UnsupportedFeatureException`, and so is
+a request that specifies a service tier or a model other than the one configured on `BedrockBatchChatModel`. Only a
+subset of models supports batch inference, see [supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-supported.html).
+Bedrock also enforces a minimum and a maximum number of records per job as
+[service quotas](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html), and rejects a job outside them.
+:::
+
+### Dependencies
+`BedrockBatchChatModel` uses the Amazon Bedrock and Amazon S3 clients of the AWS SDK, which `langchain4j-bedrock`
+declares as optional dependencies. Add them to your project to use it:
+
+```xml
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>bedrock</artifactId>
+</dependency>
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>s3</artifactId>
+</dependency>
+```
+
+### Configuration
+```java
+BedrockBatchChatModel model = BedrockBatchChatModel.builder()
+        .region(...)
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        .roleArn("arn:aws:iam::123456789012:role/my-bedrock-batch-role")
+        .outputS3Uri("s3://my-bucket/batch-output")
+        .inputS3Uri(...)             // optional, defaults to outputS3Uri
+        .defaultRequestParameters(...)
+        .jobTimeout(Duration.ofHours(24))     // between 24 and 168 hours
+        .returnThinking(...)
+        .sendThinking(...)
+        .timeout(...)
+        .customHeaders(...)
+        .maxRetries(...)
+        .logRequests(...)
+        .logResponses(...)
+        .build();
+```
+
+Unless an `S3Client` and a `BedrockClient` are passed to the builder, the model creates its own, and `close()`
+closes the ones it created.
+
+### Usage
+```java
+// Submit a batch of chat requests, at least as many as the minimum number of records per job
+List<ChatRequest> requests = ...;
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(requests));
+
+String batchId = submitted.batchId();
+
+// Poll until the job reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofMinutes(1).toMillis());
+    batch = model.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+Results are returned in the order of the submitted requests. A job that Bedrock reports as partially completed has
+the state `SUCCEEDED`, so check each result. `model.cancel(batchId)` stops a job, and the results of the records it
+already processed are still returned (and billed). `model.list(...)` lists every batch inference job in the region,
+including jobs not submitted through LangChain4j.
 
 
 ## Additional Model Request Fields

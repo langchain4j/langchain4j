@@ -5,15 +5,15 @@ import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -71,7 +71,9 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                             "Skipping optional agent '{}' because of missing argument '{}'",
                             agentInvoker.name(),
                             e.argumentName());
-                    Object response = agenticScope.readState(agentInvoker.outputKey());
+                    // a skipped agent that stores its result nowhere has no output key to read back
+                    String outputKey = agentInvoker.outputKey();
+                    Object response = outputKey == null ? null : agenticScope.readState(outputKey);
                     if (planner != null) {
                         planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
                     }

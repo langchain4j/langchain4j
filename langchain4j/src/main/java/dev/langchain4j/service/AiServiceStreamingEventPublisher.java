@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -256,7 +257,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private ChatExecutor chatExecutor;
-        private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
+        private final Executor toolExecutor =
+                CapturedContextSupport.restoringIn(context.toolService.effectiveToolExecutor(), invocationContext);
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
@@ -407,6 +409,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             });
         }
 
+        // the request whose response is being processed; rounds run one after another
+        private volatile ChatRequest lastChatRequest;
+
         private void processRound(
                 ChatRequest chatRequest,
                 ToolServiceContext currentToolContext,
@@ -415,6 +420,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             fireResponseReceivedEvent(chatRequest, chatResponse);
+            lastChatRequest = chatRequest;
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
@@ -709,6 +715,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .responseFromLLM(finalChatResponse)
                     .chatExecutor(toolAwareRepromptExecutor)
                     .requestParams(guardrailParams)
+                    .chatRequest(lastChatRequest)
                     .build();
 
             CompletableFuture<ChatResponse> guarded =

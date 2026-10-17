@@ -2,6 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,13 +11,18 @@ import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.ResponseStream;
 import com.google.genai.types.AudioTranscriptionConfig;
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
+import com.google.genai.types.CodeExecutionResult;
 import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -25,10 +31,13 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -38,7 +47,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -279,6 +290,73 @@ class GoogleGenAiStreamingChatModelTest {
         String encodedSig = Base64.getEncoder().encodeToString("signature-data".getBytes());
         assertThat(aiMessage.attribute("thought_signature_call_123", String.class))
                 .isEqualTo(encodedSig);
+    }
+
+    @Test
+    void should_keep_the_images_of_every_streaming_chunk() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        GenerateContentResponse firstChunk = responseWithImage("first-image");
+        GenerateContentResponse secondChunk = responseWithImage("second-image");
+
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-2.5-flash-image")
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("Draw me two pictures")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+
+        assertThat(response.aiMessage().images()).hasSize(2);
+        assertThat(response.aiMessage().images().get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString("first-image".getBytes(StandardCharsets.UTF_8)));
+        assertThat(response.aiMessage().images().get(1).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString("second-image".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static GenerateContentResponse responseWithImage(String data) {
+        Part part = Part.builder()
+                .inlineData(Blob.builder()
+                        .data(data.getBytes(StandardCharsets.UTF_8))
+                        .mimeType("image/png")
+                        .build())
+                .build();
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(part))
+                                .build())
+                        .build()))
+                .build();
     }
 
     @Test
@@ -740,5 +818,302 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
         assertThat(aiMessage.attribute("thought_signature_call_1", String.class))
                 .isEqualTo(Base64.getEncoder().encodeToString("sig".getBytes()));
+    }
+
+    @Test
+    void should_accumulate_generated_audio_across_streaming_chunks() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        when(models.generateContentStream(any(String.class), any(List.class), configCaptor.capture()))
+                .thenReturn(stream);
+
+        byte[] chunk1Bytes = "audio-chunk-1".getBytes(StandardCharsets.UTF_8);
+        byte[] chunk2Bytes = "audio-chunk-2".getBytes(StandardCharsets.UTF_8);
+
+        GenerateContentResponse firstChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder()
+                                        .inlineData(Blob.builder()
+                                                .data(chunk1Bytes)
+                                                .mimeType("audio/wav")
+                                                .build())
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse secondChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder()
+                                        .inlineData(Blob.builder()
+                                                .data(chunk2Bytes)
+                                                .mimeType("audio/wav")
+                                                .build())
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        SpeechConfig speechConfig = SpeechConfig.builder().languageCode("en-US").build();
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash-tts")
+                .speechConfig(speechConfig)
+                .responseModalities(List.of("AUDIO"))
+                .automaticContinuation(true)
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+
+        assertThat(configCaptor.getValue().speechConfig()).contains(speechConfig);
+        assertThat(configCaptor.getValue().responseModalities()).contains(List.of("AUDIO"));
+        assertThat(configCaptor.getValue().automaticContinuation()).contains(true);
+
+        List<Audio> generatedAudio = response.aiMessage().audios();
+        assertThat(generatedAudio).hasSize(2);
+        assertThat(generatedAudio.get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(chunk1Bytes));
+        assertThat(generatedAudio.get(1).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(chunk2Bytes));
+    }
+
+    @Test
+    void should_report_handler_exception_through_on_error_and_keep_streaming() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        RuntimeException handlerException = new RuntimeException("handler failed");
+        List<Throwable> errors = new ArrayList<>();
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("What is 6 times 7?")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                throw handlerException;
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        assertThat(errors).containsExactly(handlerException);
+        assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_cancel_streaming_when_streaming_handle_cancel_is_called() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        GenerateContentResponse chunk1 = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("first ").build()))
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse chunk2 = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("second").build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(chunk1, chunk2).iterator());
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .executor(executor)
+                .build();
+
+        List<String> partialResponses = Collections.synchronizedList(new ArrayList<>());
+        AtomicBoolean onCompleteCalled = new AtomicBoolean(false);
+        AtomicBoolean isCancelledAfterCancel = new AtomicBoolean(false);
+        AtomicBoolean onErrorCalled = new AtomicBoolean(false);
+
+        model.chat(
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build(), new StreamingChatResponseHandler() {
+                    @Override
+                    public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                        partialResponses.add(partialResponse.text());
+                        context.streamingHandle().cancel();
+                        isCancelledAfterCancel.set(context.streamingHandle().isCancelled());
+                    }
+
+                    @Override
+                    public void onCompleteResponse(ChatResponse completeResponse) {
+                        onCompleteCalled.set(true);
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        onErrorCalled.set(true);
+                    }
+                });
+
+        executor.shutdown();
+        assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(partialResponses).containsExactly("first ");
+        assertThat(isCancelledAfterCancel.get()).isTrue();
+        assertThat(onCompleteCalled.get()).isFalse();
+        assertThat(onErrorCalled.get()).isFalse();
+        verify(stream, atLeastOnce()).close();
+    }
+
+    @Test
+    void should_stream_executed_code_and_its_output_when_requested() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(
+                                chunkWith(Part.builder()
+                                        .executableCode(ExecutableCode.builder()
+                                                .language("PYTHON")
+                                                .code("print(6 * 7)"))
+                                        .build()),
+                                chunkWith(Part.builder()
+                                        .codeExecutionResult(CodeExecutionResult.builder()
+                                                .outcome("OUTCOME_OK")
+                                                .output("42\n"))
+                                        .build()),
+                                chunkWith(Part.fromText("6 times 7 is 42.")))
+                        .iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, new ArrayList<>());
+
+        assertThat(partialResponses)
+                .containsExactly(
+                        "Code executed:\n```python\nprint(6 * 7)\n```\n\n",
+                        "Output:\n```\n42\n```\n\n",
+                        "6 times 7 is 42.");
+        assertThat(response.aiMessage().text()).isEqualTo(String.join("", partialResponses));
+    }
+
+    @Test
+    void should_separate_streamed_code_from_text_streamed_before_it() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(
+                                chunkWith(Part.fromText("Let me calculate that with Python:")),
+                                chunkWith(Part.builder()
+                                        .executableCode(ExecutableCode.builder()
+                                                .language("PYTHON")
+                                                .code("print(6 * 7)"))
+                                        .build()))
+                        .iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, new ArrayList<>());
+
+        assertThat(partialResponses)
+                .containsExactly(
+                        "Let me calculate that with Python:", "\n\nCode executed:\n```python\nprint(6 * 7)\n```\n\n");
+        assertThat(response.aiMessage().text()).isEqualTo(String.join("", partialResponses));
+    }
+
+    @Test
+    void should_send_code_execution_tool_when_enabled() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(List.of(chunkWith(Part.fromText("42"))).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .build();
+
+        stream(model, new ArrayList<>(), new ArrayList<>());
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+        assertThat(configCaptor.getValue().tools().get())
+                .anySatisfy(tool -> assertThat(tool.codeExecution()).isPresent());
+    }
+
+    private static GenerateContentResponse chunkWith(Part part) {
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(part))
+                                .build())
+                        .build()))
+                .build();
     }
 }

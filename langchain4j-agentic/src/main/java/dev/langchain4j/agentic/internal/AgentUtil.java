@@ -10,6 +10,7 @@ import static dev.langchain4j.service.TypeUtils.isImageType;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.K;
@@ -105,9 +106,27 @@ public class AgentUtil {
             }
             agent = AgenticServices.agentBuilder(c).build();
         }
+        if (agent instanceof AgenticScopeFunction<?> function) {
+            return agenticScopeFunctionToExecutor(function);
+        }
         return agent instanceof InternalAgent internalAgent
                 ? agentToExecutor(internalAgent)
                 : nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()));
+    }
+
+    private static AgentExecutor agenticScopeFunctionToExecutor(AgenticScopeFunction<?> function) {
+        Method agenticMethod = validateAgentClass(AgenticScopeFunction.class);
+        String name = isNullOrBlank(function.name()) ? agenticMethod.getName() : function.name();
+        NonAiAgentInstance agentInstance = new NonAiAgentInstance(
+                AgenticScopeFunction.class,
+                name,
+                function.description(),
+                function.outputType(),
+                function.outputKey(),
+                function.async(),
+                function.inputs(),
+                function.listener());
+        return new AgentExecutor(new AgenticScopeFunctionInvoker(agenticMethod, agentInstance), function);
     }
 
     public static AgentExecutor nonAiAgentToExecutor(Object agent, Method agenticMethod) {

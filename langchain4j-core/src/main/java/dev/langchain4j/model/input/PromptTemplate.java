@@ -2,7 +2,7 @@ package dev.langchain4j.model.input;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Collections.singletonMap;
 
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
@@ -28,10 +28,8 @@ public class PromptTemplate {
         // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
         // Substitutions), so this name and signature are depended on from outside despite being
         // private. Renaming it breaks that build with no compile error here.
-        for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
-            return factory;
-        }
-        return new DefaultPromptTemplateFactory();
+        PromptTemplateFactory factory = loadFactory(PromptTemplateFactory.class);
+        return factory != null ? factory : new DefaultPromptTemplateFactory();
     }
 
     static final String CURRENT_DATE = "current_date";

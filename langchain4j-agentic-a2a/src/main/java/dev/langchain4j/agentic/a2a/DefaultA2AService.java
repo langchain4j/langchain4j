@@ -15,7 +15,11 @@ public class DefaultA2AService implements A2AService {
 
     @Override
     public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return new DefaultA2AClientBuilder<>(a2aServerUrl, agentServiceClass);
+        return a2aBuilder(a2aServerUrl, null, agentServiceClass);
+    }
+    @Override
+    public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, String tenant, Class<T> agentServiceClass) {
+        return new DefaultA2AClientBuilder<>(a2aServerUrl, agentServiceClass, tenant);
     }
 
     @Override

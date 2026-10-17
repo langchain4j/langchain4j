@@ -414,8 +414,10 @@ public class A2AAgentIT {
      * are set on the A2A Message envelope instead of becoming TextParts.
      *
      * The test does a two-turn conversation:
-     *   1st turn: null contextId/taskId → server generates them, returned in the AgenticScope
-     *   2nd turn: reuses those IDs via @A2AContextId/@A2ATaskId → server finds the existing task
+     *   1st turn: null contextId/taskId → server creates a new context and task; only the contextId
+     *             is written back to the AgenticScope, since the task is already completed
+     *   2nd turn: reuses the contextId via @A2AContextId and leaves taskId null, so the server
+     *             creates a new task in the same context
      *
      * Requires: a2a-echo-server running on port 8081
      *   cd langchain4j-agentic-a2a/a2a-echo-server
@@ -423,35 +425,33 @@ public class A2AAgentIT {
      */
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
-    void a2a_client_agent_should_propagate_contextId_and_taskId_on_message_envelope() {
+    void a2a_client_agent_should_propagate_contextId_on_message_envelope() {
         EchoWithAgenticScopAgent echoAgent = AgenticServices.a2aBuilder(
                         A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
                 .outputKey("response")
                 .build();
 
         // FIRST TURN: no contextId/taskId → server creates new task and context
-        ResultWithAgenticScope<String> firstResult = echoAgent.echo("hello", null, null);
+        ResultWithAgenticScope<String> firstResult = echoAgent.echo("stop task1", null, null);
         System.out.println("First response: " + firstResult.result());
-        assertThat(firstResult.result()).contains("input=hello");
-
-        // Read server-generated IDs from the AgenticScope
+        assertThat(firstResult.result()).contains("input=stop task1");
+        // Read the server-generated context from the AgenticScope
         AgenticScope firstScope = firstResult.agenticScope();
         String serverContextId = (String) firstScope.readState("contextId");
-        String serverTaskId = (String) firstScope.readState("taskId");
         assertThat(serverContextId).isNotNull();
-        assertThat(serverTaskId).isNotNull();
+        // The task completed during this invocation, so its id is not reusable and not persisted
+        assertThat(firstScope.readState("taskId")).isNull();
 
-        // SECOND TURN: pass the server-generated IDs to continue the conversation
-        // Without the fix this throws TaskNotFoundError because the IDs end up as TextParts
-        ResultWithAgenticScope<String> secondResult =
-                echoAgent.echo("follow-up question", serverContextId, serverTaskId);
+        // SECOND TURN: pass the server-generated contextId to continue the conversation.
+        // The taskId is left null because the previous task already reached a terminal state.
+        ResultWithAgenticScope<String> secondResult = echoAgent.echo("stop task2", serverContextId, null);
         System.out.println("Second response: " + secondResult.result());
+        assertThat(secondResult.result()).contains("input=stop task2");
 
-        // The server should resolve to the same context and task
+        // The server should resolve to the same context, but run a new task in it
         AgenticScope secondScope = secondResult.agenticScope();
         assertThat(secondScope.readState("contextId", "")).isEqualTo(serverContextId);
-        assertThat(secondScope.readState("taskId", "")).isEqualTo(serverTaskId);
-        assertThat(secondResult.result()).contains("input=follow-up question");
+        assertThat(secondScope.readState("taskId")).isNull();
     }
 
     public interface EchoAgent {
@@ -476,17 +476,19 @@ public class A2AAgentIT {
      * Tests @A2AContextId/@A2ATaskId in a complete workflow-based agentic system.
      *
      * A sequence of two echo agents where:
-     *   1st agent: sends message with no contextId/taskId → server generates them → written to scope
-     *   2nd agent: reads contextId/taskId from scope → sends them on the message envelope → server
-     *              finds the existing task and continues the conversation
+     *   1st agent: sends message with no contextId/taskId → server creates a context and a task →
+     *              the context is written to the scope
+     *   2nd agent: reads the contextId from the scope → sends it on the message envelope → the server
+     *              continues the conversation by creating a new task in that context
      *
-     * This proves contextId/taskId flow through the AgenticScope across agents in a workflow.
+     * This proves the context flows through the AgenticScope across agents in a workflow, while each
+     * invocation gets a task of its own.
      *
      * Requires: a2a-echo-server running on port 8081
      */
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
-    void a2a_multi_turn_sequence_should_propagate_contextId_and_taskId_through_scope() {
+    void a2a_multi_turn_sequence_should_propagate_contextId_through_scope() {
         EchoAgent firstTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
                 .outputKey("firstResponse")
                 .build();
@@ -500,22 +502,19 @@ public class A2AAgentIT {
                 .outputKey("secondResponse")
                 .build();
 
-        ResultWithAgenticScope<String> result = workflow.converse("hello");
+        ResultWithAgenticScope<String> result = workflow.converse("stop task1");
         AgenticScope scope = result.agenticScope();
 
-        // contextId and taskId should have been written to the scope by the first agent
-        // and reused by the second agent via @A2AContextId/@A2ATaskId
+        // The contextId should have been written to the scope by the first agent and reused by the
+        // second one via @A2AContextId. The taskId is not persisted, because a completed task cannot
+        // accept further messages.
         String contextId = (String) scope.readState("contextId");
-        String taskId = (String) scope.readState("taskId");
         assertThat(contextId).isNotNull();
-        assertThat(taskId).isNotNull();
+        assertThat(scope.readState("taskId")).isNull();
 
-        // The second response proves the IDs were correctly propagated through the scope:
-        // if they weren't, the server would have created a new task instead of continuing
-        assertThat(result.result())
-                .contains("contextId=" + contextId)
-                .contains("taskId=" + taskId)
-                .contains("input=hello");
+        // The second response proves the context was correctly propagated through the scope: if it
+        // weren't, the server would have created a new context instead of continuing the conversation
+        assertThat(result.result()).contains("contextId=" + contextId).contains("input=stop task1");
     }
 
     @Test

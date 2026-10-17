@@ -204,7 +204,9 @@ class InfinispanMetadataFilterMapper {
         if (!(value instanceof Number)) {
             return "'" + escape(String.valueOf(value)) + "'";
         }
-        if (asFloat && (value instanceof Integer || value instanceof Long)) {
+        if (asFloat) {
+            // value_float is a protobuf double and LangChainMetadataMarshaller stores a Float as
+            // ((Float) value).doubleValue(), so widen every Number here the same way computeFilter() does.
             return String.valueOf(((Number) value).doubleValue());
         }
         return value.toString();

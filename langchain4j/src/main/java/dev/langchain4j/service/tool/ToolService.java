@@ -29,6 +29,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -79,32 +80,20 @@ public class ToolService {
 
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
-    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = (error, context) -> {
-        if (error instanceof RuntimeException re) {
-            throw re;
-        } else {
-            throw new RuntimeException(error);
-        }
-    };
-    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = (error, context) -> {
-        if (error instanceof RuntimeException re) {
-            throw re;
-        } else {
-            throw new RuntimeException(error);
-        }
-    };
-    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
-            (error, context) -> ToolErrorHandlerResult.text(errorText(error));
+    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failInvocation();
+    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
-        String errorMessage = errorText(error);
+        // the same handler users are told to configure to keep this behavior, so that the two cannot drift,
+        // and so that an exception that says what the LLM may be told is honored here too
+        ToolErrorHandlerResult result = ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
         log.warn(
                 "Tool '{}' execution failed. The error message is being returned to the LLM. "
                         + "To customize this behavior (and silence this log), configure a custom "
                         + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
                 context.toolExecutionRequest().name(),
-                errorMessage,
+                result.text(),
                 error);
-        return ToolErrorHandlerResult.text(errorMessage);
+        return result;
     };
 
     // Default tool-error handling differs by AI Service mode:
@@ -115,10 +104,11 @@ public class ToolService {
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = RETHROW_ARGUMENTS_ERROR;
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = EXECUTION_ERROR_TO_LLM;
     private static final ToolArgumentsErrorHandler DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER = ARGUMENTS_ERROR_TO_LLM;
-    private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER = RETHROW_EXECUTION_ERROR;
+    private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER =
+            ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
 
     private static String errorText(Throwable error) {
-        return isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        return ToolErrors.errorText(error);
     }
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
@@ -484,6 +474,18 @@ public class ToolService {
     }
 
     /**
+     * Lets code that builds AI Services, such as a framework integration, tell whether the default
+     * {@link ToolArgumentsErrorHandler} is used, for example to warn about it.
+     *
+     * @return {@code true} if a {@link ToolArgumentsErrorHandler} was configured explicitly,
+     * {@code false} if the default one is used.
+     * @since 1.21.0
+     */
+    public boolean hasExplicitArgumentsErrorHandler() {
+        return argumentsErrorHandler != null;
+    }
+
+    /**
      * @since 1.4.0
      */
     public void executionErrorHandler(ToolExecutionErrorHandler handler) {
@@ -495,6 +497,18 @@ public class ToolService {
      */
     public ToolExecutionErrorHandler executionErrorHandler() {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
+    }
+
+    /**
+     * Lets code that builds AI Services, such as a framework integration, tell whether the default
+     * {@link ToolExecutionErrorHandler} is used, for example to warn about it.
+     *
+     * @return {@code true} if a {@link ToolExecutionErrorHandler} was configured explicitly,
+     * {@code false} if the default one is used.
+     * @since 1.21.0
+     */
+    public boolean hasExplicitExecutionErrorHandler() {
+        return executionErrorHandler != null;
     }
 
     /**
@@ -634,6 +648,7 @@ public class ToolService {
         List<CompensableToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
+        ChatRequest lastChatRequest = null;
         while (true) {
 
             if (roundTripsLeft-- == 0) {
@@ -686,7 +701,8 @@ public class ToolService {
                     context, chatMemory, messages, resultMessages, invocationContext);
 
             if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                return immediateToolServiceResult(intermediateResponses, toolExecutions, aggregateTokenUsage);
+                return immediateToolServiceResult(
+                        intermediateResponses, toolExecutions, aggregateTokenUsage, lastChatRequest);
             }
 
             NextChatRequest next = prepareNextChatRequest(
@@ -701,6 +717,7 @@ public class ToolService {
             toolServiceContext = next.toolServiceContext();
             parameters = next.parameters();
 
+            lastChatRequest = next.chatRequest();
             chatResponse = chatModelInvoker.apply(next.chatRequest());
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
@@ -708,7 +725,13 @@ public class ToolService {
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
-        return finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage);
+        return finalToolServiceResult(
+                chatResponse,
+                intermediateResponses,
+                toolExecutions,
+                aggregateTokenUsage,
+                chatMemory == null ? messages : List.of(),
+                lastChatRequest);
     }
 
     /**
@@ -804,6 +827,7 @@ public class ToolService {
         private final List<CompensableToolExecution> compensableExecutions = newCompensableExecutionsAccumulator();
 
         private final AtomicReference<CompletableFuture<ChatResponse>> inFlightModelCall = new AtomicReference<>();
+        private volatile ChatRequest lastChatRequest;
 
         AsyncToolLoop(
                 AiServiceContext context,
@@ -870,7 +894,12 @@ public class ToolService {
                     .thenCompose(ignored -> {
                         if (!aiMessage.hasToolExecutionRequests()) {
                             return CompletableFuture.completedFuture(finalToolServiceResult(
-                                    chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    chatResponse,
+                                    intermediateResponses,
+                                    toolExecutions,
+                                    aggregateTokenUsage,
+                                    chatMemory == null ? accumulator : List.of(),
+                                    lastChatRequest));
                         }
 
                         intermediateResponses.add(chatResponse);
@@ -948,7 +977,7 @@ public class ToolService {
 
                         if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                             return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                    intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    intermediateResponses, toolExecutions, aggregateTokenUsage, lastChatRequest));
                         }
 
                         if (isCancelled(cancellation)) {
@@ -1011,6 +1040,7 @@ public class ToolService {
             NextChatRequest next = prepareNextChatRequest(
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
+            lastChatRequest = next.chatRequest();
             CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
@@ -1218,7 +1248,8 @@ public class ToolService {
     private static ToolServiceResult immediateToolServiceResult(
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
-            TokenUsage aggregateTokenUsage) {
+            TokenUsage aggregateTokenUsage,
+            ChatRequest lastChatRequest) {
         ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
@@ -1226,19 +1257,28 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .immediateToolReturn(true)
+                .lastChatRequest(lastChatRequest)
                 .build();
     }
 
+    /**
+     * @param messages the conversation the loop ended with, final response included, when there is no chat memory
+     *                 to hold it (empty otherwise). Output guardrails need it to retry or reprompt.
+     */
     private static ToolServiceResult finalToolServiceResult(
             ChatResponse finalResponse,
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
-            TokenUsage aggregateTokenUsage) {
+            TokenUsage aggregateTokenUsage,
+            List<ChatMessage> messages,
+            ChatRequest lastChatRequest) {
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
                 .finalResponse(finalResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .messages(messages)
+                .lastChatRequest(lastChatRequest)
                 .build();
     }
 
@@ -1776,7 +1816,13 @@ public class ToolService {
         for (ToolExecutionRequest toolRequest : toolRequests) {
             futures.put(
                     toolRequest,
-                    startTool(toolRequest, toolExecutors, invocationContext, null, null, effectiveToolExecutor()));
+                    startTool(
+                            toolRequest,
+                            toolExecutors,
+                            invocationContext,
+                            null,
+                            null,
+                            CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext)));
         }
         return combineToolResultsCollectingErrors(futures);
     }
@@ -2005,7 +2051,8 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest),
+                    CapturedContextSupport.restoringIn(executor, invocationContext));
             futures.put(toolRequest, future);
         }
 

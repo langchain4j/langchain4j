@@ -29,7 +29,11 @@ import java.nio.file.Path;
  *
  * ChatResponse response = model.chat(chatRequest);
  * }</pre>
+ *
+ * @deprecated GPULlama3.java has been succeeded by jitLLM. Use
+ * {@code dev.langchain4j.model.jitllm.JitLLMStreamingChatModel} from the {@code langchain4j-jitllm} module instead.
  */
+@Deprecated(since = "1.21.0-beta31")
 public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements StreamingChatModel {
 
     // @formatter:off
@@ -80,6 +84,11 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         }
     }
 
+    /**
+     * @deprecated Use {@code dev.langchain4j.model.jitllm.JitLLMStreamingChatModel.builder()}
+     * from the {@code langchain4j-jitllm} module instead.
+     */
+    @Deprecated(since = "1.21.0-beta31")
     public static class Builder {
 
         protected Path modelPath;

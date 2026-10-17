@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -118,6 +120,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
+        // HITL / SuspendedResponse writes an incomplete deferred value into scope, then notifies the
+        // planner via onSubagentInvoked. Sequential planners must still advance their cursor here;
+        // the supervisor must not call the LLM with lastResponse="<pending:…>" — that burns a turn,
+        // pollutes chat memory, and commonly re-selects the same ask-user agent after resume.
+        if (hasIncompleteSuspendedResponse(planningContext.agenticScope())) {
+            return suspend();
+        }
         String lastResponse = planningContext.previousAgentInvocation() == null
                         || planningContext.previousAgentInvocation().output() == null
                 ? ""
@@ -126,6 +135,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             return doneAction(planningContext.agenticScope(), lastResponse, null);
         }
         return nextSubagent(planningContext.agenticScope(), lastResponse);
+    }
+
+    private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {
+        return agenticScope.state().values().stream()
+                .anyMatch(v -> v instanceof SuspendedResponse<?> sr && !sr.isDone());
     }
 
     private static String toCard(AgentInstance agent) {
@@ -263,13 +277,18 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                         .plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
+        if (agentInvocation.getAgentName() == null) {
+            throw new IllegalStateException("No agent name in the planning reply");
+        }
+
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
             return doneAction(agenticScope, lastResponse, agentInvocation);
         }
 
         AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
 
-        agentInvocation.getArguments().entrySet().stream()
+        Map<String, Object> arguments = Objects.requireNonNullElse(agentInvocation.getArguments(), Map.of());
+        arguments.entrySet().stream()
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
         return call(agent);

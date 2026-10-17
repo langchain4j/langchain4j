@@ -21,6 +21,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Stream;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -128,6 +129,53 @@ class OpenAiBuilderCreatorParityTest {
                 return new DefaultedInBuild(this);
             }
         }
+    }
+
+    /**
+     * The parity check above only sees DTOs that already have a {@code @JsonCreator}. A DTO that has
+     * only {@code @JsonDeserialize(builder = ...)} is invisible to it, yet Jackson 3 cannot construct
+     * it at all - and with the creator but without field visibility on the builder, Jackson 3 leaves
+     * every field null. This checks that every builder-based DTO carries both.
+     */
+    @Test
+    void every_builder_based_dto_is_readable_by_jackson_3() throws Exception {
+        // Request-only types: written to the wire, never read back.
+        List<String> requestOnly = List.of(
+                "dev.langchain4j.model.openai.internal.shared.PromptCacheOptions",
+                "dev.langchain4j.model.openai.internal.chat.PromptCacheBreakpoint");
+
+        List<String> checked = new ArrayList<>();
+        List<String> missingCreator = new ArrayList<>();
+        List<String> missingFieldVisibility = new ArrayList<>();
+        for (String className : classNamesIn(PACKAGE)) {
+            Class<?> type;
+            try {
+                type = Class.forName(className);
+            } catch (Throwable e) {
+                continue;
+            }
+            JsonDeserialize jsonDeserialize = type.getAnnotation(JsonDeserialize.class);
+            if (jsonDeserialize == null || jsonDeserialize.builder() == Void.class || requestOnly.contains(className)) {
+                continue;
+            }
+            checked.add(type.getName());
+            Class<?> builderType = jsonDeserialize.builder();
+            if (!takesItsBuilder(type, builderType)) {
+                missingCreator.add(type.getName());
+            }
+            JsonAutoDetect autoDetect = builderType.getAnnotation(JsonAutoDetect.class);
+            if (autoDetect == null || autoDetect.fieldVisibility() != ANY) {
+                missingFieldVisibility.add(builderType.getName());
+            }
+        }
+
+        assertThat(checked).hasSizeGreaterThanOrEqualTo(EXPECTED_AT_LEAST);
+        assertThat(missingCreator)
+                .as("DTOs without a @JsonCreator constructor taking their builder")
+                .isEmpty();
+        assertThat(missingFieldVisibility)
+                .as("builders without @JsonAutoDetect(fieldVisibility = ANY)")
+                .isEmpty();
     }
 
     private static Object buildEmpty(Class<?> dto) throws Exception {

@@ -4,8 +4,8 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.Map;
@@ -44,7 +44,9 @@ abstract class AbstractSkillToolExecutor implements ToolExecutor {
         if (throwToolArgumentsExceptions) {
             throw e == null ? new ToolArgumentsException(message) : new ToolArgumentsException(message, e);
         } else {
-            throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
+            throw e == null
+                    ? new LlmVisibleToolExecutionException(message)
+                    : new LlmVisibleToolExecutionException(message, e);
         }
     }
 

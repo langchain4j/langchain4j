@@ -426,7 +426,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verifyNoMoreInteractions(spyModel);
     }
 
-    private static String chat(Assistant assistant, String userMessage, InvocationMode invocationMode) {
+    static String chat(Assistant assistant, String userMessage, InvocationMode invocationMode) {
         if (invocationMode == InvocationMode.SYNC) {
             return assistant.chat(userMessage);
         }
@@ -445,7 +445,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         }
     }
 
-    private static void verifyChatRequest(
+    static void verifyChatRequest(
             ChatModel spyModel, InvocationMode invocationMode, ArgumentMatcher<ChatRequest> matcher) {
         if (invocationMode == InvocationMode.SYNC) {
             verify(spyModel).chat(argThat(matcher));
@@ -454,7 +454,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         }
     }
 
-    private static void verifyAnyChatRequest(ChatModel spyModel, InvocationMode invocationMode) {
+    static void verifyAnyChatRequest(ChatModel spyModel, InvocationMode invocationMode) {
         if (invocationMode == InvocationMode.SYNC) {
             verify(spyModel).chat(any(ChatRequest.class));
         } else {
@@ -462,7 +462,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         }
     }
 
-    private static void ignoreOtherInteractions(ChatModel model) {
+    static void ignoreOtherInteractions(ChatModel model) {
         verify(model, atLeast(0)).doChat(any());
         verify(model, atLeast(0)).doChatAsync(any());
         verify(model, atLeast(0)).defaultRequestParameters();

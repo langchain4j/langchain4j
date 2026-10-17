@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -363,8 +364,15 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (agent.topology() != AgenticSystemTopology.ROUTER) {
             return Map.of();
         }
+        ConditionalAgentInstance router;
+        try {
+            router = agent.as(ConditionalAgentInstance.class);
+        } catch (ClassCastException e) {
+            // a router built on a custom planner, with no activation conditions to show
+            return Map.of();
+        }
         Map<String, String> map = new LinkedHashMap<>();
-        for (ConditionalAgent ca : agent.as(ConditionalAgentInstance.class).conditionalSubagents()) {
+        for (ConditionalAgent ca : router.conditionalSubagents()) {
             if (ca.condition() != null) {
                 for (AgentInstance child : ca.agentInstances()) {
                     map.put(child.agentId(), ca.condition());
@@ -827,17 +835,17 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     private static String fmtDur(Duration d) {
         long ms = d.toMillis();
         if (ms < 1000) return ms + "ms";
-        if (ms < 60_000) return String.format("%.1fs", ms / 1000.0);
-        return String.format("%dm %ds", ms / 60_000, (ms % 60_000) / 1000);
+        if (ms < 60_000) return String.format(Locale.ROOT, "%.1fs", ms / 1000.0);
+        return String.format(Locale.ROOT, "%dm %ds", ms / 60_000, (ms % 60_000) / 1000);
     }
 
     private static String fmtTokens(int tokens) {
         if (tokens < 1000) return String.valueOf(tokens);
-        return String.format("%.1fk", tokens / 1000.0);
+        return String.format(Locale.ROOT, "%.1fk", tokens / 1000.0);
     }
 
     private static String fmt(double v) {
-        return String.format("%.1f", v);
+        return String.format(Locale.ROOT, "%.1f", v);
     }
 
     private static String simpleTypeName(Type type) {

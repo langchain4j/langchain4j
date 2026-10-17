@@ -63,6 +63,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -645,8 +646,12 @@ public class DefaultMcpClient implements McpClient {
             timedOutResultFuture.cancel(true);
         }
         pendingOperations.remove(timedOutOperationId);
+        sendCancellationNotification(timedOutOperationId, "Timeout");
+    }
+
+    private void sendCancellationNotification(long operationId, String reason) {
         if (shouldSendCancellationNotification()) {
-            McpCancellationNotification cancellation = new McpCancellationNotification(timedOutOperationId, "Timeout");
+            McpCancellationNotification cancellation = new McpCancellationNotification(operationId, reason);
             applyMeta(cancellation, null);
             transport.sendMessage(cancellation);
         }
@@ -793,18 +798,47 @@ public class DefaultMcpClient implements McpClient {
             return CompletableFuture.failedFuture(e);
         }
 
-        return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
-            pendingOperations.remove(operationId);
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (cause instanceof TimeoutException timeout) {
-                    return handleToolTimeout(context, operationId, resultFuture, timeout);
+        // Caller cancellation can race with a response handler that has already started.
+        AtomicBoolean completionHandled = new AtomicBoolean();
+        CompletableFuture<ToolExecutionResult> handledFuture = resultFuture
+                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+                .handle((result, error) -> {
+                    pendingOperations.remove(operationId);
+                    if (!completionHandled.compareAndSet(false, true)) {
+                        throw new CancellationException();
+                    }
+                    if (error != null) {
+                        Throwable cause = unwrapCompletionException(error);
+                        if (cause instanceof CancellationException) {
+                            notifyListeners(l -> l.onExecuteToolError(context, cause));
+                            throw (CancellationException) cause;
+                        }
+                        if (cause instanceof TimeoutException timeout) {
+                            return handleToolTimeout(context, operationId, resultFuture, timeout);
+                        }
+                        notifyListeners(l -> l.onExecuteToolError(context, cause));
+                        throw new ToolExecutionException(cause);
+                    }
+                    return extractResultAndNotifyListeners(context, result);
+                });
+
+        handledFuture.whenComplete((result, error) -> {
+            if (handledFuture.isCancelled()) {
+                boolean notifyCancellation = completionHandled.compareAndSet(false, true);
+                try {
+                    if (resultFuture.cancel(true)) {
+                        pendingOperations.remove(operationId);
+                        sendCancellationNotification(operationId, "Cancelled");
+                    }
+                } finally {
+                    if (notifyCancellation) {
+                        Throwable cause = unwrapCompletionException(error);
+                        notifyListeners(l -> l.onExecuteToolError(context, cause));
+                    }
                 }
-                notifyListeners(l -> l.onExecuteToolError(context, cause));
-                throw new ToolExecutionException(cause);
             }
-            return extractResultAndNotifyListeners(context, result);
         });
+        return handledFuture;
     }
 
     private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
@@ -1660,16 +1694,15 @@ public class DefaultMcpClient implements McpClient {
         if (spec == null || spec.metadata() == null) {
             return null;
         }
-        Map<String, String> headerMappings =
-                (Map<String, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
         if (headerMappings == null || headerMappings.isEmpty()) {
             return null;
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, String> entry : headerMappings.entrySet()) {
-            String propertyPath = entry.getKey();
+        for (Map.Entry<List<String>, String> entry : headerMappings.entrySet()) {
+            Object value = resolvePropertyPath(arguments, entry.getKey());
             String headerName = entry.getValue();
-            Object value = resolvePropertyPath(arguments, propertyPath);
             String stringValue;
             if (value instanceof String text) {
                 stringValue = text;
@@ -1686,10 +1719,9 @@ public class DefaultMcpClient implements McpClient {
         return result.isEmpty() ? null : result;
     }
 
-    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, String path) {
-        String[] segments = path.split("\\.");
+    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, List<String> path) {
         Object current = root;
-        for (String segment : segments) {
+        for (String segment : path) {
             if (!(current instanceof Map<?, ?> map)) {
                 return null;
             }
