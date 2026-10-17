@@ -1,10 +1,12 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -24,6 +26,12 @@ import org.slf4j.LoggerFactory;
  * After each agent completes, the planner inspects the blackboard and activates whichever single agent
  * can contribute next. When multiple agents are ready, a {@link ConflictResolutionStrategy} determines
  * which one fires; if no strategy is provided, declaration order is used.
+ * <p>
+ * The planner needs a goal to know when the work is over. The goal is either the
+ * {@link Predicate goal predicate} passed to the constructor, or, when none is given, the output key of
+ * the planner agent: the goal is then considered reached once that key is present in the scope. A
+ * blackboard without an output key has no goal and no reason to run, so configuring neither is rejected
+ * with an {@link AgenticSystemConfigurationException}.
  * <p>
  * The planner terminates successfully when:
  * <ul>
@@ -80,9 +88,15 @@ public class BlackboardPlanner implements Planner {
     public void init(InitPlanningContext initPlanningContext) {
         if (goalPredicate == null) {
             String outputKey = initPlanningContext.plannerAgent().outputKey();
-            // An agent that stores its result nowhere has no output key to wait for, so the planner
-            // falls back to the other documented way of terminating: quiescence, or maxInvocations.
-            this.goalPredicate = scope -> outputKey != null && scope.hasState(outputKey);
+            if (isNullOrBlank(outputKey)) {
+                throw new AgenticSystemConfigurationException("A BlackboardPlanner needs a goal to know when to"
+                        + " stop, but the agent '"
+                        + initPlanningContext.plannerAgent().name()
+                        + "' declares no output key. Either set an output key on the planner agent, so that the"
+                        + " goal is considered reached once that key is present in the scope, or pass an explicit"
+                        + " goal predicate to a BlackboardPlanner constructor that accepts one.");
+            }
+            this.goalPredicate = scope -> scope.hasState(outputKey);
         }
         this.agentActivators = initPlanningContext.subagents().stream()
                 .collect(toMap(AgentInstance::agentId, AgentActivator::new, (a, b) -> a, LinkedHashMap::new));
