@@ -1,17 +1,22 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
+
 import dev.langchain4j.Experimental;
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.*;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,12 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-
-import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OTHER;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -114,18 +113,18 @@ public interface StreamingChatModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
+                onResponse(completeResponse, finalChatRequest, provider(), attributes, true, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, listeners);
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, true, listeners);
                 handler.onError(error);
             }
         };
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, true, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -205,10 +204,10 @@ public interface StreamingChatModel {
 
                 Publisher<ChatModelStreamingEvent> innerPublisher;
                 try {
-                    onRequest(finalChatRequest, provider, attributes, listeners);
+                    onRequest(finalChatRequest, provider, attributes, true, listeners);
                     innerPublisher = doChat(finalChatRequest);
                 } catch (Throwable error) {
-                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, listeners);
+                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, true, listeners);
                     downstream.onSubscribe(EMPTY_SUBSCRIPTION);
                     downstream.onError(error);
                     return;
@@ -233,14 +232,15 @@ public interface StreamingChatModel {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, listeners);
+                        ChatModelListenerUtils.onError(
+                                throwable, finalChatRequest, provider, attributes, true, listeners);
                         downstream.onError(throwable);
                     }
 
                     @Override
                     public void onComplete() {
                         if (completeResponse != null) {
-                            onResponse(completeResponse, finalChatRequest, provider, attributes, listeners);
+                            onResponse(completeResponse, finalChatRequest, provider, attributes, true, listeners);
                         }
                         downstream.onComplete();
                     }

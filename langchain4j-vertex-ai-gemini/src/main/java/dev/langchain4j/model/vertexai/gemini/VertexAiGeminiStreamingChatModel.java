@@ -442,7 +442,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 .build();
         ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
+                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes, true);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -516,8 +516,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                                 .finishReason(fullResponse.finishReason())
                                 .build())
                         .build();
-                ChatModelResponseContext chatModelResponseContext =
-                        new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
+                ChatModelResponseContext chatModelResponseContext = new ChatModelResponseContext(
+                        listenerResponse, listenerRequest, provider(), listenerAttributes, true);
                 listeners.forEach((listener) -> {
                     try {
                         listener.onResponse(chatModelResponseContext);
@@ -534,7 +534,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 listeners.forEach((listener) -> {
                     try {
                         ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                                mappedException, listenerRequest, provider(), listenerAttributes);
+                                mappedException, listenerRequest, provider(), listenerAttributes, true);
                         listener.onError(chatModelErrorContext);
                     } catch (Exception t) {
                         logger.warn("Exception while calling model listener (onError)", t);
