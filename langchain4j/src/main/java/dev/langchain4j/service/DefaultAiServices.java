@@ -464,7 +464,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
 
                             Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
-                                if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
+                                final boolean firstSubscription = reactiveSubscribed.compareAndSet(false, true);
+                                if (reactiveSingleSubscription && !firstSubscription) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
                                     subscriber.onError(new IllegalStateException(
                                             "This AI Service reactive stream cannot be subscribed to more than once "
@@ -475,17 +476,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     return;
                                 }
 
+                                final InvocationContext subscriptionInvocationContext = firstSubscription
+                                        ? baseInvocationContext
+                                        : baseInvocationContext.toBuilder()
+                                                .invocationId(UUID.randomUUID())
+                                                .build();
+
                                 DeferredSubscription subscription = new DeferredSubscription();
                                 subscriber.onSubscribe(subscription);
 
                                 context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
-                                        .invocationContext(baseInvocationContext)
+                                        .invocationContext(subscriptionInvocationContext)
                                         .systemMessage(reactiveSystemMessage)
                                         .userMessage(originalUserMessage)
                                         .build());
 
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
-                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, baseInvocationContext);
+                                        reactiveChatMemory,
+                                        reactiveSystemMessage,
+                                        originalUserMessage,
+                                        subscriptionInvocationContext);
                                 subscription.setCancelAction(() -> augmentation.cancel(true));
 
                                 augmentation.whenComplete((augmentationResult, augmentationError) -> {
@@ -509,7 +519,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .chatMemory(reactiveChatMemory)
                                                 .augmentationResult(augmentationResult)
                                                 .userMessageTemplate(userMessageTemplate)
-                                                .invocationContext(baseInvocationContext)
+                                                .invocationContext(subscriptionInvocationContext)
                                                 .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                                 .variables(variables)
                                                 .build();
@@ -523,7 +533,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
                                                     guardedUserMessage,
-                                                    baseInvocationContext,
+                                                    subscriptionInvocationContext,
                                                     reactiveReturnType,
                                                     reactiveAppendOutputFormat))
                                             .whenComplete((guardedInput, guardrailError) -> {

@@ -77,7 +77,7 @@ public class MyAiServiceCompletedListener implements AiServiceCompletedListener 
         InvocationContext invocationContext = event.invocationContext();
         Optional<Object> result = event.result();
 
-        // The invocationId will be the same for all events related to the same LLM invocation
+        // The invocationId will be the same for all events related to the same AI Service invocation
         UUID invocationId = invocationContext.invocationId();
         String aiServiceInterfaceName = invocationContext.interfaceName();
         String aiServiceMethodName = invocationContext.methodName();
@@ -97,6 +97,13 @@ var myService = AiServices.builder(MyAiService.class)
         .registerListener(myListener)
         .build();
 ```
+
+For reactive AI Service methods returning `Flow.Publisher` or an adapted `Flux`/`Multi`,
+a stream without `ChatMemory` supports multiple subscriptions. Each subscription starts a separate interaction
+with a distinct `invocationId`: the first subscription retains the ID created when the AI Service method was called,
+and every later subscription receives a fresh ID. All AI Service listener events, streaming events and tool executions
+within one subscription share that ID, including across multiple model calls and tool rounds.
+When `ChatMemory` is configured, a stream supports only one subscription; subsequent subscriptions are rejected.
 
 ### Creating your own events and listeners
 
