@@ -1,10 +1,6 @@
 package dev.langchain4j.data.segment;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.Experimental;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
