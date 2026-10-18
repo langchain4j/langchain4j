@@ -326,8 +326,8 @@ class AiServicesObservabilityTests {
         runScenario(
                 () -> Assistant.create(true, false),
                 () -> Assistant.create(true, false, listeners.values()),
-                assistant ->
-                        assertThat(await(assistant.chatAsync(TOOL_USER_MESSAGE))).isEqualTo(TOOL_EXPECTED_RESPONSE),
+                assistant -> assertThat(await(assistant.chatAsync(TOOL_USER_MESSAGE)))
+                        .isEqualTo(TOOL_EXPECTED_RESPONSE),
                 "chatAsync",
                 true,
                 List.of(
@@ -594,11 +594,8 @@ class AiServicesObservabilityTests {
         // The async invocation must not be left "dangling": a terminal error event is fired
         assertThat(errorListener.count()).isEqualTo(1);
         assertThat(errorListener.event()).isNotNull();
-        assertThat(errorListener.event().invocationContext().methodName())
-                .isEqualTo("chatAsyncWithInputGuardrails");
-        assertThat(errorListener.event().error())
-                .isNotNull()
-                .hasMessageContaining("User message is not valid");
+        assertThat(errorListener.event().invocationContext().methodName()).isEqualTo("chatAsyncWithInputGuardrails");
+        assertThat(errorListener.event().error()).isNotNull().hasMessageContaining("User message is not valid");
     }
 
     @Test
@@ -612,8 +609,7 @@ class AiServicesObservabilityTests {
         // The reactive invocation must not be left "dangling": a terminal error event is fired
         assertThat(errorListener.count()).isEqualTo(1);
         assertThat(errorListener.event()).isNotNull();
-        assertThat(errorListener.event().invocationContext().methodName())
-                .isEqualTo("reactiveChatWithInputGuardrails");
+        assertThat(errorListener.event().invocationContext().methodName()).isEqualTo("reactiveChatWithInputGuardrails");
     }
 
     @Test
@@ -691,10 +687,13 @@ class AiServicesObservabilityTests {
 
     private static void assertNoEventsReceived(
             int expectedSize, Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
-        assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
+        assertThat(listeners)
                 .isNotNull()
-                .extracting(MyListener::count, MyListener::event)
-                .containsExactly(0, null));
+                .hasSize(expectedSize)
+                .allSatisfy(l -> assertThat(l)
+                        .isNotNull()
+                        .extracting(MyListener::count, MyListener::event)
+                        .containsExactly(0, null));
     }
 
     private static void assertEventsReceived(
