@@ -565,14 +565,7 @@ EmbeddingInputMapper codeMapping = new CodeDescriptionMapping();
 
 List<TextSegment> embeddingInputs = codeMapping.map(codeSegment);
 List<Embedding> embeddings = embeddingModel.embedAll(embeddingInputs).content();
-
-// The original segment must be stored once per embedding.
-List<TextSegment> segmentsToStore = codeMapping.originalSegmentList(codeSegment, embeddingInputs);
-embeddingStore.addAll(embeddings, segmentsToStore);
 ```
-
-For a batch, `originalSegmentList(segments, mappedSegments)` returns the same nested shape as
-`mappedSegments`, with each inner list containing the corresponding original segment.
 
 `map` may return an empty list or `null` to skip a segment. For a single representation, return a
 single-element list.

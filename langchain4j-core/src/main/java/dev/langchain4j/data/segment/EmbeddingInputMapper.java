@@ -56,49 +56,4 @@ public interface EmbeddingInputMapper {
                 })
                 .toList();
     }
-
-    /**
-     * Returns a list with the same size as {@code mappedSegments}, where every element is the original
-     * {@code segment}.
-     * <p>
-     * This is useful when storing the original segment once for every embedding produced from it.
-     *
-     * @param segment        the original segment.
-     * @param mappedSegments the mapped segments produced for the original segment.
-     * @return a list containing the original segment once per mapped segment.
-     */
-    default List<TextSegment> originalSegmentList(TextSegment segment, List<TextSegment> mappedSegments) {
-        ensureNotNull(segment, "segment");
-        if (mappedSegments == null || mappedSegments.isEmpty()) {
-            return List.of();
-        }
-        return Collections.nCopies(mappedSegments.size(), segment);
-    }
-
-    /**
-     * Returns a list with the same shape as {@code mappedSegments}, where each inner list contains the
-     * corresponding original segment repeated once per mapped segment.
-     * <p>
-     * The two input lists must have the same size and be in the same order.
-     *
-     * @param segments       the original segments.
-     * @param mappedSegments the mapped segments produced for each original segment.
-     * @return a list containing the original segments, shaped like {@code mappedSegments}.
-     */
-    default List<List<TextSegment>> originalSegmentList(
-            List<TextSegment> segments, List<List<TextSegment>> mappedSegments) {
-        ensureNotNull(segments, "segments");
-        ensureNotNull(mappedSegments, "mappedSegments");
-        if (segments.size() != mappedSegments.size()) {
-            throw new IllegalArgumentException(
-                    "The number of segments must match the number of mapped segment lists. Expected " + segments.size()
-                            + " but got " + mappedSegments.size() + ".");
-        }
-
-        List<List<TextSegment>> result = new ArrayList<>(segments.size());
-        for (int i = 0; i < segments.size(); i++) {
-            result.add(originalSegmentList(segments.get(i), mappedSegments.get(i)));
-        }
-        return result;
-    }
 }
