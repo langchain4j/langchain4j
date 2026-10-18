@@ -10,6 +10,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -23,6 +24,12 @@ import java.util.concurrent.ForkJoinPool;
  * The LLM decides how many descriptions are useful. They are returned as a JSON array and converted
  * by {@link AiServices}. The original segment is always included as the first mapped segment so that
  * exact identifiers, class names, and phrases remain searchable.
+ * <p>
+ * For best results, configure the {@link ChatModel} to declare
+ * {@link dev.langchain4j.model.chat.Capability#RESPONSE_FORMAT_JSON_SCHEMA RESPONSE_FORMAT_JSON_SCHEMA}
+ * and, where supported, enable {@code strictJsonSchema(true)}. This is optional: without it,
+ * {@link AiServices} falls back to prompt-based JSON formatting and best-effort parsing, which may be
+ * less reliable.
  * <p>
  * Every call to {@link #map(TextSegment)} invokes the LLM. If the same content is ingested repeatedly,
  * cache the generated descriptions to avoid unnecessary calls.
@@ -42,7 +49,9 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
      * <p>
      * Uses {@link ForkJoinPool#commonPool()} for concurrent {@link #mapAll(List)} calls.
      *
-     * @param chatModel the chat model to use.
+     * @param chatModel the chat model to use. For best results, configure it to declare
+     *                  {@link dev.langchain4j.model.chat.Capability#RESPONSE_FORMAT_JSON_SCHEMA RESPONSE_FORMAT_JSON_SCHEMA}
+     *                  and, where supported, enable {@code strictJsonSchema(true)}.
      */
     public LLMBasedEmbeddingInputMapper(ChatModel chatModel) {
         this(chatModel, ForkJoinPool.commonPool());
@@ -51,7 +60,9 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
     /**
      * Creates a mapper that uses the given chat model to generate embedding inputs.
      *
-     * @param chatModel the chat model to use.
+     * @param chatModel the chat model to use. For best results, configure it to declare
+     *                  {@link dev.langchain4j.model.chat.Capability#RESPONSE_FORMAT_JSON_SCHEMA RESPONSE_FORMAT_JSON_SCHEMA}
+     *                  and, where supported, enable {@code strictJsonSchema(true)}.
      * @param executor  the executor used to run {@link #mapAll(List)} calls concurrently.
      */
     public LLMBasedEmbeddingInputMapper(ChatModel chatModel, Executor executor) {
@@ -68,12 +79,11 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
         mapped.add(TextSegment.from(segment.text(), segment.metadata()));
 
         List<String> descriptions = descriptionGenerator.describe(segment.text());
-        if (descriptions != null) {
-            for (String description : descriptions) {
-                if (description != null && !description.isBlank()) {
-                    mapped.add(TextSegment.from(description));
-                }
-            }
+
+        if (descriptions == null) return Collections.emptyList();
+        for (String description : descriptions) {
+            if (description == null || description.isBlank()) continue;
+            mapped.add(TextSegment.from(description));
         }
         return mapped;
     }
@@ -94,6 +104,10 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
             return List.of();
         }
 
+        if (segments.size() == 1) {
+            return List.of(map(segments.get(0)));
+        }
+
         List<CompletableFuture<List<TextSegment>>> futures = new ArrayList<>(segments.size());
         for (TextSegment segment : segments) {
             futures.add(CompletableFuture.supplyAsync(() -> map(segment), executor));
@@ -102,19 +116,11 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
         List<List<TextSegment>> mappedSegments = new ArrayList<>(segments.size());
         try {
             for (CompletableFuture<List<TextSegment>> future : futures) {
-                mappedSegments.add(join(future));
+                mappedSegments.add(future.join());
             }
-        } catch (RuntimeException | Error e) {
-            futures.forEach(future -> future.cancel(true));
-            throw e;
-        }
-        return mappedSegments;
-    }
-
-    private static <T> T join(CompletableFuture<T> future) {
-        try {
-            return future.join();
         } catch (CompletionException e) {
+            futures.forEach(future -> future.cancel(true));
+
             Throwable cause = e.getCause();
             if (cause instanceof RuntimeException runtimeException) {
                 throw runtimeException;
@@ -124,6 +130,7 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
             }
             throw e;
         }
+        return mappedSegments;
     }
 
     /**

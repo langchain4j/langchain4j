@@ -587,6 +587,10 @@ original segment is always included as one of the mapped segments.
 EmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
 ```
 
+For best results, configure the `ChatModel` to declare `RESPONSE_FORMAT_JSON_SCHEMA` and, where supported,
+enable `strictJsonSchema(true)`. This is optional: without it, `AiServices` falls back to prompt-based JSON
+formatting and best-effort parsing, which may be less reliable.
+
 Each call invokes the LLM, so cache generated descriptions when the same content is ingested repeatedly.
 
 #### Possible negative impacts on retrieval
@@ -605,7 +609,7 @@ or a stable metadata key such as `parent_id`.
 - Recall is not guaranteed; measure Recall@K on your own data.
 - Cost scales with the number of representations.
 - LLM-generated descriptions make ingestion non-idempotent; cache them.
-  :::
+:::
 
 
 ### Embedding
