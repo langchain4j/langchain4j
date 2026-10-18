@@ -20,6 +20,12 @@ public class TypeSafeRequest {
     @JsonInclude(NON_NULL)
     public Map<String, TypeSafeQuestion> questions;
 
+    /**
+     * The images, by the reference that stands for each of them in the {@link #state}.
+     */
+    @JsonInclude(NON_NULL)
+    public Map<String, Map<String, String>> assets;
+
     @JsonIgnore
     public Map<String, Object> customParameters;
 
