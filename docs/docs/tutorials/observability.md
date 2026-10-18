@@ -18,6 +18,20 @@ The AI Service observability capabilities are only available when using [AI Serv
 
 The implementation was originally implemented in the [Quarkus LangChain4j extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/) and was backported here.
 
+### Reactive stream subscriptions
+
+When an AI Service returns a reactive stream (`Flow.Publisher`, or an adapted `Flux`/`Multi`)
+and no `ChatMemory` is configured, each subscription runs a separate interaction, including
+model calls and tool executions. Each subscription has its own `InvocationContext.invocationId()`:
+the first subscription retains the ID created when the service method was called, and subsequent
+subscriptions receive new IDs. Events within one subscription share its ID, including when
+subscriptions overlap or the publisher is re-subscribed for a retry.
+
+Previously, re-subscriptions reused the original ID. Listeners that correlate events by
+`invocationId` should treat each subscription as a separate invocation.
+When `ChatMemory` is configured, only one subscription is allowed; invoke the service method
+again to start another interaction.
+
 ### Types of events
 
 Each type of event has a unique identifier, which can be used to correlate events across multiple invocations.
