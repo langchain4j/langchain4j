@@ -24,6 +24,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -35,6 +36,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link ContentRetriever} that retrieves from an {@link EmbeddingStore}.
@@ -68,6 +71,8 @@ import java.util.stream.Collectors;
  * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  */
 public class EmbeddingStoreContentRetriever implements ContentRetriever {
+
+    private static final Logger log = LoggerFactory.getLogger(EmbeddingStoreContentRetriever.class);
 
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
@@ -303,6 +308,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         return builder().embeddingStore(embeddingStore).build();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The returned list can contain fewer than {@code maxResults} elements, and can even be empty, when some of
+     * the most similar matches carry no {@link TextSegment}: such a match carries no content and is skipped.
+     */
     @Override
     public List<Content> retrieve(Query query) {
 
@@ -412,7 +423,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     private List<Content> toContents(EmbeddingSearchResult<TextSegment> searchResult) {
-        return searchResult.matches().stream()
+        List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
+        List<Content> contents = matches.stream()
                 // a match without a text segment carries no content, so there is nothing to retrieve
                 .filter(embeddingMatch -> embeddingMatch.embedded() != null)
                 .map(embeddingMatch -> Content.from(
@@ -421,6 +433,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                 ContentMetadata.SCORE, embeddingMatch.score(),
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId())))
                 .collect(Collectors.toList());
+        if (contents.size() < matches.size()) {
+            // the store already applied maxResults, so the content retrieved can be less than what was asked for
+            log.debug(
+                    "ignored [{}] of [{}] matches because they carry no text segment",
+                    matches.size() - contents.size(),
+                    matches.size());
+        }
+        return contents;
     }
 
     private Embedding embedQuery(String text) {
