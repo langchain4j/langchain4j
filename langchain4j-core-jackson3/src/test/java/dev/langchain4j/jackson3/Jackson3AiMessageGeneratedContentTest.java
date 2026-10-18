@@ -39,6 +39,23 @@ class Jackson3AiMessageGeneratedContentTest {
         assertThat(restored).isEqualTo(original);
         assertThat(restored.images()).containsExactly(IMAGE);
         assertThat(restored.audios()).containsExactly(AUDIO);
+        assertThat(restored.attribute(GENERATED_IMAGES_KEY, List.class)).containsExactly(IMAGE);
+    }
+
+    @Test
+    void should_keep_an_attribute_that_holds_a_list_of_plain_values() {
+        AiMessage original = AiMessage.builder()
+                .text("hi")
+                .attributes(Map.of("name", "Klaus", "age", 42, "extra", List.of("one", "two")))
+                .build();
+
+        AiMessage restored = (AiMessage) CODEC.messageFromJson(CODEC.messageToJson(original));
+
+        assertThat(restored).isEqualTo(original);
+        assertThat(restored.attributes())
+                .containsEntry("name", "Klaus")
+                .containsEntry("age", 42)
+                .containsEntry("extra", List.of("one", "two"));
     }
 
     @Test
@@ -64,5 +81,13 @@ class Jackson3AiMessageGeneratedContentTest {
                 .isEqualToIgnoringWhitespace("{\"text\":\"hi\",\"toolExecutionRequests\":[],\"attributes\":{"
                         + "\"generated_images\":[{\"url\":\"https://example.com/a.png\",\"mimeType\":\"image/png\"}]},"
                         + "\"type\":\"AI\"}");
+    }
+
+    @Test
+    void should_leave_a_value_that_is_not_a_list_of_generated_content_alone() {
+        AiMessage restored = (AiMessage) CODEC.messageFromJson("{\"text\":\"hi\",\"toolExecutionRequests\":[],"
+                + "\"attributes\":{\"generated_images\":\"not an array\"},\"type\":\"AI\"}");
+
+        assertThat(restored.attributes()).containsEntry(GENERATED_IMAGES_KEY, "not an array");
     }
 }
