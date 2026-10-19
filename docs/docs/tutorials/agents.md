@@ -1105,7 +1105,7 @@ Similarly to what demonstrated for the `@Output` annotation, annotating other `s
 | Annotation Name          | Description                                                                                                                       |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
-| `@ActivationCondition`   | Without a value, the [activation condition](#activation-conditions) of this agentic pattern. With a value, only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents. It must return a `boolean` |
+| `@ActivationCondition`   | Without a value, the [activation condition](#activation-conditions) of this agentic pattern, not allowed on the `ConditionalAgent`. With a value, only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents. It must return a `boolean` |
 | `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
 | `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
 | `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
@@ -1179,7 +1179,7 @@ public interface ExpertsAgent {
 }
 ```
 
-In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`. A further method annotated with `@ActivationCondition` without any value would instead be the [activation condition](#activation-conditions) of the `ExpertsAgent` itself, deciding whether it runs at all when used as a subagent.
+In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`. On a conditional agent every `@ActivationCondition` must have a value: one without value, which on any other agent would be its own [activation condition](#activation-conditions), is rejected with an `AgenticSystemConfigurationException` when the agentic system is created.
 
 Note that it is also possible to mix the programmatic and declarative styles of defining agents and agentic systems, so that an agent can be configured partially using annotations and partially using the agent builders. It is also allowed to completely define an agent declaratively and then programmatically implement an agentic system using the agent's class as a subagent. For instance, it would be possible to declaratively define the `CreativeWriter` and `AudienceEditor` agents as follows:
 

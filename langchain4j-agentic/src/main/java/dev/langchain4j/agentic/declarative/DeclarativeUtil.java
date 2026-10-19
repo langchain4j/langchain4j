@@ -250,7 +250,8 @@ public class DeclarativeUtil {
     /**
      * Reads the activation condition of the agent declared by the given class or interface: the static method
      * annotated with {@link ActivationCondition} without a value. An {@link ActivationCondition} with a value is
-     * allowed only on a {@link ConditionalAgent}, where it selects the subagents to activate.
+     * allowed only on a {@link ConditionalAgent}, where it selects the subagents to activate, and where a condition
+     * without value is not allowed.
      *
      * @return the activation condition of the agent, or {@code null} when it has none
      * @throws AgenticSystemConfigurationException if there is more than one such method, if it doesn't return a
@@ -269,6 +270,11 @@ public class DeclarativeUtil {
                             + agentClass.getSimpleName() + " itself.");
                 }
                 continue;
+            }
+            if (conditionalAgent) {
+                throw new AgenticSystemConfigurationException("The @ActivationCondition method " + method
+                        + " has no value, but on the @ConditionalAgent " + agentClass.getName()
+                        + " every activation condition must name the subagents it activates.");
             }
             if (method.getReturnType() != boolean.class && method.getReturnType() != Boolean.class) {
                 throw new AgenticSystemConfigurationException(

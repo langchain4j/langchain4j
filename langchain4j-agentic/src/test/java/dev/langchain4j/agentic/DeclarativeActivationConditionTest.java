@@ -232,7 +232,7 @@ class DeclarativeActivationConditionTest {
                 .isEqualTo("the user is polite");
     }
 
-    // ── Conditional agent with its own condition ──
+    // ── Conditional agent with a condition without value ──
 
     public static class StaticWaver {
 
@@ -275,14 +275,11 @@ class DeclarativeActivationConditionTest {
     }
 
     @Test
-    void conditional_agent_declares_its_own_condition_next_to_the_ones_of_its_subagents() {
-        RoutingSequence sequence = AgenticServices.createAgenticSystem(RoutingSequence.class);
-
-        assertThat(sequence.run("Mario", true, false)).isEqualTo("no greeting");
-        assertThat(sequence.run("Mario", true, true)).isEqualTo("Hello Mario");
-        assertThat(sequence.run("Mario", false, true)).isEqualTo("*waves at Mario*");
-        assertThat(GREETINGS).hasValue(1);
-        assertThat(WAVES).hasValue(1);
+    void conditional_agent_rejects_a_condition_without_value() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(RoutingSequence.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("enabled")
+                .hasMessageContaining("every activation condition must name the subagents it activates");
     }
 
     // ── Arguments of a condition ──

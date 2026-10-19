@@ -58,7 +58,8 @@ import java.lang.annotation.Target;
  *     }
  * }
  * </pre>
- * On a {@link ConditionalAgent}, a method without value is the condition of the conditional agent itself.
+ * On a {@link ConditionalAgent}, every activation condition must have a value: a method without value is a
+ * configuration error.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
@@ -66,7 +67,8 @@ public @interface ActivationCondition {
 
     /**
      * The subagents of the {@link ConditionalAgent} that this activation condition applies to. When empty, the
-     * condition applies to the agent declared by the class or interface containing the method.
+     * condition applies to the agent declared by the class or interface containing the method, which must not be a
+     * {@link ConditionalAgent}.
      *
      * @return array of sub-agent classes.
      */
