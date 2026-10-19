@@ -972,7 +972,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. For an AI agent, the `modelName()` method of its `AgentInvocation` also returns the name of the model that answered its last LLM call, as reported by the provider in the response metadata, so it is empty for workflow and non-AI agents, and for providers not reporting it. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
 
 ```java
 MonitoredExecution execution = monitor.successfulExecutions().get(0);

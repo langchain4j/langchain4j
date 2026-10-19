@@ -2,6 +2,8 @@ package dev.langchain4j.agentic.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -11,10 +13,16 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -160,6 +168,82 @@ class HtmlReportGeneratorTest {
         } finally {
             Locale.setDefault(defaultLocale);
         }
+    }
+
+    public interface Assistant {
+
+        @UserMessage("Answer {{question}}")
+        @Agent(outputKey = "answer")
+        String answer(@V("question") String question);
+    }
+
+    public interface Workflow {
+
+        @Agent
+        String run(@V("question") String question);
+    }
+
+    public static class Clock {
+
+        @Tool
+        public String time() {
+            return "noon";
+        }
+    }
+
+    @Test
+    void generates_execution_with_the_model_of_each_ai_agent() {
+        Assistant assistant = AgenticServices.agentBuilder(
+                        Assistant.class)
+                .chatModel(modelCallingToolBeforeAnswering(
+                        "gpt-4o-mini-2024-07-18", "gpt-4o-mini-2024-07-18"))
+                .tools(new Clock())
+                .build();
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        String html = HtmlReportGenerator.generateExecution(monitor);
+
+        assertThat(html).contains("<th>Duration</th><th>Model</th><th>Tokens</th>");
+        // only the AI agent row shows a model, not the sequence or the tool rows
+        assertThat(countMatches(html, Pattern.quote("<td class=\"wf-dur\">gpt-4o-mini-2024-07-18</td>")))
+                .isEqualTo(1);
+
+        // the rows of the sequence, of the AI agent and of its tool execution all have a cell per column
+        String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
+        String[] rows = body.split("<tr");
+        assertThat(rows).hasSize(4);
+        for (int i = 1; i < rows.length; i++) {
+            assertThat(countMatches(rows[i], "<td")).isEqualTo(7);
+        }
+    }
+
+    static ChatModel modelCallingToolBeforeAnswering(String toolCallingModel, String answeringModel) {
+        AtomicInteger calls = new AtomicInteger();
+        return new ChatModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                if (calls.getAndIncrement() % 2 == 0) {
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
+                                    .id("1")
+                                    .name("time")
+                                    .arguments("{}")
+                                    .build()))
+                            .modelName(toolCallingModel)
+                            .build();
+                }
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("It is noon"))
+                        .modelName(answeringModel)
+                        .build();
+            }
+        };
     }
 
     private static int countMatches(String html, String regex) {
