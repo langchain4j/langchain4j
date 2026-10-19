@@ -86,8 +86,10 @@ public class GoogleGenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         ensureNotBlank(prompt, "prompt");
 
-        Content content =
-                Content.builder().parts(List.of(Part.fromText(prompt))).build();
+        Content content = Content.builder()
+                .role("user")
+                .parts(List.of(Part.fromText(prompt)))
+                .build();
 
         return generateImageResponse(List.of(content));
     }
@@ -101,7 +103,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(Part.fromText(prompt));
         parts.add(createImagePart(image));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }
@@ -117,7 +119,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(createImagePart(image));
         parts.add(createImagePart(mask));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }
@@ -192,7 +194,8 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {
@@ -205,8 +208,7 @@ public class GoogleGenAiImageModel implements ImageModel {
             if (candidate.groundingMetadata().isPresent()) {
                 GroundingMetadata gm = candidate.groundingMetadata().get();
                 try {
-                    Map<String, Object> groundingMap =
-                            CODEC.fromJson(gm.toJson(), Map.class);
+                    Map<String, Object> groundingMap = CODEC.fromJson(gm.toJson(), Map.class);
                     metadata.put("groundingMetadata", groundingMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse grounding metadata", e);

@@ -1,15 +1,22 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
+import com.google.genai.types.CodeExecutionResult;
 import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Outcome;
 import com.google.genai.types.Part;
+import com.google.genai.types.Transcription;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -36,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -136,15 +144,26 @@ class GoogleGenAiContentMapper {
             }
 
             if (message instanceof ToolExecutionResultMessage toolMsg) {
-                String toolResult;
-                try {
-                    toolResult = toolMsg.text();
-                } catch (IllegalStateException e) {
-                    throw new UnsupportedFeatureException(
-                            "Google Gen AI currently does not support non-text content in tool execution results");
-                }
+                List<Part> extraParts = new ArrayList<>();
                 Map<String, Object> responseMap = new HashMap<>();
-                responseMap.put("result", toolResult);
+
+                if (toolMsg.hasSingleText()) {
+                    responseMap.put("result", toolMsg.text());
+                } else {
+                    List<String> texts = new ArrayList<>();
+                    for (dev.langchain4j.data.message.Content content : toolMsg.contents()) {
+                        if (content instanceof TextContent textContent) {
+                            texts.add(textContent.text());
+                        } else if (content instanceof ImageContent imageContent) {
+                            extraParts.add(map(imageContent));
+                        } else {
+                            throw new UnsupportedFeatureException(
+                                    "Google Gen AI currently does not support non-text content type '" + content.type()
+                                            + "' in tool execution results");
+                        }
+                    }
+                    responseMap.put("result", String.join("\n", texts));
+                }
 
                 FunctionResponse.Builder funcRespBuilder =
                         FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
@@ -155,6 +174,7 @@ class GoogleGenAiContentMapper {
 
                 currentFunctionParts.add(
                         Part.builder().functionResponse(funcRespBuilder.build()).build());
+                currentFunctionParts.addAll(extraParts);
             } else {
                 if (!currentFunctionParts.isEmpty()) {
                     contents.add(Content.builder()
@@ -254,6 +274,8 @@ class GoogleGenAiContentMapper {
                                     meta.cachedContentTokenCount().orElse(null))
                             .thoughtsTokenCount(thoughtsTokenCount)
                             .toolUsePromptTokenCount(toolUsePromptTokenCount)
+                            .initialPromptTokenCount(
+                                    meta.initialPromptTokenCount().orElse(null))
                             .build();
                 })
                 .orElse(GoogleGenAiTokenUsage.builder()
@@ -264,6 +286,23 @@ class GoogleGenAiContentMapper {
     }
 
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
+        return toChatResponse(response, modelName, returnThinking, false);
+    }
+
+    static ChatResponse toChatResponse(
+            GenerateContentResponse response,
+            String modelName,
+            boolean returnThinking,
+            boolean includeCodeExecutionOutput) {
+        return toChatResponse(response, modelName, returnThinking, includeCodeExecutionOutput, "");
+    }
+
+    static ChatResponse toChatResponse(
+            GenerateContentResponse response,
+            String modelName,
+            boolean returnThinking,
+            boolean includeCodeExecutionOutput,
+            CharSequence precedingText) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
         GoogleGenAiTokenUsage usage = toTokenUsage(response);
 
@@ -285,6 +324,8 @@ class GoogleGenAiContentMapper {
         StringBuilder thinkingBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
+        List<Image> generatedImages = new ArrayList<>();
+        List<Audio> generatedAudio = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -297,6 +338,14 @@ class GoogleGenAiContentMapper {
                     } else {
                         textBuilder.append(part.text().get());
                     }
+                } else if (part.audioTranscription().isPresent()) {
+                    appendTranscription(textBuilder, part.audioTranscription().get());
+                }
+
+                if (includeCodeExecutionOutput) {
+                    part.executableCode().ifPresent(code -> appendExecutableCode(textBuilder, precedingText, code));
+                    part.codeExecutionResult()
+                            .ifPresent(result -> appendCodeExecutionResult(textBuilder, precedingText, result));
                 }
 
                 if (part.functionCall().isPresent()) {
@@ -320,6 +369,9 @@ class GoogleGenAiContentMapper {
                             .arguments(jsonArgs)
                             .build());
                 }
+
+                toGeneratedImage(part).ifPresent(generatedImages::add);
+                toGeneratedAudio(part).ifPresent(generatedAudio::add);
             }
 
             if (!parts.isEmpty()) {
@@ -331,6 +383,13 @@ class GoogleGenAiContentMapper {
                             Base64.getEncoder()
                                     .encodeToString(lastPart.thoughtSignature().get()));
                 }
+            }
+
+            if (!generatedImages.isEmpty()) {
+                attributes.put(GENERATED_IMAGES_KEY, generatedImages);
+            }
+            if (!generatedAudio.isEmpty()) {
+                attributes.put(GENERATED_AUDIO_KEY, generatedAudio);
             }
         }
 
@@ -370,6 +429,132 @@ class GoogleGenAiContentMapper {
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
+    }
+
+    /**
+     * Reads an image the model generated into the given part. Only image blobs are picked up, which is
+     * what {@code PartsAndContentsMapper} does in {@code langchain4j-google-ai-gemini}; any other inline
+     * data is left alone.
+     */
+    private static Optional<Image> toGeneratedImage(Part part) {
+        if (part.inlineData().isEmpty()) {
+            return Optional.empty();
+        }
+        Blob blob = part.inlineData().get();
+        if (blob.mimeType().isEmpty()
+                || !blob.mimeType().get().startsWith("image/")
+                || blob.data().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
+                .mimeType(blob.mimeType().get())
+                .build());
+    }
+
+    /**
+     * Reads audio the model generated (e.g. text-to-speech output) from the given part.
+     * Only {@code audio/*} blobs are picked up and stored under {@link AiMessage#GENERATED_AUDIO_KEY}.
+     */
+    private static Optional<Audio> toGeneratedAudio(Part part) {
+        if (part.inlineData().isEmpty()) {
+            return Optional.empty();
+        }
+        Blob blob = part.inlineData().get();
+        if (blob.mimeType().isEmpty()
+                || !blob.mimeType().get().startsWith("audio/")
+                || blob.data().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Audio.builder()
+                .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
+                .mimeType(blob.mimeType().get())
+                .build());
+    }
+
+    private static void appendExecutableCode(
+            StringBuilder textBuilder, CharSequence precedingText, ExecutableCode executableCode) {
+        String language = executableCode
+                .language()
+                .map(Object::toString)
+                .filter(name -> !name.equals("LANGUAGE_UNSPECIFIED"))
+                .map(name -> name.toLowerCase(Locale.ROOT))
+                .orElse("python");
+        separateFromPrecedingText(textBuilder, precedingText);
+        textBuilder.append("Code executed:\n");
+        appendCodeBlock(textBuilder, language, executableCode.code().orElse(""));
+    }
+
+    private static void appendCodeExecutionResult(
+            StringBuilder textBuilder, CharSequence precedingText, CodeExecutionResult result) {
+        Optional<Outcome> outcome = result.outcome();
+        String output = result.output().orElse("");
+        if (outcome.map(value -> value.knownEnum() == Outcome.Known.OUTCOME_OK).orElse(false)) {
+            if (!output.isEmpty()) {
+                separateFromPrecedingText(textBuilder, precedingText);
+                textBuilder.append("Output:\n");
+                appendCodeBlock(textBuilder, "", output);
+            }
+            return;
+        }
+        separateFromPrecedingText(textBuilder, precedingText);
+        textBuilder
+                .append("Code execution failed: **")
+                .append(outcome.map(Object::toString).orElse("OUTCOME_UNSPECIFIED"))
+                .append("**\n");
+        if (!output.isEmpty()) {
+            appendCodeBlock(textBuilder, "", output);
+        } else {
+            textBuilder.append('\n');
+        }
+    }
+
+    private static void separateFromPrecedingText(StringBuilder textBuilder, CharSequence precedingText) {
+        CharSequence preceding = textBuilder.length() > 0 ? textBuilder : precedingText;
+        int length = preceding.length();
+        if (length == 0
+                || (length > 1 && preceding.charAt(length - 1) == '\n' && preceding.charAt(length - 2) == '\n')) {
+            return;
+        }
+        textBuilder.append(preceding.charAt(length - 1) == '\n' ? "\n" : "\n\n");
+    }
+
+    private static void appendCodeBlock(StringBuilder textBuilder, String language, String content) {
+        String fence = "`".repeat(Math.max(3, longestBacktickRun(content) + 1));
+        textBuilder.append(fence).append(language).append('\n').append(content);
+        if (!content.endsWith("\n")) {
+            textBuilder.append('\n');
+        }
+        textBuilder.append(fence).append("\n\n");
+    }
+
+    private static int longestBacktickRun(String content) {
+        int longest = 0;
+        int current = 0;
+        for (int i = 0; i < content.length(); i++) {
+            current = content.charAt(i) == '`' ? current + 1 : 0;
+            longest = Math.max(longest, current);
+        }
+        return longest;
+    }
+
+    private static void appendTranscription(StringBuilder textBuilder, Transcription transcription) {
+        String text = transcription
+                .text()
+                .orElseGet(() -> transcription.words().orElse(List.of()).stream()
+                        .map(word -> word.word().orElse(""))
+                        .filter(word -> !word.isEmpty())
+                        .collect(Collectors.joining(" ")));
+        if (text.isEmpty()) {
+            return;
+        }
+        boolean needsSeparator = textBuilder.length() > 0
+                && !Character.isWhitespace(textBuilder.charAt(textBuilder.length() - 1))
+                && !Character.isWhitespace(text.charAt(0));
+        if (needsSeparator) {
+            textBuilder.append(' ');
+        }
+        textBuilder.append(text);
     }
 
     private static List<Part> toParts(UserMessage userMessage) {

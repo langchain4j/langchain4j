@@ -3,8 +3,10 @@ package dev.langchain4j.agentic.supervisor;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -49,6 +52,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private final int maxAgentsInvocations;
     private int loopCount = 0;
+    private String lastResponse = "";
 
     private ResponseAgent responseAgent;
 
@@ -62,7 +66,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private final Function<AgenticScope, Object> output;
 
     private Map<String, AgentInstance> agents;
-    private String agentsList;
+    private List<AgentInstance> subagents;
 
     private String request;
 
@@ -103,9 +107,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     public void init(final InitPlanningContext initPlanningContext) {
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
-        this.agentsList = initPlanningContext.subagents().stream()
-                .map(SupervisorPlanner::toCard)
-                .collect(Collectors.joining(", "));
+        this.subagents = initPlanningContext.subagents();
 
         this.request = requestGenerator != null
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
@@ -118,14 +120,34 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
-        String lastResponse = planningContext.previousAgentInvocation() == null
-                        || planningContext.previousAgentInvocation().output() == null
-                ? ""
-                : planningContext.previousAgentInvocation().output().toString();
+        // HITL / SuspendedResponse writes an incomplete deferred value into scope, then notifies the
+        // planner via onSubagentInvoked. Sequential planners must still advance their cursor here;
+        // the supervisor must not call the LLM with lastResponse="<pending:…>" — that burns a turn,
+        // pollutes chat memory, and commonly re-selects the same ask-user agent after resume.
+        if (hasIncompleteSuspendedResponse(planningContext.agenticScope())) {
+            return suspend();
+        }
+
+        dev.langchain4j.agentic.scope.AgentInvocation previousInvocation = planningContext.previousAgentInvocation();
+        if (previousInvocation != null && !previousInvocation.skipped()) {
+            lastResponse = previousInvocation.output() == null
+                    ? ""
+                    : previousInvocation.output().toString();
+        }
+
         if (loopCount++ >= maxAgentsInvocations) {
             return doneAction(planningContext.agenticScope(), lastResponse, null);
         }
-        return nextSubagent(planningContext.agenticScope(), lastResponse);
+        // a skipped agent produced no response, so the model is told why instead
+        String plannerResponse = previousInvocation != null && previousInvocation.skipped()
+                ? "agent '" + previousInvocation.agentName() + "' was skipped: " + previousInvocation.skipReason()
+                : lastResponse;
+        return nextSubagent(planningContext, plannerResponse, lastResponse);
+    }
+
+    private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {
+        return agenticScope.state().values().stream()
+                .anyMatch(v -> v instanceof SuspendedResponse<?> sr && !sr.isDone());
     }
 
     private static String toCard(AgentInstance agent) {
@@ -252,7 +274,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
     }
 
-    private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
+    private Action nextSubagent(PlanningContext planningContext, String plannerResponse, String lastResponse) {
+        AgenticScope agenticScope = planningContext.agenticScope();
+        // only the agents that would run now are offered to the model
+        String agentsList = subagents.stream()
+                .filter(planningContext::isActive)
+                .map(SupervisorPlanner::toCard)
+                .collect(Collectors.joining(", "));
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
@@ -260,8 +288,12 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         AgentInvocation agentInvocation = withAgenticScope(
                 agenticScope,
                 () -> planner(agenticScope)
-                        .plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
+                        .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
+
+        if (agentInvocation.getAgentName() == null) {
+            throw new IllegalStateException("No agent name in the planning reply");
+        }
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
             return doneAction(agenticScope, lastResponse, agentInvocation);
@@ -269,7 +301,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
         AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
 
-        agentInvocation.getArguments().entrySet().stream()
+        Map<String, Object> arguments = Objects.requireNonNullElse(agentInvocation.getArguments(), Map.of());
+        arguments.entrySet().stream()
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
         return call(agent);

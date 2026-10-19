@@ -36,13 +36,12 @@ class JsonExtractorOutputGuardrailTests {
         var guardrailSpy = spy(guardrail);
         var result = guardrailSpy.validate(AiMessage.from(json));
 
+        // Clean JSON is a plain success, not a rewrite, so later guardrails in a chain can still reprompt
         assertThat(result)
                 .isNotNull()
-                .extracting(
-                        OutputGuardrailResult::result,
-                        OutputGuardrailResult::successfulText,
-                        OutputGuardrailResult::successfulResult)
-                .containsExactly(GuardrailResult.Result.SUCCESS_WITH_RESULT, json, expectedResult);
+                .extracting(OutputGuardrailResult::result, OutputGuardrailResult::successfulResult)
+                .containsExactly(GuardrailResult.Result.SUCCESS, expectedResult);
+        assertThat(result.hasRewrittenResult()).isFalse();
 
         verify(guardrailSpy).deserialize(json);
     }

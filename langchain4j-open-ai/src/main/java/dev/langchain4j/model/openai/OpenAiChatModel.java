@@ -14,6 +14,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.noChoicesErrorMessage;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
@@ -198,7 +199,7 @@ public class OpenAiChatModel implements ChatModel {
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
         if (isNullOrEmpty(openAiResponse.choices())) {
-            throw new InternalServerException("Chat completion failed: no choices returned in response");
+            throw new InternalServerException(noChoicesErrorMessage(parsedAndRawResponse.rawHttpResponse()));
         }
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()

@@ -25,10 +25,23 @@ public class AgentInvocation {
     private AgentResponse agentResponse;
     private LocalDateTime finishTime;
     private int iterationIndex = -1;
+    private String skipReason;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
         this.startTime = LocalDateTime.now();
+    }
+
+    /**
+     * Creates the finished, zero-duration invocation of an agent that was skipped instead of being invoked.
+     */
+    static AgentInvocation skipped(AgentSkipped agentSkipped) {
+        AgentInvocation invocation =
+                new AgentInvocation(new AgentRequest(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of()));
+        invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of(), null);
+        invocation.finishTime = invocation.startTime;
+        invocation.skipReason = agentSkipped.reason();
+        return invocation;
     }
 
     void finished(AgentResponse agentResponse) {
@@ -46,6 +59,21 @@ public class AgentInvocation {
 
     public boolean done() {
         return finishTime != null;
+    }
+
+    /**
+     * Returns {@code true} if the agent was skipped instead of being invoked, because its activation condition was
+     * false or because it is optional and one of its arguments was missing.
+     */
+    public boolean skipped() {
+        return skipReason != null;
+    }
+
+    /**
+     * Returns why the agent was skipped, or {@code null} if it was invoked.
+     */
+    public String skipReason() {
+        return skipReason;
     }
 
     public LocalDateTime startTime() {
@@ -123,6 +151,7 @@ public class AgentInvocation {
         StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
                 (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
+                (skipped() ? ", skipped=" + skipReason : "") +
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +

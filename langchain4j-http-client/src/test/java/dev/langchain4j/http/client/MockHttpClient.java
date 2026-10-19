@@ -18,6 +18,7 @@ public class MockHttpClient implements HttpClient {
     private final List<HttpRequest> requests = Collections.synchronizedList(new ArrayList<>());
     private final SuccessfulHttpResponse response;
     private final List<ServerSentEvent> events;
+    private RuntimeException failure;
 
     public MockHttpClient() {
         this.response = null;
@@ -53,12 +54,18 @@ public class MockHttpClient implements HttpClient {
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) {
         requests.add(request);
+        if (failure != null) {
+            throw failure;
+        }
         return response;
     }
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         requests.add(request);
+        if (failure != null) {
+            return CompletableFuture.failedFuture(failure);
+        }
         return CompletableFuture.completedFuture(response);
     }
 
@@ -81,5 +88,15 @@ public class MockHttpClient implements HttpClient {
 
     public static MockHttpClient thatAlwaysResponds(SuccessfulHttpResponse response, List<ServerSentEvent> events) {
         return new MockHttpClient(response, events);
+    }
+
+    /**
+     * Creates a client that records every request and fails it with the given exception,
+     * for example {@code new HttpException(503, "...")}.
+     */
+    public static MockHttpClient thatAlwaysFails(RuntimeException failure) {
+        MockHttpClient client = new MockHttpClient();
+        client.failure = ensureNotNull(failure, "failure");
+        return client;
     }
 }

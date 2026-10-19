@@ -63,10 +63,10 @@ public class McpToolMetadataKeys {
     public static final String OUTPUT_SCHEMA = "outputSchema";
 
     /**
-     * Maps tool parameter names to their {@code x-mcp-header} header names.
+     * Maps tool parameter property paths to their {@code x-mcp-header} header names.
      * When present, the client mirrors the parameter values as {@code Mcp-Param-{Name}}
      * HTTP headers on {@code tools/call} requests (Streamable HTTP transport only).
-     * Value type: {@code Map<String, String>} (property name → header name)
+     * Value type: {@code Map<List<String>, String>} (property path segments → header name)
      */
     public static final String MCP_PARAM_HEADERS = "mcp-param-headers";
 }

@@ -90,6 +90,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
+    private final Executor completeResponseProcessingExecutor;
     private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
 
     private final List<String> responseBuffer = new ArrayList<>();
@@ -123,6 +124,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolArgumentsErrorHandler toolArgumentsErrorHandler,
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
+            Executor completeResponseProcessingExecutor,
             GuardrailRequestParams commonGuardrailParams,
             Object methodKey) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
@@ -153,6 +155,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolArgumentsErrorHandler = ensureNotNull(toolArgumentsErrorHandler, "toolArgumentsErrorHandler");
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
+        this.completeResponseProcessingExecutor = completeResponseProcessingExecutor;
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
@@ -274,6 +277,24 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteResponse(ChatResponse chatResponse) {
+        if (completeResponseProcessingExecutor == null) {
+            processCompleteResponse(chatResponse);
+            return;
+        }
+        try {
+            completeResponseProcessingExecutor.execute(() -> {
+                try {
+                    processCompleteResponse(chatResponse);
+                } catch (Throwable t) {
+                    onError(t);
+                }
+            });
+        } catch (Exception e) {
+            onError(e);
+        }
+    }
+
+    private void processCompleteResponse(ChatResponse chatResponse) {
         fireResponseReceivedEvent(chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
         addToMemory(aiMessage);
@@ -290,11 +311,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
+            List<ToolExecutionRequest> executedRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
+                executedRequests = new ArrayList<>();
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
+                        executedRequests.add(toolRequestResult.request());
                         toolResults.put(toolRequestResult.request(), toolRequestResult.result());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
@@ -313,13 +337,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             }
 
+            // Use the requests that were executed: the final response can reformat their JSON arguments.
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    aiMessage.toolExecutionRequests(),
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    toolServiceContext);
+                    context, executedRequests, toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
 
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
@@ -369,6 +389,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
                     toolExecutor,
+                    completeResponseProcessingExecutor,
                     commonGuardrailParams,
                     methodKey);
 
@@ -395,6 +416,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                         toolServiceContext,
                                         this::executeSynchronously))
                                 .requestParams(newCommonParams)
+                                .chatRequest(chatRequest)
                                 .build();
 
                         finalChatResponse =

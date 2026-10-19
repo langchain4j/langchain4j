@@ -24,6 +24,7 @@ import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -46,7 +47,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -63,6 +63,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
@@ -93,6 +94,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     String outputKey;
     boolean async;
     boolean optional;
+    AgentCondition activationCondition;
 
     private final Map<String, Object> defaultValues = new HashMap<>();
 
@@ -100,7 +102,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private StreamingChatModel streamingChatModel;
     Function<AgenticScope, ChatModel> chatModelProvider;
     Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
-    private ChatModel contextSummarizerModel;
+    private Object contextSummarizerModel;
     private Context.ContextSummarizer contextSummarizer;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
@@ -222,15 +224,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                if (model != null) {
+                if (model != null || streamingChatModel != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withSummarizer(
                             agenticScope, contextSummarizer(), contextProvidingAgents));
                 } else if (chatModelProvider != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withChatModelProvider(
                             agenticScope, chatModelProvider, contextProvidingAgents));
-                } else {
-                    throw new IllegalConfigurationException(
-                            "A ChatModel is required to summarize context for agent '" + this.name + "'.");
+                } else if (streamingChatModelProvider != null) {
+                    aiServices.chatRequestTransformer(Context.Summarizer.withStreamingChatModelProvider(
+                            agenticScope, streamingChatModelProvider, contextProvidingAgents));
                 }
             }
         }
@@ -316,9 +318,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private synchronized Context.ContextSummarizer contextSummarizer() {
-        if (contextSummarizer == null || contextSummarizerModel != model) {
-            contextSummarizerModel = model;
-            contextSummarizer = Context.createSummarizer(model);
+        Object summarizerModel = model != null ? model : streamingChatModel;
+        if (contextSummarizer == null || contextSummarizerModel != summarizerModel) {
+            contextSummarizerModel = summarizerModel;
+            contextSummarizer = model != null
+                    ? Context.createSummarizer(model)
+                    : Context.createStreamingSummarizer(streamingChatModel);
         }
         return contextSummarizer;
     }
@@ -706,6 +711,34 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(Predicate<AgenticScope> activationCondition) {
+        return activationCondition("<unknown>", activationCondition);
+    }
+
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param description a human-readable description of the condition, used in logs, listeners and reports
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
+        return (B) this;
+    }
+
     @SuppressWarnings("unchecked")
     public B compensateOnError(boolean compensateOnError) {
         this.compensateOnError = compensateOnError;
@@ -725,6 +758,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the names of other agents whose outputs are summarized and injected as context into this agent's prompt.
+     * <p>
+     * The summary is generated by an additional, blocking call to this agent's model, made before the agent's own
+     * request. If the agent uses a {@link StreamingChatModel}, the summary is fully generated before the agent
+     * starts streaming its response.
      *
      * @param contextProvidingAgents the names of agents whose outputs to summarize
      * @return {@code this}
@@ -883,13 +920,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @return {@code this}
      */
     public B listener(AgentListener agentListener) {
-        if (this.agentListener == null) {
-            this.agentListener = agentListener;
-        } else if (this.agentListener instanceof ComposedAgentListener composed) {
-            composed.addListener(agentListener);
-        } else {
-            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
-        }
+        this.agentListener = ComposedAgentListener.compose(this.agentListener, agentListener);
         return (B) this;
     }
 }

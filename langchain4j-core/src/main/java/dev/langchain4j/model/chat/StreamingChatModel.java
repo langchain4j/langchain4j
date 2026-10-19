@@ -28,8 +28,15 @@ import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
+ * <p>
+ * A streaming response can be cancelled with the {@link StreamingHandle}
+ * that is passed to the {@link StreamingChatResponseHandler} callbacks that accept a context,
+ * such as {@link StreamingChatResponseHandler#onPartialResponse(PartialResponse, PartialResponseContext)}.
+ * When using {@link #chat(ChatRequest)}, which returns a {@link Publisher},
+ * cancel the {@link Subscription} instead.
  *
  * @see ChatModel
+ * @see StreamingHandle
  */
 public interface StreamingChatModel {
 

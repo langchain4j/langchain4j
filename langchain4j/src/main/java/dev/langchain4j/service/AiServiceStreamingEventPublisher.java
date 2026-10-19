@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -256,7 +257,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private ChatExecutor chatExecutor;
-        private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
+        private final Executor toolExecutor =
+                CapturedContextSupport.restoringIn(context.toolService.effectiveToolExecutor(), invocationContext);
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
@@ -407,6 +409,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             });
         }
 
+        // the request whose response is being processed; rounds run one after another
+        private volatile ChatRequest lastChatRequest;
+
         private void processRound(
                 ChatRequest chatRequest,
                 ToolServiceContext currentToolContext,
@@ -415,6 +420,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             fireResponseReceivedEvent(chatRequest, chatResponse);
+            lastChatRequest = chatRequest;
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
@@ -555,15 +561,28 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * Combines the tools that were already started eagerly (on their CompleteToolCall) into a single
          * future of results, in request order. Any requested tool that was not started eagerly (e.g. a
          * provider emitted no matching CompleteToolCall) is started now, so the result set is always complete.
+         * <p>
+         * A tool call is matched to what was started for it by position, because the same call is not always
+         * {@link Object#equals(Object) equal} on both sides: some providers rebuild the request for the final
+         * response, re-serializing the arguments JSON with a different key order or spacing. Tool calls are
+         * announced in the order they appear in the response, so positions line up whenever every call was
+         * announced; otherwise each request is looked up on its own and the missing ones are started here.
          */
         private CompletableFuture<ToolService.CombinedToolResults> combineEagerlyStartedTools(
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools,
                 ToolServiceContext currentToolContext) {
 
+            List<CompletableFuture<ToolExecutionResult>> startedInAnnouncedOrder =
+                    new ArrayList<>(startedTools.values());
+            boolean everyToolCallWasAnnounced = startedInAnnouncedOrder.size() == toolRequests.size();
+
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> orderedFutures = new LinkedHashMap<>();
-            for (ToolExecutionRequest toolRequest : toolRequests) {
-                CompletableFuture<ToolExecutionResult> future = startedTools.get(toolRequest);
+            for (int i = 0; i < toolRequests.size(); i++) {
+                ToolExecutionRequest toolRequest = toolRequests.get(i);
+                CompletableFuture<ToolExecutionResult> future = everyToolCallWasAnnounced
+                        ? startedInAnnouncedOrder.get(i)
+                        : startedTools.get(toolRequest);
                 if (future == null) {
                     future = context.toolService.startTool(
                             toolRequest,
@@ -696,6 +715,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .responseFromLLM(finalChatResponse)
                     .chatExecutor(toolAwareRepromptExecutor)
                     .requestParams(guardrailParams)
+                    .chatRequest(lastChatRequest)
                     .build();
 
             CompletableFuture<ChatResponse> guarded =

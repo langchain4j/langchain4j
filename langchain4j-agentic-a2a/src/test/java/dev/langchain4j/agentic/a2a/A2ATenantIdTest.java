@@ -10,7 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.V;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -58,8 +60,6 @@ class A2ATenantIdTest {
                 .build();
     }
 
-    // --- A2AClientAgentInvoker argument tests ---
-
     @Test
     void tenantId_parameter_is_optional_in_invoker_arguments() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
@@ -76,6 +76,63 @@ class A2ATenantIdTest {
         assertThat(args.get(0).isOptional()).isFalse();
         assertThat(args.get(1).name()).isEqualTo("tenant");
         assertThat(args.get(1).isOptional()).isTrue();
+    }
+
+    @Test
+    void preconfigured_tenant_argument_retains_default_value_in_arguments_list() throws NoSuchMethodException {
+        A2AClientInstance clientInstance = mock(A2AClientInstance.class);
+        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
+
+        Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
+        A2AClientAgentInvoker invoker = new A2AClientAgentInvoker(clientInstance, chatMethod);
+
+        List<AgentArgument> args = invoker.arguments();
+
+        assertThat(args).hasSize(2);
+        assertThat(args.get(0).name()).isEqualTo("question");
+        assertThat(args.get(1).name()).isEqualTo("tenant");
+        assertThat(args.get(1).isOptional()).isTrue();
+        assertThat(args.get(1).defaultValue()).isEqualTo("pre-configured-tenant");
+    }
+
+    @Test
+    void preconfigured_tenant_produces_correct_positional_arg_count() throws NoSuchMethodException {
+        A2AClientInstance clientInstance = mock(A2AClientInstance.class);
+        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
+
+        Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
+        A2AClientAgentInvoker invoker = new A2AClientAgentInvoker(clientInstance, chatMethod);
+
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("question", "hello");
+
+        AgentInvocationArguments args = invoker.toInvocationArguments(scope);
+
+        assertThat(args.positionalArgs()).hasSize(2);
+        assertThat(args.positionalArgs()[0]).isEqualTo("hello");
+        assertThat(args.positionalArgs()[1]).isEqualTo("pre-configured-tenant");
+    }
+
+    @Test
+    void scope_value_takes_precedence_over_preconfigured_tenant() throws NoSuchMethodException {
+        A2AClientInstance clientInstance = mock(A2AClientInstance.class);
+        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
+
+        Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
+        A2AClientAgentInvoker invoker = new A2AClientAgentInvoker(clientInstance, chatMethod);
+
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("question", "hello");
+        scope.writeState("tenant", "scope-tenant");
+
+        AgentInvocationArguments args = invoker.toInvocationArguments(scope);
+
+        assertThat(args.positionalArgs()).hasSize(2);
+        assertThat(args.positionalArgs()[0]).isEqualTo("hello");
+        assertThat(args.positionalArgs()[1]).isEqualTo("scope-tenant");
     }
 
     @Test
@@ -96,8 +153,6 @@ class A2ATenantIdTest {
         assertThat(args.get(2).name()).isEqualTo("tenant");
         assertThat(args.get(2).isOptional()).isTrue();
     }
-
-    // --- DefaultA2AClientBuilder invocation tests ---
 
     @Test
     void nonNull_tenant_is_passed_via_MessageSendParams() throws Exception {

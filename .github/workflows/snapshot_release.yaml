@@ -4,9 +4,11 @@ on:
   repository_dispatch:
     types: [ trigger-snapshot-release ]
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  # Once a night rather than on every push: the job runs in the "snapshot" environment, which holds the
+  # Maven Central credentials and needs a maintainer's approval, so nothing that lands on main can use
+  # them without it.
+  schedule:
+    - cron: '0 3 * * *'
 
 permissions:
   contents: read
@@ -19,10 +21,11 @@ jobs:
   snapshot_release:
     if: github.repository == 'langchain4j/langchain4j'
     runs-on: ubuntu-latest
+    environment: snapshot
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up JDK 25
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
         # Modules specify the oldest java version that they support:
         # even if we build with version 25, produced jars should be compatible with
@@ -39,7 +42,7 @@ jobs:
       - name: Check the version is a SNAPSHOT
         id: snapshot-check
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
           case "$VERSION" in
             *-SNAPSHOT)
               echo "proceed=true" >> "$GITHUB_OUTPUT"
@@ -57,10 +60,10 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         run: |
-          mvn -B -U --fail-at-end -DskipTests -DskipITs clean deploy
+          ./mvnw -B -U --fail-at-end -DskipTests -DskipITs clean deploy
 
       - name: Trigger SNAPSHOT release for langchain4j-spring repo
-        if: ${{ github.event_name == 'repository_dispatch' }}
+        if: ${{ github.event_name == 'repository_dispatch' || github.event_name == 'schedule' }}
         env:
           GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
         run: |

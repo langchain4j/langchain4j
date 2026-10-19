@@ -60,4 +60,31 @@ class ServiceHelperPriorityTest {
         assertThat(ServiceHelper.sortByPriority(List.of(first, new FrameworkGreeter())).get(0))
                 .isSameAs(first);
     }
+
+    @Test
+    void warns_about_implementations_tied_with_the_winner_only() {
+        String warning = ServiceHelper.ambiguityWarning(
+                Greeter.class, List.of(new FrameworkGreeter(), new FrameworkGreeter(), new YieldingGreeter()));
+
+        assertThat(warning)
+                .contains("Found 2 implementations of " + Greeter.class.getName())
+                .contains("using " + FrameworkGreeter.class.getName())
+                .contains("ignoring [" + FrameworkGreeter.class.getName() + "]")
+                .contains(PrioritizedFactory.class.getName())
+                .doesNotContain(YieldingGreeter.class.getName());
+    }
+
+    @Test
+    void does_not_warn_when_priority_decides_the_winner() {
+        assertThat(ServiceHelper.ambiguityWarning(
+                        Greeter.class, List.of(new FrameworkGreeter(), new YieldingGreeter())))
+                .isNull();
+    }
+
+    @Test
+    void does_not_warn_about_a_single_implementation() {
+        assertThat(ServiceHelper.ambiguityWarning(Greeter.class, List.of(new FrameworkGreeter())))
+                .isNull();
+        assertThat(ServiceHelper.ambiguityWarning(Greeter.class, List.of())).isNull();
+    }
 }

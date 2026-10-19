@@ -281,6 +281,8 @@ public class DefaultAgenticScope implements AgenticScope {
                     agentInvocation.agentName(),
                     agentInvocation.agentId(),
                     AiMessage.aiMessage(agentInvocation.output().toString())));
+        }
+        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
             chatMessagesAccess.removeLastResponseEvent(memoryId());
         }
     }
@@ -373,7 +375,22 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        return "AgenticScope{" + "memoryId='" + memoryId + '\'' + ", state=" + state + '}';
+        StringBuilder sb =
+                new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
+        boolean first = true;
+        for (Map.Entry<String, Object> e : state.entrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(e.getKey()).append('=');
+            // Guard against circular references (e.g. ResultWithAgenticScope holding this scope)
+            if (e.getValue() instanceof ResultWithAgenticScope<?>) {
+                sb.append("<ResultWithAgenticScope>");
+            } else {
+                sb.append(e.getValue());
+            }
+        }
+        sb.append("}}");
+        return sb.toString();
     }
 
     private void withReadLock(Runnable action) {

@@ -13,8 +13,8 @@ information about the protocol can be found at the [MCP
 website](https://modelcontextprotocol.io/).
 
 :::note
-Looking to build an MCP **stdio server** in Java?
-The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+Looking to build an MCP **server** in Java?
+See [Building a Java MCP server](./mcp-stdio-server).
 :::
 
 The protocol specifies two types of transport, both of these are supported:
@@ -52,6 +52,11 @@ McpTransport transport = StdioMcpTransport.builder()
     .logEvents(true) // only if you want to see the traffic in the log
     .build();
 ```
+
+If the server needs to run in a particular project directory, configure
+`.workingDirectory(Path.of("/path/to/project"))` on the stdio transport builder.
+The directory applies to the server subprocess on both startup and restart. When
+omitted, the subprocess inherits the current process's working directory.
 
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
@@ -342,9 +347,18 @@ so they are stored in the chat memory together with the message.
 Keep this in mind when the chat memory is persisted, and see
 [Tool Result Attributes](/tutorials/tools#tool-result-attributes) for more details.
 
-If the tool returns an application-level error, the call ends with a `ToolExecutionException`
-and the `_meta` of the failed response is not available.
-It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
+If the tool returns an application-level error (`"isError": true` in the tool result), the call ends with an
+`McpApplicationErrorException`, a subclass of `ToolExecutionException`, and the `_meta` of the failed response
+is not available. It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete
+raw response.
+
+An application-level error is how an MCP server tells the *model* that a tool did not succeed, so its text is
+written for the LLM. `McpApplicationErrorException` therefore implements `ToolErrorVisibleToLlm`: with a tool
+execution error handler that honors it, such as `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`,
+the server's text is sent to the LLM and it can react to it. With that handler, a protocol error, which means
+the call itself went wrong, fails the AI Service invocation, and so does an application-level error without
+any text, which is a plain `ToolExecutionException`.
+See [Error Handling](/tutorials/tools#error-handling).
 
 ### Tool parameters carried as HTTP headers
 
