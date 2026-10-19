@@ -49,7 +49,8 @@ import org.slf4j.LoggerFactory;
  * map.
  * <p>
  * Only the subagents whose activation condition holds are offered to the decision model. When none does, the model
- * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold.
+ * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
+ * activation threshold, when only one does, it is invoked without asking the model.
  */
 @Experimental
 public class DecisionRouterPlanner implements Planner {
@@ -205,6 +206,10 @@ public class DecisionRouterPlanner implements Planner {
     }
 
     private List<String> decide(AgenticScope agenticScope, List<AgentInstance> candidates) {
+        if (activationThreshold == null && candidates.size() == 1) {
+            return List.of(candidates.get(0).name());
+        }
+
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 

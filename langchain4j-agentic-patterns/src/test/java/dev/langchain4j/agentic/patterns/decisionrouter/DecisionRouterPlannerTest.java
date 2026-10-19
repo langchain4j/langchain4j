@@ -342,6 +342,25 @@ class DecisionRouterPlannerTest {
     }
 
     @Test
+    void shouldInvokeTheOnlyActiveAgentWithoutAskingTheDecisionModel() {
+        AtomicInteger inactiveCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(
+                        medicalExpert,
+                        inactiveExpert("legal", inactiveCalls),
+                        inactiveExpert("technical", inactiveCalls))
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
+        assertThat(model.requests()).isEmpty();
+        assertThat(inactiveCalls).hasValue(0);
+    }
+
+    @Test
     void shouldLeaveAnAgentSkippedAfterTheDecisionOutOfTheOutputsWithAThreshold() {
         AtomicInteger skippedCalls = new AtomicInteger();
         DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
