@@ -4,7 +4,6 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -18,6 +17,7 @@ import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.EmbeddingInputMapper;
+import dev.langchain4j.data.segment.MappedSegment;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -238,47 +238,6 @@ class EmbeddingStoreIngestorTest {
     }
 
     @Test
-    void should_support_single_mapped_segment() {
-
-        // given
-        Document document = Document.from("some code");
-        TextSegment original = textSegment("original");
-        TextSegment mapped = textSegment("mapped original");
-
-        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
-        when(documentSplitter.splitAll(singletonList(document))).thenReturn(singletonList(original));
-
-        EmbeddingInputMapper mapping =
-                segment -> singletonList(TextSegment.from("mapped " + segment.text(), segment.metadata()));
-
-        Embedding embedding = Embedding.from(new float[] {1});
-        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
-
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        when(embeddingModel.embedAll(singletonList(mapped)))
-                .thenReturn(Response.from(singletonList(embedding), tokenUsage));
-
-        @SuppressWarnings("unchecked")
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .documentSplitter(documentSplitter)
-                .embeddingInputMapper(mapping)
-                .embeddingModel(embeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
-
-        // when
-        IngestionResult ingestionResult = ingestor.ingest(document);
-
-        // then
-        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
-        verify(embeddingModel).embedAll(singletonList(mapped));
-        verify(embeddingStore).addAll(singletonList(embedding), singletonList(original));
-        verifyNoMoreInteractions(embeddingModel, embeddingStore);
-    }
-
-    @Test
     void should_filter_out_segment_when_mapping_returns_empty_list() {
 
         // given
@@ -290,7 +249,8 @@ class EmbeddingStoreIngestorTest {
         DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
         when(documentSplitter.splitAll(singletonList(document))).thenReturn(asList(kept, filteredOut));
 
-        EmbeddingInputMapper mapping = segment -> "kept".equals(segment.text()) ? singletonList(mappedKept) : List.of();
+        EmbeddingInputMapper mapping = segment ->
+                "kept".equals(segment.text()) ? singletonList(MappedSegment.of(mappedKept, segment)) : List.of();
 
         Embedding embedding = Embedding.from(new float[] {1});
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -335,7 +295,8 @@ class EmbeddingStoreIngestorTest {
         when(textSegmentTransformer.transformAll(singletonList(splitSegment)))
                 .thenReturn(singletonList(transformedSegment));
 
-        EmbeddingInputMapper mapping = segment -> singletonList(TextSegment.from("mapped " + segment.text()));
+        EmbeddingInputMapper mapping =
+                segment -> singletonList(MappedSegment.of(TextSegment.from("mapped " + segment.text()), segment));
 
         Embedding embedding = Embedding.from(new float[] {1});
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
@@ -374,7 +335,7 @@ class EmbeddingStoreIngestorTest {
         DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
         when(documentSplitter.splitAll(singletonList(document))).thenReturn(singletonList(segment));
 
-        EmbeddingInputMapper mapping = ignored -> singletonList(mappedSegment);
+        EmbeddingInputMapper mapping = ignored -> singletonList(MappedSegment.of(mappedSegment, ignored));
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         when(embeddingModel.embed(any(EmbeddingRequest.class)))
@@ -404,43 +365,6 @@ class EmbeddingStoreIngestorTest {
         assertThat(captor.getValue().inputs().get(0).text()).isEqualTo("mapped hello world");
         verify(embeddingModel, never()).embedAll(any());
         verify(embeddingStore).addAll(singletonList(Embedding.from(new float[] {1})), singletonList(segment));
-    }
-
-    @Test
-    void should_filter_out_segment_when_mapping_returns_null() {
-
-        // given
-        Document document = Document.from("some code");
-        TextSegment kept = textSegment("kept");
-        TextSegment filteredOut = textSegment("filtered out");
-        TextSegment mappedKept = textSegment("mapped kept");
-
-        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
-        when(documentSplitter.splitAll(singletonList(document))).thenReturn(asList(kept, filteredOut));
-
-        EmbeddingInputMapper mapping = segment -> "kept".equals(segment.text()) ? singletonList(mappedKept) : null;
-
-        Embedding embedding = Embedding.from(new float[] {1});
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        when(embeddingModel.embedAll(singletonList(mappedKept)))
-                .thenReturn(Response.from(singletonList(embedding), new TokenUsage(1, 2, 3)));
-
-        @SuppressWarnings("unchecked")
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .documentSplitter(documentSplitter)
-                .embeddingInputMapper(mapping)
-                .embeddingModel(embeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
-
-        // when
-        ingestor.ingest(document);
-
-        // then
-        verify(embeddingModel).embedAll(singletonList(mappedKept));
-        verify(embeddingStore).addAll(singletonList(embedding), singletonList(kept));
     }
 
     @Test
@@ -493,14 +417,14 @@ class EmbeddingStoreIngestorTest {
 
         EmbeddingInputMapper mapping = new EmbeddingInputMapper() {
             @Override
-            public List<TextSegment> map(TextSegment segment) {
+            public List<MappedSegment> map(TextSegment segment) {
                 throw new AssertionError("map() should not be called when mapAll() is overridden");
             }
 
             @Override
-            public List<List<TextSegment>> mapAll(List<TextSegment> segments) {
+            public List<MappedSegment> mapAll(List<TextSegment> segments) {
                 assertThat(segments).containsExactly(first, second);
-                return List.of(List.of(mappedFirst), List.of(mappedSecond));
+                return List.of(MappedSegment.of(mappedFirst, first), MappedSegment.of(mappedSecond, second));
             }
         };
 
@@ -533,48 +457,6 @@ class EmbeddingStoreIngestorTest {
     }
 
     @Test
-    void should_reject_map_all_result_with_wrong_size() {
-
-        // given
-        Document document = Document.from("some code");
-        TextSegment first = textSegment("first");
-        TextSegment second = textSegment("second");
-
-        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
-        when(documentSplitter.splitAll(singletonList(document))).thenReturn(asList(first, second));
-
-        EmbeddingInputMapper mapping = new EmbeddingInputMapper() {
-            @Override
-            public List<TextSegment> map(TextSegment segment) {
-                return singletonList(segment);
-            }
-
-            @Override
-            public List<List<TextSegment>> mapAll(List<TextSegment> segments) {
-                return List.of(List.of(textSegment("only one")));
-            }
-        };
-
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-
-        @SuppressWarnings("unchecked")
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .documentSplitter(documentSplitter)
-                .embeddingInputMapper(mapping)
-                .embeddingModel(embeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
-
-        // when / then
-        assertThatThrownBy(() -> ingestor.ingest(document))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must return one list per input segment");
-        verifyNoMoreInteractions(embeddingModel, embeddingStore);
-    }
-
-    @Test
     void should_ingest_text_segments_directly_with_mapping() {
 
         // given
@@ -583,7 +465,8 @@ class EmbeddingStoreIngestorTest {
         TextSegment mappedFirst = textSegment("mapped first");
         TextSegment mappedSecond = textSegment("mapped second");
 
-        EmbeddingInputMapper mapping = segment -> singletonList(TextSegment.from("mapped " + segment.text()));
+        EmbeddingInputMapper mapping =
+                segment -> singletonList(MappedSegment.of(TextSegment.from("mapped " + segment.text()), segment));
 
         Embedding firstEmbedding = Embedding.from(new float[] {1});
         Embedding secondEmbedding = Embedding.from(new float[] {2});
@@ -613,62 +496,41 @@ class EmbeddingStoreIngestorTest {
     }
 
     @Test
-    void should_apply_text_segment_transformer_when_ingesting_text_segments_directly() {
+    void should_store_a_reference_instead_of_the_original_segment() {
 
         // given
+        Document document = Document.from("some code");
         TextSegment original = textSegment("original");
-        TextSegment transformed = textSegment("transformed");
-        TextSegment mapped = textSegment("mapped transformed");
+        TextSegment explanation = textSegment("explanation");
+        TextSegment reference = TextSegment.from("ref:doc-1", Metadata.from("parent_id", "doc-1"));
 
-        TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
-        when(textSegmentTransformer.transformAll(singletonList(original))).thenReturn(singletonList(transformed));
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(document))).thenReturn(singletonList(original));
 
-        EmbeddingInputMapper mapping = segment -> singletonList(TextSegment.from("mapped " + segment.text()));
+        EmbeddingInputMapper mapping = ignored -> singletonList(MappedSegment.of(explanation, reference));
 
         Embedding embedding = Embedding.from(new float[] {1});
         TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        when(embeddingModel.embedAll(singletonList(mapped)))
+        when(embeddingModel.embedAll(singletonList(explanation)))
                 .thenReturn(Response.from(singletonList(embedding), tokenUsage));
 
         @SuppressWarnings("unchecked")
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .textSegmentTransformer(textSegmentTransformer)
+                .documentSplitter(documentSplitter)
                 .embeddingInputMapper(mapping)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
                 .build();
 
         // when
-        ingestor.ingestSegments(original);
+        ingestor.ingest(document);
 
         // then
-        verify(embeddingModel).embedAll(singletonList(mapped));
-        verify(embeddingStore).addAll(singletonList(embedding), singletonList(transformed));
-    }
-
-    @Test
-    void should_not_embed_or_store_when_no_text_segments_are_provided() {
-
-        // given
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-
-        @SuppressWarnings("unchecked")
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .embeddingModel(embeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
-
-        // when
-        IngestionResult result = ingestor.ingestSegments(List.of());
-
-        // then
-        assertThat(result.tokenUsage()).isNull();
-        verifyNoMoreInteractions(embeddingModel, embeddingStore);
+        verify(embeddingModel).embedAll(singletonList(explanation));
+        verify(embeddingStore).addAll(singletonList(embedding), singletonList(reference));
     }
 }

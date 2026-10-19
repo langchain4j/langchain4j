@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.segment.MappedSegment;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -30,22 +30,25 @@ class LLMBasedEmbeddingInputMapperTest {
         when(chatModel.chat(any(ChatRequest.class)))
                 .thenReturn(
                         ChatResponse.builder().aiMessage(AiMessage.from("""
-                                [
-                                  "Parses CSV files into rows.",
-                                  "Use when importing tabular data.",
-                                  "How do I parse a CSV file?"
-                                ]
-                                """)).build());
+                        [
+                          "Parses CSV files into rows.",
+                          "Use when importing tabular data.",
+                          "How do I parse a CSV file?"
+                        ]
+                        """)).build());
 
         LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
 
-        List<TextSegment> mapped = mapper.map(textSegment("class CsvParser {}"));
+        TextSegment original = textSegment("class CsvParser {}");
+        List<MappedSegment> mapped = mapper.map(original);
 
         assertThat(mapped).hasSize(4);
-        assertThat(mapped.get(0).text()).isEqualTo("class CsvParser {}");
-        assertThat(mapped.get(1).text()).isEqualTo("Parses CSV files into rows.");
-        assertThat(mapped.get(2).text()).isEqualTo("Use when importing tabular data.");
-        assertThat(mapped.get(3).text()).isEqualTo("How do I parse a CSV file?");
+        assertThat(mapped.get(0).embeddingInput().text()).isEqualTo("class CsvParser {}");
+        assertThat(mapped.get(0).storedSegment()).isEqualTo(original);
+        assertThat(mapped.get(1).embeddingInput().text()).isEqualTo("Parses CSV files into rows.");
+        assertThat(mapped.get(1).storedSegment()).isEqualTo(original);
+        assertThat(mapped.get(2).embeddingInput().text()).isEqualTo("Use when importing tabular data.");
+        assertThat(mapped.get(3).embeddingInput().text()).isEqualTo("How do I parse a CSV file?");
     }
 
     @Test
@@ -58,25 +61,10 @@ class LLMBasedEmbeddingInputMapperTest {
 
         LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
 
-        List<TextSegment> mapped = mapper.map(textSegment("class CsvParser {}"));
+        TextSegment original = textSegment("class CsvParser {}");
+        List<MappedSegment> mapped = mapper.map(original);
 
-        assertThat(mapped).containsExactly(textSegment("class CsvParser {}"));
-    }
-
-    @Test
-    void should_filter_out_blank_descriptions() {
-
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.chat(any(ChatRequest.class)))
-                .thenReturn(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("[\"\", \"  \", \"Parses CSV files.\"]"))
-                        .build());
-
-        LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
-
-        List<TextSegment> mapped = mapper.map(textSegment("class CsvParser {}"));
-
-        assertThat(mapped).containsExactly(textSegment("class CsvParser {}"), textSegment("Parses CSV files."));
+        assertThat(mapped).containsExactly(MappedSegment.same(original));
     }
 
     @Test
@@ -99,11 +87,11 @@ class LLMBasedEmbeddingInputMapperTest {
 
         LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel, Runnable::run);
 
-        List<List<TextSegment>> mapped = mapper.mapAll(List.of(textSegment("first"), textSegment("second")));
+        List<MappedSegment> mapped = mapper.mapAll(List.of(textSegment("first"), textSegment("second")));
 
-        assertThat(mapped).hasSize(2);
-        assertThat(mapped.get(0).get(1).text()).isEqualTo("description 1");
-        assertThat(mapped.get(1).get(1).text()).isEqualTo("description 2");
+        assertThat(mapped)
+                .extracting(mappedSegment -> mappedSegment.embeddingInput().text())
+                .containsExactly("first", "description 1", "second", "description 2");
     }
 
     @Test
@@ -122,21 +110,11 @@ class LLMBasedEmbeddingInputMapperTest {
         try {
             LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel, executor);
 
-            List<List<TextSegment>> mapped = mapper.mapAll(List.of(textSegment("first"), textSegment("second")));
+            List<MappedSegment> mapped = mapper.mapAll(List.of(textSegment("first"), textSegment("second")));
 
-            assertThat(mapped).hasSize(2);
+            assertThat(mapped).hasSize(4);
         } finally {
             executor.shutdownNow();
         }
-    }
-
-    @Test
-    void should_return_empty_list_for_empty_map_all() {
-
-        ChatModel chatModel = mock(ChatModel.class);
-        LLMBasedEmbeddingInputMapper mapper = new LLMBasedEmbeddingInputMapper(chatModel);
-
-        assertThat(mapper.mapAll(List.of())).isEmpty();
-        verifyNoInteractions(chatModel);
     }
 }

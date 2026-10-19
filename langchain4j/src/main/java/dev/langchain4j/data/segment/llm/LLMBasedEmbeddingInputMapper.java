@@ -4,13 +4,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.EmbeddingInputMapper;
+import dev.langchain4j.data.segment.MappedSegment;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -36,7 +36,7 @@ import java.util.concurrent.ForkJoinPool;
  * <p>
  * {@link #mapAll(List)} maps segments concurrently using the configured {@link Executor}.
  *
- * @since 1.21.0
+ * @since 1.23.0
  */
 @Experimental
 public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
@@ -72,18 +72,18 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
     }
 
     @Override
-    public List<TextSegment> map(TextSegment segment) {
+    public List<MappedSegment> map(TextSegment segment) {
         ensureNotNull(segment, "segment");
 
-        List<TextSegment> mapped = new ArrayList<>();
-        mapped.add(TextSegment.from(segment.text(), segment.metadata()));
+        List<MappedSegment> mapped = new ArrayList<>();
+        mapped.add(MappedSegment.same(segment));
 
         List<String> descriptions = descriptionGenerator.describe(segment.text());
 
-        if (descriptions == null) return Collections.emptyList();
+        if (descriptions == null) return mapped;
         for (String description : descriptions) {
             if (description == null || description.isBlank()) continue;
-            mapped.add(TextSegment.from(description));
+            mapped.add(MappedSegment.of(TextSegment.from(description), segment));
         }
         return mapped;
     }
@@ -95,28 +95,28 @@ public class LLMBasedEmbeddingInputMapper implements EmbeddingInputMapper {
      * tasks are cancelled and the failure is propagated.
      *
      * @param segments the original segments.
-     * @return one list of embedding inputs per input segment, in the same order.
+     * @return the mapped segments, in the order of the input segments.
      */
     @Override
-    public List<List<TextSegment>> mapAll(List<TextSegment> segments) {
+    public List<MappedSegment> mapAll(List<TextSegment> segments) {
         ensureNotNull(segments, "segments");
         if (segments.isEmpty()) {
             return List.of();
         }
 
         if (segments.size() == 1) {
-            return List.of(map(segments.get(0)));
+            return map(segments.get(0));
         }
 
-        List<CompletableFuture<List<TextSegment>>> futures = new ArrayList<>(segments.size());
+        List<CompletableFuture<List<MappedSegment>>> futures = new ArrayList<>(segments.size());
         for (TextSegment segment : segments) {
             futures.add(CompletableFuture.supplyAsync(() -> map(segment), executor));
         }
 
-        List<List<TextSegment>> mappedSegments = new ArrayList<>(segments.size());
+        List<MappedSegment> mappedSegments = new ArrayList<>(segments.size());
         try {
-            for (CompletableFuture<List<TextSegment>> future : futures) {
-                mappedSegments.add(future.join());
+            for (CompletableFuture<List<MappedSegment>> future : futures) {
+                mappedSegments.addAll(future.join());
             }
         } catch (CompletionException e) {
             futures.forEach(future -> future.cancel(true));

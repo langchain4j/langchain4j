@@ -13,6 +13,7 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.EmbeddingInputMapper;
+import dev.langchain4j.data.segment.MappedSegment;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -56,11 +57,10 @@ import org.slf4j.LoggerFactory;
  * <br>
  * <br>
  * Optionally, the {@code EmbeddingStoreIngestor} can map each {@code TextSegment} to one or more
- * {@code TextSegment}s using a {@link EmbeddingInputMapper}. Mapped segments are used only as inputs
- * for embedding; the original segments are stored in the {@link EmbeddingStore}. This can be useful
- * when a single segment should be represented by multiple embeddings (for example, a summary, a
- * natural-language explanation, or hypothetical questions) while the original content is returned
- * during retrieval.
+ * {@link MappedSegment}s using a {@link EmbeddingInputMapper}. Each mapped segment carries the text to
+ * embed and the content to store in the {@link EmbeddingStore}. This can be useful when a single
+ * segment should be represented by multiple embeddings (for example, a summary, a natural-language
+ * explanation, or hypothetical questions) while the original content is returned during retrieval.
  * <br>
  * <br>
  * If the documents have already been split into {@code TextSegment}s, use
@@ -111,7 +111,7 @@ public class EmbeddingStoreIngestor {
      * @param embeddingModel         The {@link EmbeddingModel} to use. Mandatory.
      *                               If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
      * @param embeddingStore         The {@link EmbeddingStore} to use. Mandatory.
-     * @since 1.21.0
+     * @since 1.23.0
      */
     public EmbeddingStoreIngestor(
             DocumentTransformer documentTransformer,
@@ -266,7 +266,7 @@ public class EmbeddingStoreIngestor {
      *
      * @param segments the text segments to ingest.
      * @return result including information related to the ingestion process.
-     * @since 1.21.0
+     * @since 1.23.0
      */
     public IngestionResult ingestSegments(List<TextSegment> segments) {
 
@@ -304,7 +304,7 @@ public class EmbeddingStoreIngestor {
      *
      * @param segments the text segments to ingest.
      * @return result including information related to the ingestion process.
-     * @since 1.21.0
+     * @since 1.23.0
      */
     public IngestionResult ingestSegments(TextSegment... segments) {
         return ingestSegments(asList(segments));
@@ -315,28 +315,16 @@ public class EmbeddingStoreIngestor {
             return new MappedSegments(segments, segments);
         }
 
-        List<List<TextSegment>> mappedSegments = embeddingInputMapper.mapAll(segments);
-        if (mappedSegments == null || mappedSegments.size() != segments.size()) {
-            throw new IllegalArgumentException("EmbeddingInputMapper.mapAll() must return one list per input segment. "
-                    + "Expected " + segments.size() + " but got "
-                    + (mappedSegments == null ? "null" : mappedSegments.size()) + ".");
-        }
+        List<MappedSegment> mappedSegments = embeddingInputMapper.mapAll(segments);
 
-        List<TextSegment> toEmbed = new ArrayList<>(segments.size());
-        List<TextSegment> toStore = new ArrayList<>(segments.size());
-        for (int i = 0; i < segments.size(); i++) {
-            TextSegment segment = segments.get(i);
-            List<TextSegment> mapped = mappedSegments.get(i);
-            if (mapped == null || mapped.isEmpty()) {
+        List<TextSegment> toEmbed = new ArrayList<>(mappedSegments.size());
+        List<TextSegment> toStore = new ArrayList<>(mappedSegments.size());
+        for (MappedSegment mappedSegment : mappedSegments) {
+            if (mappedSegment == null) {
                 continue;
             }
-            for (TextSegment mappedSegment : mapped) {
-                if (mappedSegment == null) {
-                    continue;
-                }
-                toEmbed.add(mappedSegment);
-                toStore.add(segment);
-            }
+            toEmbed.add(mappedSegment.embeddingInput());
+            toStore.add(mappedSegment.storedSegment());
         }
         log.debug("{} text segments were mapped to {} embedding inputs", segments.size(), toEmbed.size());
         return new MappedSegments(toEmbed, toStore);
@@ -437,8 +425,9 @@ public class EmbeddingStoreIngestor {
          * Sets the embedding input mapper. Optional.
          * <p>
          * The mapping is applied after {@link TextSegmentTransformer} (if configured) and produces
-         * zero or more segments that are used only as inputs for embedding. The original segments
-         * are stored in the embedding store.
+         * zero or more {@link MappedSegment}s. The embedding input of each mapped segment is embedded,
+         * and its stored segment is written to the embedding store. The stored segment may differ from
+         * the embedding input.
          *
          * @param embeddingInputMapper the embedding input mapper.
          * @return {@code this}
