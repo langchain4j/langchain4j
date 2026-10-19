@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientBuilder;
@@ -91,6 +93,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
+    private AgentCondition activationCondition;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -543,6 +546,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
+    public DefaultA2AClientBuilder<T> activationCondition(
+            String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
+        return this;
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public DefaultA2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer) {
         if (clientCustomizer != null) {
@@ -618,6 +628,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public boolean async() {
         return async;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
     }
 
     @Override

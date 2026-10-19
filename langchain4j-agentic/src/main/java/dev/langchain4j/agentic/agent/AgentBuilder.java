@@ -24,6 +24,7 @@ import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -62,6 +63,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
@@ -92,6 +94,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     String outputKey;
     boolean async;
     boolean optional;
+    AgentCondition activationCondition;
 
     private final Map<String, Object> defaultValues = new HashMap<>();
 
@@ -705,6 +708,34 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B optional(boolean optional) {
         this.optional = optional;
+        return (B) this;
+    }
+
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(Predicate<AgenticScope> activationCondition) {
+        return activationCondition("<unknown>", activationCondition);
+    }
+
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param description a human-readable description of the condition, used in logs, listeners and reports
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
         return (B) this;
     }
 
