@@ -58,8 +58,8 @@ You can create a DeepSeek API key [here](https://platform.deepseek.com/api_keys)
 
 | Model name | Description |
 |---|---|
-| `deepseek-chat` | General-purpose chat model. Use it for most tasks. |
-| `deepseek-reasoner` | Reasoning model. It returns its chain of thought in a `reasoning_content` field, which LangChain4j exposes as reasoning content. |
+| `deepseek-flash` | Fast, general-purpose chat model. Use it for most tasks. |
+| `deepseek-v4-pro` | Larger, more capable model. It returns its chain of thought in a `reasoning_content` field, which LangChain4j exposes as reasoning content. |
 
 See [Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing) for the current
 list of models, context length, and peak/off-peak rates.
@@ -75,13 +75,13 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("DEEPSEEK_API_KEY"))
         .baseUrl("https://api.deepseek.com")
-        .modelName("deepseek-chat")
+        .modelName("deepseek-flash")
         .build();
 
 String answer = model.chat("Explain in one sentence why Java is platform independent");
 ```
 
-Use `deepseek-reasoner` as `modelName` to get a reasoning model.
+Use `deepseek-v4-pro` as `modelName` to get the larger reasoning-capable model.
 
 ### Streaming chat model
 
@@ -92,7 +92,7 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("DEEPSEEK_API_KEY"))
         .baseUrl("https://api.deepseek.com")
-        .modelName("deepseek-chat")
+        .modelName("deepseek-flash")
         .build();
 ```
 
@@ -104,7 +104,7 @@ Tool calling works the same way as with OpenAI models:
 ChatModel model = OpenAiChatModel.builder()
         .apiKey(System.getenv("DEEPSEEK_API_KEY"))
         .baseUrl("https://api.deepseek.com")
-        .modelName("deepseek-chat")
+        .modelName("deepseek-flash")
         .build();
 
 interface Assistant {
@@ -125,7 +125,7 @@ so when you use streaming together with tools, set `accumulateToolCallId(false)`
 OpenAiStreamingChatModel.builder()
         .apiKey(System.getenv("DEEPSEEK_API_KEY"))
         .baseUrl("https://api.deepseek.com")
-        .modelName("deepseek-chat")
+        .modelName("deepseek-flash")
         .accumulateToolCallId(false)
         .build();
 ```
