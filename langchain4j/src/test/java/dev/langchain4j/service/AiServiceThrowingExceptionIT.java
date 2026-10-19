@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
@@ -47,6 +48,37 @@ class AiServiceThrowingExceptionIT {
                 .hasMessageContaining("Insufficient quota");
 
         assertThat(invocationCount.get()).isEqualTo(1);
+    }
+
+    @Test
+    void should_restore_chat_memory_when_invocation_fails() {
+
+        AtomicInteger invocationCount = new AtomicInteger();
+        ChatModel chatModel = new ChatModelMock(chatRequest -> {
+            if (invocationCount.getAndIncrement() == 0) {
+                throw new HttpException(429, "Insufficient quota");
+            }
+            return AiMessage.from("Hello!");
+        });
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(UserMessage.from("previous question"));
+        chatMemory.add(AiMessage.from("previous answer"));
+        ThrowingService assistant = AiServices.builder(ThrowingService.class)
+                .chatModel(chatModel)
+                .chatMemory(chatMemory)
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("hi")).isExactlyInstanceOf(RateLimitException.class);
+        assertThat(chatMemory.messages())
+                .containsExactly(UserMessage.from("previous question"), AiMessage.from("previous answer"));
+
+        assertThat(assistant.chat("hi").content()).isEqualTo(AiMessage.from("Hello!"));
+        assertThat(chatMemory.messages())
+                .containsExactly(
+                        UserMessage.from("previous question"),
+                        AiMessage.from("previous answer"),
+                        UserMessage.from("hi"),
+                        AiMessage.from("Hello!"));
     }
 
     @Test
@@ -120,8 +152,7 @@ class AiServiceThrowingExceptionIT {
                 AiServices.builder(ThrowingService.class).chatModel(chatModel).build();
 
         // when-then
-        assertThatThrownBy(() -> assistant.chat("does not matter"))
-                .isExactlyInstanceOf(ModelNotFoundException.class);
+        assertThatThrownBy(() -> assistant.chat("does not matter")).isExactlyInstanceOf(ModelNotFoundException.class);
     }
 
     @Test
