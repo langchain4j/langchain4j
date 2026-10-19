@@ -72,7 +72,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                             queryExecutor.describeVectorTable(connection, embeddingTable.name(), apiVersion),
                             apiVersion);
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
     }
 
@@ -141,7 +141,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         try (Connection connection = dataSource.getConnection()) {
             queryExecutor.deleteVectors(connection, embeddingTable.name(), idsJson);
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
     }
 
@@ -160,7 +160,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                 connection.commit();
             }
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
     }
 
@@ -172,7 +172,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                 connection.commit();
             }
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
     }
 
@@ -192,7 +192,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                     parameters.advancedOptionsJson());
             return VecDbSearchResultMapper.map(responseJson, request.minScore(), effectiveDistanceMetric);
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
     }
 
@@ -218,12 +218,8 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                 throw exception;
             }
         } catch (SQLException exception) {
-            throw unchecked(exception);
+            throw new RuntimeException(exception);
         }
-    }
-
-    private static RuntimeException unchecked(SQLException exception) {
-        return new RuntimeException(exception);
     }
 
     /** Builder for {@link OracleVecDbEmbeddingStore}. */
