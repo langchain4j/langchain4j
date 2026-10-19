@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
@@ -23,6 +24,7 @@ class SupervisorSkippedAgentTest {
                 {"agentName": "done", "arguments": {"response": "no flight booked"}}
                 """));
         AtomicInteger invocations = new AtomicInteger();
+        AtomicInteger evaluations = new AtomicInteger();
         AgenticScopeFunction<String> bookFlight = AgenticServices.nonAiAgentBuilder(scope -> {
                     invocations.incrementAndGet();
                     return "stale booking";
@@ -31,7 +33,8 @@ class SupervisorSkippedAgentTest {
                 .description("Books a flight")
                 .inputKey(String.class, "destination")
                 .outputKey("booking")
-                .activationCondition("the budget is approved", scope -> scope.readState("approved", false))
+                // holds when the agent is offered to the model, but no more when it is invoked
+                .activationCondition("the budget is approved", scope -> evaluations.incrementAndGet() == 1)
                 .build();
 
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
@@ -53,6 +56,51 @@ class SupervisorSkippedAgentTest {
                 .asString()
                 .contains("The last received response is: 'agent 'bookFlight' was skipped: "
                         + "activation condition is false: the budget is approved'");
+    }
+
+    @Test
+    void supervisor_offers_only_the_agents_whose_condition_holds() {
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("""
+                {"agentName": "approveBudget", "arguments": {}}
+                """),
+                AiMessage.from("""
+                {"agentName": "bookFlight", "arguments": {"destination": "Rome"}}
+                """),
+                AiMessage.from("""
+                {"agentName": "done", "arguments": {"response": "flight booked"}}
+                """));
+        AgenticScopeFunction<Boolean> approveBudget = AgenticServices.nonAiAgentBuilder(scope -> true)
+                .name("approveBudget")
+                .description("Approves the budget")
+                .outputKey("approved")
+                .build();
+        AgenticScopeFunction<String> bookFlight = AgenticServices.nonAiAgentBuilder(scope -> "booked")
+                .name("bookFlight")
+                .description("Books a flight")
+                .inputKey(String.class, "destination")
+                .outputKey("booking")
+                .activationCondition("the budget is approved", scope -> scope.readState("approved", false))
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel)
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(approveBudget, bookFlight)
+                .build();
+
+        assertThat(supervisor.invoke("Book a flight to Rome")).isEqualTo("flight booked");
+
+        // the agents offered to the model are those active when it is asked
+        List<String> systemMessages = plannerModel.requests().stream()
+                .map(request -> request.messages().stream()
+                        .filter(SystemMessage.class::isInstance)
+                        .map(message -> ((SystemMessage) message).text())
+                        .findFirst()
+                        .orElseThrow())
+                .toList();
+        assertThat(systemMessages.get(0)).contains("approveBudget").doesNotContain("bookFlight");
+        assertThat(systemMessages.get(1)).contains("approveBudget").contains("bookFlight");
     }
 
     @Test

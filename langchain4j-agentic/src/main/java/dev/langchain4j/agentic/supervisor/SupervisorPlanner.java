@@ -66,7 +66,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private final Function<AgenticScope, Object> output;
 
     private Map<String, AgentInstance> agents;
-    private String agentsList;
+    private List<AgentInstance> subagents;
 
     private String request;
 
@@ -107,9 +107,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     public void init(final InitPlanningContext initPlanningContext) {
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
-        this.agentsList = initPlanningContext.subagents().stream()
-                .map(SupervisorPlanner::toCard)
-                .collect(Collectors.joining(", "));
+        this.subagents = initPlanningContext.subagents();
 
         this.request = requestGenerator != null
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
@@ -144,7 +142,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         String plannerResponse = previousInvocation != null && previousInvocation.skipped()
                 ? "agent '" + previousInvocation.agentName() + "' was skipped: " + previousInvocation.skipReason()
                 : lastResponse;
-        return nextSubagent(planningContext.agenticScope(), plannerResponse, lastResponse);
+        return nextSubagent(planningContext, plannerResponse, lastResponse);
     }
 
     private static boolean hasIncompleteSuspendedResponse(AgenticScope agenticScope) {
@@ -276,7 +274,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
     }
 
-    private Action nextSubagent(AgenticScope agenticScope, String plannerResponse, String lastResponse) {
+    private Action nextSubagent(PlanningContext planningContext, String plannerResponse, String lastResponse) {
+        AgenticScope agenticScope = planningContext.agenticScope();
+        // only the agents that would run now are offered to the model
+        String agentsList = subagents.stream()
+                .filter(planningContext::isActive)
+                .map(SupervisorPlanner::toCard)
+                .collect(Collectors.joining(", "));
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
