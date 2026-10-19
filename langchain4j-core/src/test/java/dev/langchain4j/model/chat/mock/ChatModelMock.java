@@ -45,6 +45,7 @@ public class ChatModelMock implements ChatModel {
     private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
     private Set<Capability> supportedCapabilities = Set.of();
     private List<ChatModelListener> listeners = List.of();
+    private Queue<String> modelNames = new ConcurrentLinkedQueue<>();
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
@@ -71,6 +72,15 @@ public class ChatModelMock implements ChatModel {
 
     public ChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
         this.supportedCapabilities = Set.of(supportedCapabilities);
+        return this;
+    }
+
+    /**
+     * Sets the model name reported in the response metadata, one name per call, in the given order.
+     * Once all names are used, the model name is {@code null}.
+     */
+    public ChatModelMock withModelNames(String... modelNames) {
+        this.modelNames = new ConcurrentLinkedQueue<>(asList(modelNames));
         return this;
     }
 
@@ -115,7 +125,9 @@ public class ChatModelMock implements ChatModel {
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder().build())
+                .metadata(ChatResponseMetadata.builder()
+                        .modelName(modelNames.poll())
+                        .build())
                 .build();
     }
 
