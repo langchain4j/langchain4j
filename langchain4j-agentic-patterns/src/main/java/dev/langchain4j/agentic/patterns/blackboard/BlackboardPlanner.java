@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,15 +90,17 @@ public class BlackboardPlanner implements Planner {
         if (goalPredicate.test(scope)) {
             return done();
         }
-        return selectAndCall(scope);
+        return selectAndCall(planningContext);
     }
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgenticScope scope = planningContext.agenticScope();
 
-        AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
-        if (lastExecutedAgent != null) {
+        AgentInvocation lastInvocation = planningContext.previousAgentInvocation();
+        AgentActivator lastExecutedAgent = agentActivators.get(lastInvocation.agentId());
+        // a skipped agent didn't change the state, so it doesn't activate other agents
+        if (lastExecutedAgent != null && !lastInvocation.skipped()) {
             agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
         }
 
@@ -112,12 +115,13 @@ public class BlackboardPlanner implements Planner {
                     "Increase maxInvocations or check goal predicate.");
         }
 
-        return selectAndCall(scope);
+        return selectAndCall(planningContext);
     }
 
-    private Action selectAndCall(AgenticScope scope) {
+    private Action selectAndCall(PlanningContext planningContext) {
+        AgenticScope scope = planningContext.agenticScope();
         List<AgentActivator> ready = agentActivators.values().stream()
-                .filter(a -> a.canActivate(scope))
+                .filter(a -> a.canActivate(planningContext))
                 .toList();
 
         if (ready.isEmpty()) {
@@ -175,8 +179,10 @@ public class BlackboardPlanner implements Planner {
             this.argumentNames = agent.arguments().stream().map(AgentArgument::name).toList();
         }
 
-        private boolean canActivate(AgenticScope agenticScope) {
-            return shouldExecute && argumentNames.stream().allMatch(agenticScope::hasState);
+        private boolean canActivate(PlanningContext planningContext) {
+            return shouldExecute
+                    && argumentNames.stream().allMatch(planningContext.agenticScope()::hasState)
+                    && planningContext.isActive(agent);
         }
 
         private void markFired() {

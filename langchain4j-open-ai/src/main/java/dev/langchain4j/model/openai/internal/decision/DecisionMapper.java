@@ -1,19 +1,28 @@
 package dev.langchain4j.model.openai.internal.decision;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -22,6 +31,7 @@ import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.openai.OpenAiDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,34 +57,77 @@ public final class DecisionMapper {
         openAiRequest.input = toInput(request.input());
         openAiRequest.questions = new ArrayList<>();
         request.questions().forEach((name, question) -> openAiRequest.questions.add(toQuestion(name, question)));
+        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            openAiRequest.customParameters = customParameters;
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) openAiRequest.model = null;
+            if (customParameters.containsKey("input")) openAiRequest.input = null;
+            if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+        }
         return openAiRequest;
     }
 
-    private static Object toInput(Object input) {
-        if (input instanceof String text) {
-            return text;
+    private static Object toInput(DecisionInput input) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
+            return List.of(message("user", toLabeledParts(fields.fields())));
+        } else if (input instanceof ContentsInput contents) {
+            return List.of(message("user", toInputParts(contents.contents())));
+        } else if (input instanceof MessagesInput messages) {
+            return List.of(message("user", toTranscriptParts(messages.messages())));
         }
+        throw new UnsupportedFeatureException(
+                "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
+    }
+
+    /**
+     * Each field is labeled with its name, contents such as images follow their label.
+     */
+    private static List<DecisionCreateRequest.InputPart> toLabeledParts(Map<String, Object> fields) {
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        fields.forEach((name, value) -> {
+            if (value instanceof Content content) {
+                parts.add(textPart(name + ":"));
+                parts.add(toInputPart(content));
+            } else if (isContents(value)) {
+                parts.add(textPart(name + ":"));
+                ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
+            } else {
+                parts.add(textPart(name + ": " + Json.toJson(value)));
+            }
+        });
+        return parts;
+    }
+
+    /**
+     * The conversation is sent as a JSON transcript, followed by the images it refers to.
+     */
+    private static List<DecisionCreateRequest.InputPart> toTranscriptParts(List<ChatMessage> messages) {
+        Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
+        for (int i = 0; i < transcript.images().size(); i++) {
+            parts.add(textPart("[image " + (i + 1) + "]:"));
+            parts.add(toInputPart(transcript.images().get(i)));
+        }
+        return parts;
+    }
+
+    private static DecisionCreateRequest.InputMessage message(
+            String role, List<DecisionCreateRequest.InputPart> content) {
         DecisionCreateRequest.InputMessage message = new DecisionCreateRequest.InputMessage();
-        message.content = new ArrayList<>();
-        if (input instanceof Map<?, ?> map) {
-            // each value is labeled with its name, contents such as images follow their label
-            map.forEach((name, value) -> {
-                if (value instanceof Content content) {
-                    message.content.add(textPart(name + ":"));
-                    message.content.add(toInputPart(content));
-                } else if (isContents(value)) {
-                    message.content.add(textPart(name + ":"));
-                    ((List<?>) value).forEach(content -> message.content.add(toInputPart((Content) content)));
-                } else {
-                    message.content.add(textPart(name + ": " + Json.toJson(value)));
-                }
-            });
-            return List.of(message);
-        }
-        for (Object content : (List<?>) input) {
-            message.content.add(toInputPart((Content) content));
-        }
-        return List.of(message);
+        message.role = role;
+        message.content = content;
+        return message;
+    }
+
+    private static List<DecisionCreateRequest.InputPart> toInputParts(List<Content> contents) {
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        contents.forEach(content -> parts.add(toInputPart(content)));
+        return parts;
     }
 
     private static boolean isContents(Object value) {
@@ -95,7 +148,7 @@ public final class DecisionMapper {
             part.text = text.text();
         } else if (content instanceof ImageContent image) {
             part.type = "input_image";
-            part.imageUrl = toDataUrl(image.image());
+            part.imageUrl = toImageUrl(image.image());
             part.detail = toDetail(image.detailLevel());
         } else {
             throw new UnsupportedFeatureException(
@@ -105,18 +158,14 @@ public final class DecisionMapper {
         return part;
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static String toDetail(ImageContent.DetailLevel detailLevel) {

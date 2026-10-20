@@ -65,16 +65,61 @@ rejected by Ollama, and the request fails with a `ModelNotFoundException`.
 Without a GPU, or while Ollama loads the model, a request can take several seconds, so consider a longer
 `timeout(...)`. Ollama unloads a model after 5 minutes without requests (unless configured otherwise on the server):
 to keep it loaded longer, set `keepAlive(...)` in seconds, or a negative value to keep it loaded. The other settings
-are `httpClientBuilder`, `maxRetries`, `logRequests`, `logResponses`, `logger`, `customHeaders` and `listeners`.
+are `httpClientBuilder`, `maxRetries`, `logRequests`, `logResponses`, `logger`, `customHeaders`, `customParameters`
+(see [Custom parameters](#custom-parameters)) and `listeners`.
 
 Both `decide()` and `decideAsync()` are supported.
+
+## Custom parameters
+
+To send a parameter that `OllamaDecisionModel` does not support yet, set it with `customParameters(...)`. It is added to
+the JSON body of every request:
+
+```java
+DecisionModel decisionModel = OllamaDecisionModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("nimble")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `OllamaDecisionRequestParameters`. If not empty, they
+replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(OllamaDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`state`.
+
+Passing the parameters class of another decision model to `OllamaDecisionModel` fails with an
+`IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
+decision models, works with every model.
 
 ## Input
 
 The input can be:
-- text;
-- a `Map` of named values, which is sent as a JSON object;
-- a list of `TextContent`s and `ImageContent`s, whose texts are joined with blank lines.
+- text (`input(...)`);
+- named fields (`inputFields(...)`), which are sent as a JSON object;
+- a list of `TextContent`s and `ImageContent`s (`inputContents(...)`), whose texts are joined with blank lines.
+
+A conversation (`inputMessages(...)`) is sent as a [transcript](/tutorials/decision-models#conversations), as
+`{"messages": [...]}`, with its images sent like the other images. The output guardrail sends the last 50 messages of the conversation by default:
+with Ollama, set `maxMessages(...)` and `maxMessageLength(...)` on it, for example `maxMessages(4)` and
+`maxMessageLength(4000)`, to help keep its requests under the 64 KiB limit. The chat model router, the query router
+and tool filtering send up to 10 messages of up to 2,000 characters each. In all of them, the system message is sent
+in full: with a long system message, or with text in scripts that take several bytes per character, lower these
+limits or leave out messages with `messageFilter(...)`.
 
 The whole input must fit in the context window the model is loaded with (it depends on the model and on the Ollama
 server's configuration): Ollama never truncates it. The request body must also be at most 64 KiB, or 32 MiB with
@@ -92,7 +137,7 @@ DecisionModel decisionModel = OllamaDecisionModel.builder()
         .build();
 
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
         .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
@@ -102,10 +147,10 @@ DecisionRequest request = DecisionRequest.builder()
 Ollama receives the images separately from the rest of the input, so each image is replaced in the input by its
 position among the images: the input above is sent as
 `The customer says the package arrived like this.` followed by `[image 1]`.
-In a `Map`, an image is replaced the same way, so that its name says what it is:
+In named fields, an image is replaced the same way, so that its name says what it is:
 `Map.of("comment", comment, "photo", ImageContent.from(...))` is sent as
 `{"comment": "...", "photo": "[image 1]"}`. Images are numbered from 1 in the order they appear in the input, across
-all values of the `Map`, so questions can refer to them, for example "Does [image 2] show the same item as
+all fields, so questions can refer to them, for example "Does [image 2] show the same item as
 [image 1]?". This `[image N]` convention comes from LangChain4j, not from Ollama.
 
 Images can be given as base64 data, or by an `http`, `https` or `file` URL, in which case they are downloaded or read

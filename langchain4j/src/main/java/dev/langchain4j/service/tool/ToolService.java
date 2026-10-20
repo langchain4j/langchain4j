@@ -648,6 +648,7 @@ public class ToolService {
         List<CompensableToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
+        ChatRequest lastChatRequest = null;
         while (true) {
 
             if (roundTripsLeft-- == 0) {
@@ -700,7 +701,8 @@ public class ToolService {
                     context, chatMemory, messages, resultMessages, invocationContext);
 
             if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                return immediateToolServiceResult(intermediateResponses, toolExecutions, aggregateTokenUsage);
+                return immediateToolServiceResult(
+                        intermediateResponses, toolExecutions, aggregateTokenUsage, lastChatRequest);
             }
 
             NextChatRequest next = prepareNextChatRequest(
@@ -715,6 +717,7 @@ public class ToolService {
             toolServiceContext = next.toolServiceContext();
             parameters = next.parameters();
 
+            lastChatRequest = next.chatRequest();
             chatResponse = chatModelInvoker.apply(next.chatRequest());
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
@@ -727,7 +730,8 @@ public class ToolService {
                 intermediateResponses,
                 toolExecutions,
                 aggregateTokenUsage,
-                chatMemory == null ? messages : List.of());
+                chatMemory == null ? messages : List.of(),
+                lastChatRequest);
     }
 
     /**
@@ -823,6 +827,7 @@ public class ToolService {
         private final List<CompensableToolExecution> compensableExecutions = newCompensableExecutionsAccumulator();
 
         private final AtomicReference<CompletableFuture<ChatResponse>> inFlightModelCall = new AtomicReference<>();
+        private volatile ChatRequest lastChatRequest;
 
         AsyncToolLoop(
                 AiServiceContext context,
@@ -893,7 +898,8 @@ public class ToolService {
                                     intermediateResponses,
                                     toolExecutions,
                                     aggregateTokenUsage,
-                                    chatMemory == null ? accumulator : List.of()));
+                                    chatMemory == null ? accumulator : List.of(),
+                                    lastChatRequest));
                         }
 
                         intermediateResponses.add(chatResponse);
@@ -971,7 +977,7 @@ public class ToolService {
 
                         if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                             return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                    intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    intermediateResponses, toolExecutions, aggregateTokenUsage, lastChatRequest));
                         }
 
                         if (isCancelled(cancellation)) {
@@ -1034,6 +1040,7 @@ public class ToolService {
             NextChatRequest next = prepareNextChatRequest(
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
+            lastChatRequest = next.chatRequest();
             CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
@@ -1241,7 +1248,8 @@ public class ToolService {
     private static ToolServiceResult immediateToolServiceResult(
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
-            TokenUsage aggregateTokenUsage) {
+            TokenUsage aggregateTokenUsage,
+            ChatRequest lastChatRequest) {
         ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
@@ -1249,6 +1257,7 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .immediateToolReturn(true)
+                .lastChatRequest(lastChatRequest)
                 .build();
     }
 
@@ -1261,13 +1270,15 @@ public class ToolService {
             List<ChatResponse> intermediateResponses,
             List<ToolExecution> toolExecutions,
             TokenUsage aggregateTokenUsage,
-            List<ChatMessage> messages) {
+            List<ChatMessage> messages,
+            ChatRequest lastChatRequest) {
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
                 .finalResponse(finalResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .messages(messages)
+                .lastChatRequest(lastChatRequest)
                 .build();
     }
 

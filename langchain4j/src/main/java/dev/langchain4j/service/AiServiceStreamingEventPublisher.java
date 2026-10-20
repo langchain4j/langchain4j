@@ -409,6 +409,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             });
         }
 
+        // the request whose response is being processed; rounds run one after another
+        private volatile ChatRequest lastChatRequest;
+
         private void processRound(
                 ChatRequest chatRequest,
                 ToolServiceContext currentToolContext,
@@ -417,6 +420,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             fireResponseReceivedEvent(chatRequest, chatResponse);
+            lastChatRequest = chatRequest;
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
@@ -711,6 +715,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .responseFromLLM(finalChatResponse)
                     .chatExecutor(toolAwareRepromptExecutor)
                     .requestParams(guardrailParams)
+                    .chatRequest(lastChatRequest)
                     .build();
 
             CompletableFuture<ChatResponse> guarded =

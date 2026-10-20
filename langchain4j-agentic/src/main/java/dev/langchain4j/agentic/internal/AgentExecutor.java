@@ -1,19 +1,22 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentSkipped;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -50,7 +53,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             boolean plannerAlreadyNotified) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
-            case THROW_EXCEPTION -> throw e;
+            case THROW_EXCEPTION -> {
+                ActivationConditions.clearActivation(this, agenticScope);
+                throw e;
+            }
             case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
             case RETURN_RESULT ->
                 plannerAlreadyNotified
@@ -63,19 +69,19 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
         AgentInvocationArguments args = null;
         try {
+            AgentCondition condition = agentInvoker.activationCondition();
+            if (condition != null && !ActivationConditions.isActivated(this, agenticScope)) {
+                if (!isActive(condition, agenticScope)) {
+                    return skip(agenticScope, planner, "activation condition is false: " + condition.description());
+                }
+                ActivationConditions.markActivated(this, agenticScope);
+            }
+
             try {
                 args = agentInvoker.toInvocationArguments(agenticScope);
             } catch (MissingArgumentException e) {
                 if (optional()) {
-                    LOG.info(
-                            "Skipping optional agent '{}' because of missing argument '{}'",
-                            agentInvoker.name(),
-                            e.argumentName());
-                    Object response = agenticScope.readState(agentInvoker.outputKey());
-                    if (planner != null) {
-                        planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
-                    }
-                    return response;
+                    return skip(agenticScope, planner, "missing argument '" + e.argumentName() + "'");
                 }
                 throw e;
             }
@@ -92,12 +98,40 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         }
     }
 
+    private boolean isActive(AgentCondition condition, DefaultAgenticScope agenticScope) {
+        try {
+            return condition.test(agenticScope);
+        } catch (RuntimeException e) {
+            AgentInvocationException failure =
+                    new AgentInvocationException("Activation condition of agent '" + name() + "' failed", e);
+            agentError(agentInvoker.listener(), agenticScope, agentInvoker, Map.of(), failure);
+            throw failure;
+        }
+    }
+
+    /**
+     * Skips this agent without invoking it: nothing is written to the scope and the response is the current value
+     * of the output key. The skip is a plain value also for an async agent, and its invocation is not registered in
+     * the scope, but the planner is notified so that it can move on to the next agent.
+     */
+    private Object skip(DefaultAgenticScope agenticScope, PlannerExecutor planner, String reason) {
+        LOG.info("Skipping agent '{}': {}", name(), reason);
+        String outputKey = outputKey();
+        Object response = outputKey == null || outputKey.isBlank() ? null : agenticScope.readState(outputKey);
+        agentSkipped(agentInvoker.listener(), agenticScope, agentInvoker, reason);
+        if (planner != null) {
+            planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response, reason));
+        }
+        return response;
+    }
+
     private Object completeAgentInvocation(
             Object response,
             DefaultAgenticScope agenticScope,
             Object invokedAgent,
             PlannerExecutor planner,
             AgentInvocationArguments args) {
+        ActivationConditions.clearActivation(this, agenticScope);
         String outputKey = agentInvoker.outputKey();
         if (outputKey != null && !outputKey.isBlank()) {
             Object stateValue = response instanceof ResultWithAgenticScope<?> r ? r.result() : response;
@@ -190,6 +224,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public boolean optional() {
         return agentInvoker.optional();
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return agentInvoker.activationCondition();
     }
 
     @Override

@@ -2,16 +2,24 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -45,13 +53,26 @@ class OllamaDecisionMapper {
         request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
         ollamaRequest.setQuestions(questions);
         ollamaRequest.setKeepAlive(keepAlive);
+        if (request.parameters() instanceof OllamaDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            ollamaRequest.setCustomParameters(customParameters);
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) ollamaRequest.setModel(null);
+            if (customParameters.containsKey("state")) ollamaRequest.setState(null);
+            if (customParameters.containsKey("images")) ollamaRequest.setImages(null);
+            if (customParameters.containsKey("questions")) ollamaRequest.setQuestions(null);
+            if (customParameters.containsKey("keep_alive")) ollamaRequest.setKeepAlive(null);
+        }
         return ollamaRequest;
     }
 
-    private static Object state(Object input, List<String> images) {
-        if (input instanceof Map<?, ?> map) {
-            Map<Object, Object> state = new LinkedHashMap<>();
-            map.forEach((name, value) -> {
+    private static Object state(DecisionInput input, List<String> images) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
+            Map<String, Object> state = new LinkedHashMap<>();
+            fields.fields().forEach((name, value) -> {
                 if (value instanceof Content content) {
                     state.put(name, text(List.of(content), images));
                 } else if (isContents(value)) {
@@ -61,8 +82,16 @@ class OllamaDecisionMapper {
                 }
             });
             return state;
+        } else if (input instanceof ContentsInput contents) {
+            return text(contents.contents(), images);
+        } else if (input instanceof MessagesInput messages) {
+            // a conversation is sent as a transcript, its images are sent like other images
+            Transcript transcript = DecisionModelInputUtils.transcript(messages.messages(), "The Ollama decision model");
+            transcript.images().forEach(image -> images.add(ImageUtils.base64Image(image.image())));
+            return Map.of("messages", transcript.messages());
         }
-        return input instanceof List<?> contents ? text(contents, images) : input;
+        throw new UnsupportedFeatureException(
+                "Ollama decision models do not support " + input.getClass().getName() + " as input");
     }
 
     private static boolean isContents(Object value) {

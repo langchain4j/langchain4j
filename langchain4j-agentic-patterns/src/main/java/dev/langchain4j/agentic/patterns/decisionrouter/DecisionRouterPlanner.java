@@ -47,6 +47,10 @@ import org.slf4j.LoggerFactory;
  * independent of each other: several subagents can reach a high threshold, adding a subagent does not change the
  * probabilities of the others, and when no subagent reaches the threshold none is invoked and the result is an empty
  * map.
+ * <p>
+ * Only the subagents whose activation condition holds are offered to the decision model. When none does, the model
+ * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
+ * activation threshold, when only one does, it is invoked without asking the model.
  */
 @Experimental
 public class DecisionRouterPlanner implements Planner {
@@ -66,10 +70,6 @@ public class DecisionRouterPlanner implements Planner {
 
     private List<String> inputKeys;
     private final Map<String, AgentInstance> routes = new LinkedHashMap<>();
-
-    // a single choice question among the subagents without an activation threshold, one yes/no question per subagent
-    // (named after it) with an activation threshold
-    private final Map<String, Question> questions = new LinkedHashMap<>();
 
     // persisted to resume after a suspension or a crash: the names of the activated agents, the outputs of those
     // already invoked, and the names of those whose output was still pending, like an agent waiting for a human
@@ -142,20 +142,27 @@ public class DecisionRouterPlanner implements Planner {
                         + "but more than one is named '" + agent.name() + "'");
             }
         }
+    }
 
-        if (activationThreshold == null) {
-            ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(QUESTION_TEXT);
-            for (AgentInstance agent : routes.values()) {
-                if (isNullOrBlank(agent.description())) {
-                    choice.option(agent.name());
-                } else {
-                    choice.option(agent.name(), agent.description());
-                }
-            }
-            questions.put(QUESTION_NAME, choice.build());
-        } else {
-            routes.values().forEach(agent -> questions.put(agent.name(), relevanceQuestion(agent)));
+    /**
+     * A single choice question among the candidates without an activation threshold, one yes/no question per
+     * candidate (named after it) with an activation threshold.
+     */
+    private Map<String, Question> questions(List<AgentInstance> candidates) {
+        if (activationThreshold != null) {
+            Map<String, Question> questions = new LinkedHashMap<>();
+            candidates.forEach(agent -> questions.put(agent.name(), relevanceQuestion(agent)));
+            return questions;
         }
+        ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(QUESTION_TEXT);
+        for (AgentInstance agent : candidates) {
+            if (isNullOrBlank(agent.description())) {
+                choice.option(agent.name());
+            } else {
+                choice.option(agent.name(), agent.description());
+            }
+        }
+        return Map.of(QUESTION_NAME, choice.build());
     }
 
     private static YesNoQuestion relevanceQuestion(AgentInstance agent) {
@@ -185,13 +192,10 @@ public class DecisionRouterPlanner implements Planner {
     public Action firstAction(PlanningContext planningContext) {
         // when resuming, the agents activated before the suspension or crash are restored instead of decided again
         if (activated == null) {
-            DecisionResponse response = decide(planningContext.agenticScope());
-            activated = activationThreshold == null
-                    ? List.of(response.choice(QUESTION_NAME).value())
-                    : routes.keySet().stream()
-                            .filter(name -> response.yesNo(name).probability() >= activationThreshold)
-                            .toList();
-            LOG.info("Activating agents {} from the answers {}", activated, response.answers());
+            // only the agents that would run now are offered to the decision model
+            List<AgentInstance> candidates =
+                    routes.values().stream().filter(planningContext::isActive).toList();
+            activated = candidates.isEmpty() ? List.of() : decide(planningContext.agenticScope(), candidates);
         }
 
         List<AgentInstance> pending = activated.stream()
@@ -201,22 +205,39 @@ public class DecisionRouterPlanner implements Planner {
         return pending.isEmpty() ? done(result(planningContext.agenticScope())) : call(pending);
     }
 
-    private DecisionResponse decide(AgenticScope agenticScope) {
+    private List<String> decide(AgenticScope agenticScope, List<AgentInstance> candidates) {
+        if (activationThreshold == null && candidates.size() == 1) {
+            return List.of(candidates.get(0).name());
+        }
+
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 
-        return decisionModel.decide(
-                DecisionRequest.builder().input(input).questions(questions).build());
+        DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+                .inputFields(input)
+                .questions(questions(candidates))
+                .build());
+        List<String> chosen = activationThreshold == null
+                ? List.of(response.choice(QUESTION_NAME).value())
+                : candidates.stream()
+                        .map(AgentInstance::name)
+                        .filter(name -> response.yesNo(name).probability() >= activationThreshold)
+                        .toList();
+        LOG.info("Activating agents {} from the answers {}", chosen, response.answers());
+        return chosen;
     }
 
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgentInvocation invocation = planningContext.previousAgentInvocation();
         String agentName = invocation.agentName();
-        outputs.put(agentName, invocation.output());
-        if (scopeOutput(agentName, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
-                && !delayedResponse.isDone()) {
-            deferred.add(agentName);
+        // a skipped agent produced no output, so it is left out of the result
+        if (!invocation.skipped()) {
+            outputs.put(agentName, invocation.output());
+            if (scopeOutput(agentName, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
+                    && !delayedResponse.isDone()) {
+                deferred.add(agentName);
+            }
         }
         // the loop resumes only when all the activated agents completed, so the last done action carries all outputs
         return done(result(planningContext.agenticScope()));
@@ -224,7 +245,7 @@ public class DecisionRouterPlanner implements Planner {
 
     private Object result(AgenticScope agenticScope) {
         if (activationThreshold == null) {
-            return outputOf(activated.get(0), agenticScope);
+            return activated.isEmpty() ? null : outputOf(activated.get(0), agenticScope);
         }
         Map<String, Object> result = new LinkedHashMap<>();
         activated.stream()

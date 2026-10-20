@@ -66,6 +66,7 @@ TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .timeout(...)             // defaults to the HTTP client builder's timeouts, otherwise 15s connect / 60s read
         .maxRetries(...)          // retries after the first attempt; defaults to 2
         .customHeaders(...)       // additional HTTP headers, as a Map or a Supplier<Map>
+        .customParameters(...)    // additional parameters in the JSON body, see "Custom parameters" below
         .listeners(...)           // DecisionModelListeners, see Observability in the Decision Models tutorial
         .logRequests(...)         // defaults to false
         .logResponses(...)        // defaults to false
@@ -86,7 +87,9 @@ In the TypeSafe documentation, yes/no questions are called "noul" questions, sca
 questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
 sent as an object with a `label` and a `description`.
 The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
-without calling the API.
+without calling the API. A conversation (`inputMessages(...)`) is sent as a
+[transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`; images in it throw an
+`UnsupportedFeatureException`.
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
@@ -95,6 +98,42 @@ offered, a probability outside of 0 to 1, or a scale mean outside of the levels 
 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data
 processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).
+
+## Custom parameters
+
+To send a parameter that `TypeSafeDecisionModel` does not support yet, set it with `customParameters(...)`. It is
+added to the JSON body of every request:
+
+```java
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-latest")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `TypeSafeDecisionRequestParameters`. If not empty, they
+replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(TypeSafeDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`state`.
+
+Passing the parameters class of another decision model to `TypeSafeDecisionModel` fails with an
+`IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
+decision models, works with every model.
 
 ## Other servers
 

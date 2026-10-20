@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import com.openai.core.JsonField;
+import com.openai.core.JsonValue;
 import com.openai.models.decisions.Decision;
 import com.openai.models.decisions.DecisionChoiceOption;
 import com.openai.models.decisions.DecisionChoiceValue;
@@ -12,16 +14,24 @@ import com.openai.models.decisions.DecisionInputPart;
 import com.openai.models.decisions.DecisionInputText;
 import com.openai.errors.OpenAIInvalidDataException;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -51,36 +61,90 @@ class InternalOpenAiOfficialDecisionHelper {
                     + "with modelName(...) or on the request with DecisionRequestParameters.builder().modelName(...)");
         }
         DecisionCreateParams.Builder params = DecisionCreateParams.builder().model(request.modelName());
-        Object input = request.input();
-        if (input instanceof String text) {
-            params.input(text);
-        } else if (input instanceof Map<?, ?> map) {
-            // each value is labeled with its name, contents such as images follow their label
-            List<DecisionInputPart> parts = new ArrayList<>();
-            map.forEach((name, value) -> {
-                if (value instanceof Content content) {
-                    parts.add(textPart(name + ":"));
-                    parts.add(toInputPart(content));
-                } else if (isContents(value)) {
-                    parts.add(textPart(name + ":"));
-                    ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
-                } else {
-                    parts.add(textPart(name + ": " + Json.toJson(value)));
-                }
-            });
-            params.inputOfDecisionInputMessages(
-                    List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
-        } else {
-            List<DecisionInputPart> parts = new ArrayList<>();
-            for (Object content : (List<?>) input) {
-                parts.add(toInputPart((Content) content));
-            }
-            params.inputOfDecisionInputMessages(
-                    List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
-        }
+        addInput(params, request.input());
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
+        if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
+            parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
+        }
         return params.build();
     }
+
+    private static void addInput(DecisionCreateParams.Builder params, DecisionInput input) {
+        if (input instanceof TextInput text) {
+            params.input(text.text());
+        } else if (input instanceof FieldsInput fields) {
+            params.inputOfDecisionInputMessages(List.of(userMessage(toLabeledParts(fields.fields()))));
+        } else if (input instanceof ContentsInput contents) {
+            params.inputOfDecisionInputMessages(List.of(userMessage(toInputParts(contents.contents()))));
+        } else if (input instanceof MessagesInput messages) {
+            params.inputOfDecisionInputMessages(List.of(userMessage(toTranscriptParts(messages.messages()))));
+        } else {
+            throw new UnsupportedFeatureException(
+                    "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
+        }
+    }
+
+    private static DecisionInputMessage userMessage(List<DecisionInputPart> parts) {
+        return DecisionInputMessage.builder().contentOfParts(parts).build();
+    }
+
+    /**
+     * Each field is labeled with its name, contents such as images follow their label.
+     */
+    private static List<DecisionInputPart> toLabeledParts(Map<String, Object> fields) {
+        List<DecisionInputPart> parts = new ArrayList<>();
+        fields.forEach((name, value) -> {
+            if (value instanceof Content content) {
+                parts.add(textPart(name + ":"));
+                parts.add(toInputPart(content));
+            } else if (isContents(value)) {
+                parts.add(textPart(name + ":"));
+                ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
+            } else {
+                parts.add(textPart(name + ": " + Json.toJson(value)));
+            }
+        });
+        return parts;
+    }
+
+    private static List<DecisionInputPart> toInputParts(List<Content> contents) {
+        List<DecisionInputPart> parts = new ArrayList<>();
+        contents.forEach(content -> parts.add(toInputPart(content)));
+        return parts;
+    }
+
+    /**
+     * The SDK writes additional body properties next to the fields it knows, so the fields set by this class are
+     * replaced through their own setters to avoid sending them twice.
+     */
+    private static void addCustomParameter(DecisionCreateParams.Builder params, String name, Object value) {
+        switch (name) {
+            case "model" -> params.model(jsonField(value));
+            case "input" -> params.input(jsonField(value));
+            case "questions" -> params.questions(jsonField(value));
+            default -> params.putAdditionalBodyProperty(name, JsonValue.from(value));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> JsonField<T> jsonField(Object value) {
+        return (JsonField<T>) (JsonField<?>) JsonValue.from(value);
+    }
+
+    /**
+     * The conversation is sent as a JSON transcript, followed by the images it refers to.
+     */
+    private static List<DecisionInputPart> toTranscriptParts(List<ChatMessage> messages) {
+        Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
+        List<DecisionInputPart> parts = new ArrayList<>();
+        parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
+        for (int i = 0; i < transcript.images().size(); i++) {
+            parts.add(textPart("[image " + (i + 1) + "]:"));
+            parts.add(toInputPart(transcript.images().get(i)));
+        }
+        return parts;
+    }
+
 
     private static boolean isContents(Object value) {
         return value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content;
@@ -97,7 +161,7 @@ class InternalOpenAiOfficialDecisionHelper {
         }
         if (content instanceof ImageContent image) {
             return DecisionInputPart.ofInputImage(DecisionInputImage.builder()
-                    .imageUrl(toDataUrl(image.image()))
+                    .imageUrl(toImageUrl(image.image()))
                     .detail(toDetail(image.detailLevel()))
                     .build());
         }
@@ -106,18 +170,14 @@ class InternalOpenAiOfficialDecisionHelper {
                         + content.type());
     }
 
-    private static String toDataUrl(Image image) {
+    private static String toImageUrl(Image image) {
         if (image.base64Data() != null) {
             if (isNullOrBlank(image.mimeType())) {
                 throw new IllegalArgumentException("The MIME type of an image in base64 must be set");
             }
             return "data:" + image.mimeType() + ";base64," + image.base64Data();
         }
-        if (image.url() != null && "data".equals(image.url().getScheme())) {
-            return image.url().toString();
-        }
-        throw new UnsupportedFeatureException("The OpenAI Decisions API supports only inline images (base64 data or "
-                + "data URLs), not images referenced by URL");
+        return image.url().toString();
     }
 
     private static DecisionInputImage.Detail toDetail(ImageContent.DetailLevel detailLevel) {

@@ -13,7 +13,7 @@ public class GoalOrientedPlanner implements Planner {
 
     private String goal;
 
-    private GoalOrientedSearchGraph graph;
+    private List<AgentInstance> subagents;
     private List<AgentInstance> path;
 
     private int agentCursor = 0;
@@ -21,12 +21,16 @@ public class GoalOrientedPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.goal = initPlanningContext.plannerAgent().outputKey();
-        this.graph = new GoalOrientedSearchGraph(initPlanningContext.subagents());
+        this.subagents = initPlanningContext.subagents();
     }
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        path = graph.search(planningContext.agenticScope().state().keySet(), goal);
+        // an agent whose activation condition is false can't be part of the path
+        List<AgentInstance> activeAgents =
+                subagents.stream().filter(planningContext::isActive).toList();
+        path = new GoalOrientedSearchGraph(activeAgents)
+                .search(planningContext.agenticScope().state().keySet(), goal);
         if (path.isEmpty()) {
             throw new IllegalStateException("No path found for goal: " + goal);
         }

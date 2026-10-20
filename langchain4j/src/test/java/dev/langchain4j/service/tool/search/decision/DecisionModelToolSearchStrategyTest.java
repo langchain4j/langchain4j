@@ -9,6 +9,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
@@ -65,7 +66,7 @@ class DecisionModelToolSearchStrategyTest {
         assertThat(result.foundToolNames()).containsExactly("get_forecast", "get_weather");
         assertThat(result.toolResultMessageText()).isEqualTo("Tools found: get_forecast, get_weather");
         assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
-            assertThat(request.input()).isEqualTo("Will it rain tomorrow in Berlin?");
+            assertThat(request.input()).isEqualTo(TextInput.from("Will it rain tomorrow in Berlin?"));
             assertThat(request.questions())
                     .containsEntry(
                             "tool1",
