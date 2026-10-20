@@ -134,6 +134,25 @@ public interface TokenStream {
     }
 
     /**
+     * The provided consumer will be invoked when a {@link StreamingHandle} becomes available.
+     * <p>
+     * This callback is independent from partial response, thinking and tool call callbacks and can be used together with
+     * any of them. It can be used to cancel the underlying streaming request without switching from a plain partial
+     * response callback to a context callback.
+     * <p>
+     * Please note that not all streaming model implementations provide a cancellable {@link StreamingHandle}.
+     * Implementations may ignore this callback when no streaming handle is available.
+     *
+     * @param handler lambda that consumes the streaming handle
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.20.0
+     */
+    @Experimental
+    default TokenStream onStreamingHandle(Consumer<StreamingHandle> handler) {
+        return this;
+    }
+
+    /**
      * The provided consumer will be invoked if any {@link Content}s are retrieved using {@link RetrievalAugmentor}.
      * <p>
      * The invocation happens before any call is made to the language model.
