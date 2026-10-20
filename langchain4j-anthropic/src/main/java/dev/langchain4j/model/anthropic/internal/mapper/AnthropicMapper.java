@@ -13,6 +13,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTA
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -439,7 +440,8 @@ public class AnthropicMapper {
         }
         return switch (anthropicStopReason) {
             case "end_turn", "stop_sequence" -> STOP;
-            case "max_tokens" -> LENGTH;
+            case "max_tokens", "model_context_window_exceeded" -> LENGTH;
+            case "refusal" -> CONTENT_FILTER;
             case "tool_use" -> TOOL_EXECUTION;
             default -> OTHER;
         };
