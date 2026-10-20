@@ -124,6 +124,20 @@ public class AgentInvocation {
     }
 
     /**
+     * Returns the name of the model that answered the last LLM call of this invocation, as reported by the provider
+     * in the response metadata. It is empty if the agent didn't call any LLM, like a workflow or a non-AI agent,
+     * if it was skipped, or if the provider didn't report the model name.
+     */
+    public Optional<String> modelName() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        return Optional.ofNullable(agentResponse.chatResponse())
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::modelName);
+    }
+
+    /**
      * Returns the zero-based iteration index when this invocation is part of a loop, or -1 otherwise.
      */
     public int iterationIndex() {

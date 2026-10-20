@@ -507,7 +507,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Model</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             int[] rowCounter = {0};
             appendWfRow(html, top, 0, base, totalMs, rowCounter, -1);
@@ -562,6 +562,13 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<td class=\"wf-dur\">");
         if (!inv.skipped()) {
             html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
+        }
+        html.append("</td>");
+
+        // Model column
+        html.append("<td class=\"wf-dur\">");
+        if (inv.done()) {
+            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
         }
         html.append("</td>");
 
@@ -648,6 +655,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append(fmtDur(dur));
         }
         html.append("</td>");
+
+        // Model column (empty for tools)
+        html.append("<td></td>");
 
         // Tokens column (empty for tools)
         html.append("<td></td>");
