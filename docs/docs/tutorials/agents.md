@@ -2741,6 +2741,93 @@ where the experts provide their chat model through a `@ChatModelSupplier`, as di
 
 Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks, for instance through an [activation condition](#activation-conditions). Only the subagents whose activation condition holds are offered to the decision model, which isn't asked at all when none does, and in that case the router returns no result, or an empty map with an activation threshold. Without an activation threshold, when only one subagent is active, it is invoked without asking the decision model. A subagent skipped anyway when invoked, because its condition changed after the decision, is left out of the map returned with an activation threshold, while without a threshold the router returns no result.
 
+### Confidence cascade agentic pattern
+
+:::note
+The confidence cascade is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The confidence cascade is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
+In many agentic systems most requests are easy and could be answered by a small, cheap model, while a few of them need a large model or even a human. Sending every request to the most capable agent pays the highest price for all of them, while sending them to the cheapest one gives poor answers to the hard ones. None of the patterns discussed so far trades cost against quality: the loop workflow repeats the same agents until an exit condition holds, and the supervisor spends an LLM call at every step just to decide what to do next.
+
+The confidence cascade pattern addresses this trade-off. Its subagents are declared from the cheapest to the most capable, for instance an agent on a small model, the same agent on a large model, and finally a human: these are the tiers of the cascade. The first tier answers the request, then a [decision model](/tutorials/decision-models) grades its answer against the request. If the probability that the answer is good enough reaches an acceptance threshold the answer is returned, otherwise the next, more expensive tier is tried. A decision model fits this grade well: it returns a probability instead of a text to parse, and grading an answer is far cheaper than producing it.
+
+The `ConfidenceCascadePlanner` implementing this pattern is created with a `DecisionModel`, an acceptance threshold strictly between 0 and 1 and, optionally, an acceptance criterion describing when an answer should be accepted. When it is initialized, the planner takes its subagents, in declaration order, as the tiers, and the arguments of the cascade agent itself as the request, so the cascade has to be defined through a typed agent interface, and must have at least two subagents. Its `firstAction` method calls the first tier, and its `nextAction` method grades the answer of the tier that just completed: it asks the decision model the `YesNoQuestion` "Does the answer fully and correctly address the request?", with an input made of the arguments of the cascade agent plus the answer under the `candidateAnswer` field, and with the acceptance criterion, if any, as the `yesWhen` description of the question. The few lines deciding what to do next are the following:
+
+```java
+double probability = acceptance(planningContext.agenticScope(), answer);
+if (probability >= acceptanceThreshold) {
+    return done(answer);
+}
+return call(tiers.get(++tier));
+```
+
+The last tier is never graded: its answer is returned anyway. More precisely, the answer of a tier is returned without grading it whenever no later tier is active according to the [activation conditions](#activation-conditions) of the subagents, which saves a decision call, and a tier that is skipped when invoked is passed over without a grade. When all the remaining tiers are skipped, the cascade returns the latest answer it obtained.
+
+The planner saves the tier it is trying as its execution state, so that after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because a tier is waiting for a human, or after a crash, the cascade resumes from that tier without paying again for the cheaper ones. A human can also be a tier in the middle of the cascade: its answer is then graded like any other when the cascade is resumed. For this reason the tiers whose answer can be delayed, that is human-in-the-loop and asynchronous agents, must declare an output key, from which the planner reads their answer.
+
+To give a practical example, consider a support assistant for a coffee machine. The first tier is a cheap FAQ agent, running on a small model and limited to the questions about the product:
+
+```java
+public interface FaqAgent {
+
+    @UserMessage("""
+        You are the FAQ assistant of the Brewmaster 3000 coffee machine.
+        Answer the following user request in no more than 3 sentences, using only your knowledge of the
+        Brewmaster 3000 coffee machine: how to set it up, brew coffee, clean and descale it, and fix its common issues.
+        If the request is not about the Brewmaster 3000 coffee machine, answer exactly:
+        "I can only help with the Brewmaster 3000 coffee machine."
+        The user request is {{request}}.
+        """)
+    @Agent(description = "Answers frequently asked questions about the Brewmaster 3000 coffee machine",
+            outputKey = "faqAnswer")
+    String faq(@V("request") String request);
+}
+```
+
+while the second tier is an `ExpertAgent` running on a large model and able to answer any request. The `SupportCascade` interface is directly implemented by a `ConfidenceCascadePlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+public interface SupportCascade {
+
+    @Agent
+    String ask(@V("request") String request);
+}
+
+FaqAgent faqAgent = AgenticServices.agentBuilder(FaqAgent.class)
+        .chatModel(SMALL_MODEL)
+        .build();
+ExpertAgent expertAgent = AgenticServices.agentBuilder(ExpertAgent.class)
+        .chatModel(LARGE_MODEL)
+        .build();
+
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+SupportCascade supportCascade = AgenticServices.plannerBuilder(SupportCascade.class)
+        .subAgents(faqAgent, expertAgent)
+        .outputKey("answer")
+        .planner(() -> new ConfidenceCascadePlanner(decisionModel, 0.5))
+        .build();
+
+String answer = supportCascade.ask("How do I descale my Brewmaster 3000 coffee machine?");
+```
+
+Here the `FaqAgent` answers the request, then the decision model receives the input `{"request": "How do I descale my Brewmaster 3000 coffee machine?", "candidateAnswer": "..."}` and the question "Does the answer fully and correctly address the request?". The probability of "yes" is high, so the answer of the FAQ agent is returned and the `ExpertAgent` is never invoked. For a request like "How do I set up a home network with two routers?", instead, the FAQ agent answers that it can only help with the coffee machine, the probability is low, and the request escalates to the `ExpertAgent`, whose answer is returned without being graded, since it is the last tier.
+
+An acceptance criterion makes the grade stricter, or more specific to the application, than the default question alone:
+
+```java
+new ConfidenceCascadePlanner(decisionModel, 0.5,
+        "The answer gives concrete instructions that solve the user's problem, " +
+        "instead of saying that it cannot help or redirecting the user elsewhere")
+```
+
+A few things to keep in mind. The grade is a relevance and completeness signal, not a proof of correctness: the decision model can judge whether an answer addresses the request, but it cannot verify facts, so the cascade suits the cases where a cheap check can tell a good answer from a bad one. Probabilities are not calibrated in the same way by different decision models, so the acceptance threshold should be tuned on your own requests, and tuned again when you change the decision model or its version. The arguments of the cascade agent and the answers of the tiers are sent to the decision model as they are when they are strings, numbers, booleans, or maps and lists of them, and are converted to maps and lists through a JSON round trip otherwise, so a tier can return a typed value. Finally, the execution state is saved only after the grade, so a crash during the grading call itself makes the tier being graded run again when the cascade is resumed.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.

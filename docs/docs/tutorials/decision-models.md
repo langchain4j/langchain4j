@@ -24,6 +24,7 @@ Typical uses are:
   (see the [decision router agentic pattern](/tutorials/agents#decision-router-agentic-pattern))
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
+  (see the [confidence cascade agentic pattern](/tutorials/agents#confidence-cascade-agentic-pattern))
 
 Decision models are built for these tasks: they return typed answers with probabilities,
 so there is no text to parse, and all questions of a request are answered against the same input in a single call.
