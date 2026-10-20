@@ -6,10 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 
 class DecisionRouterPlannerTest {
@@ -255,6 +258,137 @@ class DecisionRouterPlannerTest {
         assertThat(medicalExpert.calls).hasValue(0);
         assertThat(legalExpert.calls).hasValue(0);
         assertThat(technicalExpert.calls).hasValue(0);
+    }
+
+    // ── Activation conditions ──
+
+    private static AgenticScopeFunction<String> expert(
+            String name, AtomicInteger calls, Predicate<AgenticScope> activationCondition) {
+        return AgenticServices.nonAiAgentBuilder(scope -> {
+                    calls.incrementAndGet();
+                    return name + " answer";
+                })
+                .name(name)
+                .outputKey(name + "Response")
+                .activationCondition(activationCondition)
+                .build();
+    }
+
+    private static AgenticScopeFunction<String> inactiveExpert(String name, AtomicInteger calls) {
+        return expert(name, calls, scope -> false);
+    }
+
+    /** An expert whose condition holds when the decision model is asked, but no more when it is invoked. */
+    private static AgenticScopeFunction<String> expertSkippedAfterTheDecision(String name, AtomicInteger calls) {
+        AtomicInteger evaluations = new AtomicInteger();
+        return expert(name, calls, scope -> evaluations.incrementAndGet() == 1);
+    }
+
+    @Test
+    void shouldOfferOnlyTheActiveAgentsAsOptions() {
+        AtomicInteger inactiveCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(medicalExpert, inactiveExpert("legal", inactiveCalls), technicalExpert)
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        assertThat(question.options()).containsOnlyKeys("medical", "technical");
+        assertThat(inactiveCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldAskOnlyAboutTheActiveAgentsWithAThreshold() {
+        AtomicInteger inactiveCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "technical", 0.1));
+
+        MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(medicalExpert, inactiveExpert("legal", inactiveCalls), technicalExpert)
+                .outputKey("responses")
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+
+        assertThat(router.ask(REQUEST)).containsOnly(entry("medical", "medical answer"));
+        assertThat(model.request().questions()).containsOnlyKeys("medical", "technical");
+        assertThat(inactiveCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldNotAskTheDecisionModelWhenNoAgentIsActive() {
+        AtomicInteger inactiveCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(inactiveExpert("medical", inactiveCalls), inactiveExpert("legal", inactiveCalls))
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        DecisionModelMock relevanceModel = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.9));
+        MultiExpertRouter multiRouter = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(inactiveExpert("medical", inactiveCalls), inactiveExpert("legal", inactiveCalls))
+                .outputKey("responses")
+                .planner(() -> new DecisionRouterPlanner(relevanceModel, 0.5))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isNull();
+        assertThat(multiRouter.ask(REQUEST)).isEmpty();
+        assertThat(model.requests()).isEmpty();
+        assertThat(relevanceModel.requests()).isEmpty();
+        assertThat(inactiveCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldInvokeTheOnlyActiveAgentWithoutAskingTheDecisionModel() {
+        AtomicInteger inactiveCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(
+                        medicalExpert,
+                        inactiveExpert("legal", inactiveCalls),
+                        inactiveExpert("technical", inactiveCalls))
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
+        assertThat(model.requests()).isEmpty();
+        assertThat(inactiveCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldLeaveAnAgentSkippedAfterTheDecisionOutOfTheOutputsWithAThreshold() {
+        AtomicInteger skippedCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
+
+        MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(medicalExpert, expertSkippedAfterTheDecision("legal", skippedCalls), technicalExpert)
+                .outputKey("responses")
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+
+        assertThat(router.ask(REQUEST)).containsOnly(entry("medical", "medical answer"));
+        assertThat(skippedCalls).hasValue(0);
+    }
+
+    @Test
+    void shouldHaveNoResultWhenTheChosenAgentIsSkippedAfterTheDecision() {
+        AtomicInteger skippedCalls = new AtomicInteger();
+        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(medicalExpert, expertSkippedAfterTheDecision("legal", skippedCalls), technicalExpert)
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isNull();
+        assertThat(skippedCalls).hasValue(0);
+        assertThat(medicalExpert.calls).hasValue(0);
     }
 
     @Test

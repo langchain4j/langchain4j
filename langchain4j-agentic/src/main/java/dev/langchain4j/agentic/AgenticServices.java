@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCondition;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePredicate;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
@@ -45,8 +46,10 @@ import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
@@ -72,6 +75,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -744,7 +748,7 @@ public class AgenticServices {
 
         Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
         if (registryAgentMethod.isPresent()) {
-            return createRegistryAgent(registryAgentMethod.get());
+            return createRegistryAgent(agentServiceClass, registryAgentMethod.get());
         }
 
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
@@ -770,7 +774,13 @@ public class AgenticServices {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
     }
 
-    private static AgentExecutor createRegistryAgent(Method registryMethod) {
+    private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
+        if (activationCondition(agentServiceClass) != null) {
+            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
+                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
+                    + "Set the activation condition when building the agent registered as '"
+                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+        }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
         return agentToExecutor(agent);
@@ -787,6 +797,11 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+        AgentCondition a2aActivationCondition = activationCondition(agentServiceClass);
+        if (a2aActivationCondition != null) {
+            a2aClientBuilder.activationCondition(
+                    a2aActivationCondition.description(), a2aActivationCondition.predicate());
+        }
         selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(A2AClientCustomizer.class)
@@ -845,6 +860,11 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
+        AgentCondition mcpActivationCondition = activationCondition(agentServiceClass);
+        if (mcpActivationCondition != null) {
+            mcpClientBuilder.activationCondition(
+                    mcpActivationCondition.description(), mcpActivationCondition.predicate());
+        }
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
@@ -877,7 +897,12 @@ public class AgenticServices {
 
         String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
         AgentInvoker agentInvoker = nonAiAgentInvoker(
-                method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+                method,
+                name,
+                humanInTheLoop.description(),
+                humanInTheLoop.outputKey(),
+                humanInTheLoop.async(),
+                activationCondition(agentServiceClass));
         return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
 
@@ -982,6 +1007,7 @@ public class AgenticServices {
         private Type outputType = Object.class;
         private boolean async;
         private AgentListener listener;
+        private AgentCondition activationCondition;
 
         private NonAiAgentBuilder(AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function) {
             this.function = function;
@@ -1085,9 +1111,29 @@ public class AgenticServices {
             return this;
         }
 
+        /**
+         * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system.
+         * When the condition is false the agent is skipped, without writing anything to the {@link AgenticScope}.
+         * It can be evaluated more than once, so it must be free of side effects.
+         */
+        public NonAiAgentBuilder<T> activationCondition(Predicate<AgenticScope> activationCondition) {
+            return activationCondition("<unknown>", activationCondition);
+        }
+
+        /**
+         * Sets the condition, with its description, under which this agent runs when it is invoked as a subagent of
+         * an agentic system. When the condition is false the agent is skipped, without writing anything to the
+         * {@link AgenticScope}. It can be evaluated more than once, so it must be free of side effects.
+         */
+        public NonAiAgentBuilder<T> activationCondition(
+                String description, Predicate<AgenticScope> activationCondition) {
+            this.activationCondition = new AgentCondition(description, activationCondition);
+            return this;
+        }
+
         public AgenticScopeFunction<T> build() {
             return new AgenticScopeFunction<>(
-                    function, name, description, inputs, outputKey, outputType, async, listener);
+                    function, name, description, inputs, outputKey, outputType, async, listener, activationCondition);
         }
     }
 
@@ -1100,6 +1146,7 @@ public class AgenticServices {
         private final Type outputType;
         private final boolean async;
         private final AgentListener listener;
+        private final AgentCondition activationCondition;
 
         @FunctionalInterface
         public interface NonThrowingFunction<A, B> {
@@ -1107,7 +1154,7 @@ public class AgenticServices {
         }
 
         private AgenticScopeFunction(NonThrowingFunction<AgenticScope, T> function) {
-            this(function, null, "", List.of(), null, Object.class, false, null);
+            this(function, null, "", List.of(), null, Object.class, false, null, null);
         }
 
         private AgenticScopeFunction(
@@ -1118,7 +1165,8 @@ public class AgenticServices {
                 String outputKey,
                 Type outputType,
                 boolean async,
-                AgentListener listener) {
+                AgentListener listener,
+                AgentCondition activationCondition) {
             this.function = function;
             this.name = name;
             this.description = description;
@@ -1127,6 +1175,7 @@ public class AgenticServices {
             this.outputType = outputType;
             this.async = async;
             this.listener = listener;
+            this.activationCondition = activationCondition;
         }
 
         @Agent
@@ -1164,6 +1213,10 @@ public class AgenticServices {
 
         public AgentListener listener() {
             return listener;
+        }
+
+        public AgentCondition activationCondition() {
+            return activationCondition;
         }
     }
 }
