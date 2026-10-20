@@ -1,14 +1,24 @@
 package dev.langchain4j.agentic.patterns.goap;
 
-import java.util.List;
-import java.util.Map;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * A planner that computes the shortest sequence of agents leading from the current scope state to a goal.
+ * <p>
+ * The goal is the output key of the planner agent. A goal-oriented system without a goal has nothing to
+ * plan towards, so configuring the planner agent without an output key is rejected with an
+ * {@link AgenticSystemConfigurationException}.
+ */
 public class GoalOrientedPlanner implements Planner {
 
     private String goal;
@@ -21,6 +31,12 @@ public class GoalOrientedPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.goal = initPlanningContext.plannerAgent().outputKey();
+        if (isNullOrBlank(this.goal)) {
+            throw new AgenticSystemConfigurationException("A GoalOrientedPlanner needs a goal to plan towards, but"
+                    + " the agent '" + initPlanningContext.plannerAgent().name()
+                    + "' declares no output key. Set an output key on the planner agent to the state that the plan"
+                    + " should produce.");
+        }
         this.subagents = initPlanningContext.subagents();
     }
 
