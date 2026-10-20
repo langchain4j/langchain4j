@@ -399,7 +399,7 @@ class ConfidenceCascadePlannerTest {
     void shouldRejectAThresholdOutsideZeroToOne() {
         DecisionModelMock model = modelGrading(0.9);
 
-        for (double threshold : new double[] {0.0, 1.0, -0.1, 1.5}) {
+        for (double threshold : new double[] {0.0, 1.0, -0.1, 1.5, Double.NaN}) {
             assertThatThrownBy(() -> new ConfidenceCascadePlanner(model, threshold))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Acceptance threshold");

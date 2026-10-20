@@ -58,7 +58,13 @@ import org.slf4j.LoggerFactory;
  * The grade is a relevance and completeness signal, not a proof of correctness: a decision model can judge whether
  * an answer addresses the request, but it cannot verify facts. Probabilities are not calibrated in the same way by
  * every decision model, so the acceptance threshold must be tuned on the decision model in use and tuned again when
- * it changes.
+ * it changes. The request and the answers are untrusted input to the grade, so a crafted request or answer can
+ * influence it: the cascade trades cost against quality, it is not a security or review boundary. A failure of the
+ * decision model fails the invocation of the cascade.
+ * <p>
+ * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
+ * given a supplier creating a new instance at each invocation, for example
+ * {@code () -> new ConfidenceCascadePlanner(decisionModel, 0.5)}, while the decision model can be shared.
  */
 @Experimental
 public class ConfidenceCascadePlanner implements Planner {
@@ -69,11 +75,9 @@ public class ConfidenceCascadePlanner implements Planner {
     static final String QUESTION_TEXT = "Does the answer fully and correctly address the request?";
     static final String ANSWER_KEY = "candidateAnswer";
 
-    // the output reported to the planner for a delayed response that is not available yet
-    private static final String PENDING_PLACEHOLDER = "<pending>";
-
     private static final String CONFIDENCE_CASCADE_KEY_PREFIX = "confidence-cascade-";
     private static final String TIER_STATE_KEY = CONFIDENCE_CASCADE_KEY_PREFIX + "tier";
+    private static final String TIER_NAME_STATE_KEY = CONFIDENCE_CASCADE_KEY_PREFIX + "tier-name";
     private static final String PENDING_STATE_KEY = CONFIDENCE_CASCADE_KEY_PREFIX + "pending";
     private static final String ANSWERED_STATE_KEY = CONFIDENCE_CASCADE_KEY_PREFIX + "answered";
 
@@ -85,11 +89,14 @@ public class ConfidenceCascadePlanner implements Planner {
     private List<AgentInstance> tiers;
 
     // persisted to resume after a suspension or a crash: the index of the tier being tried (-1 before the first one
-    // is called), whether its answer was still pending, like an answer waited from a human, and the name of the last
-    // tier that answered
+    // is called), whether its answer was still pending, like an answer waited from a human, and the index of the last
+    // tier that answered (-1 if none)
     private int tier = -1;
     private boolean pending;
-    private String answered;
+    private int answered = -1;
+
+    // the name of the tier being tried when the execution state was saved, checked on resume
+    private String restoredTierName;
 
     // the latest answer obtained, returned when the remaining tiers are all skipped
     private Object latestAnswer;
@@ -131,9 +138,9 @@ public class ConfidenceCascadePlanner implements Planner {
     public ConfidenceCascadePlanner(
             DecisionModel decisionModel, double acceptanceThreshold, String acceptanceCriterion) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        if (acceptanceThreshold <= 0.0 || acceptanceThreshold >= 1.0) {
+        if (!(acceptanceThreshold > 0.0 && acceptanceThreshold < 1.0)) {
             throw illegalArgument(
-                    "Acceptance threshold must be greater than 0.0 and lesser than 1.0, but is: %s",
+                    "Acceptance threshold must be greater than 0.0 and less than 1.0, but is: %s",
                     acceptanceThreshold);
         }
         this.acceptanceThreshold = acceptanceThreshold;
@@ -176,6 +183,7 @@ public class ConfidenceCascadePlanner implements Planner {
             return call(tiers.get(0));
         }
         // resuming after a suspension or a crash
+        ensureSameTiers();
         if (!pending) {
             return call(tiers.get(tier));
         }
@@ -190,6 +198,14 @@ public class ConfidenceCascadePlanner implements Planner {
         }
         pending = false;
         return evaluate(planningContext, current, answer);
+    }
+
+    private void ensureSameTiers() {
+        if (tier >= tiers.size() || (restoredTierName != null && !restoredTierName.equals(tiers.get(tier).name()))) {
+            throw new IllegalStateException("Cannot resume ConfidenceCascadePlanner at the tier '" + restoredTierName
+                    + "' in position " + tier + ", since the subagents of the cascade changed after its execution "
+                    + "state was saved");
+        }
     }
 
     @Override
@@ -210,7 +226,7 @@ public class ConfidenceCascadePlanner implements Planner {
             }
             // an asynchronous tier: the grade has to wait for its answer
             answer = planningContext.agenticScope().readState(current.outputKey());
-        } else if (PENDING_PLACEHOLDER.equals(answer)) {
+        } else if (DelayedResponse.PENDING.equals(answer)) {
             throw new IllegalStateException("The answer of the tier '" + current.name() + "' is not available yet, "
                     + "but the tier has no output key where ConfidenceCascadePlanner can read it when it arrives: "
                     + "declare an output key on every tier whose answer can be delayed");
@@ -220,25 +236,25 @@ public class ConfidenceCascadePlanner implements Planner {
 
     private Action evaluate(PlanningContext planningContext, AgentInstance current, Object answer) {
         latestAnswer = answer;
-        answered = current.name();
+        answered = tier;
 
         boolean lastActiveTier = tiers.subList(tier + 1, tiers.size()).stream().noneMatch(planningContext::isActive);
         if (lastActiveTier) {
             LOG.info(
                     "Returning the answer of the tier '{}' without grading it, since no later tier is active",
-                    answered);
+                    current.name());
             return done(answer);
         }
 
         double probability = acceptance(planningContext.agenticScope(), answer);
         if (probability >= acceptanceThreshold) {
-            LOG.info("Accepting the answer of the tier '{}', graded {}", answered, probability);
+            LOG.info("Accepting the answer of the tier '{}', graded {}", current.name(), probability);
             return done(answer);
         }
         AgentInstance next = tiers.get(++tier);
         LOG.info(
                 "Rejecting the answer of the tier '{}', graded {}, escalating to '{}'",
-                answered,
+                current.name(),
                 probability,
                 next.name());
         return call(next);
@@ -282,13 +298,8 @@ public class ConfidenceCascadePlanner implements Planner {
 
     /** The latest answer obtained, read from the scope after a restore. */
     private Object fallbackAnswer(PlanningContext planningContext) {
-        if (latestAnswer == null && answered != null) {
-            AgentInstance answeredTier = tiers.stream()
-                    .filter(agent -> agent.name().equals(answered))
-                    .findFirst()
-                    .orElse(null);
-            Object scopeOutput =
-                    answeredTier == null ? null : scopeOutput(answeredTier, planningContext.agenticScope());
+        if (latestAnswer == null && answered >= 0) {
+            Object scopeOutput = scopeOutput(tiers.get(answered), planningContext.agenticScope());
             return scopeOutput instanceof DelayedResponse<?> delayedResponse ? delayedResponse.result() : scopeOutput;
         }
         return latestAnswer;
@@ -306,8 +317,9 @@ public class ConfidenceCascadePlanner implements Planner {
         }
         Map<String, Object> state = new HashMap<>();
         state.put(TIER_STATE_KEY, tier);
+        state.put(TIER_NAME_STATE_KEY, tiers.get(tier).name());
         state.put(PENDING_STATE_KEY, pending);
-        if (answered != null) {
+        if (answered >= 0) {
             state.put(ANSWERED_STATE_KEY, answered);
         }
         return state;
@@ -321,8 +333,11 @@ public class ConfidenceCascadePlanner implements Planner {
         if (state.get(PENDING_STATE_KEY) instanceof Boolean savedPending) {
             this.pending = savedPending;
         }
-        if (state.get(ANSWERED_STATE_KEY) instanceof String savedAnswered) {
-            this.answered = savedAnswered;
+        if (state.get(TIER_NAME_STATE_KEY) instanceof String savedTierName) {
+            this.restoredTierName = savedTierName;
+        }
+        if (state.get(ANSWERED_STATE_KEY) instanceof Number savedAnswered) {
+            this.answered = savedAnswered.intValue();
         }
     }
 

@@ -241,8 +241,9 @@ class ConfidenceCascadePlannerResumeTest {
         Map<String, Object> executionState = planner.executionState();
         assertThat(executionState)
                 .containsEntry("confidence-cascade-tier", 1)
+                .containsEntry("confidence-cascade-tier-name", "expert")
                 .containsEntry("confidence-cascade-pending", false)
-                .containsEntry("confidence-cascade-answered", "faq");
+                .containsEntry("confidence-cascade-answered", 0);
 
         ConfidenceCascadePlanner resumed = new ConfidenceCascadePlanner(model, 0.5);
         resumed.init(initPlanningContext);
@@ -270,7 +271,7 @@ class ConfidenceCascadePlannerResumeTest {
                 "confidence-cascade-pending",
                 false,
                 "confidence-cascade-answered",
-                "faq"));
+                0));
 
         assertThat(calledAgents(resumed.firstAction(new PlanningContext(scope, null))))
                 .containsExactly("expert");
@@ -279,6 +280,47 @@ class ConfidenceCascadePlannerResumeTest {
         assertThat(action.isDone()).isTrue();
         assertThat(action.result()).isEqualTo("faq answer");
         assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void shouldFailToResumeWhenTheTierBeingTriedIsNoLongerAtTheSavedPosition() {
+        DecisionModelMock model = modelGrading(0.1);
+        AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
+        DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s7");
+        scope.writeState("request", REQUEST);
+
+        ConfidenceCascadePlanner resumed = new ConfidenceCascadePlanner(model, 0.5);
+        resumed.init(new InitPlanningContext(scope, cascade, cascade.subagents()));
+        // the state was saved while trying a tier that is no longer the second one
+        resumed.restoreExecutionState(Map.of(
+                "confidence-cascade-tier", 1,
+                "confidence-cascade-tier-name", "human",
+                "confidence-cascade-pending", true));
+
+        assertThatThrownBy(() -> resumed.firstAction(new PlanningContext(scope, null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'human' in position 1");
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void shouldFailToResumeWhenTheTierBeingTriedNoLongerExists() {
+        DecisionModelMock model = modelGrading(0.1);
+        AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
+        DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s8");
+        scope.writeState("request", REQUEST);
+
+        ConfidenceCascadePlanner resumed = new ConfidenceCascadePlanner(model, 0.5);
+        resumed.init(new InitPlanningContext(scope, cascade, cascade.subagents()));
+        // the state was saved while trying a third tier, removed since then
+        resumed.restoreExecutionState(Map.of(
+                "confidence-cascade-tier", 2,
+                "confidence-cascade-tier-name", "human",
+                "confidence-cascade-pending", true));
+
+        assertThatThrownBy(() -> resumed.firstAction(new PlanningContext(scope, null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("subagents of the cascade changed");
     }
 
     @Test
