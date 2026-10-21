@@ -165,18 +165,41 @@ public class AgentUtil {
             String outputKey,
             boolean async,
             AgentCondition activationCondition) {
-        return AgentInvoker.fromMethod(
-                new NonAiAgentInstance(
-                        agenticMethod.getDeclaringClass(),
-                        name,
-                        description,
-                        agenticMethod.getGenericReturnType(),
-                        outputKey,
-                        async,
-                        argumentsFromMethod(agenticMethod),
-                        null,
-                        activationCondition),
-                agenticMethod);
+        return nonAiAgentInvoker(
+                ResolvedParameters.of(agenticMethod.getDeclaringClass(), agenticMethod),
+                name,
+                description,
+                outputKey,
+                async,
+                activationCondition);
+    }
+
+    /**
+     * Creates the invoker of a non-AI agent method: its parameters provided by a
+     * {@link dev.langchain4j.agentic.declarative.SupplierParameterResolver} are not agent arguments, and are resolved
+     * at each invocation.
+     */
+    public static AgentInvoker nonAiAgentInvoker(
+            ResolvedParameters parameters,
+            String name,
+            String description,
+            String outputKey,
+            boolean async,
+            AgentCondition activationCondition) {
+        Method agenticMethod = parameters.method();
+        NonAiAgentInstance agentInstance = new NonAiAgentInstance(
+                agenticMethod.getDeclaringClass(),
+                name,
+                description,
+                agenticMethod.getGenericReturnType(),
+                outputKey,
+                async,
+                parameters.frameworkArguments(),
+                null,
+                activationCondition);
+        return parameters.frameworkParameterCount() == agenticMethod.getParameterCount()
+                ? AgentInvoker.fromMethod(agentInstance, agenticMethod)
+                : new ResolvedParametersAgentInvoker(agentInstance, parameters);
     }
 
     public static AgentExecutor agentToExecutor(InternalAgent agent) {

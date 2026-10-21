@@ -1,16 +1,16 @@
 package dev.langchain4j.agentic.declarative;
 
-import dev.langchain4j.agentic.Agent;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
  * Marks a method as a human-in-the-loop agent. The method can be invoked to get input or feedback from a human during the execution of a workflow.
  * The annotated method can have any number of parameters, which will be provided by the workflow context when the method is invoked.
+ * Parameters resolved through a {@link SupplierParameterResolver} are not read from the workflow context and are not inputs of the agent.
  * <p>
  * Example:
  * <pre>

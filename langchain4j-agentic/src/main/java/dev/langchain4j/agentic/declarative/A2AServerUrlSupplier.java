@@ -8,8 +8,8 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a static method that returns the A2A server URL for declarative A2A client agents.
+ * It can only declare parameters resolved through a {@link SupplierParameterResolver}.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface A2AServerUrlSupplier {
-}
+public @interface A2AServerUrlSupplier {}

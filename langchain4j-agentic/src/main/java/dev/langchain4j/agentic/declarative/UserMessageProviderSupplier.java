@@ -1,15 +1,16 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as a user message provider for an agent.
  * The annotated method must be static, accept an {@code Object} parameter (the memoryId),
  * and return a {@code String} (the user message).
+ * Besides the memoryId, it can declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * This provides a declarative alternative to programmatically calling
  * {@link dev.langchain4j.agentic.agent.AgentBuilder#userMessageProvider(java.util.function.Function)},
@@ -33,5 +34,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface UserMessageProviderSupplier {
-}
+public @interface UserMessageProviderSupplier {}

@@ -4,13 +4,12 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCond
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePredicate;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParameterCount;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
@@ -43,6 +42,7 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -71,6 +71,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
@@ -297,7 +298,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
     }
 
     /**
@@ -409,8 +410,8 @@ public class AgenticServices {
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ChatModelSupplier.class)
                                 && method.getReturnType() == ChatModel.class
-                                && method.getParameterCount() == 0)
-                .map(method -> (ChatModel) invokeStatic(method))
+                                && frameworkParameterCount(agentServiceClass, method) == 0)
+                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class))
                 .orElse(null);
     }
 
@@ -551,7 +552,7 @@ public class AgenticServices {
                     })
                     .ifPresent(method -> builder.subAgent(
                             method.getAnnotation(ActivationCondition.class).description(),
-                            agenticScopePredicate(method),
+                            agenticScopePredicate(agentServiceClass, method),
                             createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
@@ -759,10 +760,13 @@ public class AgenticServices {
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
+                ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, agenticMethod);
                 return nonAiAgentToExecutor(
                         new AgenticScopeFunction<>(scope -> invokeStatic(
                                 agenticMethod,
-                                agentInvocationArguments(scope, agenticMethod).positionalArgs())),
+                                parameters
+                                        .invocationArguments(scope, Map.of(), true)
+                                        .positionalArgs())),
                         agenticMethod);
             }
         }
@@ -776,10 +780,12 @@ public class AgenticServices {
 
     private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
         if (activationCondition(agentServiceClass) != null) {
-            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
-                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
-                    + "Set the activation condition when building the agent registered as '"
-                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+            throw new AgenticSystemConfigurationException(
+                    "An @ActivationCondition is not supported on the @RegistryAgent "
+                            + agentServiceClass.getName()
+                            + ", because its agent is taken already built from the registry. "
+                            + "Set the activation condition when building the agent registered as '"
+                            + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
         }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
@@ -805,13 +811,17 @@ public class AgenticServices {
         selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(A2AClientCustomizer.class)
-                                && method.getParameterCount() == 1)
-                .ifPresent(method -> a2aClientBuilder.clientCustomizer(cb -> invokeStatic(method, cb)));
+                                && frameworkParameterCount(agentServiceClass, method) == 1)
+                .ifPresent(method -> {
+                    ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+                    a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb));
+                });
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
                     checkReturnType(method, AgentListener.class);
-                    a2aClientBuilder.listener(invokeStatic(method));
+                    a2aClientBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, method, AgentListener.class));
                 });
 
         return a2aClientBuilder.build();
@@ -821,16 +831,18 @@ public class AgenticServices {
         String annotationUrl = a2aClient.a2aServerUrl();
         Optional<Method> supplierMethod = selectMethod(
                 agentServiceClass,
-                method -> method.isAnnotationPresent(A2AServerUrlSupplier.class) && method.getParameterCount() == 0);
+                method -> method.isAnnotationPresent(A2AServerUrlSupplier.class)
+                        && frameworkParameterCount(agentServiceClass, method) == 0);
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(
-                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method, not both.");
+                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method,"
+                            + " not both.");
         }
 
         if (supplierMethod.isPresent()) {
             checkReturnType(supplierMethod.get(), String.class);
-            return invokeStatic(supplierMethod.get());
+            return invokeSupplierWithResolvers(agentServiceClass, supplierMethod.get(), String.class);
         }
 
         if (!isNullOrBlank(annotationUrl)) {
@@ -838,19 +850,19 @@ public class AgenticServices {
         }
 
         throw new IllegalArgumentException(
-                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method annotated with @A2AServerUrlSupplier.");
+                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method"
+                        + " annotated with @A2AServerUrlSupplier.");
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Object.class))
-                .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns"
+                                + " the McpClient instance."));
 
         var mcpClientBuilder = McpService.get()
                 .mcpBuilder(mcpClient, agentServiceClass)
@@ -869,7 +881,8 @@ public class AgenticServices {
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
                     checkReturnType(method, AgentListener.class);
-                    mcpClientBuilder.listener(invokeStatic(method));
+                    mcpClientBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, method, AgentListener.class));
                 });
 
         return agentToExecutor(mcpClientBuilder.build());
@@ -878,7 +891,8 @@ public class AgenticServices {
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
 
-        List<AgentArgument> methodArguments = argumentsFromMethod(method).stream()
+        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+        List<AgentArgument> methodArguments = parameters.frameworkArguments().stream()
                 .filter(arg -> !arg.name().startsWith("@"))
                 .toList();
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
@@ -887,17 +901,19 @@ public class AgenticServices {
                 .async(humanInTheLoop.async())
                 .inputs(methodArguments.isEmpty() ? null : methodArguments)
                 .responseProvider(scope -> invokeStatic(
-                        method, agentInvocationArguments(scope, method).positionalArgs()));
+                        method,
+                        parameters.invocationArguments(scope, Map.of(), true).positionalArgs()));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
                     checkReturnType(listenerMethod, AgentListener.class);
-                    humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
+                    humanInTheLoopBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, listenerMethod, AgentListener.class));
                 });
 
         String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
         AgentInvoker agentInvoker = nonAiAgentInvoker(
-                method,
+                parameters,
                 name,
                 humanInTheLoop.description(),
                 humanInTheLoop.outputKey(),

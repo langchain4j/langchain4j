@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.supervisor;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopeFunction;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParameterCount;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
@@ -13,6 +13,7 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
@@ -147,7 +148,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
                         agentServiceClass,
                         method -> method.isAnnotationPresent(SupervisorRequest.class)
                                 && method.getReturnType() == String.class)
-                .map(m -> agenticScopeFunction(m, String.class))
+                .map(m -> agenticScopeFunction(agentServiceClass, m, String.class))
                 .ifPresent(this::requestGenerator);
 
         selectMethod(
@@ -161,12 +162,15 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
                                 && method.getReturnType() == ChatMemory.class
-                                && method.getParameterCount() == 1)
-                .map(method -> (ChatMemoryProvider) memoryId -> invokeStatic(method, memoryId))
+                                && frameworkParameterCount(agentServiceClass, method) == 1)
+                .map(method -> {
+                    ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+                    return (ChatMemoryProvider) memoryId -> parameters.invoke(memoryId);
+                })
                 .ifPresent(this::chatMemoryProvider);
 
         selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
-                .map(m -> agenticScopeFunction(m, Object.class))
+                .map(m -> agenticScopeFunction(agentServiceClass, m, Object.class))
                 .ifPresent(this::output);
 
         buildAgentFeatures(agentServiceClass, this);

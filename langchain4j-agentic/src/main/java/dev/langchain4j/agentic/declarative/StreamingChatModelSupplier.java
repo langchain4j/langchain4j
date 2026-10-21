@@ -3,9 +3,9 @@ package dev.langchain4j.agentic.declarative;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.model.chat.StreamingChatModel;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
  * Marks a method as a supplier of the streaming chat model to be used by an agent.
@@ -14,7 +14,8 @@ import dev.langchain4j.model.chat.StreamingChatModel;
  * When the method has no parameters, it is invoked once at build time to provide a fixed model.
  * When the method has parameters annotated with {@link dev.langchain4j.service.V @V},
  * they are resolved from the current {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope}
- * at each invocation, enabling dynamic model selection based on runtime state.
+ * at each invocation, enabling dynamic model selection based on runtime state. Parameters resolved through a
+ * {@link SupplierParameterResolver} are resolved at each invocation too.
  * <p>
  * Example:
  * <pre>
@@ -46,5 +47,4 @@ import dev.langchain4j.model.chat.StreamingChatModel;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface StreamingChatModelSupplier {
-}
+public @interface StreamingChatModelSupplier {}

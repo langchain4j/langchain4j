@@ -3,16 +3,17 @@ package dev.langchain4j.agentic.planner;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
-import java.lang.reflect.Method;
-import java.util.function.Supplier;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
+import java.lang.reflect.Method;
+import java.util.function.Supplier;
 
-public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>> implements PlannerBasedService<T> {
+public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>>
+        implements PlannerBasedService<T> {
 
     private Supplier<Planner> plannerSupplier;
 
@@ -49,9 +50,11 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
                 .ifPresentOrElse(
                         method -> {
                             checkReturnType(method, Planner.class);
-                            planner(() -> invokeStatic(method));
+                            ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+                            planner(() -> parameters.invoke());
                         },
                         () -> new IllegalArgumentException(
-                                "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
+                                "A planner agent requires a method annotated with @PlannerSupplier that returns the"
+                                        + " Planner instance."));
     }
 }
