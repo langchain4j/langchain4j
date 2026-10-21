@@ -3,15 +3,14 @@ package dev.langchain4j.model.typesafe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.common.AbstractDecisionModelIT;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.exception.AuthenticationException;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -72,6 +71,26 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
     }
 
     @Test
+    void should_expose_request_id() {
+
+        // given
+        DecisionRequest request = DecisionRequest.builder()
+                .input("Congratulations! You won a free cruise, click here to claim your prize.")
+                .question(
+                        "spam",
+                        YesNoQuestion.builder().text("Is this message spam?").build())
+                .build();
+
+        // when
+        DecisionResponse response = model.decide(request);
+
+        // then
+        TypeSafeDecisionResponseMetadata metadata = (TypeSafeDecisionResponseMetadata) response.metadata();
+        assertThat(metadata.requestId()).startsWith("req_");
+        assertThat(metadata.rawHttpResponse().statusCode()).isEqualTo(200);
+    }
+
+    @Test
     void should_fail_with_wrong_api_key() {
 
         // given
@@ -82,7 +101,9 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
 
         DecisionRequest request = DecisionRequest.builder()
                 .input("Hello")
-                .question("greeting", YesNoQuestion.builder().text("Is this a greeting?").build())
+                .question(
+                        "greeting",
+                        YesNoQuestion.builder().text("Is this a greeting?").build())
                 .build();
 
         // when-then
