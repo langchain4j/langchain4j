@@ -25,6 +25,7 @@ https://github.com/googleapis/java-genai
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
+    - [Combining your tools with built-in tools](#combining-your-tools-with-built-in-tools)
 - [Code Execution](#code-execution)
 - [JSON Schema / Structured Outputs](#json-schema--structured-outputs)
 - [Grounding Metadata](#grounding-metadata)
@@ -341,6 +342,33 @@ WeatherAssistant weatherAssistant = AiServices.builder(WeatherAssistant.class)
 String response = weatherAssistant.chat("What is the weather forecast for Tokyo?");
 ```
 
+### Combining your tools with built-in tools
+
+Your tools can be used in the same request as Google Search, Google Maps, URL context and code execution:
+the model can search the web or run code first, then call one of your tools with the result.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash")
+    .enableGoogleSearch(true)
+    .build();
+
+WeatherAssistant weatherAssistant = AiServices.builder(WeatherAssistant.class)
+    .chatModel(gemini)
+    .tools(weatherForecastService)
+    .build();
+
+String response = weatherAssistant.chat("Which city hosts the next Summer Olympics, and what is its weather forecast?");
+```
+
+- The Gemini API accepts this combination only from Gemini 3 models on, and lists it as a preview feature.
+- The searches, page reads and code runs that the API returns are kept in the `AiMessage` and sent with it in the next request,
+  as the Gemini API requires. Without them, a model can run the search again or repeat the call to your tool,
+  so keep the `AiMessage` in the chat memory as it was returned.
+- They also count as input tokens in every later request of the conversation: from a few dozen tokens for a search
+  on `gemini-3.8-flash` to several thousand for Google Maps results on `gemini-4-argon`.
+
 ## Code Execution
 
 With `enableCodeExecution(true)`, Gemini can write Python code, run it in a sandbox hosted by Google, and use the result in its answer.
@@ -377,7 +405,7 @@ When the code fails or runs too long, the outcome (`OUTCOME_FAILED` or `OUTCOME_
 
 - Charts the code draws, for example with matplotlib, are returned as images: see `response.aiMessage().images()`.
 - The code is Python, runs for at most 30 seconds, and can only use the libraries of the sandbox, such as numpy, pandas and matplotlib.
-- The current Gemini models reject a request that combines code execution with your own tools. The same applies to Google Search.
+- Code execution can be used together with your own tools, see [Combining your tools with built-in tools](#combining-your-tools-with-built-in-tools).
 
 To read the code and its result as SDK objects, use the raw response:
 

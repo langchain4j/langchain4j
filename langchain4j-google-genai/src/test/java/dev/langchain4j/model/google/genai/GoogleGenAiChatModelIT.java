@@ -172,6 +172,71 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
                 .contains("Output:\n```\n1267650600228229401496703205376");
     }
 
+    @Test
+    void should_combine_google_search_with_function_calling() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-3.1-flash-lite")
+                .enableGoogleSearch(true)
+                .build();
+
+        should_answer_after_the_function_call_without_running_the_built_in_tool_again(
+                model,
+                "Use Google Search to find the year the Eiffel Tower was completed, "
+                        + "then call record_fact with that year.");
+    }
+
+    @Test
+    void should_combine_code_execution_with_function_calling() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-3.1-flash-lite")
+                .enableCodeExecution(true)
+                .build();
+
+        should_answer_after_the_function_call_without_running_the_built_in_tool_again(
+                model,
+                "Use Python code execution to compute the 20th Fibonacci number, "
+                        + "then call record_fact with the result.");
+    }
+
+    private static void should_answer_after_the_function_call_without_running_the_built_in_tool_again(
+            ChatModel model, String prompt) {
+        ToolSpecification recordFact = ToolSpecification.builder()
+                .name("record_fact")
+                .description("Records a fact the user asked for")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("value")
+                        .required("value")
+                        .build())
+                .build();
+        UserMessage userMessage = UserMessage.from(prompt);
+
+        ChatResponse response1 = model.chat(ChatRequest.builder()
+                .messages(List.of(userMessage))
+                .toolSpecifications(List.of(recordFact))
+                .build());
+
+        AiMessage aiMessage = response1.aiMessage();
+        assertThat(aiMessage.toolExecutionRequests())
+                .extracting(ToolExecutionRequest::name)
+                .containsExactly("record_fact");
+        assertThat(aiMessage.attributes()).containsKey("server_side_tool_parts");
+
+        ChatResponse response2 = model.chat(ChatRequest.builder()
+                .messages(List.of(
+                        userMessage,
+                        aiMessage,
+                        ToolExecutionResultMessage.from(
+                                aiMessage.toolExecutionRequests().get(0), "recorded")))
+                .toolSpecifications(List.of(recordFact))
+                .build());
+
+        assertThat(response2.aiMessage().hasToolExecutionRequests()).isFalse();
+        assertThat(response2.aiMessage().attributes()).doesNotContainKey("server_side_tool_parts");
+        assertThat(response2.aiMessage().text()).isNotBlank();
+    }
+
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
         return GoogleGenAiTokenUsage.class;

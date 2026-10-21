@@ -172,6 +172,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 googleMapsEnabled,
                 urlContextEnabled,
                 codeExecutionEnabled,
+                client.vertexAI(),
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
@@ -368,13 +369,15 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     }
 
     /**
-     * Copies the attributes of one chunk into the attributes accumulated so far. Generated images
-     * and audio segments are concatenated rather than replaced, because each chunk carries its own
-     * media parts and the last chunk would otherwise discard the ones before it.
+     * Copies the attributes of one chunk into the attributes accumulated so far. Generated images,
+     * audio segments and server-side tool parts are concatenated rather than replaced, because each
+     * chunk carries its own parts and the last chunk would otherwise discard the ones before it.
      */
     private static void mergeAttributes(Map<String, Object> accumulated, Map<String, Object> partial) {
         partial.forEach((key, value) -> {
-            if (GENERATED_IMAGES_KEY.equals(key) || GENERATED_AUDIO_KEY.equals(key)) {
+            if (GENERATED_IMAGES_KEY.equals(key)
+                    || GENERATED_AUDIO_KEY.equals(key)
+                    || GoogleGenAiContentMapper.SERVER_SIDE_TOOL_PARTS_KEY.equals(key)) {
                 accumulated.merge(key, value, GoogleGenAiStreamingChatModel::concatenate);
             } else {
                 accumulated.put(key, value);
