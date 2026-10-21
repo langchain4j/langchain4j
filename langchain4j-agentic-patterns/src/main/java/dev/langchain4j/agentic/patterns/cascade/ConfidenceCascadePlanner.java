@@ -44,9 +44,12 @@ import org.slf4j.LoggerFactory;
  * <p>
  * An optional acceptance criterion describes when the answer should be accepted, for instance "The answer gives
  * concrete steps and does not ask the user to contact support", and is sent to the decision model as the
- * {@link YesNoQuestion#yesWhen() yesWhen} description of the question. The arguments and the answer are sent as they
- * are when they are strings, numbers, booleans, maps, lists or {@link Content}s, and converted to maps and lists
- * through a JSON round trip otherwise.
+ * {@link YesNoQuestion#yesWhen() yesWhen} description of the question. The arguments are sent as they are, so they
+ * can be strings, numbers, booleans, maps and lists of them, or {@link Content}s such as images, and an argument of
+ * any other type is rejected by the decision model with an error explaining which types are supported: the
+ * application decides what is sent to the provider of the decision model. The answer is sent as it is when it is
+ * such a value, and converted to maps and lists through a JSON round trip otherwise, so a tier can return a typed
+ * value.
  * <p>
  * The planner saves the tier it is trying as its execution state, so that after a suspension, for instance because a
  * tier is waiting for a human, or after a crash, the cascade resumes from that tier and does not pay again for the
@@ -140,8 +143,7 @@ public class ConfidenceCascadePlanner implements Planner {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         if (!(acceptanceThreshold > 0.0 && acceptanceThreshold < 1.0)) {
             throw illegalArgument(
-                    "Acceptance threshold must be greater than 0.0 and less than 1.0, but is: %s",
-                    acceptanceThreshold);
+                    "Acceptance threshold must be greater than 0.0 and less than 1.0, but is: %s", acceptanceThreshold);
         }
         this.acceptanceThreshold = acceptanceThreshold;
         if (acceptanceCriterion != null && acceptanceCriterion.isBlank()) {
@@ -201,7 +203,9 @@ public class ConfidenceCascadePlanner implements Planner {
     }
 
     private void ensureSameTiers() {
-        if (tier >= tiers.size() || (restoredTierName != null && !restoredTierName.equals(tiers.get(tier).name()))) {
+        if (tier >= tiers.size()
+                || (restoredTierName != null
+                        && !restoredTierName.equals(tiers.get(tier).name()))) {
             throw new IllegalStateException("Cannot resume ConfidenceCascadePlanner at the tier '" + restoredTierName
                     + "' in position " + tier + ", since the subagents of the cascade changed after its execution "
                     + "state was saved");
@@ -262,8 +266,8 @@ public class ConfidenceCascadePlanner implements Planner {
 
     private double acceptance(AgenticScope agenticScope, Object answer) {
         Map<String, Object> input = new LinkedHashMap<>();
-        inputKeys.forEach(key -> input.put(key, decisionValue(agenticScope.readState(key))));
-        input.put(ANSWER_KEY, decisionValue(answer));
+        inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
+        input.put(ANSWER_KEY, answerValue(answer));
         return decisionModel
                 .decide(DecisionRequest.builder()
                         .inputFields(input)
@@ -274,11 +278,11 @@ public class ConfidenceCascadePlanner implements Planner {
     }
 
     /**
-     * A value as the decision model accepts it: plain values are sent as they are, any other object is converted to
+     * The answer as the decision model accepts it: a plain value is sent as it is, any other object is converted to
      * maps and lists through a JSON round trip.
      */
-    private static Object decisionValue(Object value) {
-        return isPlain(value) ? value : Json.fromJson(Json.toJson(value), Object.class);
+    private static Object answerValue(Object answer) {
+        return isPlain(answer) ? answer : Json.fromJson(Json.toJson(answer), Object.class);
     }
 
     private static boolean isPlain(Object value) {

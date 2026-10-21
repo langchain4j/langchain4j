@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -73,8 +74,21 @@ class ConfidenceCascadePlannerTest {
     public static class StructuredFaqAgent {
 
         @Agent(outputKey = "faqAnswer")
-        public StructuredAnswer faq(@V("ticket") Ticket ticket) {
+        public StructuredAnswer faq(@V("ticket") Object ticket) {
             return new StructuredAnswer("faq answer", List.of("step 1", "step 2"));
+        }
+    }
+
+    public static class ImageFaqAgent {
+        private final ImageContent image;
+
+        ImageFaqAgent(ImageContent image) {
+            this.image = image;
+        }
+
+        @Agent(outputKey = "faqAnswer")
+        public ImageContent faq(@V("request") String request) {
+            return image;
         }
     }
 
@@ -96,6 +110,18 @@ class ConfidenceCascadePlannerTest {
 
         @Agent
         StructuredAnswer ask(@V("ticket") Ticket ticket);
+    }
+
+    public interface TicketMapCascade {
+
+        @Agent
+        StructuredAnswer ask(@V("ticket") Map<String, Object> ticket);
+    }
+
+    public interface ImageCascade {
+
+        @Agent
+        Object ask(@V("request") String request);
     }
 
     public interface CascadeWithClashingArgument {
@@ -225,20 +251,50 @@ class ConfidenceCascadePlannerTest {
     }
 
     @Test
-    void shouldConvertTheValuesThatAreNotPlainToJsonValues() {
+    void shouldSendTheArgumentsAsTheyAreAndConvertATypedAnswerToJsonValues() {
         DecisionModelMock model = modelGrading(0.9);
-        TicketCascade cascade = cascade(
-                TicketCascade.class, new ConfidenceCascadePlanner(model, 0.5), new StructuredFaqAgent(), expertAgent);
+        Map<String, Object> ticket = Map.of("subject", "Descaling", "priority", 2);
+        TicketMapCascade cascade = cascade(
+                TicketMapCascade.class,
+                new ConfidenceCascadePlanner(model, 0.5),
+                new StructuredFaqAgent(),
+                expertAgent);
 
-        StructuredAnswer answer = cascade.ask(new Ticket("Descaling", 2));
+        StructuredAnswer answer = cascade.ask(ticket);
 
         assertThat(answer).isEqualTo(new StructuredAnswer("faq answer", List.of("step 1", "step 2")));
         assertThat(model.request().input())
                 .isEqualTo(FieldsInput.from(Map.of(
                         "ticket",
-                        Map.of("subject", "Descaling", "priority", 2),
+                        ticket,
                         ANSWER_KEY,
                         Map.of("text", "faq answer", "steps", List.of("step 1", "step 2")))));
+    }
+
+    @Test
+    void shouldSendAContentAnswerAsItIs() {
+        DecisionModelMock model = modelGrading(0.9);
+        ImageContent image = ImageContent.from("https://example.com/descaling.png");
+        ImageCascade cascade = cascade(
+                ImageCascade.class, new ConfidenceCascadePlanner(model, 0.5), new ImageFaqAgent(image), expertAgent);
+
+        assertThat(cascade.ask(REQUEST)).isSameAs(image);
+        assertThat(model.request().input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST, ANSWER_KEY, image)));
+    }
+
+    @Test
+    void shouldRejectAnArgumentThatTheDecisionModelDoesNotAccept() {
+        DecisionModelMock model = modelGrading(0.9);
+        TicketCascade cascade = cascade(
+                TicketCascade.class, new ConfidenceCascadePlanner(model, 0.5), new StructuredFaqAgent(), expertAgent);
+
+        // the record is sent as it is, like the arguments of a decision router, and the decision model rejects it
+        assertThatThrownBy(() -> cascade.ask(new Ticket("Descaling", 2)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strings, numbers, booleans")
+                .hasMessageContaining(Ticket.class.getName());
+        assertThat(model.requests()).isEmpty();
+        assertThat(expertAgent.calls).hasValue(0);
     }
 
     @Test
