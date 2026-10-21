@@ -114,6 +114,10 @@ class GoogleGenAiContentMapper {
     private static final String THOUGHT_SIGNATURE_KEY =
             "thought_signature"; // do not change, will break backward compatibility!
 
+    // Built-in tool calls and responses, executed code and its result, as JSON in the order they were received.
+    static final String SERVER_SIDE_TOOL_PARTS_KEY =
+            "server_side_tool_parts"; // do not change, will break backward compatibility!
+
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
                 .filter(m -> m instanceof SystemMessage)
@@ -209,6 +213,12 @@ class GoogleGenAiContentMapper {
             List<Part> parts = new ArrayList<>();
             if (sendThinking && !isNullOrEmpty(aiMsg.thinking())) {
                 parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
+            }
+            List<?> serverSideToolParts = aiMsg.attribute(SERVER_SIDE_TOOL_PARTS_KEY, List.class);
+            if (serverSideToolParts != null) {
+                for (Object serverSideToolPart : serverSideToolParts) {
+                    parts.add(Part.fromJson((String) serverSideToolPart));
+                }
             }
             if (aiMsg.text() != null) {
                 Part.Builder textPartBuilder = Part.builder().text(aiMsg.text());
@@ -326,10 +336,15 @@ class GoogleGenAiContentMapper {
         Map<String, Object> attributes = new HashMap<>();
         List<Image> generatedImages = new ArrayList<>();
         List<Audio> generatedAudio = new ArrayList<>();
+        List<String> serverSideToolParts = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
             for (Part part : parts) {
+                if (isServerSideToolPart(part) && !(includeCodeExecutionOutput && isCodeExecutionPart(part))) {
+                    serverSideToolParts.add(part.toJson());
+                }
+
                 if (part.text().isPresent()) {
                     if (part.thought().orElse(false)) {
                         if (returnThinking) {
@@ -377,6 +392,7 @@ class GoogleGenAiContentMapper {
             if (!parts.isEmpty()) {
                 Part lastPart = parts.get(parts.size() - 1);
                 if (lastPart.functionCall().isEmpty()
+                        && !isServerSideToolPart(lastPart)
                         && lastPart.thoughtSignature().isPresent()) {
                     attributes.put(
                             THOUGHT_SIGNATURE_KEY,
@@ -390,6 +406,9 @@ class GoogleGenAiContentMapper {
             }
             if (!generatedAudio.isEmpty()) {
                 attributes.put(GENERATED_AUDIO_KEY, generatedAudio);
+            }
+            if (!serverSideToolParts.isEmpty()) {
+                attributes.put(SERVER_SIDE_TOOL_PARTS_KEY, serverSideToolParts);
             }
         }
 
@@ -429,6 +448,14 @@ class GoogleGenAiContentMapper {
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
+    }
+
+    private static boolean isServerSideToolPart(Part part) {
+        return part.toolCall().isPresent() || part.toolResponse().isPresent() || isCodeExecutionPart(part);
+    }
+
+    private static boolean isCodeExecutionPart(Part part) {
+        return part.executableCode().isPresent() || part.codeExecutionResult().isPresent();
     }
 
     /**

@@ -216,6 +216,52 @@ class GoogleGenAiConfigBuilder {
             List<String> responseModalities,
             Boolean automaticContinuation,
             Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                codeExecutionEnabled,
+                false,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            boolean codeExecutionEnabled,
+            boolean vertexAi,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            SpeechConfig speechConfig,
+            List<String> responseModalities,
+            Boolean automaticContinuation,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -327,6 +373,7 @@ class GoogleGenAiConfigBuilder {
                 googleMapsEnabled,
                 urlContextEnabled,
                 codeExecutionEnabled,
+                vertexAi,
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
@@ -343,6 +390,7 @@ class GoogleGenAiConfigBuilder {
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
             boolean codeExecutionEnabled,
+            boolean vertexAi,
             List<String> allowedFunctionNames,
             String vertexSearchDatastore) {
 
@@ -410,9 +458,11 @@ class GoogleGenAiConfigBuilder {
                 funcConfig.allowedFunctionNames(allowedFunctionNames);
             }
 
-            configBuilder.toolConfig(ToolConfig.builder()
-                    .functionCallingConfig(funcConfig.build())
-                    .build());
+            ToolConfig.Builder toolConfig = ToolConfig.builder().functionCallingConfig(funcConfig.build());
+            if (!vertexAi && (googleSearchEnabled || googleMapsEnabled || urlContextEnabled || codeExecutionEnabled)) {
+                toolConfig.includeServerSideToolInvocations(true);
+            }
+            configBuilder.toolConfig(toolConfig.build());
         }
     }
 

@@ -24,6 +24,8 @@ import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.ListBatchJobsConfig;
 import com.google.genai.types.Part;
+import com.google.genai.types.ToolCall;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.batch.BatchPage;
@@ -33,6 +35,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -143,6 +146,65 @@ class GoogleGenAiBatchChatModelTest {
         List<Part> aiParts = inlined.contents().orElseThrow().get(1).parts().orElseThrow();
         assertThat(aiParts.get(0).thought()).hasValue(true);
         assertThat(aiParts.get(0).text()).hasValue("Six times seven.");
+    }
+
+    @Test
+    void should_combine_google_search_with_function_calling_in_the_batch_request() throws Exception {
+        Client client = mock(Client.class);
+        Batches batchesService = mock(Batches.class);
+        Field batchesField = Client.class.getDeclaredField("batches");
+        batchesField.setAccessible(true);
+        batchesField.set(client, batchesService);
+
+        BatchJob batchJob = mock(BatchJob.class);
+        when(batchJob.name()).thenReturn(Optional.of("batches/1"));
+        JobState jobState = mock(JobState.class);
+        when(jobState.knownEnum()).thenReturn(Known.JOB_STATE_RUNNING);
+        when(batchJob.state()).thenReturn(Optional.of(jobState));
+        when(batchesService.create(any(String.class), any(BatchJobSource.class), any(CreateBatchJobConfig.class)))
+                .thenReturn(batchJob);
+
+        GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .googleSearch(true)
+                .build();
+
+        Part searchCall = Part.builder()
+                .toolCall(ToolCall.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .args(Map.of("queries", List.of("Eiffel Tower completion year")))
+                        .build())
+                .thoughtSignature("search-call-signature".getBytes())
+                .build();
+        AiMessage previousAnswer = AiMessage.builder()
+                .text("It was completed in 1889.")
+                .attributes(Map.of("server_side_tool_parts", List.of(searchCall.toJson())))
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .modelName("gemini-3.8-flash")
+                .messages(
+                        UserMessage.from("When was the Eiffel Tower completed?"),
+                        previousAnswer,
+                        UserMessage.from("Record it."))
+                .toolSpecifications(
+                        ToolSpecification.builder().name("record_fact").build())
+                .build();
+
+        batchModel.submit(new BatchRequest<>(List.of(request)));
+
+        ArgumentCaptor<BatchJobSource> sourceCaptor = ArgumentCaptor.forClass(BatchJobSource.class);
+        verify(batchesService).create(any(String.class), sourceCaptor.capture(), any(CreateBatchJobConfig.class));
+
+        InlinedRequest inlined =
+                sourceCaptor.getValue().inlinedRequests().orElseThrow().get(0);
+
+        assertThat(inlined.config().orElseThrow().toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .hasValue(true);
+        List<Part> aiParts = inlined.contents().orElseThrow().get(1).parts().orElseThrow();
+        assertThat(aiParts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(aiParts.get(1).text()).hasValue("It was completed in 1889.");
     }
 
     @Test
