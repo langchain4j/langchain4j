@@ -82,18 +82,75 @@ The HTTP client can be customized with `httpClientBuilder(...)`, see [Customizab
 
 Both `decide()` and `decideAsync()` are supported.
 
-The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` question types.
+The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` question types, and the
+TypeSafe-specific `TypeSafeBoxQuestion` (see [Box questions](#box-questions)).
 In the TypeSafe documentation, yes/no questions are called "noul" questions, scale questions are called "score"
 questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
 sent as an object with a `label` and a `description`.
-The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
-without calling the API. A conversation (`inputMessages(...)`) is sent as a
-[transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`; images in it throw an
-`UnsupportedFeatureException`.
+Text contents are sent as their text, and images as described in [Images](#images). A conversation
+(`inputMessages(...)`) is sent as a [transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`;
+images in it throw an `UnsupportedFeatureException`.
 The confidence of choice and scale answers is computed by the server.
 
+### Images
+
+Jev 1.13 and later can judge images, as an [experimental feature](https://docs.typesafe.ai/go/images) of the API.
+Images can be part of a list of contents (`inputContents(...)`), or values of named fields (`inputFields(...)`), so
+that a question can refer to them by name:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .inputFields(Map.of(
+                "comment", "Arrived like this",
+                "photo", ImageContent.from(base64Image, "image/jpeg")))
+        .question("damaged", YesNoQuestion.of("Is the item in `photo` damaged?"))
+        .build();
+```
+
+Each image is sent as an asset and replaced in the input by a reference such as `{{langchain4j-image-1}}`, which the
+server replaces with the image. When the request contains images, the `TypeSafe-Danger-Zone-Images: true` header is
+sent to enable the feature.
+Only PNG and JPEG images given as base64 data are supported: other formats and images given by URL throw an
+`UnsupportedFeatureException` without calling the API. Other limits are checked by the server, see the
+[TypeSafe documentation](https://docs.typesafe.ai/go/images): for example, each side must be 256 to 1568 pixels and
+an image must have at least 78,400 pixels in total (so 256 × 256 is too small), an image can be at most 16 MiB and
+the request body at most 32 MiB.
+Like all models, decision models answer less reliably about images than about text, so keep the questions simple.
+
+### Box questions
+
+Jev 1.14 and later can also find where something is in an image, with a
+[Box question](https://docs.typesafe.ai/go/box), an experimental question type specific to TypeSafe.
+`TypeSafeBoxQuestion` names the target and the image, and is answered with a `TypeSafeBoxAnswer`: the four edges
+of the smallest box around the target, as fractions of the image's width (`left`, `right`) and height (`top`,
+`bottom`), measured from the top-left corner, and a confidence.
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .inputFields(Map.of("photo", ImageContent.from(base64Image, "image/jpeg")))
+        .question("mug_visible", YesNoQuestion.of("Is there a coffee mug in `photo`?"))
+        .question("mug", TypeSafeBoxQuestion.of("the coffee mug in `photo`"))
+        .build();
+
+DecisionResponse response = decisionModel.decide(request);
+
+if (response.yesNo("mug_visible").isYes(0.5)) {
+    TypeSafeBoxAnswer mug = response.answer("mug", TypeSafeBoxAnswer.class);
+    int x = (int) Math.round(mug.left() * imageWidth);
+    int y = (int) Math.round(mug.top() * imageHeight);
+    int width = (int) Math.round((mug.right() - mug.left()) * imageWidth);
+    int height = (int) Math.round((mug.bottom() - mug.top()) * imageHeight);
+}
+```
+
+A Box answer is always a box, even when the target is not in the image, so ask a `YesNoQuestion` in the same request
+when the target may be absent, as above. Each Box question finds one target. Box questions need a model that supports
+them, such as `jev-1.14.0` or `jev-preview`. When the request contains a Box question, the
+`TypeSafe-Danger-Zone-Images: true` header is sent.
+
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
-offered, a probability outside of 0 to 1, or a scale mean outside of the levels throws
+offered, a probability outside of 0 to 1, a scale mean outside of the levels, or a box edge outside of 0 to 1, or a
+box whose `top` is greater than its `bottom` or whose `left` is greater than its `right` throws
 `InvalidDecisionResponseException`. Levels of a scale answer without a reported probability get a probability of 0.
 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data

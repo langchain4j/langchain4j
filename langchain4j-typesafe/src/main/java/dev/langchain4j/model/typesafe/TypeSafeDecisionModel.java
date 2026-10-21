@@ -40,9 +40,10 @@ import org.slf4j.Logger;
  *         .modelName("jev-latest")
  *         .build();
  * }</pre>
- * The input can be text, named fields (sent as a JSON object), a list of text contents, or a conversation (sent as a
- * JSON transcript, {@code {"messages": [...]}}); images are not supported and throw an
- * {@link dev.langchain4j.exception.UnsupportedFeatureException}.
+ * The input can be text, named fields (sent as a JSON object), a list of contents, or a conversation (sent as a
+ * JSON transcript, {@code {"messages": [...]}}). PNG and JPEG images given as base64 data are supported in a list of
+ * contents and as values of named fields (sent as System One assets); images in a conversation, images given by URL and
+ * other formats throw an {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  *
  * @since 1.21.0
  */
@@ -78,8 +79,8 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     private static String apiKey(TypeSafeDecisionModelBuilder builder) {
-        boolean defaultBaseUrl = builder.baseUrl == null
-                || DEFAULT_BASE_URL.equals(builder.baseUrl.replaceAll("/+$", ""));
+        boolean defaultBaseUrl =
+                builder.baseUrl == null || DEFAULT_BASE_URL.equals(builder.baseUrl.replaceAll("/+$", ""));
         if (defaultBaseUrl) {
             return ensureNotBlank(builder.apiKey, "apiKey");
         }
