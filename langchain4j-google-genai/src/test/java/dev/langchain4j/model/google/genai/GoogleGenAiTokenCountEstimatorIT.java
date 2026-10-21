@@ -26,7 +26,7 @@ class GoogleGenAiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleGenAiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -43,7 +43,7 @@ class GoogleGenAiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleGenAiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -60,7 +60,7 @@ class GoogleGenAiTokenCountEstimatorIT {
         TokenCountEstimator tokenCountEstimator = GoogleGenAiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -78,7 +78,7 @@ class GoogleGenAiTokenCountEstimatorIT {
         GoogleGenAiTokenCountEstimator tokenCountEstimator = GoogleGenAiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -94,7 +94,7 @@ class GoogleGenAiTokenCountEstimatorIT {
                         .build()));
 
         // then
-        assertThat(count).isEqualTo(29);
+        assertThat(count).isEqualTo(27);
     }
 
     @Test
@@ -103,7 +103,7 @@ class GoogleGenAiTokenCountEstimatorIT {
         GoogleGenAiTokenCountEstimator tokenCountEstimator = GoogleGenAiTokenCountEstimator.builder()
                 .logRequests(true)
                 .logResponses(true)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
@@ -141,11 +141,11 @@ class GoogleGenAiTokenCountEstimatorIT {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .responseFormat(ResponseFormat.TEXT)
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         TokenCountEstimator estimator = GoogleGenAiTokenCountEstimator.builder()
-                .modelName("gemini-2.5-flash-lite")
+                .modelName("gemini-3.1-flash-lite")
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .build();
 
