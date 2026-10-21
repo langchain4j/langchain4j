@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
  * When the method has parameters annotated with {@link dev.langchain4j.service.V @V},
  * they are resolved from the current {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope}
  * at each invocation, enabling dynamic model selection based on runtime state. Parameters resolved through a
- * {@link SupplierParameterResolver} are resolved at each invocation too.
+ * {@link SupplierParameterResolver} are resolved each time the method is invoked.
  * <p>
  * Example (fixed model):
  * <pre>

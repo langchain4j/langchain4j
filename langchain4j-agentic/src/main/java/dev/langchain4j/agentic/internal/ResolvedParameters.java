@@ -109,8 +109,10 @@ public final class ResolvedParameters {
      */
     public ResolvedParameters checkFrameworkParameters(Class<?>... expected) {
         if (frameworkIndexes.length != expected.length) {
-            throw new IllegalArgumentException("Method " + method + " must have " + expected.length
-                    + " arguments not provided by a SupplierParameterResolver: " + Arrays.toString(expected));
+            String resolvedHint =
+                    frameworkIndexes.length == resolvers.length ? "" : " not provided by a SupplierParameterResolver";
+            throw new IllegalArgumentException("Method " + method + " must have " + expected.length + " arguments"
+                    + resolvedHint + ": " + Arrays.toString(expected));
         }
         for (int i = 0; i < expected.length; i++) {
             if (!expected[i].isAssignableFrom(frameworkParameter(i).getType())) {

@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
@@ -20,8 +21,13 @@ final class ResolvedParametersAgentInvoker extends AbstractAgentInvoker {
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
         AgentInvocationArguments agentArguments = AgentUtil.agentInvocationArguments(agenticScope, arguments());
-        return new AgentInvocationArguments(
-                agentArguments.namedArgs(), parameters.arguments(agentArguments.positionalArgs()));
+        Object[] positionalArgs;
+        try {
+            positionalArgs = parameters.arguments(agentArguments.positionalArgs());
+        } catch (RuntimeException e) {
+            throw new AgentInvocationException("Failed to resolve the parameters of agent '" + name() + "'", e);
+        }
+        return new AgentInvocationArguments(agentArguments.namedArgs(), positionalArgs);
     }
 
     @Override

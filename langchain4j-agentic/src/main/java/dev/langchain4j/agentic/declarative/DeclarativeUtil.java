@@ -125,10 +125,8 @@ public class DeclarativeUtil {
                                             if (chatModel == null && !allowNullChatModel) {
                                                 throw new IllegalArgumentException(
                                                         "ChatModel not provided for subagent " + agentType.getName()
-                                                                + ". Please provide one either with a static method"
-                                                                + " annotated with @ChatModelSupplier or"
-                                                                + " @StreamingChatModelSupplier, or through the parent"
-                                                                + " agent's chatModel parameter.");
+                                                                + ". Please provide one either with a static method annotated with @ChatModelSupplier "
+                                                                + "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
                                             }
                                             agentBuilder.chatModel(chatModel);
                                         }));

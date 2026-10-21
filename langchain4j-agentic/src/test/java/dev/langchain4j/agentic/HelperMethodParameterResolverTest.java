@@ -40,24 +40,24 @@ import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,7 +89,11 @@ class HelperMethodParameterResolverTest {
             @Override
             public Object resolve(Context context) {
                 RESOLVED.add(context);
-                return SERVICES.get(context.parameter().getType());
+                Object service = SERVICES.get(context.parameter().getType());
+                if (service instanceof RuntimeException failure) {
+                    throw failure;
+                }
+                return service;
             }
         });
     }
@@ -166,46 +170,32 @@ class HelperMethodParameterResolverTest {
     record ExchangeRates(double eurToUsd) {}
 
     /** Replies with the system message and the last user message it receives. */
-    static class EchoModel implements ChatModel {
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
+    static ChatModelMock echoModel() {
+        return new ChatModelMock(chatRequest -> {
             String system = chatRequest.messages().stream()
                     .filter(SystemMessage.class::isInstance)
                     .map(message -> ((SystemMessage) message).text())
                     .findFirst()
                     .orElse("");
             ChatMessage last = chatRequest.messages().get(chatRequest.messages().size() - 1);
-            String user = last instanceof dev.langchain4j.data.message.UserMessage userMessage
-                    ? userMessage.singleText()
-                    : "";
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(system + " | " + user))
-                    .build();
-        }
+            String user = last instanceof UserMessage userMessage ? userMessage.singleText() : "";
+            return AiMessage.from(system + " | " + user);
+        });
     }
 
-    /** Replies with the given responses in order, capturing the text of all the messages it receives. */
-    static class ScriptedChatModel implements ChatModel {
-        private final Iterator<String> responses;
-        final List<String> receivedTexts = new ArrayList<>();
+    /** Replies with the given responses in order. */
+    static ChatModelMock scriptedModel(String... responses) {
+        Iterator<String> iterator = List.of(responses).iterator();
+        return new ChatModelMock(chatRequest -> AiMessage.from(iterator.next()));
+    }
 
-        ScriptedChatModel(String... responses) {
-            this.responses = List.of(responses).iterator();
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            for (ChatMessage message : chatRequest.messages()) {
-                if (message instanceof SystemMessage systemMessage) {
-                    receivedTexts.add(systemMessage.text());
-                } else if (message instanceof dev.langchain4j.data.message.UserMessage userMessage) {
-                    receivedTexts.add(userMessage.singleText());
-                }
-            }
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(responses.next()))
-                    .build();
-        }
+    static String receivedTexts(ChatModelMock model) {
+        return model.requests().stream()
+                .flatMap(request -> request.messages().stream())
+                .map(message -> message instanceof SystemMessage systemMessage
+                        ? systemMessage.text()
+                        : message instanceof UserMessage userMessage ? userMessage.singleText() : "")
+                .collect(Collectors.joining("\n"));
     }
 
     // ── @ExitCondition ──
@@ -277,6 +267,28 @@ class HelperMethodParameterResolverTest {
 
         assertThat(sequence.run("Mario")).isEqualTo("HELLO MARIO");
         assertThat(sequence.run("Voldemort")).isEqualTo("NO GREETING");
+    }
+
+    public interface GreetingSequenceWithRecovery {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = GreetingAgent.class)
+        String run(@V("name") String name);
+
+        @ErrorHandler
+        static ErrorRecoveryResult recover(ErrorContext errorContext) {
+            return ErrorRecoveryResult.result("recovered from " + errorContext.exception().getMessage());
+        }
+    }
+
+    @Test
+    void failing_resolution_of_a_non_ai_agent_parameter_is_handled_by_the_error_handler() {
+        SERVICES.put(Formatter.class, new IllegalStateException("formatter not available"));
+        register(Policy.class, new Policy("Voldemort"));
+
+        GreetingSequenceWithRecovery sequence =
+                AgenticServices.createAgenticSystem(GreetingSequenceWithRecovery.class);
+
+        assertThat(sequence.run("Mario")).isEqualTo("recovered from Failed to resolve the parameters of agent 'greet'");
     }
 
     @Test
@@ -392,6 +404,44 @@ class HelperMethodParameterResolverTest {
                 .hasMessageContaining(ErrorContext.class.getName());
     }
 
+    public interface StoryWithMistypedErrorHandler {
+
+        @SequenceAgent(outputKey = "story", subAgents = TopicWriter.class)
+        String write(@V("style") String style);
+
+        @ErrorHandler
+        static ErrorRecoveryResult recover(@Injected Defaults defaults, String errorContext) {
+            return ErrorRecoveryResult.throwException();
+        }
+    }
+
+    @Test
+    void error_handler_with_mistyped_error_context_is_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(StoryWithMistypedErrorHandler.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("recover")
+                .hasMessageContaining("argument 2 must be of type " + ErrorContext.class.getName());
+    }
+
+    public interface StoryWithErrorHandlerWithoutParameters {
+
+        @SequenceAgent(outputKey = "story", subAgents = TopicWriter.class)
+        String write(@V("style") String style);
+
+        @ErrorHandler
+        static ErrorRecoveryResult recover() {
+            return ErrorRecoveryResult.throwException();
+        }
+    }
+
+    @Test
+    void invalid_method_without_resolved_parameters_is_rejected_without_mentioning_resolvers() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(StoryWithErrorHandlerWithoutParameters.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must have 1 arguments: [" + ErrorContext.class + "]")
+                .hasMessageNotContaining("SupplierParameterResolver");
+    }
+
     // ── @AgentListenerSupplier on a workflow agent ──
 
     public interface ListenedStory {
@@ -496,7 +546,7 @@ class HelperMethodParameterResolverTest {
         String ask(@MemoryId String memoryId, @V("question") String question);
 
         @ChatModelSupplier
-        static ChatModel chatModel(@Injected EchoModel model) {
+        static ChatModel chatModel(@Injected ChatModelMock model) {
             return model;
         }
     }
@@ -505,7 +555,7 @@ class HelperMethodParameterResolverTest {
     void memory_id_suppliers_and_root_chat_model_parameters_are_resolved() {
         register(Persona.class, new Persona("Butler"));
         MemoryStore store = register(MemoryStore.class, new MemoryStore());
-        register(EchoModel.class, new EchoModel());
+        register(ChatModelMock.class, echoModel());
 
         AssistantSequence assistant = AgenticServices.createAgenticSystem(AssistantSequence.class);
 
@@ -568,7 +618,7 @@ class HelperMethodParameterResolverTest {
     void supervisor_request_parameter_is_resolved_and_not_described_to_the_supervisor() {
         register(Persona.class, new Persona("banker"));
         register(ExchangeRates.class, new ExchangeRates(1.15));
-        ScriptedChatModel plannerModel = new ScriptedChatModel("""
+        ChatModelMock plannerModel = scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
                     {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}
@@ -577,12 +627,12 @@ class HelperMethodParameterResolverTest {
         ExchangeSupervisor supervisor = AgenticServices.createAgenticSystem(ExchangeSupervisor.class, plannerModel);
         supervisor.invoke("convert 100 EUR to USD");
 
-        String prompts = String.join("\n", plannerModel.receivedTexts);
+        String prompts = receivedTexts(plannerModel);
         assertThat(prompts)
                 .contains("As a banker, convert 100 EUR to USD")
                 .contains("[euros: double]")
                 .doesNotContain("ExchangeRates")
-                .doesNotContain("rates");
+                .doesNotContain("rates:");
         assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).contains("request", "exchange");
     }
 

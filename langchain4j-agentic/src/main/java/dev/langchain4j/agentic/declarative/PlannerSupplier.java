@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as a supplier of the planner for a planner based agent.
- * It can only declare parameters resolved through a {@link SupplierParameterResolver}, resolved again for each planner.
+ * It can only declare parameters resolved through a {@link SupplierParameterResolver}, resolved each time a new planner is created.
  * <p>
  * Example:
  * <pre>

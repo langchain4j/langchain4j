@@ -19,7 +19,9 @@ import java.lang.reflect.Parameter;
  * {@link dev.langchain4j.agentic.Agent} methods of non-AI agents and to the {@link HumanInTheLoop} methods.
  * <p>
  * A parameter supported by a resolver is never read from the {@link dev.langchain4j.agentic.scope.AgenticScope}
- * and is not an argument of the agent: it is not reported to listeners and planners.
+ * and is not an argument of the agent: it is not reported to listeners and planners. For this reason a resolver
+ * should only support the parameters explicitly marked for it, for example with a dedicated annotation or qualifier.
+ * When several resolvers support the same parameter, the first registered one is used.
  * <p>
  * Implementations are registered via {@link DeclarativeUtil#addSupplierParameterResolver}, and must be registered
  * before the agents using them are created.
@@ -36,13 +38,17 @@ public interface SupplierParameterResolver {
     }
 
     /**
-     * Called once per parameter at agent creation time to pre-determine which parameters this resolver handles.
+     * Called at agent creation time to pre-determine which parameters this resolver handles. It can be called more
+     * than once for the same parameter, so it must not have side effects.
      * {@link Context#supplierMethod()} is the method declaring the parameter, whatever its annotation.
      */
     boolean supports(Context context);
 
     /**
-     * Called at invocation time to obtain the actual value.
+     * Called each time the method declaring the parameter is invoked, to obtain the actual value: once, when the agent
+     * is created, for the suppliers of fixed components like tools or chat memory, and at each invocation for the
+     * methods depending on the agent invocation, like conditions or non-AI agents. In the latter case it can be
+     * called on the thread executing the agent.
      */
     Object resolve(Context context);
 }

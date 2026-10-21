@@ -1,11 +1,11 @@
 package dev.langchain4j.agentic.declarative;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as a supplier of content retriever that an agent can utilize during its operation.
@@ -29,4 +29,5 @@ import java.lang.annotation.Target;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface ContentRetrieverSupplier {}
+public @interface ContentRetrieverSupplier {
+}

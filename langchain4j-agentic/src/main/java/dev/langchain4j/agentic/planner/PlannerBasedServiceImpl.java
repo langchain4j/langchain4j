@@ -6,14 +6,13 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutpu
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
+import java.lang.reflect.Method;
+import java.util.function.Supplier;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
-import java.lang.reflect.Method;
-import java.util.function.Supplier;
 
-public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>>
-        implements PlannerBasedService<T> {
+public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>> implements PlannerBasedService<T> {
 
     private Supplier<Planner> plannerSupplier;
 
@@ -54,7 +53,6 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
                             planner(() -> parameters.invoke());
                         },
                         () -> new IllegalArgumentException(
-                                "A planner agent requires a method annotated with @PlannerSupplier that returns the"
-                                        + " Planner instance."));
+                                "A planner agent requires a method annotated with @PlannerSupplier that returns the Planner instance."));
     }
 }
