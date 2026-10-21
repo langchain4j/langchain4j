@@ -1,10 +1,12 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -24,6 +26,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.protocol.McpCancellationParams;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -34,6 +37,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -545,6 +549,234 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void cancelling_async_tool_future_cancels_transport_request() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport).executeOperationWithResponse(requestCaptor.capture());
+        Long requestId = requestCaptor.getValue().message().getId();
+
+        assertThat(resultFuture.cancel(true)).isTrue();
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled())
+                .as("cancelling the client future must abort the in-flight transport request")
+                .isTrue();
+
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+        assertThat(params.getRequestId()).isEqualTo(requestId);
+        assertThat(params.getReason()).isEqualTo("Cancelled");
+        McpCallContext context = requestCaptor.getValue();
+        verify(listener).beforeExecuteTool(same(context));
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(context), errorCaptor.capture());
+        assertThat(errorCaptor.getValue()).isInstanceOf(CancellationException.class);
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+    }
+
+    @Test
+    public void async_tool_execution_cancelled_by_server_fails_with_cancellation_exception() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        transportFuture.completeExceptionally(new CancellationException("cancelled by the server"));
+
+        // same as the blocking executeTool(), which surfaces a server-side cancellation as CancellationException
+        assertThat(resultFuture
+                        .handle((result, error) -> unwrapCompletionException(error))
+                        .join())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport).executeOperationWithResponse(requestCaptor.capture());
+        McpCallContext context = requestCaptor.getValue();
+        verify(listener).beforeExecuteTool(same(context));
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(context), errorCaptor.capture());
+        assertThat(errorCaptor.getValue())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+    }
+
+    @Test
+    public void cancelling_async_tool_future_does_not_send_notification_for_modern_http() {
+        McpTransport transport = getModernHttpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .autoHealthCheck(false)
+                .listener(listener)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThat(resultFuture.cancel(true)).isTrue();
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled()).isTrue();
+        verify(transport, never()).sendMessage(any(McpCancellationNotification.class));
+        ArgumentCaptor<McpCallContext> contextCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(listener).beforeExecuteTool(contextCaptor.capture());
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(contextCaptor.getValue()), errorCaptor.capture());
+        assertThat(errorCaptor.getValue()).isInstanceOf(CancellationException.class);
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+    }
+
+    @Test
+    public void cancelling_async_tool_future_during_server_cancellation_notifies_listener_once() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        doAnswer(invocation -> {
+                    resultFuture.cancel(true);
+                    return null;
+                })
+                .when(listener)
+                .onExecuteToolError(any(), any());
+
+        transportFuture.completeExceptionally(new CancellationException("cancelled by the server"));
+
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled()).isTrue();
+        ArgumentCaptor<McpCallContext> contextCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(listener).beforeExecuteTool(contextCaptor.capture());
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(contextCaptor.getValue()), errorCaptor.capture());
+        assertThat(errorCaptor.getValue())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+        verify(transport).sendMessage(any(McpCancellationNotification.class));
+    }
+
+    @Test
+    public void async_tool_execution_sends_mcp_param_headers() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpCallContext> toolCallContext = new AtomicReference<>();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (context.message() instanceof McpCallToolRequest) {
+                toolCallContext.set(context);
+                return CompletableFuture.completedFuture(
+                        buildToolCompleteResponse("done").toString());
+            }
+            if (context.message() instanceof McpListToolsRequest) {
+                return CompletableFuture.completedFuture(toolsListWithParamHeader());
+            }
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
+        });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        // the tool list has to be known before the header mapping can be looked up in it
+        client.listTools();
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("regionEcho")
+                                .arguments("{\"region\": \"us-west1\", \"value\": \"hello\"}")
+                                .build(),
+                        null)
+                .get();
+
+        assertThat(result.resultText()).isEqualTo("done");
+        assertThat(toolCallContext.get().mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+    }
+
+    @Test
+    public void multi_round_trip_retry_sends_mcp_param_headers() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        List<McpCallContext> toolCallContexts = new ArrayList<>();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (context.message() instanceof McpCallToolRequest) {
+                toolCallContexts.add(context);
+                return CompletableFuture.completedFuture(
+                        toolCallContexts.size() == 1
+                                ? buildInputRequiredResponse(true, false).toString()
+                                : buildToolCompleteResponse("done").toString());
+            }
+            if (context.message() instanceof McpListToolsRequest) {
+                return CompletableFuture.completedFuture(toolsListWithParamHeader());
+            }
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
+        });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        client.listTools();
+
+        ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
+                .name("regionEcho")
+                .arguments("{\"region\": \"us-west1\", \"value\": \"hello\"}")
+                .build());
+
+        assertThat(result.resultText()).isEqualTo("done");
+        // both the first attempt and the retry have to carry the header mapping
+        assertThat(toolCallContexts).hasSize(2);
+        assertThat(toolCallContexts.get(0).mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+        assertThat(toolCallContexts.get(1).mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+    }
+
+    @Test
     public void should_pass_the_error_flag_to_a_custom_tool_result_converter_on_timeout() {
         final McpTransport transport = getMinimalMcpTransportMock();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -742,6 +974,62 @@ public class DefaultMcpClientTest {
                 (McpListToolsRequest) callCaptor.getAllValues().get(1).message();
         assertThat(secondRequest.getParams()).isInstanceOf(McpListToolsParams.class);
         assertThat(((McpListToolsParams) secondRequest.getParams()).getCursor()).isEqualTo("cursor-page2");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void should_use_literal_dotted_property_for_mcp_param_header() throws Exception {
+        McpTransport transport = getModernHttpTransportMock();
+        ObjectNode toolList = getToolResultJson(new ToolDefinition(
+                "dottedTool",
+                "Dotted property",
+                new ToolArg("config.region", "string", "Region"),
+                new ToolArg("region", "string", "Region")));
+        ObjectNode properties = (ObjectNode)
+                toolList.get("result").get("tools").get(0).get("inputSchema").get("properties");
+        ((ObjectNode) properties.get("config.region")).put("x-mcp-header", "Literal-Region");
+        ((ObjectNode) properties.get("region")).put("x-mcp-header", "Top-Region");
+        properties
+                .putObject("config")
+                .put("type", "object")
+                .putObject("properties")
+                .putObject("region")
+                .put("type", "string")
+                .put("x-mcp-header", "Nested-Region");
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(toolList))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = createMcpClient(transport);
+        List<ToolSpecification> tools = client.listTools();
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) tools.get(0).metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        assertThat(headerMappings)
+                .containsExactlyInAnyOrderEntriesOf(Map.of(
+                        List.of("config.region"),
+                        "Literal-Region",
+                        List.of("config", "region"),
+                        "Nested-Region",
+                        List.of("region"),
+                        "Top-Region"));
+        client.executeTool(ToolExecutionRequest.builder()
+                .name("dottedTool")
+                .arguments("{\"config.region\":\"literal\",\"config\":{\"region\":\"nested\"},\"region\":\"top\"}")
+                .build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(captor.capture());
+        assertThat(captor.getAllValues().get(2).mcpParamHeaders())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of("Literal-Region", "literal", "Nested-Region", "nested", "Top-Region", "top"));
     }
 
     @Test
@@ -1311,6 +1599,28 @@ public class DefaultMcpClientTest {
         final ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
         rootNode.putObject("result").set("tools", toolsArray);
         return rootNode;
+    }
+
+    /**
+     * A tools/list response with a single tool whose 'region' parameter carries an
+     * 'x-mcp-header' annotation, so that the client has a header mapping to apply.
+     */
+    private static String toolsListWithParamHeader() {
+        ObjectNode tool = JsonNodeFactory.instance.objectNode();
+        tool.put("name", "regionEcho");
+        tool.put("description", "Echoes the region back");
+        ObjectNode inputSchema = tool.putObject("inputSchema");
+        inputSchema.put("type", "object");
+        ObjectNode properties = inputSchema.putObject("properties");
+        properties.putObject("region").put("type", "string").put("x-mcp-header", "Region");
+        properties.putObject("value").put("type", "string");
+        inputSchema.putArray("required").add("region").add("value");
+
+        ArrayNode toolsArray = JsonNodeFactory.instance.arrayNode();
+        toolsArray.add(tool);
+        ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
+        rootNode.putObject("result").set("tools", toolsArray);
+        return rootNode.toString();
     }
 
     @Test

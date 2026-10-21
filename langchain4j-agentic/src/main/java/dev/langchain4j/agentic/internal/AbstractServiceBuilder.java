@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class AbstractServiceBuilder<T, S> {
@@ -49,6 +51,8 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
     protected boolean compensateOnError = false;
+
+    protected AgentCondition activationCondition;
 
     protected Function<InternalAgent, Object> agentInstanceFactory;
 
@@ -137,14 +141,17 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    public S activationCondition(Predicate<AgenticScope> activationCondition) {
+        return activationCondition("<unknown>", activationCondition);
+    }
+
+    public S activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
+        return (S) this;
+    }
+
     public S listener(AgentListener agentListener) {
-        if (this.agentListener == null) {
-            this.agentListener = agentListener;
-        } else if (this.agentListener instanceof ComposedAgentListener composed) {
-            composed.addListener(agentListener);
-        } else {
-            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
-        }
+        this.agentListener = ComposedAgentListener.compose(this.agentListener, agentListener);
         return (S) this;
     }
 

@@ -5,20 +5,20 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.21.0-beta31-SNAPSHOT</version>
+        <version>1.23.0-beta33-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
-    <version>1.21.0-SNAPSHOT</version>
+    <version>1.23.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <properties>
-        <langchain4j.stable.version>1.21.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.21.0-beta31-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.23.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.23.0-beta33-SNAPSHOT</langchain4j.beta.version>
     </properties>
 
     <dependencyManagement>
@@ -202,6 +202,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-typesafe</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -254,6 +260,12 @@
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-jitllm</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
             <!-- embedding stores -->
 
             <dependency>
@@ -265,6 +277,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-documentdb</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
@@ -679,6 +697,24 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-mongo-vcore-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-nosql-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-documentdb-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -717,6 +753,24 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-ai-search-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-mongo-vcore-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-cosmos-nosql-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-documentdb-spring-boot4-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

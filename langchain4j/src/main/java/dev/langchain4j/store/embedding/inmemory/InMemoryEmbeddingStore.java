@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.Arrays.asList;
@@ -342,11 +342,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
         // Substitutions), so this name and signature are depended on from outside despite being
         // private. Renaming it breaks that build with no compile error here.
-        for (InMemoryEmbeddingStoreJsonCodecFactory factory :
-                loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
-            return factory.create();
-        }
-        return new JacksonInMemoryEmbeddingStoreJsonCodec();
+        InMemoryEmbeddingStoreJsonCodecFactory factory = loadFactory(InMemoryEmbeddingStoreJsonCodecFactory.class);
+        return factory != null ? factory.create() : new JacksonInMemoryEmbeddingStoreJsonCodec();
     }
 
     @JsonIgnore

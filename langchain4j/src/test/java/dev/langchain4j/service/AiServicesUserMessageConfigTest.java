@@ -13,10 +13,14 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -24,6 +28,8 @@ import java.lang.annotation.Target;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -113,6 +119,8 @@ class AiServicesUserMessageConfigTest {
 
         String chat19_1(@UserMessage Content content);
         String chat19_2(@UserMessage AudioContent audioContent);
+        String chat19_3(@UserMessage TextContent textContent);
+        TokenStream stream19_3(@UserMessage TextContent textContent);
 
         String chat20_1(List<Content> contents);
         String chat20_2(List<AudioContent> audioContents);
@@ -539,6 +547,54 @@ class AiServicesUserMessageConfigTest {
         verify(chatModel)
                 .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
         verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_19_3() {
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(chatModel)
+                .chatMemory(chatMemory)
+                .build();
+
+        TextContent textContent = TextContent.from("What is the capital of Germany?");
+
+        // when
+        aiService.chat19_3(textContent);
+
+        // then
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(textContent)).build());
+        verify(chatModel).supportedCapabilities();
+        assertThat(chatMemory.messages()).first().isEqualTo(userMessage(textContent));
+    }
+
+    @Test
+    void user_message_configuration_19_3_streaming() throws Exception {
+        // given
+        StreamingChatModelMock streamingChatModel = StreamingChatModelMock.thatAlwaysStreams("Berlin");
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        AiService aiService = AiServices.builder(AiService.class)
+                .streamingChatModel(streamingChatModel)
+                .chatMemory(chatMemory)
+                .build();
+
+        TextContent textContent = TextContent.from("What is the capital of Germany?");
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        // when
+        aiService
+                .stream19_3(textContent)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        future.get(5, TimeUnit.SECONDS);
+
+        // then
+        assertThat(streamingChatModel.request().messages()).containsExactly(userMessage(textContent));
+        assertThat(chatMemory.messages()).first().isEqualTo(userMessage(textContent));
     }
 
     @Test

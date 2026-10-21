@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -36,7 +38,7 @@ class ToolExecutionHelper {
             if (result.getStructuredContent() != null) {
                 String resultText = McpJson.serialize(result.getStructuredContent());
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(resultText);
+                    throw applicationError(resultText);
                 }
                 return ToolExecutionResult.builder()
                         .result(result.getStructuredContent())
@@ -50,7 +52,7 @@ class ToolExecutionHelper {
                 ToolExecutionResult toolExecutionResult =
                         toolResultConverter.convert(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));
+                    throw applicationError(errorMessage(toolExecutionResult, result.getContent()));
                 }
                 return withAttributes(toolExecutionResult, attributes);
             }
@@ -68,6 +70,15 @@ class ToolExecutionHelper {
         }
 
         throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + response);
+    }
+
+    /**
+     * An application-level error carries text the server wrote for the model, so it is
+     * {@link McpApplicationErrorException}, which is visible to the LLM. When the server sent no text there
+     * is nothing to show the model, so it stays an ordinary {@link ToolExecutionException}.
+     */
+    private static ToolExecutionException applicationError(String text) {
+        return isNullOrBlank(text) ? new ToolExecutionException(text) : new McpApplicationErrorException(text);
     }
 
     /**

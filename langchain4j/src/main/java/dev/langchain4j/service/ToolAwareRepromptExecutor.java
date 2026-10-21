@@ -1,5 +1,8 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+
+import dev.langchain4j.guardrail.ChatExchange;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
@@ -33,6 +36,14 @@ final class ToolAwareRepromptExecutor {
     private ToolAwareRepromptExecutor() {}
 
     /**
+     * The last request of the tool loop and the response it ended with.
+     */
+    private static ChatExchange toolLoopExchange(ChatExchange initial, ToolServiceResult result) {
+        ChatRequest request = result.lastChatRequest() != null ? result.lastChatRequest() : initial.request();
+        return new ChatExchange(request, result.aggregateResponse());
+    }
+
+    /**
      * Synchronous tool-aware wrapper: {@link ChatExecutor#execute(List)} resolves any reprompt-requested tools
      * through the synchronous tool loop. Used by the synchronous and {@code TokenStream} output-guardrail paths.
      */
@@ -52,24 +63,28 @@ final class ToolAwareRepromptExecutor {
 
             @Override
             public ChatResponse execute(List<ChatMessage> chatMessages) {
-                ChatResponse initialResponse = rawChatExecutor.execute(chatMessages);
+                return exchange(chatMessages).response();
+            }
 
-                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
-                    return initialResponse;
+            @Override
+            public ChatExchange exchange(List<ChatMessage> chatMessages) {
+                ChatExchange initial = rawChatExecutor.exchange(chatMessages);
+
+                if (!initial.response().aiMessage().hasToolExecutionRequests()) {
+                    return initial;
                 }
 
-                return context.toolService
-                        .executeInferenceAndToolsLoop(
-                                context,
-                                memoryId,
-                                initialResponse,
-                                parameters,
-                                chatMessages,
-                                null,
-                                invocationContext,
-                                toolServiceContext,
-                                chatModelInvoker)
-                        .aggregateResponse();
+                ToolServiceResult result = context.toolService.executeInferenceAndToolsLoop(
+                        context,
+                        memoryId,
+                        initial.response(),
+                        parameters,
+                        chatMessages,
+                        null,
+                        invocationContext,
+                        toolServiceContext,
+                        chatModelInvoker);
+                return toolLoopExchange(initial, result);
             }
         };
     }
@@ -102,15 +117,24 @@ final class ToolAwareRepromptExecutor {
 
             @Override
             public CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-                return rawChatExecutor.executeAsync(chatMessages).thenCompose(initialResponse -> {
-                    if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
-                        return CompletableFuture.completedFuture(initialResponse);
+                CompletableFuture<ChatExchange> exchange = exchangeAsync(chatMessages);
+                CompletableFuture<ChatResponse> response = exchange.thenApply(ChatExchange::response);
+                propagateCancellation(response, exchange);
+                return response;
+            }
+
+            @Override
+            public CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
+                CompletableFuture<ChatExchange> initialExchange = rawChatExecutor.exchangeAsync(chatMessages);
+                CompletableFuture<ChatExchange> exchange = initialExchange.thenCompose(initial -> {
+                    if (!initial.response().aiMessage().hasToolExecutionRequests()) {
+                        return CompletableFuture.completedFuture(initial);
                     }
                     return context.toolService
                             .executeInferenceAndToolsLoopAsync(
                                     context,
                                     memoryId,
-                                    initialResponse,
+                                    initial.response(),
                                     parameters,
                                     chatMessages,
                                     null,
@@ -118,8 +142,10 @@ final class ToolAwareRepromptExecutor {
                                     toolServiceContext,
                                     null,
                                     asyncChatModelInvoker)
-                            .thenApply(ToolServiceResult::aggregateResponse);
+                            .thenApply(result -> toolLoopExchange(initial, result));
                 });
+                propagateCancellation(exchange, initialExchange);
+                return exchange;
             }
         };
     }

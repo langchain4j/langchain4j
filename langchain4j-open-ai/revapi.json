@@ -135,6 +135,12 @@
           "old": "method dev.langchain4j.model.openai.internal.embedding.Embedding.Builder dev.langchain4j.model.openai.internal.embedding.Embedding.Builder::embedding(java.util.List<java.lang.Float>)",
           "annotationType": "com.fasterxml.jackson.databind.annotation.JsonDeserialize",
           "justification": "The custom Jackson 2 deserializer was replaced by a JSON-library-agnostic overload on the same builder, so that OpenAI's Base64 embedding format is also read when another JSON library is on the classpath. Behaviour is unchanged; this is an internal wire type."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.decision.request.DecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.openai.OpenAiDecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
+          "justification": "defaultRequestParameters() now returns the provider-specific OpenAiDecisionRequestParameters (covariant return, the compiler keeps a bridge method), consistent with OpenAiChatModel and AnthropicChatModel"
         }
       ]
     }

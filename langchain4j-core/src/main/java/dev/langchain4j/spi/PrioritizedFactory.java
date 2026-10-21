@@ -1,16 +1,19 @@
 package dev.langchain4j.spi;
 
 /**
- * Decides which implementation wins when more than one is registered for the same service.
+ * Decides which implementation wins when more than one is registered for a service of which only one
+ * is used, such as a JSON codec or a prompt template factory.
  *
- * <p>Every caller of {@link ServiceHelper#loadFactories} takes the first implementation and ignores
- * the rest, and without this the order is whatever the {@link java.util.ServiceLoader} happened to
- * enumerate - which can differ between a development run, a shaded jar and a container image.
+ * <p>Without this, the winner is whatever the {@link java.util.ServiceLoader} happened to enumerate
+ * first - which can differ between a development run, a shaded jar and a container image.
  *
  * <p>Higher wins. A factory that does not implement this interface is {@link #DEFAULT_PRIORITY},
  * so an application or framework that supplies its own implementation keeps it: a factory has to
  * ask to lose. Among equal priorities the {@code ServiceLoader} order is preserved, and
  * {@code ServiceHelper} logs a warning naming the winner.
+ *
+ * <p>For a service of which every implementation is used, priority decides the order in which they
+ * are returned.
  */
 public interface PrioritizedFactory {
 

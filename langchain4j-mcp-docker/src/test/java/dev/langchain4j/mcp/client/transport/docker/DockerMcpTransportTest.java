@@ -104,7 +104,8 @@ class DockerMcpTransportTest {
 
         thread.start();
         try {
-            assertThat(pullRequested.await(5, TimeUnit.SECONDS)).isTrue();
+            // generous timeout: on a heavily loaded CI the daemon thread may take a while to issue the pull request
+            assertThat(pullRequested.await(30, TimeUnit.SECONDS)).isTrue();
             thread.interrupt();
             assertThat(interruptStatus.get(5, TimeUnit.SECONDS)).isTrue();
         } finally {

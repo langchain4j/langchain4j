@@ -47,6 +47,7 @@ public class JdkHttpClient implements HttpClient {
     static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private final java.net.http.HttpClient delegate;
+    private final boolean useHttp1ForPlainHttp;
     private final Duration readTimeout;
     private final int streamingBufferSize;
 
@@ -57,6 +58,7 @@ public class JdkHttpClient implements HttpClient {
             httpClientBuilder.connectTimeout(builder.connectTimeout());
         }
         this.delegate = httpClientBuilder.build();
+        this.useHttp1ForPlainHttp = builder.httpClientBuilder() == null;
         this.readTimeout = builder.readTimeout();
         this.streamingBufferSize = ensureGreaterThanZero(getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
@@ -154,8 +156,14 @@ public class JdkHttpClient implements HttpClient {
     }
 
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
+        URI uri = URI.create(request.url());
         java.net.http.HttpRequest.Builder builder =
-                java.net.http.HttpRequest.newBuilder().uri(URI.create(request.url()));
+                java.net.http.HttpRequest.newBuilder().uri(uri);
+
+        if (useHttp1ForPlainHttp && "http".equalsIgnoreCase(uri.getScheme())) {
+            // HTTP/2 over plain HTTP means an "Upgrade: h2c" request, which many servers mishandle (e.g. drop the body)
+            builder.version(java.net.http.HttpClient.Version.HTTP_1_1);
+        }
 
         request.headers().forEach((name, values) -> {
             if (values != null) {
