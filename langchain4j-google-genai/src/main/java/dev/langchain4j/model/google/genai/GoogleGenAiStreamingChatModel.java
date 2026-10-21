@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.google.genai.GoogleGenAiContentMapper.SERVER_SIDE_TOOL_PARTS_KEY;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -377,7 +378,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         partial.forEach((key, value) -> {
             if (GENERATED_IMAGES_KEY.equals(key)
                     || GENERATED_AUDIO_KEY.equals(key)
-                    || GoogleGenAiContentMapper.SERVER_SIDE_TOOL_PARTS_KEY.equals(key)) {
+                    || SERVER_SIDE_TOOL_PARTS_KEY.equals(key)) {
                 accumulated.merge(key, value, GoogleGenAiStreamingChatModel::concatenate);
             } else {
                 accumulated.put(key, value);

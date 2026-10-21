@@ -180,7 +180,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
                 .enableGoogleSearch(true)
                 .build();
 
-        should_answer_after_the_function_call_without_running_the_built_in_tool_again(
+        callToolThenAnswer(
                 model,
                 "Use Google Search to find the year the Eiffel Tower was completed, "
                         + "then call record_fact with that year.");
@@ -194,14 +194,13 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
                 .enableCodeExecution(true)
                 .build();
 
-        should_answer_after_the_function_call_without_running_the_built_in_tool_again(
+        callToolThenAnswer(
                 model,
                 "Use Python code execution to compute the 20th Fibonacci number, "
                         + "then call record_fact with the result.");
     }
 
-    private static void should_answer_after_the_function_call_without_running_the_built_in_tool_again(
-            ChatModel model, String prompt) {
+    private static void callToolThenAnswer(ChatModel model, String prompt) {
         ToolSpecification recordFact = ToolSpecification.builder()
                 .name("record_fact")
                 .description("Records a fact the user asked for")
