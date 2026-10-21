@@ -127,7 +127,7 @@ ChatModel model = OpenAiChatModel.builder()
 **Description:** [Heabsy](https://heabsy.com) is a European inference API for open models with per-token pricing. Its endpoint is OpenAI-compatible, so any OpenAI-compatible configuration works by changing the base URL.
 
 **Setup:**
-API keys are issued on request — get one via [heabsy.com/contacts](https://heabsy.com/contacts).
+Create an API key in the [Heabsy console](https://platform.heabsy.com).
 
 Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
 ```java
