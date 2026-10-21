@@ -3,18 +3,19 @@ package dev.langchain4j.model.typesafe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -22,24 +23,23 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionInputType;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -49,15 +49,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class TypeSafeDecisionModelTest {
 
-    private static final String RESPONSE =
-            """
+    private static final String RESPONSE = """
             {
               "model": "jev-1.13.0",
               "answers": {
@@ -177,10 +176,14 @@ class TypeSafeDecisionModelTest {
                         .build())
                 .build());
         model.decide(REQUEST.toBuilder()
-                .parameters(TypeSafeDecisionRequestParameters.builder().customParameters(Map.of()).build())
+                .parameters(TypeSafeDecisionRequestParameters.builder()
+                        .customParameters(Map.of())
+                        .build())
                 .build());
         model.decide(REQUEST.toBuilder()
-                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .parameters(DecisionRequestParameters.builder()
+                        .modelName("other-model")
+                        .build())
                 .build());
 
         // then
@@ -230,7 +233,11 @@ class TypeSafeDecisionModelTest {
                                                         "type", "noul",
                                                         "instructions", "Does this need attention today?",
                                                         "criteria",
-                                                                Map.of("true", "Money is not reaching the customer", "false", "")),
+                                                                Map.of(
+                                                                        "true",
+                                                                        "Money is not reaching the customer",
+                                                                        "false",
+                                                                        "")),
                                         "frustration",
                                                 Map.of(
                                                         "type", "score",
@@ -242,8 +249,7 @@ class TypeSafeDecisionModelTest {
     void should_omit_yes_no_criteria_when_not_set() {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("""
                 {"model": "jev-1.13.0", "answers": {"spam": {"type": "noul", "noul": 0.1}}}
                 """));
         TypeSafeDecisionModel model = model(httpClient);
@@ -264,8 +270,7 @@ class TypeSafeDecisionModelTest {
     void should_send_names_as_descriptions_of_options_without_descriptions() {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("""
                 {"model": "jev-1.13.0", "answers": {"sentiment": {"type": "choice", "choice": "positive"}}}
                 """));
         TypeSafeDecisionModel model = model(httpClient);
@@ -285,8 +290,7 @@ class TypeSafeDecisionModelTest {
     void should_send_text_contents_as_text_state() {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("""
                 {"model": "jev-1.13.0", "answers": {"spam": {"type": "noul", "noul": 0.1}}}
                 """));
         TypeSafeDecisionModel model = model(httpClient);
@@ -355,7 +359,15 @@ class TypeSafeDecisionModelTest {
                                         "assistant",
                                         "tool_calls",
                                         List.of(Map.of("id", "call_1", "name", "getOrder", "arguments", "{}"))),
-                                Map.of("role", "tool", "tool_call_id", "call_1", "name", "getOrder", "text", "shipped"))));
+                                Map.of(
+                                        "role",
+                                        "tool",
+                                        "tool_call_id",
+                                        "call_1",
+                                        "name",
+                                        "getOrder",
+                                        "text",
+                                        "shipped"))));
     }
 
     @Test
@@ -384,7 +396,8 @@ class TypeSafeDecisionModelTest {
 
         // when-then
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
-                        .inputContents(List.of(TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .inputContents(List.of(
+                                TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
                         .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
@@ -396,8 +409,7 @@ class TypeSafeDecisionModelTest {
     void should_send_levels_with_descriptions_as_objects() {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("""
                 {"model": "jev-1.13.0", "answers": {"severity": {"type": "score", "score": 1.0}}}
                 """));
         TypeSafeDecisionModel model = model(httpClient);
@@ -430,7 +442,11 @@ class TypeSafeDecisionModelTest {
 
         // when-then
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
-                        .inputFields(Map.of("comment", "Arrived like this", "photo", ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .inputFields(Map.of(
+                                "comment",
+                                "Arrived like this",
+                                "photo",
+                                ImageContent.from("iVBORw0KGgo=", "image/png")))
                         .question("damaged", YesNoQuestion.of("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
@@ -447,8 +463,7 @@ class TypeSafeDecisionModelTest {
     void should_send_text_contents_of_map_input_as_text() {
 
         // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
-                """
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("""
                 {"model": "jev-1.13.0", "answers": {"spam": {"type": "noul", "noul": 0.1}}}
                 """));
         TypeSafeDecisionModel model = model(httpClient);
@@ -482,7 +497,8 @@ class TypeSafeDecisionModelTest {
 
         // then
         assertThat(httpClient.request().body())
-                .contains("\"state\":{\"ticket\":\"Help! My payouts have been failing for 3 days.\",\"assignee\":null}");
+                .contains(
+                        "\"state\":{\"ticket\":\"Help! My payouts have been failing for 3 days.\",\"assignee\":null}");
     }
 
     @Test
@@ -517,11 +533,68 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
+    void should_expose_request_id_and_raw_http_response_in_metadata() {
+
+        // given
+        SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("X-TypeSafe-Request-Id", List.of("req_123")))
+                .body(RESPONSE)
+                .build();
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(httpResponse));
+
+        // when
+        DecisionResponse response = model.decide(REQUEST);
+
+        // then
+        assertThat(response.metadata()).isInstanceOf(TypeSafeDecisionResponseMetadata.class);
+        TypeSafeDecisionResponseMetadata metadata = (TypeSafeDecisionResponseMetadata) response.metadata();
+        assertThat(metadata.requestId()).isEqualTo("req_123");
+        assertThat(metadata.rawHttpResponse()).isSameAs(httpResponse);
+        assertThat(metadata.modelName()).isEqualTo("jev-1.13.0");
+        assertThat(metadata.tokenUsage()).isEqualTo(new TokenUsage(318, 34));
+    }
+
+    @Test
+    void should_expose_request_id_in_metadata_async() throws Exception {
+
+        // given
+        SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("x-typesafe-request-id", List.of("req_456")))
+                .body(RESPONSE)
+                .build();
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(httpResponse));
+
+        // when
+        DecisionResponse response = model.decideAsync(REQUEST).get();
+
+        // then
+        TypeSafeDecisionResponseMetadata metadata = (TypeSafeDecisionResponseMetadata) response.metadata();
+        assertThat(metadata.requestId()).isEqualTo("req_456");
+        assertThat(metadata.rawHttpResponse()).isSameAs(httpResponse);
+    }
+
+    @Test
+    void should_return_null_request_id_when_server_does_not_send_it() {
+
+        // given
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(RESPONSE)));
+
+        // when
+        DecisionResponse response = model.decide(REQUEST);
+
+        // then
+        TypeSafeDecisionResponseMetadata metadata = (TypeSafeDecisionResponseMetadata) response.metadata();
+        assertThat(metadata.requestId()).isNull();
+        assertThat(metadata.rawHttpResponse()).isNotNull();
+    }
+
+    @Test
     void should_accept_answers_without_probabilities_and_confidence() {
 
         // given
-        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(
-                """
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok("""
                 {
                   "model": "local",
                   "answers": {
@@ -540,8 +613,7 @@ class TypeSafeDecisionModelTest {
         assertThat(team.probabilities()).isEmpty();
         assertThat(team.confidence()).isNull();
         assertThat(response.yesNo("urgent").probability()).isEqualTo(1.0);
-        assertThat(response.scale("frustration").probabilities())
-                .isEmpty();
+        assertThat(response.scale("frustration").probabilities()).isEmpty();
         assertThat(response.tokenUsage()).isNull();
     }
 
@@ -851,7 +923,8 @@ class TypeSafeDecisionModelTest {
 
                     @Override
                     public void onRequest(DecisionModelRequestContext context) {
-                        events.add("request:" + context.modelProvider() + ":" + context.decisionRequest().modelName());
+                        events.add("request:" + context.modelProvider() + ":"
+                                + context.decisionRequest().modelName());
                     }
 
                     @Override
@@ -1053,8 +1126,7 @@ class TypeSafeDecisionModelTest {
                 Arguments.of(
                         answers(urgent, frustration, "\"team\": {\"type\": \"noul\", \"noul\": 0.5}"),
                         "has type 'noul' instead of 'choice'"),
-                Arguments.of(
-                        answers(frustration, team, "\"urgent\": {\"type\": \"noul\"}"), "'urgent' has no 'noul'"),
+                Arguments.of(answers(frustration, team, "\"urgent\": {\"type\": \"noul\"}"), "'urgent' has no 'noul'"),
                 Arguments.of(
                         answers(frustration, team, "\"urgent\": {\"type\": \"noul\", \"noul\": 1.3}"),
                         "invalid noul: 1.3"),
