@@ -86,8 +86,9 @@ public class EmbeddingModelResponseContext {
     }
 
     /**
-     * @return the text of each input that was embedded. For the full request, including per-call parameters and
-     * multimodal inputs, use {@link #embeddingRequest()}.
+     * @return the non-blank text of the inputs that were embedded, in request order. Inputs without non-blank
+     * text (for example image-only inputs) are omitted. For the full request, including per-call parameters
+     * and all multimodal inputs, use {@link #embeddingRequest()}.
      */
     public List<TextSegment> textSegments() {
         return textSegments;
