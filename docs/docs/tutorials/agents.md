@@ -608,7 +608,7 @@ When an agent is skipped:
 
 The condition is evaluated each time the agent is about to be invoked as a subagent, so inside a loop it is evaluated at every iteration, and in a parallel mapper the condition of the mapped agent is evaluated once per item, with a skipped item producing a `null` at its position in the result. Conversely, it is ignored when the agent is invoked directly, as the root of an agentic system, so that the same agent can be used in both ways.
 
-A condition can also be evaluated more than once for a single invocation: some planners, like the [supervisor](#pure-agentic-ai) and the [peer-to-peer](#peer-to-peer-agentic-pattern), [blackboard](#blackboard-agentic-pattern), [goal oriented](#goal-oriented-agentic-pattern) and [decision router](#decision-router-agentic-pattern) ones, evaluate it while selecting their next agents, and it is evaluated again when the agent is invoked. For this reason a condition must be cheap and free of side effects. In particular the arguments of a condition declared with `@ActivationCondition` are only read from the `AgenticScope`: unlike what happens for the arguments of an agent, the values converted to their declared types are not written back to the scope.
+A condition can also be evaluated more than once for a single invocation: some planners, like the [supervisor](#pure-agentic-ai) and the [peer-to-peer](#peer-to-peer-agentic-pattern), [blackboard](#blackboard-agentic-pattern), [goal oriented](#goal-oriented-agentic-pattern), [decision router](#decision-router-agentic-pattern) and [confidence cascade](#confidence-cascade-agentic-pattern) ones, evaluate it while selecting their next agents, and it is evaluated again when the agent is invoked. For this reason a condition must be cheap and free of side effects. In particular the arguments of a condition declared with `@ActivationCondition` are only read from the `AgenticScope`: unlike what happens for the arguments of an agent, the values converted to their declared types are not written back to the scope.
 
 A condition throwing an exception is handled as a failure of the agent: the exception is wrapped in an `AgentInvocationException` and passed to the [error handler](#error-handling) of the parent, so that, for instance, retrying the agent evaluates the condition again.
 
@@ -1687,7 +1687,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
 
-A planner doesn't need to care about the [activation conditions](#activation-conditions) of its subagents, since they are enforced when the agents are invoked: an inactive agent is skipped, and the `AgentInvocation` that the planner then receives as `previousAgentInvocation()` has a `skipped()` method returning `true` and a `skipReason()` telling why. Its output is the current value of the output key of the agent, so a planner that interprets the outputs of its subagents, for instance by counting votes, should leave the skipped ones out. A planner selecting its candidates from the state of the `AgenticScope` can also call `isActive(agent)` on the `PlanningContext` to avoid selecting inactive agents, as the supervisor and the peer-to-peer, blackboard, goal oriented and decision router patterns discussed below do. This check takes care of composite agents already activated before a suspension or a crash, which must be resumed even if their condition no longer holds, but it is advisory: the condition is evaluated again when the agent is invoked, and the state may have changed in between, so the planner must handle skipped invocations anyway.
+A planner doesn't need to care about the [activation conditions](#activation-conditions) of its subagents, since they are enforced when the agents are invoked: an inactive agent is skipped, and the `AgentInvocation` that the planner then receives as `previousAgentInvocation()` has a `skipped()` method returning `true` and a `skipReason()` telling why. Its output is the current value of the output key of the agent, so a planner that interprets the outputs of its subagents, for instance by counting votes, should leave the skipped ones out. A planner selecting its candidates from the state of the `AgenticScope` can also call `isActive(agent)` on the `PlanningContext` to avoid selecting inactive agents, as the supervisor and the peer-to-peer, blackboard, goal oriented, decision router and confidence cascade patterns discussed below do. This check takes care of composite agents already activated before a suspension or a crash, which must be resumed even if their condition no longer holds, but it is advisory: the condition is evaluated again when the agent is invoked, and the state may have changed in between, so the planner must handle skipped invocations anyway.
 
 Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 
@@ -2740,6 +2740,108 @@ public interface DeclarativeExpertRouter {
 where the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
 
 Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks, for instance through an [activation condition](#activation-conditions). Only the subagents whose activation condition holds are offered to the decision model, which isn't asked at all when none does, and in that case the router returns no result, or an empty map with an activation threshold. Without an activation threshold, when only one subagent is active, it is invoked without asking the decision model. A subagent skipped anyway when invoked, because its condition changed after the decision, is left out of the map returned with an activation threshold, while without a threshold the router returns no result.
+
+### Confidence cascade agentic pattern
+
+:::note
+The confidence cascade is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The confidence cascade is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
+In many agentic systems most requests are easy and could be answered by a small, cheap model, while a few of them need a large model or even a human. Sending every request to the most capable agent pays the highest price for all of them, while sending them to the cheapest one gives poor answers to the hard ones. When the difficulty of a request can be told from the request alone, the [decision router](#decision-router-agentic-pattern) can send it straight to a cheap or to a capable agent. Often, however, it is only possible to tell whether a cheap agent was good enough after seeing its answer.
+
+The confidence cascade pattern addresses this trade-off. Its subagents are declared from the cheapest to the most capable, for instance an agent on a small model, the same agent on a large model, and finally a human: these are the tiers of the cascade. The first tier answers the request, then a [decision model](/tutorials/decision-models) grades its answer against the request. If the probability that the answer is good enough reaches an acceptance threshold the answer is returned, otherwise the next, more expensive tier is tried. A decision model fits this grade well: it returns a probability instead of a text to parse, and grading an answer is far cheaper than producing it.
+
+The `ConfidenceCascadePlanner` implementing this pattern is created with a `DecisionModel`, an acceptance threshold strictly between 0 and 1 and, optionally, an acceptance criterion describing when an answer should be accepted. When it is initialized, the planner takes its subagents, in declaration order, as the tiers, and the arguments of the cascade agent itself as the request, so the cascade has to be defined through a typed agent interface, and must have at least two subagents. Its `firstAction` method calls the first tier, and its `nextAction` method grades the answer of the tier that just completed: it asks the decision model the `YesNoQuestion` "Does the answer fully and correctly address the request?", with an input made of the arguments of the cascade agent plus the answer under the `candidateAnswer` field, and with the acceptance criterion, if any, as the `yesWhen` description of the question. Internally, once the answer of a tier is available, the planner does roughly the following:
+
+```java
+double probability = acceptance(planningContext.agenticScope(), answer);
+if (probability >= acceptanceThreshold) {
+    return done(answer);
+}
+return call(tiers.get(++tier));
+```
+
+The last tier is never graded: its answer is returned anyway. More precisely, the answer of a tier is returned without grading it whenever no later tier is active according to the [activation conditions](#activation-conditions) of the subagents, which saves a decision call, and a tier that is skipped when invoked is passed over without a grade. When all the remaining tiers are skipped, the cascade returns the latest answer it obtained.
+
+The planner saves the tier it is trying as its execution state, so that after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because a tier is waiting for a human, or after a crash, the cascade resumes from that tier without paying again for the cheaper ones. A human can also be a tier in the middle of the cascade: its answer is then graded like any other when the cascade is resumed. For this reason the tiers whose answer can be delayed, that is human-in-the-loop and asynchronous agents, must declare an output key, from which the planner reads their answer.
+
+To give a practical example, consider a support assistant for a coffee machine. The first tier is a cheap FAQ agent, running on a small model and limited to the questions about the product:
+
+```java
+public interface FaqAgent {
+
+    @UserMessage("""
+        You are the FAQ assistant of the Brewmaster 3000 coffee machine.
+        Answer the following user request in no more than 3 sentences, using only your knowledge of the
+        Brewmaster 3000 coffee machine: how to set it up, brew coffee, clean and descale it, and fix its common issues.
+        If the request is not about the Brewmaster 3000 coffee machine, answer exactly:
+        "I can only help with the Brewmaster 3000 coffee machine."
+        The user request is {{request}}.
+        """)
+    @Agent(description = "Answers frequently asked questions about the Brewmaster 3000 coffee machine",
+            outputKey = "faqAnswer")
+    String faq(@V("request") String request);
+}
+```
+
+while the second tier is an `ExpertAgent` running on a large model and able to answer any request:
+
+```java
+public interface ExpertAgent {
+
+    @UserMessage("""
+        You are an expert assistant able to answer any question.
+        Provide the best possible answer to the following user request in no more than 3 sentences.
+        The user request is {{request}}.
+        """)
+    @Agent(description = "An expert assistant answering any question", outputKey = "expertAnswer")
+    String expert(@V("request") String request);
+}
+```
+
+The `SupportCascade` interface is directly implemented by a `ConfidenceCascadePlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+public interface SupportCascade {
+
+    @Agent
+    String ask(@V("request") String request);
+}
+
+FaqAgent faqAgent = AgenticServices.agentBuilder(FaqAgent.class)
+        .chatModel(SMALL_MODEL)
+        .build();
+ExpertAgent expertAgent = AgenticServices.agentBuilder(ExpertAgent.class)
+        .chatModel(LARGE_MODEL)
+        .build();
+
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+SupportCascade supportCascade = AgenticServices.plannerBuilder(SupportCascade.class)
+        .subAgents(faqAgent, expertAgent)
+        .outputKey("answer")
+        .planner(() -> new ConfidenceCascadePlanner(decisionModel, 0.5))
+        .build();
+
+String answer = supportCascade.ask("How do I descale my Brewmaster 3000 coffee machine?");
+```
+
+Here the `FaqAgent` answers the request, then the decision model receives the input `{"request": "How do I descale my Brewmaster 3000 coffee machine?", "candidateAnswer": "..."}` and the question "Does the answer fully and correctly address the request?". The probability of "yes" is high, so the answer of the FAQ agent is returned and the `ExpertAgent` is never invoked. For a request like "How do I set up a home network with two routers?", instead, the FAQ agent answers that it can only help with the coffee machine, the probability is low, and the request escalates to the `ExpertAgent`, whose answer is returned without being graded, since it is the last tier.
+
+An acceptance criterion makes the grade stricter, or more specific to the application, than the default question alone:
+
+```java
+new ConfidenceCascadePlanner(decisionModel, 0.5,
+        "The answer gives concrete instructions that solve the user's problem, " +
+        "instead of saying that it cannot help or redirecting the user elsewhere")
+```
+
+A few things to keep in mind. The cascade saves money and time only when most requests are accepted at a cheap tier: an escalated request pays for every tier it went through, plus one decision call for each graded answer, and these calls run one after the other. The grade is a relevance and completeness signal, not a proof of correctness: the decision model can judge whether an answer addresses the request, but it cannot verify facts, so the cascade suits the cases where a cheap check can tell a good answer from a bad one. For the same reason, a cheap tier should be grounded, for instance through [RAG](/tutorials/rag), rather than answer from what its model happens to know. The decision model only sees the arguments of the cascade agent and the answer of the tier, and not the chat memory or the instructions of the tiers, so the arguments must carry everything needed to judge the answer. Both the request and the answers are untrusted input, so a crafted request or answer can influence the grade: the cascade trades cost against quality, it is not a security or review boundary, and a step that must always reach a more capable tier or a human has to enforce it on its own, for instance through an [activation condition](#activation-conditions). Probabilities are not calibrated in the same way by different decision models, so the acceptance threshold should be tuned on your own requests, and tuned again when you change the decision model or its version. As for the decision router, the arguments of the cascade agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them, or `Content`s such as images, and an argument of any other type is rejected by the decision model with an error explaining which types are supported: this leaves to you the choice of what is sent to the provider of the decision model, which can differ from the provider of the chat models of the tiers. The answer of a tier is sent as it is when it is such a value, and converted to maps and lists through a JSON round trip otherwise, so a tier can return a typed value. A failure of the decision model fails the invocation of the cascade. Finally, the execution state is saved only after the grade, so a crash during the grading call itself makes the tier being graded run again when the cascade is resumed, and since the execution state refers to the tiers by their position, a cascade whose subagents changed after a suspension cannot be resumed and fails with an `IllegalStateException`.
 
 ## Non-AI agents
 
