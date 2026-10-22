@@ -418,6 +418,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type asyncReturnType2 = returnType;
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
+                            // Some outcomes (e.g. cancellation) end the invocation without a completed or error event
+                            result.whenComplete((ignoredValue, ignoredError) ->
+                                    context.eventListenerRegistrar.invocationEnded(baseInvocationContext));
                             CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
                                     chatMemory, asyncSystemMessage, originalUserMessage, baseInvocationContext);
                             propagateCancellation(result, augmentation);
@@ -514,10 +517,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final boolean reactiveSingleSubscription = reactiveChatMemory != null;
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
 
-                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
+                            Flow.Publisher<AiServiceStreamingEvent> events = downstream -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
-                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                    subscriber.onError(new IllegalStateException(
+                                    downstream.onSubscribe(NOOP_SUBSCRIPTION);
+                                    downstream.onError(new IllegalStateException(
                                             "This AI Service reactive stream cannot be subscribed to more than once "
                                                     + "because a ChatMemory is configured: re-subscribing would re-run "
                                                     + "the interaction and duplicate messages in the chat memory. To "
@@ -526,14 +529,22 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     return;
                                 }
 
-                                DeferredSubscription subscription = new DeferredSubscription();
-                                subscriber.onSubscribe(subscription);
+                                // Some outcomes (e.g. cancellation) end the invocation without a completed or error
+                                // event
+                                Flow.Subscriber<AiServiceStreamingEvent> subscriber = new InvocationEndingSubscriber<>(
+                                        downstream,
+                                        () -> context.eventListenerRegistrar.invocationEnded(baseInvocationContext));
 
+                                // Fired before onSubscribe so that a subscriber canceling from within onSubscribe
+                                // ends an invocation that has already started
                                 context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                         .invocationContext(baseInvocationContext)
                                         .systemMessage(reactiveSystemMessage)
                                         .userMessage(originalUserMessage)
                                         .build());
+
+                                DeferredSubscription subscription = new DeferredSubscription();
+                                subscriber.onSubscribe(subscription);
 
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
                                         reactiveChatMemory, reactiveSystemMessage, originalUserMessage, baseInvocationContext);

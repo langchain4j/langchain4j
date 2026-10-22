@@ -202,6 +202,16 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
+        try {
+            doStart();
+        } catch (RuntimeException e) {
+            // The stream never got going, so no completed or error event will be fired for this invocation
+            context.eventListenerRegistrar.invocationEnded(invocationContext);
+            throw e;
+        }
+    }
+
+    private void doStart() {
         validateConfiguration();
 
         List<ToolSpecification> effectiveTools =

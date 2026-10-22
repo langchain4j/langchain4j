@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
@@ -31,6 +32,7 @@ import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
+import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -100,10 +102,15 @@ class AiServicesObservabilityTests {
             List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses,
             Consumer<AiServiceEvent> expectedEventsReceivedAssertion) {
 
+        // Every invocation ends in a completed or error event, so it should also produce an invocation summary event
+        List<Class<? extends AiServiceEvent>> expectedClasses = Stream.<Class<? extends AiServiceEvent>>concat(
+                        expectedEventsReceivedClasses.stream(), Stream.of(AiServiceInvocationSummaryEvent.class))
+                .toList();
+
         // Invoke the operation without registered listeners
         // No listeners should be fired
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
-        assertNoEventsReceived(8, listeners.values());
+        assertNoEventsReceived(9, listeners.values());
 
         // Let's invoke the operation a few times with the registered listeners
         IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreatorWithListeners.get()));
@@ -114,21 +121,50 @@ class AiServicesObservabilityTests {
 
         assertEventsReceived(
                 hasTools,
-                expectedEventsReceivedClasses.size(),
+                expectedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedClasses.stream().map(listeners::get).toList(),
                 expectedEventsReceivedAssertion);
 
         // No additional events should fire when invoking the operation again
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
         assertEventsReceived(
                 hasTools,
-                expectedEventsReceivedClasses.size(),
+                expectedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedClasses.stream().map(listeners::get).toList(),
                 expectedEventsReceivedAssertion);
+        assertInvocationSummaryEvent(expectedEventsReceivedClasses);
+    }
+
+    private void assertInvocationSummaryEvent(List<Class<? extends AiServiceEvent>> expectedEventClasses) {
+        var invocationSummaryEvent = (AiServiceInvocationSummaryEvent)
+                listeners.get(AiServiceInvocationSummaryEvent.class).event();
+        var expectedListeners =
+                expectedEventClasses.stream().map(listeners::get).toList();
+        var terminalEventClass = expectedEventClasses.contains(AiServiceCompletedEvent.class)
+                ? AiServiceCompletedEvent.class
+                : AiServiceErrorEvent.class;
+
+        // Each listener's count covers the 5 invocations made with listeners registered
+        var expectedEventsPerInvocation =
+                expectedListeners.stream().mapToInt(MyListener::count).sum() / 5;
+
+        assertThat(invocationSummaryEvent).isNotNull();
+        assertThat(invocationSummaryEvent.events())
+                .hasSize(expectedEventsPerInvocation)
+                // The summary is from the last invocation, so it contains the last event each listener got
+                .containsAll(expectedListeners.stream()
+                        .<AiServiceEvent>map(MyListener::event)
+                        .toList())
+                .startsWith(listeners.get(AiServiceStartedEvent.class).event())
+                .endsWith(listeners.get(terminalEventClass).event())
+                .allSatisfy(event -> assertThat(event.invocationContext().invocationId())
+                        .isEqualTo(invocationSummaryEvent.invocationContext().invocationId()))
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .hasSameElementsAs(expectedEventClasses);
     }
 
     @Test
@@ -179,7 +215,7 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+                List.of(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class, AiServiceErrorEvent.class));
     }
 
     @Test
@@ -321,8 +357,8 @@ class AiServicesObservabilityTests {
         runScenario(
                 () -> Assistant.create(true, false),
                 () -> Assistant.create(true, false, listeners.values()),
-                assistant ->
-                        assertThat(await(assistant.chatAsync(TOOL_USER_MESSAGE))).isEqualTo(TOOL_EXPECTED_RESPONSE),
+                assistant -> assertThat(await(assistant.chatAsync(TOOL_USER_MESSAGE)))
+                        .isEqualTo(TOOL_EXPECTED_RESPONSE),
                 "chatAsync",
                 true,
                 List.of(
@@ -593,10 +629,13 @@ class AiServicesObservabilityTests {
 
     private static void assertNoEventsReceived(
             int expectedSize, Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
-        assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
+        assertThat(listeners)
                 .isNotNull()
-                .extracting(MyListener::count, MyListener::event)
-                .containsExactly(0, null));
+                .hasSize(expectedSize)
+                .allSatisfy(l -> assertThat(l)
+                        .isNotNull()
+                        .extracting(MyListener::count, MyListener::event)
+                        .containsExactly(0, null));
     }
 
     private static void assertEventsReceived(
@@ -670,6 +709,7 @@ class AiServicesObservabilityTests {
                         new MyAiServiceRequestIssuedListener(),
                         new MyAiServiceResponseReceivedListener(),
                         new MyOutputGuardrailExecutedListener(),
+                        new MyAiServiceInvocationSummaryListener(),
                         new MyToolExecutedListener())
                 .collect(Collectors.toMap(AiServiceListener::getEventClass, Function.identity()));
     }
@@ -851,6 +891,9 @@ class AiServicesObservabilityTests {
 
     public static class MyAiServiceCompletedListener extends MyListener<AiServiceCompletedEvent>
             implements AiServiceCompletedListener {}
+
+    public static class MyAiServiceInvocationSummaryListener extends MyListener<AiServiceInvocationSummaryEvent>
+            implements AiServiceInvocationSummaryListener {}
 
     public static class MyInputGuardrailExecutedListener extends MyListener<InputGuardrailExecutedEvent>
             implements InputGuardrailExecutedListener {}
