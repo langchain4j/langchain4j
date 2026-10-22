@@ -104,7 +104,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private int toolCallingRoundTripsLeft;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result, RuntimeException error) {}
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result, Throwable error) {}
 
     AiServiceStreamingResponseHandler(
             ChatRequest chatRequest,
@@ -242,7 +242,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     () -> {
                         try {
                             return new ToolRequestResult(toolRequest, execute(toolRequest), null);
-                        } catch (RuntimeException e) {
+                        } catch (VirtualMachineError e) {
+                            throw e;
+                        } catch (Throwable e) {
                             return new ToolRequestResult(toolRequest, null, e);
                         }
                     },
@@ -394,7 +396,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             toolResults,
                             toolErrors,
                             context.eventListenerRegistrar);
-                    throw (RuntimeException) toolErrors.values().iterator().next();
+                    Throwable error = toolErrors.values().iterator().next();
+                    if (error instanceof RuntimeException re) {
+                        throw re;
+                    }
+                    throw new RuntimeException(error);
                 }
             } else {
                 for (ToolExecutionRequest toolRequest : executedRequests) {
@@ -569,8 +575,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 toolExecutors,
                 toolRequest,
                 beforeToolExecutionHandler,
-                toolExecutionHandler,
-                null);
+                toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {

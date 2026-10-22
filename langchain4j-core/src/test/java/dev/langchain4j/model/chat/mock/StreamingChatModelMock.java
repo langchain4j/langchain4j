@@ -110,7 +110,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * Throws the exception of this mock from {@code chat(ChatRequest, StreamingChatResponseHandler)} itself, as some
-     * providers do when a request cannot be sent, instead of passing it to the handler.
+     * providers do when a request cannot be sent, instead of passing it to the handler. The {@code Publisher}-based
+     * {@code chat(ChatRequest)} then fails with an {@link IllegalStateException}, as this option does not apply to it.
      */
     public StreamingChatModelMock throwingFromChat() {
         this.throwFromChat = true;
@@ -128,6 +129,10 @@ public class StreamingChatModelMock implements StreamingChatModel {
      */
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        if (throwFromChat) {
+            throw new IllegalStateException(
+                    "throwingFromChat() only applies to chat(ChatRequest, StreamingChatResponseHandler)");
+        }
         return subscriber -> {
             TokenUsage tokenUsage = recordRequest(chatRequest);
             subscriber.onSubscribe(new Subscription() {

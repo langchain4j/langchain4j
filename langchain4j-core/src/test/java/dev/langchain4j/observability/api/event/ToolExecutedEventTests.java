@@ -100,6 +100,18 @@ class ToolExecutedEventTests {
     }
 
     @Test
+    void isErrorThrowsWhenSetToNull() {
+        final ToolExecutedEvent event = ToolExecutedEvent.builder()
+                .invocationContext(INVOCATION_CONTEXT)
+                .request(TOOL_EXECUTION_REQUEST)
+                .resultText("ok")
+                .isError(null)
+                .build();
+
+        assertThatThrownBy(event::isError).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     void isErrorReturnsReportedValue() {
         final ToolExecutedEvent failed = ToolExecutedEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)

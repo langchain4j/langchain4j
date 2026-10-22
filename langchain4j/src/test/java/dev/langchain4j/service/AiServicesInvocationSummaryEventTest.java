@@ -358,7 +358,6 @@ class AiServicesInvocationSummaryEventTest {
         };
     }
 
-    // A RAG augmentor that never completes, so the invocation can be canceled while it's in flight
     @Test
     void eachCanceledReactiveSubscriptionFiresItsOwnInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
@@ -436,6 +435,7 @@ class AiServicesInvocationSummaryEventTest {
                 .doesNotHaveDuplicates();
     }
 
+    // A RAG augmentor that never completes, so the invocation can be canceled while it's in flight
     private static RetrievalAugmentor neverCompletingAugmentor() {
         return new RetrievalAugmentor() {
             @Override

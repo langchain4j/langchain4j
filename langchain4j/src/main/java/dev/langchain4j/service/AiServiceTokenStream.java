@@ -9,6 +9,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -209,8 +210,12 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
-        InvocationContext runContext = startedBefore.getAndSet(true) ? startedAgain() : invocationContext;
+        boolean startedAgain = startedBefore.getAndSet(true);
+        InvocationContext runContext = startedAgain ? newRunContext() : invocationContext;
         try {
+            if (startedAgain) {
+                fireStartedEvent(runContext);
+            }
             validateConfiguration();
             start(runContext);
         } catch (VirtualMachineError e) {
@@ -269,7 +274,7 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 completeResponseProcessingExecutor,
-                commonGuardrailParams,
+                guardrailParams(runContext),
                 methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
@@ -284,18 +289,43 @@ public class AiServiceTokenStream implements TokenStream {
         context.streamingChatModel.chat(chatRequest, handler);
     }
 
-    private InvocationContext startedAgain() {
-        InvocationContext runContext = invocationContext.toBuilder()
+    private GuardrailRequestParams guardrailParams(InvocationContext runContext) {
+        if (commonGuardrailParams == null || runContext == invocationContext) {
+            return commonGuardrailParams;
+        }
+        return commonGuardrailParams.toBuilder().invocationContext(runContext).build();
+    }
+
+    private InvocationContext newRunContext() {
+        return invocationContext.toBuilder()
                 .invocationId(UUID.randomUUID())
                 .timestampNow()
                 .build();
-        SystemMessage systemMessage = messages.get(0) instanceof SystemMessage message ? message : null;
+    }
+
+    private void fireStartedEvent(InvocationContext runContext) {
+        UserMessage userMessage = invocationContext.originalUserMessage() != null
+                ? invocationContext.originalUserMessage()
+                : lastUserMessage();
+        if (userMessage == null) {
+            return;
+        }
+        SystemMessage systemMessage =
+                !messages.isEmpty() && messages.get(0) instanceof SystemMessage message ? message : null;
         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                 .invocationContext(runContext)
                 .systemMessage(systemMessage)
-                .userMessage(invocationContext.originalUserMessage())
+                .userMessage(userMessage)
                 .build());
-        return runContext;
+    }
+
+    private UserMessage lastUserMessage() {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage userMessage) {
+                return userMessage;
+            }
+        }
+        return null;
     }
 
     private void validateConfiguration() {

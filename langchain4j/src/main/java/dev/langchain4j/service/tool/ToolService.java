@@ -2156,7 +2156,7 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionRequest toolRequest) {
         return internalExecuteTool(
-                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution, null);
+                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
     }
 
     public ToolExecutionResult executeTool(
@@ -2165,35 +2165,12 @@ public class ToolService {
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution) {
-        return executeTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                externalBeforeToolExecution,
-                externalAfterToolExecution,
-                null);
-    }
-
-    /**
-     * Same as {@link #executeTool(InvocationContext, Map, ToolExecutionRequest, Consumer, Consumer)}, and also fires a
-     * {@link ToolExecutedEvent} with {@link ToolExecutedEvent#isError()} {@code true} to the given registrar when the
-     * tool error is rethrown and fails the invocation.
-     */
-    @Internal
-    public ToolExecutionResult executeTool(
-            InvocationContext invocationContext,
-            Map<String, ToolExecutor> toolExecutors,
-            ToolExecutionRequest toolRequest,
-            Consumer<BeforeToolExecution> externalBeforeToolExecution,
-            Consumer<ToolExecution> externalAfterToolExecution,
-            AiServiceListenerRegistrar listenerRegistrar) {
         return internalExecuteTool(
                 invocationContext,
                 toolExecutors,
                 toolRequest,
                 nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
-                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution),
-                listenerRegistrar);
+                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
     }
 
     private static <T> Consumer<T> nullSafeCombineConsumers(Consumer<T> first, Consumer<T> second) {
@@ -2208,8 +2185,7 @@ public class ToolService {
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> beforeToolExecution,
-            Consumer<ToolExecution> afterToolExecution,
-            AiServiceListenerRegistrar listenerRegistrar) {
+            Consumer<ToolExecution> afterToolExecution) {
         if (beforeToolExecution != null) {
             beforeToolExecution.accept(BeforeToolExecution.builder()
                     .request(toolRequest)
@@ -2220,16 +2196,10 @@ public class ToolService {
         LocalDateTime startTime = LocalDateTime.now();
 
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
-        ToolExecutionResult toolResult;
-        try {
-            toolResult = executor == null
-                    ? applyToolHallucinationStrategy(toolRequest)
-                    : executeWithErrorHandling(
-                            toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
-        } catch (RuntimeException e) {
-            fireFailedToolExecutedEvent(invocationContext, toolRequest, e, listenerRegistrar);
-            throw e;
-        }
+        ToolExecutionResult toolResult = executor == null
+                ? applyToolHallucinationStrategy(toolRequest)
+                : executeWithErrorHandling(
+                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
 
         if (afterToolExecution != null) {
             afterToolExecution.accept(ToolExecution.builder()

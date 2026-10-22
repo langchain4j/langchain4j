@@ -1,6 +1,7 @@
 package dev.langchain4j.invocation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,14 @@ class InvocationEndTest {
         assertThat(InvocationEnd.markEnded(invocationContext)).isTrue();
 
         assertThat(InvocationEnd.markEnded(otherInvocation)).isTrue();
+    }
+
+    @Test
+    void should_not_guard_an_invocation_context_that_was_not_built_by_langchain4j() {
+        InvocationContext invocationContext = mock(InvocationContext.class);
+
+        assertThat(InvocationEnd.markEnded(invocationContext)).isTrue();
+        assertThat(InvocationEnd.markEnded(invocationContext)).isTrue();
     }
 
     @Test

@@ -29,7 +29,9 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
+import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceCancelledListener;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
@@ -39,6 +41,7 @@ import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListe
 import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
+import dev.langchain4j.observability.api.listener.RetrievalAugmentedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import java.time.Duration;
 import java.util.List;
@@ -179,6 +182,29 @@ class DefaultAiServiceListenerRegistrarTests {
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
             .toList();
+
+    @Test
+    void shouldNotifyTheTypedCancelledAndRetrievalAugmentedListeners() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        List<AiServiceEvent> received = new CopyOnWriteArrayList<>();
+        registrar.register((AiServiceCancelledListener) received::add);
+        registrar.register((RetrievalAugmentedListener) received::add);
+        InvocationContext invocationContext =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        var retrievalAugmented = RetrievalAugmentedEvent.builder()
+                .invocationContext(invocationContext)
+                .chatMessage(UserMessage.from("Hello"))
+                .contents(List.of())
+                .build();
+        var cancelled = AiServiceCancelledEvent.builder()
+                .invocationContext(invocationContext)
+                .build();
+
+        registrar.fireEvent(retrievalAugmented);
+        registrar.fireEvent(cancelled);
+
+        assertThat(received).containsExactly(retrievalAugmented, cancelled);
+    }
 
     @Test
     void registrarEatsThrownExceptionsDuringFiring() {

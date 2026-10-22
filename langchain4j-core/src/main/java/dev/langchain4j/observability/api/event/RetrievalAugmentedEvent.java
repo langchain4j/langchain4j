@@ -12,10 +12,11 @@ import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import java.util.List;
 
 /**
- * Invoked after the {@link RetrievalAugmentor} of an AI Service has retrieved the contents that are added to the
- * chat message (retrieval-augmented generation). It is fired once per invocation of an AI Service that has a
- * retrieval augmentor, also when nothing was retrieved. It carries the chat message given to the retrieval augmentor
- * and the final contents, after all queries, retrievers, aggregation and re-ranking. To observe each
+ * Invoked once per invocation of an AI Service that uses retrieval-augmented generation (RAG), configured with
+ * {@code contentRetriever(...)} or {@code retrievalAugmentor(...)}, after the contents to add to the user message were
+ * retrieved, also when nothing was retrieved. It carries the user message that was used for the retrieval (the chat
+ * message given to the {@link RetrievalAugmentor}) and the final contents, after all queries, retrievers, aggregation
+ * and re-ranking. To observe each
  * {@link ContentRetriever} call separately, with the query it received, use a
  * {@link ContentRetrieverListener}.
  *
@@ -99,10 +100,16 @@ public interface RetrievalAugmentedEvent extends AiServiceEvent {
             return this;
         }
 
+        /**
+         * Returns the chat message set on this builder, or {@code null} if it is not set.
+         */
         public ChatMessage chatMessage() {
             return chatMessage;
         }
 
+        /**
+         * Returns the contents set on this builder, or {@code null} if they are not set.
+         */
         public List<Content> contents() {
             return contents;
         }

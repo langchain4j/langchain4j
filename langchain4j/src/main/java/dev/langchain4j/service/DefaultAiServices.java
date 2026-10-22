@@ -708,13 +708,17 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onError(Throwable error) {
-                                                                    terminated.set(true);
+                                                                    fireErrorIfNotEnded(terminated, subscriptionContext, error);
                                                                     subscriber.onError(error);
                                                                 }
 
                                                                 @Override
                                                                 public void onComplete() {
-                                                                    terminated.set(true);
+                                                                    fireErrorIfNotEnded(
+                                                                            terminated,
+                                                                            subscriptionContext,
+                                                                            new IllegalStateException(
+                                                                                    "The stream completed without a final response"));
                                                                     subscriber.onComplete();
                                                                 }
                                                             });
@@ -928,9 +932,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
                                         Throwable cause = unwrapCompletionException(error);
-                                        if (!result.isCancelled()
-                                                && !(cause instanceof CancellationException)
-                                                && InvocationEnd.markEnded(invocationContext)) {
+                                        if (!result.isCancelled() && InvocationEnd.markEnded(invocationContext)) {
                                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                                     .invocationContext(invocationContext)
                                                     .error(cause instanceof Exception exception
@@ -1067,13 +1069,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                             AtomicBoolean terminated,
                             InvocationContext invocationContext,
                             Throwable error) {
+                        fireErrorIfNotEnded(terminated, invocationContext, error);
+                        subscriber.onError(error);
+                    }
+
+                    private void fireErrorIfNotEnded(
+                            AtomicBoolean terminated, InvocationContext invocationContext, Throwable error) {
                         if (terminated.compareAndSet(false, true) && InvocationEnd.markEnded(invocationContext)) {
                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                     .invocationContext(invocationContext)
                                     .error(error)
                                     .build());
                         }
-                        subscriber.onError(error);
                     }
 
                     private void fireCancelledEvent(InvocationContext invocationContext) {

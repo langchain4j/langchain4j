@@ -126,13 +126,13 @@ public interface ToolExecutedEvent extends AiServiceEvent {
         }
 
         /**
-         * Sets whether the tool execution failed. When it is not set, {@link ToolExecutedEvent#isError()} of the
-         * built event throws an {@link UnsupportedOperationException}.
+         * Sets whether the tool execution failed. When it is not set, or set to {@code null},
+         * {@link ToolExecutedEvent#isError()} of the built event throws an {@link UnsupportedOperationException}.
          *
          * @since 1.23.0
          */
         @Experimental
-        public ToolExecutedEventBuilder isError(boolean isError) {
+        public ToolExecutedEventBuilder isError(Boolean isError) {
             this.isError = isError;
             return this;
         }

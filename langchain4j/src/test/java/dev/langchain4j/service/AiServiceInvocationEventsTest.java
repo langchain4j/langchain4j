@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -18,6 +19,7 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -29,21 +31,27 @@ import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -458,7 +466,9 @@ class AiServiceInvocationEventsTest {
                 .registerListeners(listeners())
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("Hello"));
+        assertThatThrownBy(() -> assistant.chat("Hello"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Unexpected character");
 
         assertThat(events(ToolExecutedEvent.class)).singleElement().satisfies(event -> {
             assertThat(event.request().name()).isEqualTo("echo");
@@ -833,7 +843,7 @@ class AiServiceInvocationEventsTest {
         assistant.chat("Hello").onError(error -> {}).start();
 
         assertThat(finished.await(5, SECONDS)).isTrue();
-        assertThat(events(RetrievalAugmentedEvent.class)).hasSize(1);
+        assertRetrievedSource();
     }
 
     @Test
@@ -862,7 +872,7 @@ class AiServiceInvocationEventsTest {
         });
 
         assertThat(finished.await(5, SECONDS)).isTrue();
-        assertThat(events(RetrievalAugmentedEvent.class)).hasSize(1);
+        assertRetrievedSource();
     }
 
     @Test
@@ -1289,6 +1299,190 @@ class AiServiceInvocationEventsTest {
         assertFailedToolExecutionReported();
     }
 
+    @Test
+    void should_start_a_token_stream_twice_when_its_context_has_no_user_message() throws Exception {
+        AiServiceContext context = AiServiceContext.create(StreamingAssistant.class);
+        context.streamingChatModel = StreamingChatModelMock.thatAlwaysStreams("a");
+        listeners().forEach(context.eventListenerRegistrar::register);
+        // built like an integration that does not pass the original user message in the invocation context
+        TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                .messages(List.of(UserMessage.from("Hello")))
+                .context(context)
+                .invocationContext(
+                        InvocationContext.builder().chatMemoryId("default").build())
+                .toolArgumentsErrorHandler((error, errorContext) -> {
+                    throw new RuntimeException(error);
+                })
+                .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .build());
+        CountDownLatch completed = new CountDownLatch(2);
+        tokenStream
+                .onPartialResponse(partialResponse -> {})
+                .onCompleteResponse(response -> completed.countDown())
+                .onError(error -> {});
+
+        tokenStream.start();
+        tokenStream.start();
+
+        assertThat(completed.await(5, SECONDS)).isTrue();
+        assertThat(events(AiServiceErrorEvent.class)).isEmpty();
+        assertThat(events(AiServiceCompletedEvent.class)).hasSize(2);
+        assertThat(events(AiServiceStartedEvent.class))
+                .singleElement()
+                .satisfies(event -> assertThat(event.userMessage()).isEqualTo(UserMessage.from("Hello")));
+    }
+
+    @Test
+    void should_report_output_guardrail_events_of_a_restarted_token_stream_with_its_own_invocation_id()
+            throws Exception {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("good"))
+                .outputGuardrails(repromptingOnce())
+                .registerListeners(listeners())
+                .registerListener(listener(OutputGuardrailExecutedEvent.class))
+                .build();
+        TokenStream tokenStream = assistant.chat("Hello");
+        CountDownLatch firstRun = new CountDownLatch(1);
+        CountDownLatch bothRuns = new CountDownLatch(2);
+        tokenStream
+                .onPartialResponse(partialResponse -> {})
+                .onCompleteResponse(response -> {
+                    firstRun.countDown();
+                    bothRuns.countDown();
+                })
+                .onError(error -> {});
+
+        tokenStream.start();
+        assertThat(firstRun.await(5, SECONDS)).isTrue();
+        tokenStream.start();
+
+        assertThat(bothRuns.await(5, SECONDS)).isTrue();
+        assertThat(events(OutputGuardrailExecutedEvent.class))
+                .extracting(event -> event.invocationContext().invocationId())
+                .containsExactlyElementsOf(events(AiServiceStartedEvent.class).stream()
+                        .map(event -> event.invocationContext().invocationId())
+                        .toList());
+    }
+
+    @Test
+    void should_fire_error_event_when_the_reactive_stream_fails_on_its_own() throws Exception {
+        ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c", "d", "e", "f", "g", "h"))
+                .streamingBufferSize(2)
+                .registerListeners(listeners())
+                .registerListener((AiServiceInvocationSummaryListener) events::add)
+                .build();
+        CompletableFuture<Void> failed = new CompletableFuture<>();
+
+        assistant.chat("Hello").subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(1);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                failed.completeExceptionally(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                failed.complete(null);
+            }
+        });
+
+        assertThat(failed).failsWithin(5, SECONDS);
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        assertThat(events(AiServiceInvocationSummaryEvent.class))
+                .singleElement()
+                .satisfies(summary -> assertThat(summary.events()).last().isInstanceOf(AiServiceErrorEvent.class));
+    }
+
+    @Test
+    void should_fire_error_event_when_async_invocation_fails_with_a_cancellation_exception() throws Exception {
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(new ChatModelMock(new CancellationException("the model call was cancelled")))
+                .registerListeners(listeners())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hello");
+
+        assertThat(future).failsWithin(5, SECONDS);
+        assertThat(future.isCancelled()).isFalse();
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+    }
+
+    @Test
+    void should_report_every_tool_of_a_concurrent_round_of_a_token_stream_when_a_tool_throws_an_error() {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                        callingTools("succeed", "explode"), AiMessage.from("answer")))
+                .tools(Map.of(
+                        ToolSpecification.builder().name("succeed").build(),
+                        (ToolExecutor) (request, memoryId) -> "ok",
+                        ToolSpecification.builder().name("explode").build(),
+                        (ToolExecutor) (request, memoryId) -> {
+                            throw new AssertionError("boom");
+                        }))
+                .executeToolsConcurrently()
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(start(assistant.chat("Hello")))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AssertionError.class)
+                .withMessage("boom");
+
+        assertThat(events(ToolExecutedEvent.class))
+                .extracting(event -> event.request().name(), ToolExecutedEvent::isError)
+                .containsExactlyInAnyOrder(tuple("succeed", false), tuple("explode", true));
+    }
+
+    @Test
+    void should_report_a_failed_tool_execution_of_a_token_stream_with_the_default_error_handler() {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("fail"), AiMessage.from("answer")))
+                .tools(new Tools())
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(start(assistant.chat("Hello"))).succeedsWithin(5, SECONDS);
+
+        assertFailedToolExecutionReported();
+    }
+
+    @Test
+    void should_rethrow_virtual_machine_error_without_firing_an_error_event() {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(request -> {
+                    throw new StackOverflowError("too deep");
+                }))
+                .registerListeners(listeners())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hello"))
+                .isExactlyInstanceOf(StackOverflowError.class)
+                .hasMessage("too deep");
+
+        assertThat(events(AiServiceErrorEvent.class)).isEmpty();
+    }
+
+    private void assertRetrievedSource() {
+        assertThat(events(RetrievalAugmentedEvent.class)).singleElement().satisfies(event -> {
+            assertThat(event.chatMessage()).isEqualTo(UserMessage.from("Hello"));
+            assertThat(event.contents())
+                    .extracting(content -> content.textSegment().text())
+                    .containsExactly("source");
+        });
+    }
+
     private void assertToolExecutionsReported(boolean inRequestOrder) {
         var executions = assertThat(events(ToolExecutedEvent.class))
                 .extracting(event -> event.request().name(), ToolExecutedEvent::isError);
@@ -1464,7 +1658,7 @@ class AiServiceInvocationEventsTest {
 
     private void assertSingleTerminalEvent(Class<? extends AiServiceEvent> expected) throws InterruptedException {
         assertThat(finished.await(5, SECONDS)).isTrue();
-        assertThat(twoTerminalEvents.await(500, MILLISECONDS))
+        assertThat(twoTerminalEvents.await(150, MILLISECONDS))
                 .as("a second terminal event was fired: %s", terminalEvents())
                 .isFalse();
         assertThat(terminalEvents()).singleElement().isInstanceOf(expected);

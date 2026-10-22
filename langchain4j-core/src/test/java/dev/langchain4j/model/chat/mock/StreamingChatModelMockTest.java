@@ -187,6 +187,18 @@ public class StreamingChatModelMockTest {
     }
 
     @Test
+    void should_fail_fast_when_throwing_from_chat_is_used_with_the_publisher() {
+
+        StreamingChatModelMock model =
+                StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom").throwingFromChat();
+
+        // the publisher reports the error to its subscriber, which collect(...) rethrows
+        assertThatThrownBy(() -> collect(model))
+                .hasCauseInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("throwingFromChat()");
+    }
+
+    @Test
     void should_publish_the_given_tokens_again_for_every_request() {
 
         StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
