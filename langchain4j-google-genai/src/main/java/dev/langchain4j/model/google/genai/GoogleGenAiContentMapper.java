@@ -217,7 +217,9 @@ class GoogleGenAiContentMapper {
             List<?> serverSideToolParts = aiMsg.attribute(SERVER_SIDE_TOOL_PARTS_KEY, List.class);
             if (serverSideToolParts != null) {
                 for (Object serverSideToolPart : serverSideToolParts) {
-                    parts.add(Part.fromJson((String) serverSideToolPart));
+                    if (serverSideToolPart instanceof String jsonPart) {
+                        parts.add(Part.fromJson(jsonPart));
+                    }
                 }
             }
             if (aiMsg.text() != null) {

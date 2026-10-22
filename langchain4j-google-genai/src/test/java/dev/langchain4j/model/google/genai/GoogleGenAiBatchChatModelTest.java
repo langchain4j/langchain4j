@@ -208,6 +208,48 @@ class GoogleGenAiBatchChatModelTest {
     }
 
     @Test
+    void should_not_include_server_side_tool_invocations_on_vertex_ai() throws Exception {
+        Client client = mock(Client.class);
+        when(client.vertexAI()).thenReturn(true);
+        Batches batchesService = mock(Batches.class);
+        Field batchesField = Client.class.getDeclaredField("batches");
+        batchesField.setAccessible(true);
+        batchesField.set(client, batchesService);
+
+        BatchJob batchJob = mock(BatchJob.class);
+        when(batchJob.name()).thenReturn(Optional.of("batches/1"));
+        JobState jobState = mock(JobState.class);
+        when(jobState.knownEnum()).thenReturn(Known.JOB_STATE_RUNNING);
+        when(batchJob.state()).thenReturn(Optional.of(jobState));
+        when(batchesService.create(any(String.class), any(BatchJobSource.class), any(CreateBatchJobConfig.class)))
+                .thenReturn(batchJob);
+
+        GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .googleSearch(true)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .modelName("gemini-3.8-flash")
+                .messages(UserMessage.from("When was the Eiffel Tower completed?"))
+                .toolSpecifications(
+                        ToolSpecification.builder().name("record_fact").build())
+                .build();
+
+        batchModel.submit(new BatchRequest<>(List.of(request)));
+
+        ArgumentCaptor<BatchJobSource> sourceCaptor = ArgumentCaptor.forClass(BatchJobSource.class);
+        verify(batchesService).create(any(String.class), sourceCaptor.capture(), any(CreateBatchJobConfig.class));
+
+        InlinedRequest inlined =
+                sourceCaptor.getValue().inlinedRequests().orElseThrow().get(0);
+
+        assertThat(inlined.config().orElseThrow().toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .isEmpty();
+    }
+
+    @Test
     void should_map_thought_summary_from_a_completed_batch_when_return_thinking_is_enabled() throws Exception {
         Client client = mock(Client.class);
         Batches batchesService = mock(Batches.class);
