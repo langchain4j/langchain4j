@@ -137,7 +137,7 @@ class DecisionRouterPlannerTest {
 
     private static DecisionModelMock modelAnsweringRelevance(Map<String, Double> probabilities) {
         Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
-        probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.of(probability)));
+        probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.from(probability)));
         return DecisionModelMock.thatAlwaysAnswers(answers);
     }
 

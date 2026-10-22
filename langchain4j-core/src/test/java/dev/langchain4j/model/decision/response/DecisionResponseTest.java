@@ -24,9 +24,9 @@ class DecisionResponseTest {
     }
 
     @Test
-    void yes_no_answer_should_be_created_with_of_and_compared_with_threshold() {
+    void yes_no_answer_should_be_created_with_from_and_compared_with_threshold() {
 
-        YesNoAnswer answer = YesNoAnswer.of(0.7);
+        YesNoAnswer answer = YesNoAnswer.from(0.7);
 
         assertThat(answer).isEqualTo(YesNoAnswer.builder().probability(0.7).build());
         assertThat(answer.isYes(0.7)).isTrue();
@@ -34,6 +34,13 @@ class DecisionResponseTest {
         assertThatThrownBy(() -> answer.isYes(1.5))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("threshold");
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void deprecated_of_factory_should_create_the_same_yes_no_answer_as_from() {
+
+        assertThat(YesNoAnswer.of(0.7)).isEqualTo(YesNoAnswer.from(0.7));
     }
 
     @ParameterizedTest
@@ -305,7 +312,7 @@ class DecisionResponseTest {
 
         DecisionResponse response = DecisionResponse.builder()
                 .answer("spam", RefusalAnswer.of())
-                .answer("urgent", YesNoAnswer.of(0.2))
+                .answer("urgent", YesNoAnswer.from(0.2))
                 .build();
 
         assertThat(response.isRefused("spam")).isTrue();

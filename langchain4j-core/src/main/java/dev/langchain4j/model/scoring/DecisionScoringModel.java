@@ -164,7 +164,7 @@ public class DecisionScoringModel implements ScoringModel {
         for (int i = 1; i <= batch.size(); i++) {
             request.question(
                     questionName(i),
-                    YesNoQuestion.of(questionTemplate.apply(Map.of("document", batch.get(i - 1))).text()));
+                    YesNoQuestion.from(questionTemplate.apply(Map.of("document", batch.get(i - 1))).text()));
         }
         return request.build();
     }

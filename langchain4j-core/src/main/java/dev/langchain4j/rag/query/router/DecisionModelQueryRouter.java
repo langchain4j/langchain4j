@@ -133,7 +133,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
             String description = ensureNotBlank(entry.getValue(), "ContentRetriever description");
             questions.put(
                     name,
-                    YesNoQuestion.of(questionTemplate
+                    YesNoQuestion.from(questionTemplate
                             .apply(Map.of("description", description))
                             .text()));
         }
