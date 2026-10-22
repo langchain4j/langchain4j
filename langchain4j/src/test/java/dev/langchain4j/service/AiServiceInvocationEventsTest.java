@@ -941,7 +941,7 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
-    void should_run_token_stream_as_the_same_invocation_when_started_again_after_a_configuration_error()
+    void should_end_token_stream_invocation_with_error_event_on_configuration_error_and_start_a_new_one_when_started_again()
             throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
@@ -950,15 +950,33 @@ class AiServiceInvocationEventsTest {
         TokenStream tokenStream = assistant.chat("Hello").onPartialResponse(token -> {});
 
         assertThatThrownBy(tokenStream::start).isInstanceOf(IllegalConfigurationException.class);
-        assertThat(terminalEvents()).isEmpty();
 
-        tokenStream.onError(error -> {}).start();
-
-        assertSingleTerminalEvent(AiServiceCompletedEvent.class);
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        AiServiceErrorEvent error = events(AiServiceErrorEvent.class).get(0);
+        assertThat(error.error()).isInstanceOf(IllegalConfigurationException.class);
         assertThat(events(AiServiceStartedEvent.class))
                 .singleElement()
                 .satisfies(started -> assertThat(started.invocationContext().invocationId())
-                        .isEqualTo(terminalEvents().get(0).invocationContext().invocationId()));
+                        .isEqualTo(error.invocationContext().invocationId()));
+
+        CountDownLatch completed = new CountDownLatch(1);
+        tokenStream
+                .onCompleteResponse(response -> completed.countDown())
+                .onError(e -> {})
+                .start();
+        assertThat(completed.await(5, SECONDS)).isTrue();
+
+        assertThat(events(AiServiceCompletedEvent.class))
+                .singleElement()
+                .satisfies(completedEvent -> assertThat(completedEvent.invocationContext().invocationId())
+                        .isNotEqualTo(error.invocationContext().invocationId()));
+        assertThat(events(AiServiceStartedEvent.class))
+                .hasSize(2)
+                .extracting(started -> started.invocationContext().invocationId())
+                .containsExactly(
+                        error.invocationContext().invocationId(),
+                        events(AiServiceCompletedEvent.class).get(0).invocationContext().invocationId());
+        assertThat(events(AiServiceErrorEvent.class)).hasSize(1);
     }
 
     @Test

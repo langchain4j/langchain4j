@@ -209,10 +209,9 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
-        validateConfiguration();
-
         InvocationContext runContext = startedBefore.getAndSet(true) ? startedAgain() : invocationContext;
         try {
+            validateConfiguration();
             start(runContext);
         } catch (VirtualMachineError e) {
             throw e;

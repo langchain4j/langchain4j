@@ -254,29 +254,34 @@ class AiServicesInvocationSummaryEventTest {
     }
 
     @Test
-    void tokenStreamWithAConfigurationErrorIsSummarizedOnceItIsStartedCorrectly() {
+    void tokenStreamWithAConfigurationErrorFiresAnInvocationSummaryEventEndingWithTheError() {
         var assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
-        // Neither onError nor ignoreErrors was configured, so start() fails and can be called again once fixed
+        // Neither onError nor ignoreErrors was configured, so start() fails
         var tokenStream = assistant.chat("Hi").onPartialResponse(partialResponse -> {});
 
         assertThatThrownBy(tokenStream::start).isInstanceOf(IllegalConfigurationException.class);
-        assertThat(summaries).isEmpty();
-
-        var completed = new CountDownLatch(1);
-        tokenStream.onCompleteResponse(response -> completed.countDown()).ignoreErrors().start();
-        awaitLatch(completed);
-
         assertThat(summaries)
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .startsWith(AiServiceStartedEvent.class)
-                        .endsWith(AiServiceCompletedEvent.class)
-                        .containsOnlyOnce(AiServiceStartedEvent.class));
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+
+        // Starting it again once fixed is a new invocation with its own summary
+        var completed = new CountDownLatch(1);
+        tokenStream.onCompleteResponse(response -> completed.countDown()).ignoreErrors().start();
+        awaitLatch(completed);
+
+        assertThat(summaries).hasSize(2);
+        assertThat(summaries.get(1).events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .startsWith(AiServiceStartedEvent.class)
+                .endsWith(AiServiceCompletedEvent.class);
+        assertThat(summaries.get(1).invocationContext().invocationId())
+                .isNotEqualTo(summaries.get(0).invocationContext().invocationId());
     }
 
     @Test

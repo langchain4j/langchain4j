@@ -38,8 +38,9 @@ import java.util.List;
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
  *         but only ends once the stream has been started with {@code TokenStream.start()}. Events collected for a
  *         {@code TokenStream} that is never started are never released, so always start the streams you create.
- *         If {@code start()} fails because of a configuration error (for example a missing error handler), no event is
- *         fired and {@code start()} can be called again once fixed; until then the invocation stays open.
+ *         If {@code start()} fails because of a configuration error (for example a missing error handler), the
+ *         invocation ends with an {@link AiServiceErrorEvent}; calling {@code start()} again once fixed starts a new
+ *         invocation.
  *     </li>
  *     <li>
  *         Each subscription to the reactive stream returned by an AI Service method, and each call of
