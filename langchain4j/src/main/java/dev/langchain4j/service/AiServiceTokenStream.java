@@ -299,7 +299,7 @@ public class AiServiceTokenStream implements TokenStream {
     private void fireStartedEvent(InvocationContext runContext) {
         UserMessage userMessage = invocationContext.originalUserMessage() != null
                 ? invocationContext.originalUserMessage()
-                : lastUserMessage();
+                : UserMessage.findLast(messages).orElse(null);
         if (userMessage == null) {
             return;
         }
@@ -310,15 +310,6 @@ public class AiServiceTokenStream implements TokenStream {
                 .systemMessage(systemMessage)
                 .userMessage(userMessage)
                 .build());
-    }
-
-    private UserMessage lastUserMessage() {
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage userMessage) {
-                return userMessage;
-            }
-        }
-        return null;
     }
 
     private void validateConfiguration() {
