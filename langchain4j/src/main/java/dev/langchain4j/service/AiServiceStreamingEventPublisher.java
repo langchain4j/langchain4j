@@ -18,6 +18,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
@@ -358,6 +359,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
                 @Override
                 public void onNext(ChatModelStreamingEvent event) {
+                    handleNext(event);
+                }
+
+                private void handleNext(ChatModelStreamingEvent event) {
                     if (tube.cancelled()) {
                         return;
                     }
@@ -790,6 +795,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void fireInvocationComplete(ChatResponse finalChatResponse) {
+            if (!InvocationEnd.markEnded(invocationContext)) {
+                return;
+            }
             context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
                     .invocationContext(invocationContext)
                     .result(finalChatResponse)
@@ -797,6 +805,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void fireErrorReceived(Throwable error) {
+            if (!InvocationEnd.markEnded(invocationContext)) {
+                return;
+            }
             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                     .invocationContext(invocationContext)
                     .error(error)

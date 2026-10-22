@@ -23,12 +23,12 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscription;
@@ -36,31 +36,84 @@ import java.util.concurrent.Flow.Subscription;
 /**
  * An implementation of a {@link StreamingChatModel} useful for unit testing.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
+ * <p>
+ * The responses are streamed in the given order, one per request. Once all of them were streamed, the last one is
+ * streamed again for every further request (like Mockito's {@code thenReturn(a, b)}), unless it contains tool execution
+ * requests: then the mock fails, because repeating it would make an AI Service call the tools again and again.
  */
 @Experimental
 public class StreamingChatModelMock implements StreamingChatModel {
 
-    private final Queue<AiMessage> aiMessages;
+    private final ScriptedResponses aiMessages;
+    private final List<String> tokens;
     private final RuntimeException exception;
     private final List<ChatRequest> requests = synchronizedList(new ArrayList<>());
     private Set<Capability> supportedCapabilities = Set.of();
+    private List<TokenUsage> tokenUsages = List.of();
+    private FinishReason finishReason;
+    private boolean throwFromChat;
 
     public StreamingChatModelMock(List<String> tokens) {
-        this(List.of(toAiMessage(tokens)));
+        this(List.of(toAiMessage(tokens)), List.copyOf(tokens));
     }
 
     public StreamingChatModelMock(Collection<AiMessage> aiMessages) {
-        this.aiMessages = new ConcurrentLinkedQueue<>(ensureNotEmpty(aiMessages, "aiMessages"));
+        this(aiMessages, null);
+    }
+
+    private StreamingChatModelMock(Collection<AiMessage> aiMessages, List<String> tokens) {
+        this.aiMessages = new ScriptedResponses("StreamingChatModelMock", ensureNotEmpty(aiMessages, "aiMessages"));
+        this.tokens = tokens;
         this.exception = null;
     }
 
     public StreamingChatModelMock(RuntimeException exception) {
         this.aiMessages = null;
+        this.tokens = null;
         this.exception = ensureNotNull(exception, "exception");
     }
 
     public StreamingChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
         this.supportedCapabilities = Set.of(supportedCapabilities);
+        return this;
+    }
+
+    /**
+     * Reports the given token usage in every complete response.
+     */
+    public StreamingChatModelMock withTokenUsage(TokenUsage tokenUsage) {
+        return withTokenUsages(tokenUsage);
+    }
+
+    /**
+     * Reports the given token usages in successive complete responses, repeating the last one.
+     */
+    public StreamingChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
+        this.tokenUsages = List.of(tokenUsages);
+        return this;
+    }
+
+    private TokenUsage recordRequest(ChatRequest chatRequest) {
+        synchronized (requests) {
+            requests.add(chatRequest);
+            return tokenUsages.isEmpty() ? null : tokenUsages.get(Math.min(requests.size(), tokenUsages.size()) - 1);
+        }
+    }
+
+    /**
+     * Reports the given finish reason in every complete response.
+     */
+    public StreamingChatModelMock withFinishReason(FinishReason finishReason) {
+        this.finishReason = finishReason;
+        return this;
+    }
+
+    /**
+     * Throws the exception of this mock from {@code chat(ChatRequest, StreamingChatResponseHandler)} itself, as some
+     * providers do when a request cannot be sent, instead of passing it to the handler.
+     */
+    public StreamingChatModelMock throwingFromChat() {
+        this.throwFromChat = true;
         return this;
     }
 
@@ -76,7 +129,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return subscriber -> {
-            requests.add(chatRequest);
+            TokenUsage tokenUsage = recordRequest(chatRequest);
             subscriber.onSubscribe(new Subscription() {
 
                 private List<ChatModelStreamingEvent> events;
@@ -114,7 +167,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
                         return;
                     }
                     if (events == null) {
-                        events = toEvents(ensureNotNull(aiMessages.poll(), "aiMessage"));
+                        events = toEvents(nextAiMessage(), tokenUsage);
                     }
                     while (!done && demand > 0 && next < events.size()) {
                         demand--;
@@ -134,21 +187,31 @@ public class StreamingChatModelMock implements StreamingChatModel {
         };
     }
 
-    private static List<ChatModelStreamingEvent> toEvents(AiMessage aiMessage) {
+    private List<ChatModelStreamingEvent> toEvents(AiMessage aiMessage, TokenUsage tokenUsage) {
         List<ChatModelStreamingEvent> events = new ArrayList<>();
-        toTokens(aiMessage).forEach(token -> events.add(new PartialResponse(token)));
-        events.add(new CompleteResponse(ChatResponse.builder().aiMessage(aiMessage).build()));
+        tokens(aiMessage).forEach(token -> events.add(new PartialResponse(token)));
+        events.add(new CompleteResponse(chatResponse(aiMessage, tokenUsage)));
         return events;
+    }
+
+    private ChatResponse chatResponse(AiMessage aiMessage, TokenUsage tokenUsage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .tokenUsage(tokenUsage)
+                .finishReason(finishReason)
+                .build();
     }
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        requests.add(chatRequest);
+        TokenUsage tokenUsage = recordRequest(chatRequest);
 
-        if (exception != null) {
+        if (exception != null && throwFromChat) {
+            throw exception;
+        } else if (exception != null) {
             handler.onError(exception);
         } else {
-            AiMessage aiMessage = ensureNotNull(aiMessages.poll(), "aiMessage");
+            AiMessage aiMessage = nextAiMessage();
 
             var executor = Executors.newSingleThreadExecutor();
 
@@ -157,7 +220,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
                     StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
-                    for (String token : toTokens(aiMessage)) {
+                    for (String token : tokens(aiMessage)) {
                         if (streamingHandle.isCancelled()) {
                             return;
                         }
@@ -172,8 +235,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
                         onCompleteToolCall(handler, completeToolCall);
                     }
 
-                    ChatResponse chatResponse =
-                            ChatResponse.builder().aiMessage(aiMessage).build();
+                    ChatResponse chatResponse = chatResponse(aiMessage, tokenUsage);
 
                     onCompleteResponse(handler, chatResponse);
                 });
@@ -200,6 +262,10 @@ public class StreamingChatModelMock implements StreamingChatModel {
         return AiMessage.from(text);
     }
 
+    private List<String> tokens(AiMessage aiMessage) {
+        return tokens != null ? tokens : toTokens(aiMessage);
+    }
+
     static List<String> toTokens(AiMessage aiMessage) {
         if (isNullOrEmpty(aiMessage.text())) {
             return List.of();
@@ -222,6 +288,10 @@ public class StreamingChatModelMock implements StreamingChatModel {
         public boolean isCancelled() {
             return isCancelled;
         }
+    }
+
+    private AiMessage nextAiMessage() {
+        return aiMessages.next();
     }
 
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {

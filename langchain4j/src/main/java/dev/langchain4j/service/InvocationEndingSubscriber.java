@@ -8,7 +8,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Decorates a {@link Flow.Subscriber} so that an action runs exactly once when the stream ends, whether it completes,
- * fails or is canceled by the subscriber. The action runs before the end is signaled to the delegate.
+ * fails or is canceled by the subscriber. On completion or failure, the action runs before the end is signaled to the
+ * delegate. On cancellation, it runs after the upstream subscription has been canceled, so that the events fired by
+ * the cancellation are part of the invocation.
  */
 final class InvocationEndingSubscriber<T> implements Flow.Subscriber<T> {
 
@@ -32,8 +34,11 @@ final class InvocationEndingSubscriber<T> implements Flow.Subscriber<T> {
 
             @Override
             public void cancel() {
-                end();
-                subscription.cancel();
+                try {
+                    subscription.cancel();
+                } finally {
+                    end();
+                }
             }
         });
     }

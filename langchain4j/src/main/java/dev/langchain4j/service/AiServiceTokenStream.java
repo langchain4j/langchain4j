@@ -8,10 +8,12 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -22,7 +24,9 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -30,7 +34,9 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -50,6 +56,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final AtomicBoolean startedBefore = new AtomicBoolean();
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -202,32 +209,40 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
+        validateConfiguration();
+
+        InvocationContext runContext = startedBefore.getAndSet(true) ? startedAgain() : invocationContext;
         try {
-            doStart();
-        } catch (RuntimeException e) {
-            // The stream never got going, so no completed or error event will be fired for this invocation
-            context.eventListenerRegistrar.invocationEnded(invocationContext);
+            start(runContext);
+        } catch (VirtualMachineError e) {
             throw e;
+        } catch (Throwable t) {
+            if (InvocationEnd.markEnded(runContext)) {
+                context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                        .invocationContext(runContext)
+                        .error(t)
+                        .build());
+            }
+            context.eventListenerRegistrar.invocationEnded(runContext);
+            throw t;
         }
     }
 
-    private void doStart() {
-        validateConfiguration();
-
+    private void start(InvocationContext runContext) {
         List<ToolSpecification> effectiveTools =
                 toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
 
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
-                        .parameters(chatRequestParameters(invocationContext.methodArguments(), effectiveTools))
+                        .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
                         .build(),
-                invocationContext.chatMemoryId());
+                runContext.chatMemoryId());
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
-                .invocationContext(invocationContext)
+                .invocationContext(runContext)
                 .eventListenerRegistrar(context.eventListenerRegistrar)
                 .build();
 
@@ -235,7 +250,7 @@ public class AiServiceTokenStream implements TokenStream {
                 chatRequest,
                 chatExecutor,
                 context,
-                invocationContext,
+                runContext,
                 partialResponseHandler,
                 partialResponseWithContextHandler,
                 partialThinkingHandler,
@@ -264,11 +279,25 @@ public class AiServiceTokenStream implements TokenStream {
         }
 
         context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
-                .invocationContext(invocationContext)
+                .invocationContext(runContext)
                 .request(chatRequest)
                 .build());
 
         context.streamingChatModel.chat(chatRequest, handler);
+    }
+
+    private InvocationContext startedAgain() {
+        InvocationContext runContext = invocationContext.toBuilder()
+                .invocationId(UUID.randomUUID())
+                .timestampNow()
+                .build();
+        SystemMessage systemMessage = messages.get(0) instanceof SystemMessage message ? message : null;
+        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                .invocationContext(runContext)
+                .systemMessage(systemMessage)
+                .userMessage(invocationContext.originalUserMessage())
+                .build());
+        return runContext;
     }
 
     private void validateConfiguration() {

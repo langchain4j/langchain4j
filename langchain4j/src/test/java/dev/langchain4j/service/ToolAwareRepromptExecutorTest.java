@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.guardrail.ChatExchange;
+import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
