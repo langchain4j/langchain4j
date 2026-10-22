@@ -14,7 +14,6 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -25,7 +24,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -221,12 +219,7 @@ public class AiServiceTokenStream implements TokenStream {
         } catch (VirtualMachineError e) {
             throw e;
         } catch (Throwable t) {
-            if (InvocationEnd.markEnded(runContext)) {
-                context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                        .invocationContext(runContext)
-                        .error(t)
-                        .build());
-            }
+            TerminalEvents.fireError(context.eventListenerRegistrar, runContext, t);
             throw t;
         }
     }

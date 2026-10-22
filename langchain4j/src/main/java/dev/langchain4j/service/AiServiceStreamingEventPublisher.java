@@ -18,7 +18,6 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
@@ -33,8 +32,6 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -795,23 +792,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void fireInvocationComplete(ChatResponse finalChatResponse) {
-            if (!InvocationEnd.markEnded(invocationContext)) {
-                return;
-            }
-            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                    .invocationContext(invocationContext)
-                    .result(finalChatResponse)
-                    .build());
+            TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, finalChatResponse);
         }
 
         private void fireErrorReceived(Throwable error) {
-            if (!InvocationEnd.markEnded(invocationContext)) {
-                return;
-            }
-            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                    .invocationContext(invocationContext)
-                    .error(error)
-                    .build());
+            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
         }
     }
 }

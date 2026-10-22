@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -58,6 +59,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -1566,6 +1568,65 @@ class AiServiceInvocationEventsTest {
                 return CompletableFuture.completedFuture(validate(request));
             }
         };
+    }
+
+    @Test
+    void should_compensate_the_round_when_the_hallucinated_tool_name_strategy_returns_an_error() {
+        BookingTools tools = new BookingTools();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "unknown")))
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .hallucinatedToolNameStrategy(request -> ToolExecutionResultMessage.builder()
+                        .id(request.id())
+                        .toolName(request.name())
+                        .text("There is no such tool")
+                        .isError(true)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(assistant.chat("Hello")).isEqualTo("answer");
+
+        assertThat(tools.booked.get()).isEqualTo(1);
+        assertThat(tools.cancelled.get()).isEqualTo(1);
+    }
+
+    @Test
+    void should_still_fail_the_invocation_when_the_model_calls_an_unknown_tool_with_the_default_strategy()
+            throws Exception {
+        BookingTools tools = new BookingTools();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "unknown")))
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .registerListeners(listeners())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hello"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("The LLM is trying to execute the 'unknown' tool, but no such tool exists. Most likely, it "
+                        + "is a hallucination. You can override this default strategy by setting the "
+                        + "hallucinatedToolNameStrategy on the AiService");
+
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+    }
+
+    static class BookingTools {
+
+        final AtomicInteger booked = new AtomicInteger();
+        final AtomicInteger cancelled = new AtomicInteger();
+
+        @Tool
+        String book() {
+            booked.incrementAndGet();
+            return "booked";
+        }
+
+        @CompensateFor("book")
+        void cancelBooking() {
+            cancelled.incrementAndGet();
+        }
     }
 
     static class Tools {

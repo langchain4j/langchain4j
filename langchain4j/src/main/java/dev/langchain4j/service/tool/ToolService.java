@@ -2124,7 +2124,9 @@ public class ToolService {
     /**
      * Fires a {@link ToolExecutedEvent} for each tool of a round that has terminated, in the order the tools were
      * requested, before a tool error that fails the invocation is rethrown: the tools that returned a result, and the
-     * tools whose error is rethrown (with {@link ToolExecutedEvent#isError()} {@code true}).
+     * tools whose error is rethrown (with {@link ToolExecutedEvent#isError()} {@code true}). If a listener throws, the
+     * remaining events are not fired and the listener's exception is added as suppressed to the first tool error, which
+     * is the one the caller rethrows.
      */
     @Internal
     public static void fireToolExecutedEventsOfFailedRound(
@@ -2136,17 +2138,25 @@ public class ToolService {
         if (listenerRegistrar == null) {
             return;
         }
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            ToolExecutionResult result = results.get(toolRequest);
-            if (result != null) {
-                listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
-                        .invocationContext(invocationContext)
-                        .request(toolRequest)
-                        .resultContents(result.resultContents())
-                        .isError(result.isError())
-                        .build());
-            } else if (errors.containsKey(toolRequest)) {
-                fireFailedToolExecutedEvent(invocationContext, toolRequest, errors.get(toolRequest), listenerRegistrar);
+        try {
+            for (ToolExecutionRequest toolRequest : toolRequests) {
+                ToolExecutionResult result = results.get(toolRequest);
+                if (result != null) {
+                    listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                            .invocationContext(invocationContext)
+                            .request(toolRequest)
+                            .resultContents(result.resultContents())
+                            .isError(result.isError())
+                            .build());
+                } else if (errors.containsKey(toolRequest)) {
+                    fireFailedToolExecutedEvent(
+                            invocationContext, toolRequest, errors.get(toolRequest), listenerRegistrar);
+                }
+            }
+        } catch (RuntimeException listenerError) {
+            Throwable toolError = errors.values().iterator().next();
+            if (toolError != listenerError) {
+                toolError.addSuppressed(listenerError);
             }
         }
     }

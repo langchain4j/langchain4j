@@ -12,7 +12,6 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -27,9 +26,6 @@ import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -280,10 +276,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         @Override
         public void cancel() {
             delegate.cancel();
-            if (terminated.compareAndSet(false, true) && InvocationEnd.markEnded(invocationContext)) {
-                context.eventListenerRegistrar.fireEvent(AiServiceCancelledEvent.builder()
-                        .invocationContext(invocationContext)
-                        .build());
+            if (terminated.compareAndSet(false, true)) {
+                TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
             }
         }
 
@@ -294,13 +288,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private <T> void fireInvocationComplete(T result) {
-        if (!terminated.compareAndSet(false, true) || !InvocationEnd.markEnded(invocationContext)) {
-            return;
+        if (terminated.compareAndSet(false, true)) {
+            TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, result);
         }
-        context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                .invocationContext(invocationContext)
-                .result(result)
-                .build());
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
@@ -319,13 +309,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireErrorReceived(Throwable error) {
-        if (!terminated.compareAndSet(false, true) || !InvocationEnd.markEnded(invocationContext)) {
-            return;
+        if (terminated.compareAndSet(false, true)) {
+            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
         }
-        context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                .invocationContext(invocationContext)
-                .error(error)
-                .build());
     }
 
     @Override

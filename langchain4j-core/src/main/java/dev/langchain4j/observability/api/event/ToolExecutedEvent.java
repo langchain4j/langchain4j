@@ -43,7 +43,10 @@ public interface ToolExecutedEvent extends AiServiceEvent {
      * and the error was sent to the LLM. It is also {@code true} when the tool error failed the AI Service invocation
      * (for example with {@code ToolExecutionErrorHandler.failInvocation()}): then the result is the error text, which
      * was not sent to the LLM, and an {@link AiServiceErrorEvent} follows. AI Services created with
-     * {@code AiServices} always report it.
+     * {@code AiServices} always report it. Integrations that create their own events should report it too: code that
+     * reads events reflectively, for example a JSON serializer that serializes this event or an
+     * {@link AiServiceInvocationSummaryEvent} containing it, fails with {@link UnsupportedOperationException} when it
+     * is not reported.
      *
      * @return {@code true} if the tool execution failed, {@code false} if it succeeded
      * @throws UnsupportedOperationException if the integration that created this event does not report it

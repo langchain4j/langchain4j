@@ -42,7 +42,6 @@ import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.InvocationEnd;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
@@ -56,8 +55,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -242,12 +239,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } catch (VirtualMachineError e) {
                             throw e;
                         } catch (Throwable t) {
-                            if (InvocationEnd.markEnded(invocationContext)) {
-                                context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                        .invocationContext(invocationContext)
-                                        .error(t)
-                                        .build());
-                            }
+                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
                             if (t instanceof Exception) {
                                 Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, t);
                                 if (asyncFailure.isPresent()) {
@@ -932,13 +924,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
                                         Throwable cause = unwrapCompletionException(error);
-                                        if (!result.isCancelled() && InvocationEnd.markEnded(invocationContext)) {
-                                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                                    .invocationContext(invocationContext)
-                                                    .error(cause instanceof Exception exception
+                                        if (!result.isCancelled()) {
+                                            TerminalEvents.fireError(
+                                                    context.eventListenerRegistrar,
+                                                    invocationContext,
+                                                    cause instanceof Exception exception
                                                             ? exception
-                                                            : new RuntimeException(cause))
-                                                    .build());
+                                                            : new RuntimeException(cause));
                                         }
                                         completeExceptionallyAsFailure(result, error);
                                     } else {
@@ -1050,11 +1042,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                      */
                     private void failAsync(
                             CompletableFuture<Object> result, InvocationContext invocationContext, Throwable error) {
-                        if (!result.isDone() && InvocationEnd.markEnded(invocationContext)) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .error(unwrapCompletionException(error))
-                                    .build());
+                        if (!result.isDone()) {
+                            TerminalEvents.fireError(
+                                    context.eventListenerRegistrar,
+                                    invocationContext,
+                                    unwrapCompletionException(error));
                         }
                         completeExceptionallyAsFailure(result, error);
                     }
@@ -1075,20 +1067,13 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private void fireErrorIfNotEnded(
                             AtomicBoolean terminated, InvocationContext invocationContext, Throwable error) {
-                        if (terminated.compareAndSet(false, true) && InvocationEnd.markEnded(invocationContext)) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .error(error)
-                                    .build());
+                        if (terminated.compareAndSet(false, true)) {
+                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
                         }
                     }
 
                     private void fireCancelledEvent(InvocationContext invocationContext) {
-                        if (InvocationEnd.markEnded(invocationContext)) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceCancelledEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .build());
-                        }
+                        TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
                     }
 
                     private void fireRetrievalAugmentedEvent(
@@ -1435,12 +1420,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {
-                        if (InvocationEnd.markEnded(invocationContext)) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .result(result)
-                                    .build());
-                        }
+                        TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, result);
                         return result;
                     }
 
