@@ -11,6 +11,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * Marks a method as a supplier of the {@link ChatMemoryProvider} that an agent can utilize during its operation.
  * The annotated method must be static, takes the memoryId as argument, and return an instance of {@link ChatMemory}.
+ * Besides the memoryId, it can declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>
