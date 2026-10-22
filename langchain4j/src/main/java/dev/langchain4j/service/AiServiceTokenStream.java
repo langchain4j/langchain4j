@@ -91,8 +91,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
-        this.toolExecutor =
-                CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
+        this.toolExecutor = CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
         this.completeResponseProcessingExecutor = CapturedContextSupport.restoringIn(
                 parameters.completeResponseProcessingExecutor(), parameters.invocationContext());
         this.retrievedContents = copy(parameters.retrievedContents());

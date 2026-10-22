@@ -155,7 +155,7 @@ class AiServicesObservabilityTests {
         assertThat(invocationSummaryEvent).isNotNull();
         assertThat(invocationSummaryEvent.events())
                 .hasSize(expectedEventsPerInvocation)
-                // The invocation summary event is from the last invocation, so it contains the last event each listener got
+                // The summary is from the last invocation, so it contains the last event each listener got
                 .containsAll(expectedListeners.stream()
                         .<AiServiceEvent>map(MyListener::event)
                         .toList())
