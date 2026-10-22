@@ -18,6 +18,11 @@ import java.lang.reflect.Parameter;
  * {@link ErrorHandler}, {@link SupervisorRequest} and {@link A2AClientCustomizer}; to the static
  * {@link dev.langchain4j.agentic.Agent} methods of non-AI agents and to the {@link HumanInTheLoop} methods.
  * <p>
+ * The methods invoked without any value from the framework, like the {@link ToolsSupplier}, {@link PlannerSupplier}
+ * or {@link ParallelExecutor} ones, can only declare resolved parameters: when one of their parameters is not
+ * supported by any resolver, the creation of the agent fails with an
+ * {@link dev.langchain4j.agentic.planner.AgenticSystemConfigurationException}.
+ * <p>
  * A parameter supported by a resolver is never read from the {@link dev.langchain4j.agentic.scope.AgenticScope}
  * and is not an argument of the agent: it is not reported to listeners and planners. For this reason a resolver
  * should only support the parameters explicitly marked for it, for example with a dedicated annotation or qualifier.

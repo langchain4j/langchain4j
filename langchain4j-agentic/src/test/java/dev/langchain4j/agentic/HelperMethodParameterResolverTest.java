@@ -28,11 +28,13 @@ import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
@@ -634,6 +636,57 @@ class HelperMethodParameterResolverTest {
                 .doesNotContain("ExchangeRates")
                 .doesNotContain("rates:");
         assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).contains("request", "exchange");
+    }
+
+    // ── Supplier methods with a parameter not supported by any resolver ──
+
+    public interface FormattingAssistant {
+
+        @Agent(outputKey = "answer")
+        String chat(@V("question") String question);
+
+        @ToolsSupplier
+        static Object tools(Formatter formatter) {
+            return formatter;
+        }
+    }
+
+    @Test
+    void supplier_parameter_not_supported_by_any_resolver_fails_agent_creation() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(FormattingAssistant.class, echoModel()))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("No SupplierParameterResolver is registered for parameter")
+                .hasMessageContaining(Formatter.class.getName())
+                .hasMessageContaining("@ToolsSupplier method");
+    }
+
+    public interface PlannedStoryWithoutQualifier {
+
+        @PlannerAgent(outputKey = "story", subAgents = TopicWriter.class)
+        String write(@V("topic") String topic);
+
+        @PlannerSupplier
+        static Planner planner(PlannerFactory factory) {
+            return factory.create();
+        }
+    }
+
+    @Test
+    void planner_supplier_parameter_not_supported_by_any_resolver_fails_agent_creation() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(PlannedStoryWithoutQualifier.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining(PlannerFactory.class.getName())
+                .hasMessageContaining("@PlannerSupplier method");
+    }
+
+    @Test
+    void supplier_parameter_fails_agent_creation_when_no_resolver_is_registered() {
+        DeclarativeUtil.getSupplierParameterResolvers().clear();
+
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(ListenedStory.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining(RecordingListener.class.getName())
+                .hasMessageContaining("@AgentListenerSupplier method");
     }
 
     // ── Without a supporting resolver ──

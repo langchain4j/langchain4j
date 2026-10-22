@@ -26,7 +26,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -280,7 +279,7 @@ public class DeclarativeUtil {
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ParallelExecutor.class)
                                 && Executor.class.isAssignableFrom(method.getReturnType()))
-                .map(method -> invokeParallelExecutor(agentServiceClass, method));
+                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Executor.class));
     }
 
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
@@ -342,31 +341,16 @@ public class DeclarativeUtil {
     }
 
     /**
-     * Invokes a static supplier method: its parameters are provided by the registered
-     * {@link SupplierParameterResolver}s, the ones not supported by any resolver are {@code null}.
+     * Invokes a static supplier method: all its parameters must be provided by the registered
+     * {@link SupplierParameterResolver}s.
+     *
+     * @throws AgenticSystemConfigurationException if a parameter is not supported by any resolver
      */
     public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
         if (method.getParameterCount() == 0) {
             return invokeStatic(method);
         }
-        return ResolvedParameters.of(agentType, method).invoke();
-    }
-
-    private static Executor invokeParallelExecutor(Class<?> agentType, Method method) {
-        if (method.getParameterCount() == 0) {
-            return invokeStatic(method);
-        }
-        ResolvedParameters parameters = ResolvedParameters.of(agentType, method);
-        if (parameters.frameworkParameterCount() > 0) {
-            throw missingSupplierParameterResolver(method, parameters.frameworkParameter(0));
-        }
-        return parameters.invoke();
-    }
-
-    private static AgenticSystemConfigurationException missingSupplierParameterResolver(
-            Method method, Parameter parameter) {
-        return new AgenticSystemConfigurationException("No SupplierParameterResolver is registered for parameter "
-                + parameter + " of @ParallelExecutor method " + method + ".");
+        return ResolvedParameters.of(agentType, method).checkAllResolved().invoke();
     }
 
     public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -118,6 +119,16 @@ class SupervisorAgentServiceImplTest {
         SupervisorPlanner planner = (SupervisorPlanner) plannerSupplier(proxy).get();
 
         assertThat(chatModel(planner)).isSameAs(resolved);
+    }
+
+    @Test
+    void parameterized_chat_model_supplier_without_resolver_fails_on_supervisor() throws Exception {
+        Method supervisorMethod = AgentWithParameterizedSupplier.class.getMethod("invoke", String.class);
+
+        assertThatExceptionOfType(AgenticSystemConfigurationException.class)
+                .isThrownBy(
+                        () -> new SupervisorAgentServiceImpl<>(AgentWithParameterizedSupplier.class, supervisorMethod))
+                .withMessageContaining("@ChatModelSupplier method");
     }
 
     @SuppressWarnings("unchecked")

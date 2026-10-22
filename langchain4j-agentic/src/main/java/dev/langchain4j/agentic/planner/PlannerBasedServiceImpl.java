@@ -53,7 +53,8 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
 
         getAnnotatedMethodOnClass(agentServiceClass, PlannerSupplier.class).ifPresent(method -> {
             checkReturnType(method, Planner.class);
-            ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+            ResolvedParameters parameters =
+                    ResolvedParameters.of(agentServiceClass, method).checkAllResolved();
             planner(() -> parameters.invoke());
         });
     }

@@ -7,7 +7,9 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -121,6 +123,33 @@ public final class ResolvedParameters {
             }
         }
         return this;
+    }
+
+    /**
+     * Checks that all the parameters are provided by a resolver, as required for the methods, like the suppliers of
+     * tools or of the planner, that are invoked without any value from the framework.
+     *
+     * @throws AgenticSystemConfigurationException if a parameter is not supported by any resolver
+     */
+    public ResolvedParameters checkAllResolved() {
+        if (frameworkIndexes.length > 0) {
+            throw new AgenticSystemConfigurationException("No SupplierParameterResolver is registered for parameter "
+                    + frameworkParameter(0) + " of " + annotationName() + "method " + method + ".");
+        }
+        return this;
+    }
+
+    /**
+     * @return the name of the declarative annotation of the method, like "@ToolsSupplier ", or an empty string
+     */
+    private String annotationName() {
+        for (Annotation annotation : method.getAnnotations()) {
+            Class<? extends Annotation> type = annotation.annotationType();
+            if (type.getPackageName().equals(SupplierParameterResolver.class.getPackageName())) {
+                return "@" + type.getSimpleName() + " ";
+            }
+        }
+        return "";
     }
 
     /**
