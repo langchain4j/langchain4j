@@ -32,6 +32,37 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     private static final int EXTRA_TOKENS_PER_REQUEST = 3;
 
     @Test
+    void should_reject_null_and_empty_messages_on_set() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .build();
+        chatMemory.add(userMessage("keep me"));
+
+        assertThatThrownBy(() -> chatMemory.set((Iterable<ChatMessage>) null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> chatMemory.set(java.util.Collections.<ChatMessage>emptyList()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> chatMemory.set(java.util.Collections.<ChatMessage>emptySet()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
+    }
+
+    @Test
+    void should_complete_exceptionally_for_empty_messages_on_setAsync() {
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(100, TOKEN_COUNT_ESTIMATOR)
+                .build();
+
+        java.util.concurrent.CompletableFuture<Void> future =
+                chatMemory.setAsync(java.util.Collections.<ChatMessage>emptyList());
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::join)
+                .isInstanceOf(java.util.concurrent.CompletionException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void id() {
         {
             ChatMemory chatMemory = TokenWindowChatMemory.builder()
