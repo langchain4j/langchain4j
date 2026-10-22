@@ -75,6 +75,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-4-argon`
 * `gemini-3.8-flash`
 * `gemini-3.5-flash`
 * `gemini-3.5-flash-lite`
