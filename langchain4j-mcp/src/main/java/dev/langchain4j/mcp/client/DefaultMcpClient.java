@@ -80,6 +80,8 @@ public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
     private static final int DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES = 3;
+    private static final int DEFAULT_PAGINATION_MAX_PAGES = 1000;
+    private static final int DEFAULT_PAGINATION_MAX_ITEMS = 100_000;
 
     /**
      * The first MCP protocol version that conveys version, identity and capabilities as
@@ -139,6 +141,8 @@ public class DefaultMcpClient implements McpClient {
 
     private volatile @Nullable McpInitializeResult initializeResult;
     private final int multiRoundTripMaxRetries;
+    private final int paginationMaxPages;
+    private final int paginationMaxItems;
     private final boolean subscribeToToolListChanges;
     private final boolean subscribeToPromptListChanges;
     private final boolean subscribeToResourceListChanges;
@@ -192,6 +196,8 @@ public class DefaultMcpClient implements McpClient {
                     : getOrDefault(builder.toolResultConverter, DefaultMcpToolResultConverter::new);
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
+            paginationMaxPages = getOrDefault(builder.paginationMaxPages, DEFAULT_PAGINATION_MAX_PAGES);
+            paginationMaxItems = getOrDefault(builder.paginationMaxItems, DEFAULT_PAGINATION_MAX_ITEMS);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
             subscribeToPromptListChanges = getOrDefault(builder.subscribeToPromptListChanges, Boolean.TRUE);
             subscribeToResourceListChanges = getOrDefault(builder.subscribeToResourceListChanges, Boolean.TRUE);
@@ -1543,7 +1549,13 @@ public class DefaultMcpClient implements McpClient {
         long timeoutMillis = timeout.toMillis() == 0 ? Integer.MAX_VALUE : timeout.toMillis();
         List<T> allItems = new ArrayList<>();
         String cursor = null;
+        int pageCount = 0;
         do {
+            if (pageCount >= paginationMaxPages) {
+                throw new RuntimeException(
+                        "Pagination page limit (" + paginationMaxPages
+                                + ") exceeded; the server may be malicious or buggy");
+            }
             McpClientRequest operation = requestFactory.apply(idGenerator.getAndIncrement(), cursor);
             McpCallContext context = new McpCallContext(invocationContext, operation);
             applyMeta(operation, context);
@@ -1581,8 +1593,20 @@ public class DefaultMcpClient implements McpClient {
             // The items and the cursor come from the same parse; reading the cursor separately
             // meant parsing the whole list response a second time.
             McpPage<T> page = pageParser.apply(result);
-            allItems.addAll(page.items());
-            cursor = page.nextCursor();
+            List<T> pageItems = page.items();
+            if ((long) allItems.size() + pageItems.size() > paginationMaxItems) {
+                throw new RuntimeException(
+                        "Pagination item limit (" + paginationMaxItems
+                                + ") exceeded; the server may be malicious or buggy");
+            }
+            allItems.addAll(pageItems);
+            String nextCursor = page.nextCursor();
+            if (nextCursor != null && nextCursor.equals(cursor)) {
+                throw new RuntimeException(
+                        "Server returned a non-advancing pagination cursor; the server may be malicious or buggy");
+            }
+            cursor = nextCursor;
+            pageCount++;
         } while (cursor != null);
         return allItems;
     }
@@ -1795,6 +1819,8 @@ public class DefaultMcpClient implements McpClient {
         private McpToolResultExtractor toolResultExtractor;
 
         private Integer multiRoundTripMaxRetries;
+        private Integer paginationMaxPages;
+        private Integer paginationMaxItems;
         private Boolean subscribeToToolListChanges;
         private Boolean subscribeToPromptListChanges;
         private Boolean subscribeToResourceListChanges;
@@ -2144,6 +2170,26 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder multiRoundTripMaxRetries(int multiRoundTripMaxRetries) {
             this.multiRoundTripMaxRetries = multiRoundTripMaxRetries;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of pages that will be fetched when listing tools, resources,
+         * resource templates or prompts. This protects against a malicious or buggy server that
+         * keeps returning a non-null {@code nextCursor} indefinitely. The default is 1000.
+         */
+        public Builder paginationMaxPages(int paginationMaxPages) {
+            this.paginationMaxPages = paginationMaxPages;
+            return this;
+        }
+
+        /**
+         * Sets the maximum total number of items that will be accumulated when listing tools,
+         * resources, resource templates or prompts. This protects against unbounded heap growth
+         * driven by a malicious or buggy server. The default is 100000.
+         */
+        public Builder paginationMaxItems(int paginationMaxItems) {
+            this.paginationMaxItems = paginationMaxItems;
             return this;
         }
 
