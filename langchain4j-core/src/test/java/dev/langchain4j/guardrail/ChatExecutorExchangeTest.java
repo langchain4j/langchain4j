@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.model.chat.ChatExchange;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -9,13 +10,20 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 import org.junit.jupiter.api.Test;
 
-class ChatExchangeTest {
+class ChatExecutorExchangeTest {
 
     static final ChatResponse RESPONSE =
             ChatResponse.builder().aiMessage(AiMessage.from("Hello")).build();
@@ -117,13 +125,86 @@ class ChatExchangeTest {
         assertThat(modelCall).isCancelled();
     }
 
+    @Test
+    void built_in_methods_taking_messages_should_fire_one_response_received_event_per_request() {
+
+        List<BiFunction<ChatExecutor, List<ChatMessage>, ChatResponse>> methods = List.of(
+                (executor, messages) -> executor.exchange(messages).response(),
+                (executor, messages) -> executor.exchangeAsync(messages).join().response(),
+                ChatExecutor::execute,
+                (executor, messages) -> executor.executeAsync(messages).join());
+
+        for (BiFunction<ChatExecutor, List<ChatMessage>, ChatResponse> method : methods) {
+            List<AiServiceResponseReceivedEvent> events = new CopyOnWriteArrayList<>();
+            AiServiceListenerRegistrar registrar = AiServiceListenerRegistrar.newInstance();
+            registrar.register((AiServiceResponseReceivedListener) events::add);
+            ChatRequest original =
+                    ChatRequest.builder().messages(UserMessage.from("Hi")).build();
+            ChatExecutor executor = builtInExecutor(ChatModelMock.thatAlwaysResponds("Hello"), original, registrar);
+            List<ChatMessage> messages = List.of(UserMessage.from("Hi"), UserMessage.from("Again"));
+
+            ChatResponse response = method.apply(executor, messages);
+
+            assertThat(events).hasSize(1);
+            assertThat(events.get(0).request())
+                    .isEqualTo(original.toBuilder().messages(messages).build());
+            assertThat(events.get(0).response()).isEqualTo(response);
+        }
+    }
+
+    @Test
+    void built_in_methods_without_messages_should_leave_the_response_received_event_to_the_caller() {
+
+        List<AiServiceRequestIssuedEvent> requests = new CopyOnWriteArrayList<>();
+        List<AiServiceResponseReceivedEvent> responses = new CopyOnWriteArrayList<>();
+        AiServiceListenerRegistrar registrar = AiServiceListenerRegistrar.newInstance();
+        registrar.register((AiServiceRequestIssuedListener) requests::add);
+        registrar.register((AiServiceResponseReceivedListener) responses::add);
+        ChatExecutor executor = builtInExecutor(
+                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
+                registrar);
+
+        executor.execute();
+        executor.executeAsync().join();
+
+        assertThat(requests).hasSize(2);
+        assertThat(responses).isEmpty();
+    }
+
+    @Test
+    void executeAsync_should_return_failed_future_instead_of_throwing() {
+
+        AiServiceListenerRegistrar throwingRegistrar = AiServiceListenerRegistrar.newInstance(true);
+        throwingRegistrar.register((AiServiceRequestIssuedListener) event -> {
+            throw new IllegalStateException("listener failed");
+        });
+        ChatExecutor executor = builtInExecutor(
+                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
+                throwingRegistrar);
+        ChatExecutor builtIn = builtInExecutor(
+                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(executor.executeAsync()).failsWithin(Duration.ofSeconds(1));
+        assertThat(executor.executeAsync(List.of(UserMessage.from("Hi")))).failsWithin(Duration.ofSeconds(1));
+        assertThat(builtIn.executeAsync(List.of())).failsWithin(Duration.ofSeconds(1));
+    }
+
     private static ChatExecutor builtInExecutor(ChatModelMock chatModel, ChatRequest chatRequest) {
+        return builtInExecutor(chatModel, chatRequest, null);
+    }
+
+    private static ChatExecutor builtInExecutor(
+            ChatModelMock chatModel, ChatRequest chatRequest, AiServiceListenerRegistrar registrar) {
         return ChatExecutor.builder(chatModel)
                 .chatRequest(chatRequest)
                 .invocationContext(InvocationContext.builder()
                         .interfaceName("SomeInterface")
                         .methodName("someMethod")
                         .build())
+                .eventListenerRegistrar(registrar)
                 .build();
     }
 }

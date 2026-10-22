@@ -7,12 +7,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -33,6 +35,7 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -90,7 +93,10 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceCancelledEvent.class));
     }
 
     @Test
@@ -138,7 +144,7 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class));
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceCancelledEvent.class));
     }
 
     @Test
@@ -160,7 +166,7 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class));
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceCancelledEvent.class));
     }
 
     @Test
@@ -189,7 +195,7 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class));
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceCancelledEvent.class));
     }
 
     @Test
@@ -241,13 +247,16 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
+                        .containsExactly(
+                                AiServiceStartedEvent.class,
+                                AiServiceRequestIssuedEvent.class,
+                                AiServiceCancelledEvent.class));
     }
 
     @Test
-    void tokenStreamThatFailsToStartFiresInvocationSummaryEvent() {
+    void tokenStreamWithAConfigurationErrorFiresAnInvocationSummaryEventEndingWithTheError() {
         var assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
@@ -259,7 +268,20 @@ class AiServicesInvocationSummaryEventTest {
                 .singleElement()
                 .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(AiServiceStartedEvent.class));
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+
+        // Starting it again once fixed is a new invocation with its own summary
+        var completed = new CountDownLatch(1);
+        tokenStream.onCompleteResponse(response -> completed.countDown()).ignoreErrors().start();
+        awaitLatch(completed);
+
+        assertThat(summaries).hasSize(2);
+        assertThat(summaries.get(1).events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .startsWith(AiServiceStartedEvent.class)
+                .endsWith(AiServiceCompletedEvent.class);
+        assertThat(summaries.get(1).invocationContext().invocationId())
+                .isNotEqualTo(summaries.get(0).invocationContext().invocationId());
     }
 
     @Test
@@ -334,6 +356,83 @@ class AiServicesInvocationSummaryEventTest {
                         .build();
             }
         };
+    }
+
+    @Test
+    void eachCanceledReactiveSubscriptionFiresItsOwnInvocationSummaryEvent() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .retrievalAugmentor(neverCompletingAugmentor())
+                .registerListener(invocationSummaryListener)
+                .build();
+
+        var publisher = assistant.chat("Hi");
+        var first = new RecordingSubscriber();
+        var second = new RecordingSubscriber();
+        publisher.subscribe(first);
+        publisher.subscribe(second);
+
+        first.subscription.get().cancel();
+        second.subscription.get().cancel();
+
+        assertThat(summaries)
+                .hasSize(2)
+                .allSatisfy(summary -> assertThat(summary.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .containsExactly(AiServiceStartedEvent.class, AiServiceCancelledEvent.class))
+                .extracting(summary -> summary.invocationContext().invocationId())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
+    void concurrentReactiveSubscriptionsFireSeparateInvocationSummaryEvents() {
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
+                .registerListener(invocationSummaryListener)
+                .build();
+
+        var publisher = assistant.chat("Hi");
+        List<RecordingSubscriber> subscribers = IntStream.range(0, 8)
+                .mapToObj(i -> new RecordingSubscriber())
+                .toList();
+        subscribers.parallelStream().forEach(publisher::subscribe);
+        subscribers.forEach(subscriber -> awaitLatch(subscriber.done));
+
+        assertThat(summaries)
+                .hasSize(8)
+                .allSatisfy(summary -> assertThat(summary.events())
+                        .allSatisfy(event -> assertThat(event.invocationContext().invocationId())
+                                .isEqualTo(summary.invocationContext().invocationId()))
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .startsWith(AiServiceStartedEvent.class)
+                        .endsWith(AiServiceCompletedEvent.class)
+                        .containsOnlyOnce(AiServiceStartedEvent.class))
+                .extracting(summary -> summary.invocationContext().invocationId())
+                .doesNotHaveDuplicates();
+    }
+
+    @Test
+    void eachTokenStreamStartFiresItsOwnInvocationSummaryEvent() {
+        var assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
+                .registerListener(invocationSummaryListener)
+                .build();
+
+        var tokenStream = assistant.chat("Hi");
+        var completed = new CountDownLatch(2);
+        tokenStream.onCompleteResponse(response -> completed.countDown()).ignoreErrors();
+        tokenStream.start();
+        tokenStream.start();
+        awaitLatch(completed);
+
+        assertThat(summaries)
+                .hasSize(2)
+                .allSatisfy(summary -> assertThat(summary.events())
+                        .<Class<?>>map(AiServiceEvent::eventClass)
+                        .startsWith(AiServiceStartedEvent.class)
+                        .endsWith(AiServiceCompletedEvent.class))
+                .extracting(summary -> summary.invocationContext().invocationId())
+                .doesNotHaveDuplicates();
     }
 
     // A RAG augmentor that never completes, so the invocation can be canceled while it's in flight

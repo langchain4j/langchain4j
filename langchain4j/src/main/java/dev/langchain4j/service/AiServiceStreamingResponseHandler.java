@@ -26,8 +26,6 @@ import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -48,6 +46,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -66,6 +65,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ChatRequest chatRequest;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
+    private final AtomicBoolean terminated = new AtomicBoolean();
+    private volatile ObservedStreamingHandle observedStreamingHandle;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
@@ -99,7 +100,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private int toolCallingRoundTripsLeft;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
+    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result, Throwable error) {}
 
     AiServiceStreamingResponseHandler(
             ChatRequest chatRequest,
@@ -185,7 +186,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             partialResponseHandler.accept(partialResponse.text());
         } else if (partialResponseWithContextHandler != null) {
             partialResponseWithContextHandler.accept(
-                    partialResponse, new PartialResponseContext(endingOnCancel(context.streamingHandle())));
+                    partialResponse, new PartialResponseContext(observeCancellation(context.streamingHandle())));
         }
     }
 
@@ -205,7 +206,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             partialThinkingHandler.accept(partialThinking);
         } else if (partialThinkingWithContextHandler != null) {
             partialThinkingWithContextHandler.accept(
-                    partialThinking, new PartialThinkingContext(endingOnCancel(context.streamingHandle())));
+                    partialThinking, new PartialThinkingContext(observeCancellation(context.streamingHandle())));
         }
     }
 
@@ -225,7 +226,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             partialToolCallHandler.accept(partialToolCall);
         } else if (partialToolCallWithContextHandler != null) {
             partialToolCallWithContextHandler.accept(
-                    partialToolCall, new PartialToolCallContext(endingOnCancel(context.streamingHandle())));
+                    partialToolCall, new PartialToolCallContext(observeCancellation(context.streamingHandle())));
         }
     }
 
@@ -235,8 +236,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
             var future = CompletableFuture.supplyAsync(
                     () -> {
-                        ToolExecutionResult toolResult = execute(toolRequest);
-                        return new ToolRequestResult(toolRequest, toolResult);
+                        try {
+                            return new ToolRequestResult(toolRequest, execute(toolRequest), null);
+                        } catch (VirtualMachineError e) {
+                            throw e;
+                        } catch (Throwable e) {
+                            return new ToolRequestResult(toolRequest, null, e);
+                        }
                     },
                     toolExecutor);
             toolExecutionFutures.add(future);
@@ -250,17 +256,41 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
-    // Canceling the stream ends the invocation without a completed or error event
-    private StreamingHandle endingOnCancel(StreamingHandle streamingHandle) {
-        return new InvocationEndingStreamingHandle(
-                streamingHandle, () -> context.eventListenerRegistrar.invocationEnded(invocationContext));
+    private StreamingHandle observeCancellation(StreamingHandle streamingHandle) {
+        ObservedStreamingHandle observed = this.observedStreamingHandle;
+        if (observed == null || observed.delegate != streamingHandle) {
+            observed = new ObservedStreamingHandle(streamingHandle);
+            this.observedStreamingHandle = observed;
+        }
+        return observed;
+    }
+
+    private class ObservedStreamingHandle implements StreamingHandle {
+
+        private final StreamingHandle delegate;
+
+        ObservedStreamingHandle(StreamingHandle delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void cancel() {
+            delegate.cancel();
+            if (terminated.compareAndSet(false, true)) {
+                TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
+            }
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return delegate.isCancelled();
+        }
     }
 
     private <T> void fireInvocationComplete(T result) {
-        context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                .invocationContext(invocationContext)
-                .result(result)
-                .build());
+        if (terminated.compareAndSet(false, true)) {
+            TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, result);
+        }
     }
 
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
@@ -279,16 +309,19 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void fireErrorReceived(Throwable error) {
-        context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                .invocationContext(invocationContext)
-                .error(error)
-                .build());
+        if (terminated.compareAndSet(false, true)) {
+            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
+        }
     }
 
     @Override
     public void onCompleteResponse(ChatResponse chatResponse) {
         if (completeResponseProcessingExecutor == null) {
-            processCompleteResponse(chatResponse);
+            try {
+                processCompleteResponse(chatResponse);
+            } catch (Error e) {
+                onError(e); // a model implementation might not catch an Error, so the stream would never end
+            }
             return;
         }
         try {
@@ -325,13 +358,20 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
                 executedRequests = new ArrayList<>();
+                Map<ToolExecutionRequest, Throwable> toolErrors = new LinkedHashMap<>();
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
                         executedRequests.add(toolRequestResult.request());
-                        toolResults.put(toolRequestResult.request(), toolRequestResult.result());
+                        if (toolRequestResult.error() != null) {
+                            toolErrors.put(toolRequestResult.request(), toolRequestResult.error());
+                        } else {
+                            toolResults.put(toolRequestResult.request(), toolRequestResult.result());
+                        }
                     } catch (ExecutionException e) {
-                        if (e.getCause() instanceof RuntimeException re) {
+                        if (e.getCause() instanceof VirtualMachineError vmError) {
+                            throw vmError;
+                        } else if (e.getCause() instanceof RuntimeException re) {
                             throw re;
                         } else {
                             throw new RuntimeException(e.getCause());
@@ -341,9 +381,34 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         throw new RuntimeException(e);
                     }
                 }
+                if (!toolErrors.isEmpty()) {
+                    ToolService.fireToolExecutedEventsOfFailedRound(
+                            invocationContext,
+                            executedRequests,
+                            toolResults,
+                            toolErrors,
+                            context.eventListenerRegistrar);
+                    Throwable error = toolErrors.values().iterator().next();
+                    if (error instanceof RuntimeException re) {
+                        throw re;
+                    }
+                    throw new RuntimeException(error);
+                }
             } else {
-                for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
-                    toolResults.put(toolRequest, execute(toolRequest));
+                for (ToolExecutionRequest toolRequest : executedRequests) {
+                    try {
+                        toolResults.put(toolRequest, execute(toolRequest));
+                    } catch (VirtualMachineError e) {
+                        throw e;
+                    } catch (RuntimeException | Error e) {
+                        ToolService.fireToolExecutedEventsOfFailedRound(
+                                invocationContext,
+                                executedRequests,
+                                toolResults,
+                                Map.of(toolRequest, e),
+                                context.eventListenerRegistrar);
+                        throw e;
+                    }
                 }
             }
 
@@ -500,7 +565,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         return context.toolService.executeTool(
-                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
+                invocationContext,
+                toolExecutors,
+                toolRequest,
+                beforeToolExecutionHandler,
+                toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
@@ -519,9 +588,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onError(Throwable error) {
+        try {
+            fireErrorReceived(error);
+        } catch (Exception e) {
+            LOG.error("Failed to fire the error event", e);
+        }
         if (errorHandler != null) {
             try {
-                fireErrorReceived(error);
                 errorHandler.accept(error);
             } catch (Exception e) {
                 LOG.error("While handling the following error...", error);
