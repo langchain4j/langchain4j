@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
@@ -687,6 +688,45 @@ class HelperMethodParameterResolverTest {
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining(RecordingListener.class.getName())
                 .hasMessageContaining("@AgentListenerSupplier method");
+    }
+
+    // ── Helper methods with a wrong signature are rejected, not ignored ──
+
+    public interface RemoteAgentWithoutClientBuilder {
+
+        @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "result")
+        String invoke(@V("input") String input);
+
+        @A2AClientCustomizer
+        static void customize(@Injected Endpoints endpoints) {}
+    }
+
+    @Test
+    void a2a_client_customizer_without_client_builder_is_rejected() {
+        // rejected before the A2A client is created, so langchain4j-agentic-a2a is not needed
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(RemoteAgentWithoutClientBuilder.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("customize")
+                .hasMessageContaining("must have 1 arguments not provided by a SupplierParameterResolver");
+    }
+
+    public interface SupervisorWithoutMemoryId {
+
+        @SupervisorAgent(outputKey = "result", subAgents = Exchanger.class)
+        String invoke(@V("request") String request);
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(@Injected MemoryStore store) {
+            return store.memoryOf("default");
+        }
+    }
+
+    @Test
+    void supervisor_chat_memory_provider_without_memory_id_is_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(SupervisorWithoutMemoryId.class, echoModel()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chatMemory")
+                .hasMessageContaining("must have 1 arguments not provided by a SupplierParameterResolver");
     }
 
     // ── Without a supporting resolver ──

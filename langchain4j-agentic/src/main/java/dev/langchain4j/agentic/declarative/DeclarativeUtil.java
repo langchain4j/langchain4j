@@ -63,6 +63,7 @@ public class DeclarativeUtil {
             AgentBuilder<?, ?> agentBuilder,
             AgenticServices.AgentConfigurator agentConfigurator) {
         getAnnotatedMethodOnClass(agentType, ToolsSupplier.class).ifPresent(method -> {
+            checkReturnType(method, Object.class);
             Object tools = invokeSupplierWithResolvers(agentType, method, Object.class);
             if (tools instanceof Map) {
                 agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
@@ -103,6 +104,7 @@ public class DeclarativeUtil {
         getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
                 .ifPresentOrElse(
                         method -> {
+                            checkReturnType(method, ChatModel.class);
                             if (method.getParameterCount() > 0) {
                                 agentBuilder.chatModel(agenticScopeFunction(agentType, method, ChatModel.class));
                             } else {
@@ -112,6 +114,7 @@ public class DeclarativeUtil {
                         () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
                                 .ifPresentOrElse(
                                         method -> {
+                                            checkReturnType(method, StreamingChatModel.class);
                                             if (method.getParameterCount() > 0) {
                                                 agentBuilder.streamingChatModel(agenticScopeFunction(
                                                         agentType, method, StreamingChatModel.class));
@@ -162,8 +165,15 @@ public class DeclarativeUtil {
         agentConfigurator.configurator().accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 
+    /**
+     * Checks that the given method can return an instance of the expected type: its return type must be a subtype or
+     * a supertype, like {@code Object}, of the expected one.
+     *
+     * @throws IllegalArgumentException if it cannot
+     */
     public static void checkReturnType(Method method, Class<?> expected) {
-        if (!method.getReturnType().isAssignableFrom(expected)) {
+        Class<?> returnType = method.getReturnType();
+        if (!expected.isAssignableFrom(returnType) && !returnType.isAssignableFrom(expected)) {
             throw new IllegalArgumentException("Method " + method + " must return " + expected.getName());
         }
     }
@@ -182,10 +192,19 @@ public class DeclarativeUtil {
                 .ifPresent(builder::output);
     }
 
+    /**
+     * Selects the static condition method matching the given selector.
+     *
+     * @throws IllegalArgumentException if the selected method doesn't return a boolean
+     */
     public static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
-        return selectMethod(
-                agentServiceClass,
-                methodSelector.and(m -> (m.getReturnType() == boolean.class || m.getReturnType() == Boolean.class)));
+        Optional<Method> method = selectMethod(agentServiceClass, methodSelector);
+        method.ifPresent(m -> {
+            if (m.getReturnType() != boolean.class && m.getReturnType() != Boolean.class) {
+                throw new IllegalArgumentException("Method " + m + " must return boolean");
+            }
+        });
+        return method;
     }
 
     public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
@@ -275,17 +294,18 @@ public class DeclarativeUtil {
     }
 
     public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
-        return selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(ParallelExecutor.class)
-                                && Executor.class.isAssignableFrom(method.getReturnType()))
-                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Executor.class));
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ParallelExecutor.class))
+                .map(method -> {
+                    checkReturnType(method, Executor.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, Executor.class);
+                });
     }
 
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
             Class<T> agentServiceClass) {
         return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
                 .map(m -> {
+                    checkReturnType(m, ErrorRecoveryResult.class);
                     ResolvedParameters parameters =
                             ResolvedParameters.of(agentServiceClass, m).checkFrameworkParameters(ErrorContext.class);
                     return errorContext -> parameters.invoke(errorContext);

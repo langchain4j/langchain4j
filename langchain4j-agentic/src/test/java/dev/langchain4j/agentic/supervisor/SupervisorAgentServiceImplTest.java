@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -119,6 +121,27 @@ class SupervisorAgentServiceImplTest {
         SupervisorPlanner planner = (SupervisorPlanner) plannerSupplier(proxy).get();
 
         assertThat(chatModel(planner)).isSameAs(resolved);
+    }
+
+    public interface AgentWithChatModelSubtypeSupplier extends SupervisorAgent {
+        ChatModelMock SUPPLIED_MODEL = ChatModelMock.thatAlwaysResponds("done");
+
+        @ChatModelSupplier
+        static ChatModelMock chatModel() {
+            return SUPPLIED_MODEL;
+        }
+    }
+
+    @Test
+    void chat_model_supplier_returning_a_subtype_is_used_on_supervisor() throws Exception {
+        Method supervisorMethod = AgentWithChatModelSubtypeSupplier.class.getMethod("invoke", String.class);
+        SupervisorAgentServiceImpl<AgentWithChatModelSubtypeSupplier> service = new SupervisorAgentServiceImpl<>(
+                AgentWithChatModelSubtypeSupplier.class, supervisorMethod, mock(ChatModel.class));
+
+        SupervisorPlanner planner =
+                (SupervisorPlanner) plannerSupplier(service.build()).get();
+
+        assertThat(chatModel(planner)).isSameAs(AgentWithChatModelSubtypeSupplier.SUPPLIED_MODEL);
     }
 
     @Test

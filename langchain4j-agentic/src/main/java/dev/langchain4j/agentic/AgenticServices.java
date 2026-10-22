@@ -409,9 +409,11 @@ public class AgenticServices {
         return selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                                && method.getReturnType() == ChatModel.class
                                 && frameworkParameterCount(agentServiceClass, method) == 0)
-                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class))
+                .map(method -> {
+                    checkReturnType(method, ChatModel.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class);
+                })
                 .orElse(null);
     }
 
@@ -793,6 +795,10 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
+        // checked before creating the builder, which fetches the agent card from the server
+        Optional<ResolvedParameters> customizer = selectMethod(
+                        agentServiceClass, method -> method.isAnnotationPresent(A2AClientCustomizer.class))
+                .map(method -> ResolvedParameters.of(agentServiceClass, method).checkFrameworkParameters(Object.class));
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
@@ -806,14 +812,7 @@ public class AgenticServices {
             a2aClientBuilder.activationCondition(
                     a2aActivationCondition.description(), a2aActivationCondition.predicate());
         }
-        selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(A2AClientCustomizer.class)
-                                && frameworkParameterCount(agentServiceClass, method) == 1)
-                .ifPresent(method -> {
-                    ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
-                    a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb));
-                });
+        customizer.ifPresent(parameters -> a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
@@ -827,10 +826,8 @@ public class AgenticServices {
 
     private static String resolveA2AServerUrl(Class<?> agentServiceClass, A2AClientAgent a2aClient) {
         String annotationUrl = a2aClient.a2aServerUrl();
-        Optional<Method> supplierMethod = selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(A2AServerUrlSupplier.class)
-                        && frameworkParameterCount(agentServiceClass, method) == 0);
+        Optional<Method> supplierMethod =
+                selectMethod(agentServiceClass, method -> method.isAnnotationPresent(A2AServerUrlSupplier.class));
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(
@@ -856,7 +853,10 @@ public class AgenticServices {
         Object mcpClient = selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(McpClientSupplier.class))
-                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Object.class))
+                .map(method -> {
+                    checkReturnType(method, Object.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
+                })
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));

@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.supervisor;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopeFunction;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParameterCount;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
@@ -144,27 +144,25 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     }
 
     private void configureSupervisor(Class<T> agentServiceClass, ChatModel chatModel) {
-        selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(SupervisorRequest.class)
-                                && method.getReturnType() == String.class)
-                .map(m -> agenticScopeFunction(agentServiceClass, m, String.class))
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(SupervisorRequest.class))
+                .map(m -> {
+                    checkReturnType(m, String.class);
+                    return agenticScopeFunction(agentServiceClass, m, String.class);
+                })
                 .ifPresent(this::requestGenerator);
 
-        selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                                && method.getReturnType() == ChatModel.class)
-                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class))
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatModelSupplier.class))
+                .map(method -> {
+                    checkReturnType(method, ChatModel.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class);
+                })
                 .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
 
-        selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
-                                && method.getReturnType() == ChatMemory.class
-                                && frameworkParameterCount(agentServiceClass, method) == 1)
+        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class))
                 .map(method -> {
-                    ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+                    checkReturnType(method, ChatMemory.class);
+                    ResolvedParameters parameters =
+                            ResolvedParameters.of(agentServiceClass, method).checkFrameworkParameters(Object.class);
                     return (ChatMemoryProvider) memoryId -> parameters.invoke(memoryId);
                 })
                 .ifPresent(this::chatMemoryProvider);
