@@ -16,7 +16,7 @@ import java.util.Objects;
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
  *         .input("...")
- *         .question("spam", YesNoQuestion.of("Is this message spam?"))
+ *         .question("spam", YesNoQuestion.from("Is this message spam?"))
  *         .parameters(OpenAiDecisionRequestParameters.builder()
  *                 .customParameters(Map.of("parameter_name", "value"))
  *                 .build())

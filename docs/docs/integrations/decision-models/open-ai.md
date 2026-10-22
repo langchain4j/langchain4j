@@ -52,7 +52,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);
@@ -182,7 +182,7 @@ DecisionRequest request = DecisionRequest.builder()
         .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 

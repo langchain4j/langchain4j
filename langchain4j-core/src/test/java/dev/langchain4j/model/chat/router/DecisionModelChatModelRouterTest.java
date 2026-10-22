@@ -70,7 +70,7 @@ class DecisionModelChatModelRouterTest {
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "route",
-                        ChoiceQuestion.of(
+                        ChoiceQuestion.from(
                                 "Which model should handle this request?",
                                 Map.of(
                                         "simple", "Greetings and short factual questions",
@@ -420,7 +420,7 @@ class DecisionModelChatModelRouterTest {
                 .route(request(UserMessage.from("Hi!")));
 
         assertThat(decisionModel.request().questions().get("route"))
-                .isEqualTo(ChoiceQuestion.of(
+                .isEqualTo(ChoiceQuestion.from(
                         "Which assistant fits best?",
                         Map.of(
                                 "simple", "Greetings and short factual questions",

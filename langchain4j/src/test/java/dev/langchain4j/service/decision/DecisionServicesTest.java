@@ -213,7 +213,7 @@ class DecisionServicesTest {
     @Test
     void should_not_register_content_parameters_as_json_input_types() throws Exception {
 
-        DecisionMethod method = DecisionMethod.of(
+        DecisionMethod method = DecisionMethod.from(
                 DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
 
         assertThat(method.inputTypes()).containsExactly(String.class);
@@ -835,7 +835,7 @@ class DecisionServicesTest {
     void decision_method_should_expose_its_analysis() throws Exception {
 
         // given
-        DecisionMethod method = DecisionMethod.of(SupportDesk.class.getMethod("triageRecord", String.class));
+        DecisionMethod method = DecisionMethod.from(SupportDesk.class.getMethod("triageRecord", String.class));
 
         // then
         assertThat(method.questions()).containsOnlyKeys("team", "urgent", "refund");
@@ -923,7 +923,7 @@ class DecisionServicesTest {
     @Test
     void decision_method_should_expose_reflective_and_input_types() throws Exception {
 
-        DecisionMethod method = DecisionMethod.of(
+        DecisionMethod method = DecisionMethod.from(
                 ExtendedDesk.class.getMethod("triage", String.class, DecisionRequestParameters.class));
 
         assertThat(method.questions()).containsOnlyKeys("team", "urgent");
@@ -941,7 +941,7 @@ class DecisionServicesTest {
     void frameworks_should_be_able_to_invoke_methods_with_their_own_async_types() throws Exception {
 
         // given: a return type unknown to LangChain4j, analyzed as if it returned its type argument
-        DecisionMethod method = DecisionMethod.of(LazyRouter.class.getMethod("route", String.class), Team.class);
+        DecisionMethod method = DecisionMethod.from(LazyRouter.class.getMethod("route", String.class), Team.class);
         FakeDecisionModel model = new FakeDecisionModel(Map.of("route", BILLING_ANSWER));
 
         // when

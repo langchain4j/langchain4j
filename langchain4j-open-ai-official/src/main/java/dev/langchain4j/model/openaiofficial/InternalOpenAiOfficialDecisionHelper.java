@@ -285,7 +285,7 @@ class InternalOpenAiOfficialDecisionHelper {
 
     private static DecisionAnswer toAnswer(String name, Decision.Answer answer, Question question) {
         if (answer.isPredicate()) {
-            return YesNoAnswer.of(probability(name, answer.asPredicate().probability(), "probability"));
+            return YesNoAnswer.from(probability(name, answer.asPredicate().probability(), "probability"));
         }
         if (answer.isChoice()) {
             Decision.Answer.Choice choice = answer.asChoice();

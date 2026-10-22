@@ -66,7 +66,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .question("frustration", ScaleQuestion.builder()
                 .text("How frustrated is the customer?")
                 .level("Calm")
@@ -79,7 +79,7 @@ DecisionResponse response = decisionModel.decide(request);
 ```
 
 Each question type has a builder, and a shorter factory method for the common case:
-`YesNoQuestion.of(text)`, `ChoiceQuestion.of(text, options)` and `ScaleQuestion.of(text, levels)`.
+`YesNoQuestion.from(text)`, `ChoiceQuestion.from(text, options)` and `ScaleQuestion.from(text, levels)`.
 
 The response contains one answer per question, under the same name:
 
@@ -128,7 +128,7 @@ A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 opt
 For options whose name says it all, the name is also used as the description:
 
 ```java
-ChoiceQuestion sentiment = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"));
+ChoiceQuestion sentiment = ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral"));
 ```
 
 It is answered with a `ChoiceAnswer`:
@@ -197,7 +197,7 @@ DecisionRequest request = DecisionRequest.builder()
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 ```
 
@@ -216,7 +216,7 @@ DecisionRequest request = DecisionRequest.builder()
         .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
@@ -227,7 +227,7 @@ DecisionRequest request = DecisionRequest.builder()
         .inputFields(Map.of(
                 "comment", "The package arrived like this.",
                 "photo", ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
@@ -254,7 +254,7 @@ DecisionRequest request = DecisionRequest.builder()
                 AiMessage.from(getOrder),
                 ToolExecutionResultMessage.from(getOrder, "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"),
                 AiMessage.from("You were charged twice. I have refunded one of the charges.")))
-        .question("backed_by_tools", YesNoQuestion.of(
+        .question("backed_by_tools", YesNoQuestion.from(
                 "Did the assistant call a tool for every action it says it has taken?"))
         .build();
 ```
