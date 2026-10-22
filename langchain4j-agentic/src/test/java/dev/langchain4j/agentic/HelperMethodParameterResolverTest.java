@@ -302,6 +302,39 @@ class HelperMethodParameterResolverTest {
         assertThat(greeter.arguments()).extracting(AgentArgument::name).containsExactly("name");
     }
 
+    // ── Non-AI agent passed as an instance ──
+
+    public static class InstanceGreeter {
+
+        @Agent(outputKey = "greeting")
+        public String greet(@V("name") String name, @Injected @V("formatter") Formatter formatter) {
+            return formatter.format("Hello " + name);
+        }
+    }
+
+    @Test
+    void parameters_of_a_non_ai_agent_passed_as_instance_are_read_from_the_scope() {
+        register(Formatter.class, new Formatter());
+        Formatter scopeFormatter = new Formatter() {
+            @Override
+            String format(String text) {
+                return text + "!";
+            }
+        };
+
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(new InstanceGreeter())
+                .outputKey("greeting")
+                .build();
+
+        assertThat(sequence.invoke(Map.of("name", "Mario", "formatter", scopeFormatter)))
+                .isEqualTo("Hello Mario!");
+        assertThat(((AgentInstance) sequence).subagents().get(0).arguments())
+                .extracting(AgentArgument::name)
+                .containsExactly("name", "formatter");
+        assertThat(RESOLVED).isEmpty();
+    }
+
     // ── @ActivationCondition with value ──
 
     public static class Shouter {

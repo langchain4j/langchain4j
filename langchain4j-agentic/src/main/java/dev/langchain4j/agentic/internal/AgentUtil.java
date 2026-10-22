@@ -147,10 +147,24 @@ public class AgentUtil {
             return AgentInvoker.fromSpec(spec, agenticMethod, name);
         }
         // a class with a static agent method is wrapped in an AgenticScopeFunction, its conditions are on the class
-        Class<?> agentClass =
-                agent instanceof AgenticScopeFunction<?> ? agenticMethod.getDeclaringClass() : agent.getClass();
+        if (agent instanceof AgenticScopeFunction<?>) {
+            Class<?> agentClass = agenticMethod.getDeclaringClass();
+            return nonAiAgentInvoker(
+                    ResolvedParameters.of(agentClass, agenticMethod),
+                    name,
+                    description,
+                    outputKey,
+                    async,
+                    DeclarativeUtil.activationCondition(agentClass));
+        }
+        // the parameters of an agent passed as an instance are not provided by a SupplierParameterResolver
         return nonAiAgentInvoker(
-                agenticMethod, name, description, outputKey, async, DeclarativeUtil.activationCondition(agentClass));
+                agenticMethod,
+                name,
+                description,
+                outputKey,
+                async,
+                DeclarativeUtil.activationCondition(agent.getClass()));
     }
 
     public static AgentInvoker nonAiAgentInvoker(
@@ -165,13 +179,18 @@ public class AgentUtil {
             String outputKey,
             boolean async,
             AgentCondition activationCondition) {
-        return nonAiAgentInvoker(
-                ResolvedParameters.of(agenticMethod.getDeclaringClass(), agenticMethod),
-                name,
-                description,
-                outputKey,
-                async,
-                activationCondition);
+        return AgentInvoker.fromMethod(
+                new NonAiAgentInstance(
+                        agenticMethod.getDeclaringClass(),
+                        name,
+                        description,
+                        agenticMethod.getGenericReturnType(),
+                        outputKey,
+                        async,
+                        argumentsFromMethod(agenticMethod),
+                        null,
+                        activationCondition),
+                agenticMethod);
     }
 
     /**
