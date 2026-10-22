@@ -283,7 +283,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .invocationContext(invocationContext)
                         .build());
             }
-            context.eventListenerRegistrar.invocationEnded(invocationContext);
         }
 
         @Override

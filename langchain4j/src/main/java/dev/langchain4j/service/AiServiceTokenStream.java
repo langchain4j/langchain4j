@@ -223,7 +223,6 @@ public class AiServiceTokenStream implements TokenStream {
                         .error(t)
                         .build());
             }
-            context.eventListenerRegistrar.invocationEnded(runContext);
             throw t;
         }
     }

@@ -19,6 +19,7 @@ import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -85,6 +86,10 @@ class DefaultAiServiceListenerRegistrarTests {
     private static final AiServiceErrorEvent INVOCATION_ERROR_EVENT = AiServiceErrorEvent.builder()
             .invocationContext(DEFAULT_INVOCATION_CONTEXT)
             .error(new RuntimeException("Some error"))
+            .build();
+
+    private static final AiServiceCancelledEvent INVOCATION_CANCELLED_EVENT = AiServiceCancelledEvent.builder()
+            .invocationContext(DEFAULT_INVOCATION_CONTEXT)
             .build();
 
     private static final AiServiceCompletedEvent INVOCATION_COMPLETED_EVENT = AiServiceCompletedEvent.builder()
@@ -301,7 +306,6 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.register(listener);
         registrar.fireEvent(REQUEST_ISSUED_EVENT);
         registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
 
         assertThat(listener.count()).isZero();
     }
@@ -334,7 +338,6 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(INVOCATION_COMPLETED_EVENT.toBuilder()
                 .invocationContext(invocationContext)
                 .build());
-        registrar.invocationEnded(invocationContext);
 
         assertThat(listener.count()).isZero();
     }
@@ -351,14 +354,14 @@ class DefaultAiServiceListenerRegistrarTests {
 
         // A late event must neither start tracking a new invocation nor be held on to
         registrar.fireEvent(TOOL_EXECUTED_EVENT);
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        registrar.fireEvent(INVOCATION_CANCELLED_EVENT);
 
         assertThat(listener.count()).isOne();
         assertThat(listener.lastEvent().events()).containsExactly(INVOCATION_STARTED_EVENT, INVOCATION_COMPLETED_EVENT);
     }
 
     @Test
-    void shouldFireInvocationSummaryEventWithTheCollectedEventsWhenTheInvocationEndsWithoutCompletingOrFailing() {
+    void shouldFireInvocationSummaryEventWithTheCollectedEventsWhenTheInvocationIsCanceled() {
         // e.g. an asynchronous or streaming invocation that was canceled
         var registrar = AiServiceListenerRegistrar.newInstance();
         var listener = new TestAiServiceInvocationSummaryListener();
@@ -367,21 +370,23 @@ class DefaultAiServiceListenerRegistrarTests {
 
         registrar.fireEvent(INVOCATION_STARTED_EVENT);
         registrar.fireEvent(REQUEST_ISSUED_EVENT);
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        registrar.fireEvent(INVOCATION_CANCELLED_EVENT);
 
-        // Ending the invocation again or firing a late terminal event doesn't fire another invocation summary event
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        // A late end event doesn't fire another invocation summary event
+        registrar.fireEvent(INVOCATION_CANCELLED_EVENT);
         registrar.fireEvent(INVOCATION_ERROR_EVENT);
 
         assertThat(listener.count()).isOne();
         assertThat(listener.lastEvent())
                 .isNotNull()
                 .extracting(AiServiceEvent::invocationContext, AiServiceInvocationSummaryEvent::events)
-                .containsExactly(DEFAULT_INVOCATION_CONTEXT, List.of(INVOCATION_STARTED_EVENT, REQUEST_ISSUED_EVENT));
+                .containsExactly(
+                        DEFAULT_INVOCATION_CONTEXT,
+                        List.of(INVOCATION_STARTED_EVENT, REQUEST_ISSUED_EVENT, INVOCATION_CANCELLED_EVENT));
     }
 
     @Test
-    void invocationEndedHasNoEffectOnACompletedInvocation() {
+    void aLateCancellationHasNoEffectOnACompletedInvocation() {
         var registrar = AiServiceListenerRegistrar.newInstance();
         var listener = new TestAiServiceInvocationSummaryListener();
 
@@ -389,9 +394,10 @@ class DefaultAiServiceListenerRegistrarTests {
 
         registrar.fireEvent(INVOCATION_STARTED_EVENT);
         registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        registrar.fireEvent(INVOCATION_CANCELLED_EVENT);
 
         assertThat(listener.count()).isOne();
+        assertThat(listener.lastEvent().events()).containsExactly(INVOCATION_STARTED_EVENT, INVOCATION_COMPLETED_EVENT);
     }
 
     @Test
@@ -409,8 +415,8 @@ class DefaultAiServiceListenerRegistrarTests {
                 .isThrownBy(() -> registrar.fireEvent(INVOCATION_COMPLETED_EVENT))
                 .withMessage("Some error");
 
-        // The invocation is no longer tracked, so ending it has no effect
-        registrar.invocationEnded(DEFAULT_INVOCATION_CONTEXT);
+        // The invocation is no longer tracked, so a late end event has no effect
+        registrar.fireEvent(INVOCATION_CANCELLED_EVENT);
 
         assertThat(listener.count()).isZero();
     }

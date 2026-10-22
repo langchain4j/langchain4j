@@ -8,10 +8,11 @@ import java.util.List;
 /**
  * A composite event summarizing a single AI Service invocation: all the events fired for it.
  * <p>
- * It is fired once an invocation is over, right after its {@link AiServiceCompletedEvent} or
- * {@link AiServiceErrorEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every event
- * sharing its {@link InvocationContext#invocationId()}), in the order they were fired, starting with the
- * {@link AiServiceStartedEvent} and ending with the {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent}.
+ * It is fired once an invocation is over, right after its {@link AiServiceCompletedEvent}, {@link AiServiceErrorEvent}
+ * or {@link AiServiceCancelledEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every
+ * event sharing its {@link InvocationContext#invocationId()}), in the order they were fired, starting with the
+ * {@link AiServiceStartedEvent} and ending with the {@link AiServiceCompletedEvent}, {@link AiServiceErrorEvent} or
+ * {@link AiServiceCancelledEvent}.
  * <p>
  * A few things to keep in mind:
  * <ul>
@@ -20,9 +21,10 @@ import java.util.List;
  *         {@link AiServiceStartedEvent} is fired.
  *     </li>
  *     <li>
- *         If an invocation ends without an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent} (for example
- *         because an asynchronous or streaming invocation was canceled), the event is still fired, but its last event
- *         will be whichever event was fired last before the invocation ended.
+ *         The event is only fired once the invocation fires its {@link AiServiceCompletedEvent},
+ *         {@link AiServiceErrorEvent} or {@link AiServiceCancelledEvent}. AI Services always fire exactly one of them;
+ *         for an AI Service implementation that does not (for example one built by an integration), the collected
+ *         events are held until then.
  *     </li>
  *     <li>
  *         Events fired for an invocation after it has ended (for example {@link ToolCompensatedEvent}s fired once a
@@ -36,11 +38,13 @@ import java.util.List;
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
  *         but only ends once the stream has been started with {@code TokenStream.start()}. Events collected for a
  *         {@code TokenStream} that is never started are never released, so always start the streams you create.
+ *         If {@code start()} fails because of a configuration error (for example a missing error handler), no event is
+ *         fired and {@code start()} can be called again once fixed; until then the invocation stays open.
  *     </li>
  *     <li>
- *         All subscriptions to the reactive stream returned by an AI Service method share the same invocation id.
- *         Subscribing to it again after a previous subscription has ended (for example to retry) is fine, but the
- *         events of subscriptions that run at the same time are combined into a single AiServiceInvocationSummaryEvent.
+ *         Each subscription to the reactive stream returned by an AI Service method, and each call of
+ *         {@code TokenStream.start()}, is a separate invocation with its own invocation id, so it results in its own
+ *         AiServiceInvocationSummaryEvent, also when several subscriptions run at the same time.
  *     </li>
  * </ul>
  * <p>

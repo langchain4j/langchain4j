@@ -431,8 +431,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 if (result.isCancelled()) {
                                     fireCancelledEvent(baseInvocationContext);
                                 }
-                                // A safety net: every way of ending fires its own end event before this
-                                context.eventListenerRegistrar.invocationEnded(baseInvocationContext);
                             });
                             CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
                                     chatMemory, asyncSystemMessage, originalUserMessage, baseInvocationContext);
@@ -531,10 +529,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
                             final AtomicBoolean reactiveSubscribedBefore = new AtomicBoolean(false);
 
-                            Flow.Publisher<AiServiceStreamingEvent> events = downstream -> {
+                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
-                                    downstream.onSubscribe(NOOP_SUBSCRIPTION);
-                                    downstream.onError(new IllegalStateException(
+                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                    subscriber.onError(new IllegalStateException(
                                             "This AI Service reactive stream cannot be subscribed to more than once "
                                                     + "because a ChatMemory is configured: re-subscribing would re-run "
                                                     + "the interaction and duplicate messages in the chat memory. To "
@@ -549,9 +547,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .timestampNow()
                                                 .build()
                                         : baseInvocationContext;
-                                Flow.Subscriber<AiServiceStreamingEvent> subscriber = new InvocationEndingSubscriber<>(
-                                        downstream,
-                                        () -> context.eventListenerRegistrar.invocationEnded(subscriptionContext));
 
                                 // Fired before onSubscribe so that a subscriber canceling from within onSubscribe
                                 // ends an invocation that has already started

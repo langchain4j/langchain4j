@@ -3,6 +3,7 @@ package dev.langchain4j.observability.api;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -94,20 +95,6 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         invocationSummaryEvent.ifPresent(this::notifyListeners);
     }
 
-    /**
-     * Fires an {@link AiServiceInvocationSummaryEvent} containing the events recorded so far for the given invocation if it
-     * is still being tracked (i.e. it ended without an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent},
-     * for example because it was canceled), and stops tracking it.
-     *
-     * @param invocationContext The context of the invocation that ended. Must not be null.
-     */
-    @Override
-    public void invocationEnded(InvocationContext invocationContext) {
-        ensureNotNull(invocationContext, "invocationContext");
-        Optional.ofNullable(invocationContext.invocationId())
-                .flatMap(invocationId -> endTrackedInvocation(invocationId, invocationContext, Stream.empty()))
-                .ifPresent(this::notifyListeners);
-    }
 
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
@@ -167,7 +154,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     }
 
     private static boolean isInvocationEnd(AiServiceEvent event) {
-        return (event instanceof AiServiceCompletedEvent) || (event instanceof AiServiceErrorEvent);
+        return (event instanceof AiServiceCompletedEvent)
+                || (event instanceof AiServiceErrorEvent)
+                || (event instanceof AiServiceCancelledEvent);
     }
 
     private <T extends AiServiceEvent> EventListeners<T> addToExistingOrNewList(
