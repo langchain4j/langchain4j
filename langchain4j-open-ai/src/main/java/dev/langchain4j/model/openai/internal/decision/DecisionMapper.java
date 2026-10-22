@@ -246,7 +246,7 @@ public final class DecisionMapper {
             throw new InvalidDecisionResponseException("The answer to question '%s' has no type".formatted(name));
         }
         return switch (answer.type) {
-            case "predicate" -> YesNoAnswer.of(probability(name, answer.probability, "probability"));
+            case "predicate" -> YesNoAnswer.from(probability(name, answer.probability, "probability"));
             case "choice" -> toChoiceAnswer(name, answer);
             case "score" -> toScaleAnswer(name, answer, question);
             case "refusal" -> RefusalAnswer.of();

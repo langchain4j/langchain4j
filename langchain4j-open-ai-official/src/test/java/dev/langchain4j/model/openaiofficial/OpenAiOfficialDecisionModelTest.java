@@ -98,7 +98,7 @@ class OpenAiOfficialDecisionModelTest {
                             .build())
             .question(
                     "frustration",
-                    ScaleQuestion.of("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
+                    ScaleQuestion.from("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
             .build();
 
     final OpenAiOfficialStubHttpClient httpClient = new OpenAiOfficialStubHttpClient();
@@ -313,7 +313,7 @@ class OpenAiOfficialDecisionModelTest {
                 .inputContents(List.of(
                         TextContent.from("The package arrived like this."),
                         ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.HIGH)))
-                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                 .build());
 
         // then
@@ -344,7 +344,7 @@ class OpenAiOfficialDecisionModelTest {
         // when
         model().decide(DecisionRequest.builder()
                 .inputFields(Map.of("ticket", "My payouts are failing"))
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build());
 
         // then
@@ -376,7 +376,7 @@ class OpenAiOfficialDecisionModelTest {
         // when
         model().decide(DecisionRequest.builder()
                 .inputFields(input)
-                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                 .build());
 
         // then
@@ -410,7 +410,7 @@ class OpenAiOfficialDecisionModelTest {
         // when
         model().decide(DecisionRequest.builder()
                 .inputFields(Map.of("photos", List.of(front, back)))
-                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                 .build());
 
         // then
@@ -429,7 +429,7 @@ class OpenAiOfficialDecisionModelTest {
                         """));
         assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
                         .inputFields(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("PDF");
@@ -449,7 +449,7 @@ class OpenAiOfficialDecisionModelTest {
         // when
         model().decide(DecisionRequest.builder()
                 .inputContents(List.of(ImageContent.from("https://example.com/package.png")))
-                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                 .build());
 
         // then
@@ -504,7 +504,7 @@ class OpenAiOfficialDecisionModelTest {
                                         .isError(true)
                                         .build(),
                                 AiMessage.from("Your order has shipped."))
-                        .question("resolved", YesNoQuestion.of("Did the assistant answer the question?"))
+                        .question("resolved", YesNoQuestion.from("Did the assistant answer the question?"))
                         .build());
 
         // then
@@ -553,7 +553,7 @@ class OpenAiOfficialDecisionModelTest {
         model()
                 .decide(DecisionRequest.builder()
                         .inputMessages(UserMessage.from(TextContent.from("It arrived like this:"), photo))
-                        .question("resolved", YesNoQuestion.of("Is the item damaged?"))
+                        .question("resolved", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -578,7 +578,7 @@ class OpenAiOfficialDecisionModelTest {
         // given
         DecisionRequest request = DecisionRequest.builder()
                 .inputMessages(List.of(AiMessage.builder().thinking("The user did not write anything.").build()))
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -599,7 +599,7 @@ class OpenAiOfficialDecisionModelTest {
         // given
         DecisionRequest request = DecisionRequest.builder()
                 .input(() -> DecisionInputType.TEXT)
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -618,14 +618,14 @@ class OpenAiOfficialDecisionModelTest {
 
         assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
                         .inputMessages(List.of(UserMessage.from("Hi"), CustomMessage.from(Map.of("key", "value"))))
-                        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
                         + "messages: SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
         assertThat(model().decideAsync(DecisionRequest.builder()
                         .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
-                        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                         .build()))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableOfType(ExecutionException.class)
@@ -725,7 +725,7 @@ class OpenAiOfficialDecisionModelTest {
                 """);
         DecisionRequest request = DecisionRequest.builder()
                 .input("Help!")
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -738,7 +738,7 @@ class OpenAiOfficialDecisionModelTest {
 
         assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
                         .inputContents(List.of(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining(detailLevel.name());

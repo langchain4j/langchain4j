@@ -167,7 +167,7 @@ public class DecisionRouterPlanner implements Planner {
 
     private static YesNoQuestion relevanceQuestion(AgentInstance agent) {
         String description = isNullOrBlank(agent.description()) ? "" : " (" + agent.description() + ")";
-        return YesNoQuestion.of("Should the agent '" + agent.name() + "'" + description + " handle this request?");
+        return YesNoQuestion.from("Should the agent '" + agent.name() + "'" + description + " handle this request?");
     }
 
     private void ensureMapResult(Type outputType) {
