@@ -44,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1612,6 +1613,24 @@ class GoogleGenAiContentMapperTest {
         assertThat(parts).hasSize(3);
         assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
         assertThat(parts.get(1).toJson()).isEqualTo(searchResponse.toJson());
+    }
+
+    @Test
+    void should_send_back_only_the_server_side_tool_parts_stored_as_json_strings() {
+        Part searchCall = searchCallPart();
+        AiMessage aiMessage = AiMessage.builder()
+                .text("It was completed in 1889.")
+                .attributes(Map.of(
+                        "server_side_tool_parts",
+                        Arrays.asList(Map.of("toolCall", Map.of("id", "call-1")), null, searchCall.toJson())))
+                .build();
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow();
+
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(1).text()).hasValue("It was completed in 1889.");
     }
 
     @Test

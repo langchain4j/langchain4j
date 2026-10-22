@@ -363,6 +363,8 @@ String response = weatherAssistant.chat("Which city hosts the next Summer Olympi
 ```
 
 - The Gemini API accepts this combination only from Gemini 3 models on, and lists it as a preview feature.
+- On Vertex AI, `gemini-3.8-flash` and `gemini-3.1-flash-lite` accept Google Search or code execution together with your tools.
+  Vertex AI does not return the `toolCall` and `toolResponse` parts of a search, so only the executed code is kept in the `AiMessage`.
 - The searches, page reads and code runs that the API returns are kept in the `AiMessage` and sent with it in the next request,
   as the Gemini API requires. Without them, a model can run the search again or repeat the call to your tool,
   so keep the `AiMessage` in the chat memory as it was returned.
