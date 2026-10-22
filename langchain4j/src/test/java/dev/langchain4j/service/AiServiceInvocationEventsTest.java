@@ -469,7 +469,7 @@ class AiServiceInvocationEventsTest {
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("Hello"))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isInstanceOf(RuntimeException.class) // the exact type depends on the JSON codec
                 .hasMessageContaining("Unexpected character");
 
         assertThat(events(ToolExecutedEvent.class)).singleElement().satisfies(event -> {
@@ -595,7 +595,7 @@ class AiServiceInvocationEventsTest {
                 .isNotEqualTo(started.get(1).invocationContext().invocationId());
         assertThat(completed)
                 .extracting(event -> event.invocationContext().invocationId())
-                .containsExactly(
+                .containsExactlyInAnyOrder( // the two runs stream concurrently
                         started.get(0).invocationContext().invocationId(),
                         started.get(1).invocationContext().invocationId());
         assertThat(started.get(1).userMessage()).isEqualTo(started.get(0).userMessage());
