@@ -1461,6 +1461,81 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
+    void should_rethrow_virtual_machine_error_of_a_concurrent_tool_untouched() {
+        StackOverflowError overflow = new StackOverflowError("too deep");
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        callingTools("succeed", "overflow"), AiMessage.from("answer")))
+                .tools(succeedingAndThrowingTools("overflow", overflow))
+                .executeToolsConcurrently()
+                .registerListeners(listeners())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hello")).isSameAs(overflow);
+
+        assertThat(events(ToolExecutedEvent.class)).isEmpty();
+    }
+
+    @Test
+    void should_rethrow_virtual_machine_error_of_a_concurrent_tool_of_a_token_stream_untouched() {
+        StackOverflowError overflow = new StackOverflowError("too deep");
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                        callingTools("succeed", "overflow"), AiMessage.from("answer")))
+                .tools(succeedingAndThrowingTools("overflow", overflow))
+                .executeToolsConcurrently()
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(start(assistant.chat("Hello")))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(overflow);
+
+        assertThat(events(ToolExecutedEvent.class)).isEmpty();
+    }
+
+    @Test
+    void should_report_every_tool_of_a_sequential_round_when_a_tool_throws_an_error() {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        callingTools("succeed", "explode"), AiMessage.from("answer")))
+                .tools(succeedingAndThrowingTools("explode", new AssertionError("boom")))
+                .registerListeners(listeners())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hello"))
+                .isExactlyInstanceOf(AssertionError.class)
+                .hasMessage("boom");
+
+        assertThat(events(ToolExecutedEvent.class))
+                .extracting(event -> event.request().name(), ToolExecutedEvent::isError)
+                .containsExactly(tuple("succeed", false), tuple("explode", true));
+    }
+
+    @Test
+    void should_report_every_tool_of_a_sequential_round_of_a_token_stream_when_a_tool_throws_an_error() {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                        callingTools("succeed", "explode"), AiMessage.from("answer")))
+                .tools(succeedingAndThrowingTools("explode", new AssertionError("boom")))
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(start(assistant.chat("Hello")))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AssertionError.class)
+                .withMessage("boom");
+
+        assertThat(events(ToolExecutedEvent.class))
+                .extracting(event -> event.request().name(), ToolExecutedEvent::isError)
+                .containsExactly(tuple("succeed", false), tuple("explode", true));
+    }
+
+    @Test
     void should_rethrow_virtual_machine_error_without_firing_an_error_event() {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatResponds(request -> {
@@ -1497,6 +1572,16 @@ class AiServiceInvocationEventsTest {
                     tuple("succeed", false),
                     tuple("fail", true));
         }
+    }
+
+    private static Map<ToolSpecification, ToolExecutor> succeedingAndThrowingTools(String throwingTool, Error error) {
+        return Map.of(
+                ToolSpecification.builder().name("succeed").build(),
+                (ToolExecutor) (request, memoryId) -> "ok",
+                ToolSpecification.builder().name(throwingTool).build(),
+                (ToolExecutor) (request, memoryId) -> {
+                    throw error;
+                });
     }
 
     private static AiMessage callingTools(String... toolNames) {

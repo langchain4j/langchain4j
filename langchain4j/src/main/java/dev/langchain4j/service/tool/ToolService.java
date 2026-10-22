@@ -2084,6 +2084,9 @@ public class ToolService {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
             } catch (ExecutionException e) {
+                if (e.getCause() instanceof VirtualMachineError vmError) {
+                    throw vmError;
+                }
                 errors.put(entry.getKey(), e.getCause());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -2112,7 +2115,9 @@ public class ToolService {
         for (ToolExecutionRequest toolRequest : toolRequests) {
             try {
                 toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
-            } catch (RuntimeException e) {
+            } catch (VirtualMachineError e) {
+                throw e;
+            } catch (RuntimeException | Error e) {
                 fireToolExecutedEventsOfFailedRound(
                         invocationContext, toolRequests, toolResults, Map.of(toolRequest, e), listenerRegistrar);
                 throw e;

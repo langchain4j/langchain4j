@@ -317,7 +317,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     @Override
     public void onCompleteResponse(ChatResponse chatResponse) {
         if (completeResponseProcessingExecutor == null) {
-            processCompleteResponse(chatResponse);
+            try {
+                processCompleteResponse(chatResponse);
+            } catch (Error e) {
+                onError(e); // a model implementation might not catch an Error, so the stream would never end
+            }
             return;
         }
         try {
@@ -365,7 +369,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             toolResults.put(toolRequestResult.request(), toolRequestResult.result());
                         }
                     } catch (ExecutionException e) {
-                        if (e.getCause() instanceof RuntimeException re) {
+                        if (e.getCause() instanceof VirtualMachineError vmError) {
+                            throw vmError;
+                        } else if (e.getCause() instanceof RuntimeException re) {
                             throw re;
                         } else {
                             throw new RuntimeException(e.getCause());
@@ -392,7 +398,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 for (ToolExecutionRequest toolRequest : executedRequests) {
                     try {
                         toolResults.put(toolRequest, execute(toolRequest));
-                    } catch (RuntimeException e) {
+                    } catch (VirtualMachineError e) {
+                        throw e;
+                    } catch (RuntimeException | Error e) {
                         ToolService.fireToolExecutedEventsOfFailedRound(
                                 invocationContext,
                                 executedRequests,
