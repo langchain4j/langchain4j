@@ -33,6 +33,22 @@ class OpenAiStreamingChatModelInBandErrorTest {
     private static final String CONTENT_CHUNK =
             "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"}}]}\n\n";
     private static final String ERROR_CHUNK = "data: {\"error\":{\"message\":\"Service is too busy\"}}\n\n";
+
+    // OpenRouter documents this shape: a regular chat.completion.chunk with a top-level "error"
+    // and "finish_reason": "error".
+    private static final String ERROR_CHUNK_WITH_CHOICES =
+            "data: {\"id\":\"cmpl-abc123\",\"object\":\"chat.completion.chunk\",\"created\":1729000000,"
+                    + "\"model\":\"gpt-4o-mini\",\"error\":{\"code\":\"server_error\","
+                    + "\"message\":\"Provider disconnected unexpectedly\"},"
+                    + "\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":\"error\"}]}\n\n";
+
+    // Same error object in a chunk that carries choices but no delta.
+    private static final String ERROR_CHUNK_WITHOUT_DELTA =
+            "data: {\"id\":\"cmpl-abc123\",\"object\":\"chat.completion.chunk\",\"created\":1729000000,"
+                    + "\"model\":\"gpt-4o-mini\",\"error\":{\"code\":\"server_error\","
+                    + "\"message\":\"Provider disconnected unexpectedly\"},"
+                    + "\"choices\":[{\"index\":0,\"finish_reason\":\"error\"}]}\n\n";
+
     private static final String DONE = "data: [DONE]\n\n";
 
     enum Api {
@@ -79,6 +95,42 @@ class OpenAiStreamingChatModelInBandErrorTest {
 
         // when-then
         assertFailsWith(chat(api), "Chat completion failed: Service is too busy");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Api.class)
+    void should_fail_with_provider_error_sent_inside_a_chunk_with_choices(Api api) {
+
+        // given
+        respondWith(CONTENT_CHUNK + ERROR_CHUNK_WITH_CHOICES + DONE);
+
+        // when-then: the partial text must not be reported as a successful response
+        assertFailsWith(chat(api), "Chat completion failed: Provider disconnected unexpectedly");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Api.class)
+    void should_fail_with_provider_error_in_a_chunk_without_delta(Api api) {
+
+        // given
+        respondWith(CONTENT_CHUNK + ERROR_CHUNK_WITHOUT_DELTA + DONE);
+
+        // when-then: the partial text must not be reported as a successful response
+        assertFailsWith(chat(api), "Chat completion failed: Provider disconnected unexpectedly");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Api.class)
+    void should_complete_when_content_merely_contains_the_word_error(Api api) throws Exception {
+
+        // given: only a top-level "error" object is a provider error, not the word "error" in the text
+        respondWith("data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"error\"}}]}\n\n" + DONE);
+
+        // when
+        ChatResponse chatResponse = chat(api).get(10, SECONDS);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("error");
     }
 
     @ParameterizedTest
