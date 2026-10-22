@@ -61,6 +61,50 @@ The other main difference with an AI service is the presence of the `outputKey` 
 
 The `AgenticServices` class provides a set of static factory methods to create and define all kinds of agents made available by the `langchain4j-agentic` framework.
 
+### Tool search
+
+An agent with many tools can use [tool search](/tutorials/tools#tool-search) so that the LLM discovers the tools
+it needs instead of receiving every tool specification upfront. Set the same `ToolSearchStrategy` that AI Services
+use on the agent builder:
+
+```java
+Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new BookingTools(), new WeatherTools())
+        .toolSearchStrategy(new SimpleToolSearchStrategy())
+        .build();
+```
+
+The LLM initially sees only the tool search tool and the tools marked with `SearchBehavior.ALWAYS_VISIBLE`. The tools
+it finds stay available for the rest of the invocation and, if the agent has a chat memory, until the search result
+is evicted from it. This works with `.tools(...)` and `.toolProvider(...)`, for blocking and streaming agents, and
+with any `ToolSearchStrategy`, such as `SimpleToolSearchStrategy`, `VectorToolSearchStrategy` or
+`DecisionModelToolSearchStrategy`.
+
+A declarative agent can supply its strategy with `@ToolSearchStrategySupplier`, next to `@ToolsSupplier` or
+`@ToolProviderSupplier`:
+
+```java
+public interface Assistant {
+    @UserMessage("{{request}}")
+    @Agent(outputKey = "answer")
+    String answer(@V("request") String request);
+
+    @ToolsSupplier
+    static Object[] tools() {
+        return new Object[] { new BookingTools(), new WeatherTools() };
+    }
+
+    @ToolSearchStrategySupplier
+    static ToolSearchStrategy toolSearchStrategy() {
+        return new SimpleToolSearchStrategy();
+    }
+}
+```
+
+A strategy set with `.toolSearchStrategy(...)` on the builder takes precedence over the annotated one. The strategy
+applies only to the agent it is set on; like tools, it is not passed from a workflow to its subagents.
+
 ## Introducing the AgenticScope
 
 The langchain4j-agentic module introduces the concept of an `AgenticScope`, which is a collection of data shared among the agents participating in an agentic system. The `AgenticScope` is used to store shared variables, which can be written by an agent to communicate the results it produced and read by another agent to put together the information that it needs to perform its task. This allows agents to collaborate effectively, sharing information and results as needed.
@@ -1150,6 +1194,7 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`          | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@ToolSearchStrategySupplier`    | Returns the `ToolSearchStrategy` used by this agent to discover its tools.                                                                                    |
 | `@SystemMessageProviderSupplier` | Provides a dynamic system message. The method receives the memoryId as an `Object` and returns a `String`.                                                    |
 | `@UserMessageProviderSupplier`   | Provides a dynamic user message. The method receives the memoryId as an `Object` and returns a `String`.                                                      |
 

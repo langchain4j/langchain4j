@@ -11,7 +11,8 @@ import java.lang.reflect.Parameter;
  * {@link StreamingChatModelSupplier}, {@link ContentRetrieverSupplier},
  * {@link RetrievalAugmentorSupplier}, {@link ChatMemorySupplier},
  * {@link ChatMemoryProviderSupplier}, {@link ToolProviderSupplier},
- * {@link ToolsSupplier}, {@link AgentListenerSupplier}, {@link SystemMessageProviderSupplier},
+ * {@link ToolsSupplier}, {@link ToolSearchStrategySupplier}, {@link AgentListenerSupplier},
+ * {@link SystemMessageProviderSupplier},
  * {@link UserMessageProviderSupplier}, {@link McpClientSupplier}, {@link PlannerSupplier},
  * {@link A2AServerUrlSupplier} and {@link ParallelExecutor}; to the methods annotated with
  * {@link ExitCondition}, {@link ActivationCondition}, {@link Output}, {@link BeforeCall},
