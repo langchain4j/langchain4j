@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class AiServiceInteractionEventTests {
+class AiServiceInvocationSummaryEventTests {
 
     private static final InvocationContext INVOCATION_CONTEXT = InvocationContext.builder()
             .invocationId(UUID.randomUUID())
@@ -30,7 +30,7 @@ class AiServiceInteractionEventTests {
 
     @Test
     void eventsReplacesPreviouslyAddedEvents() {
-        var event = AiServiceInteractionEvent.builder()
+        var event = AiServiceInvocationSummaryEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)
                 .event(COMPLETED_EVENT)
                 .events(List.of(STARTED_EVENT))
@@ -45,7 +45,7 @@ class AiServiceInteractionEventTests {
         events.add(STARTED_EVENT);
         events.add(null);
 
-        var event = AiServiceInteractionEvent.builder()
+        var event = AiServiceInvocationSummaryEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)
                 .events(events)
                 .event(null)
@@ -57,7 +57,7 @@ class AiServiceInteractionEventTests {
 
     @Test
     void nullEventsClearsEvents() {
-        var event = AiServiceInteractionEvent.builder()
+        var event = AiServiceInvocationSummaryEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)
                 .event(STARTED_EVENT)
                 .events(null)
@@ -69,7 +69,7 @@ class AiServiceInteractionEventTests {
     @Test
     void eventsAreUnmodifiableAndIsolatedFromTheSourceList() {
         var source = new ArrayList<AiServiceEvent>(List.of(STARTED_EVENT));
-        var event = AiServiceInteractionEvent.builder()
+        var event = AiServiceInvocationSummaryEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)
                 .events(source)
                 .build();
@@ -83,7 +83,7 @@ class AiServiceInteractionEventTests {
 
     @Test
     void toBuilderRoundTrips() {
-        var event = AiServiceInteractionEvent.builder()
+        var event = AiServiceInvocationSummaryEvent.builder()
                 .invocationContext(INVOCATION_CONTEXT)
                 .events(List.of(STARTED_EVENT, COMPLETED_EVENT))
                 .build();
@@ -92,8 +92,8 @@ class AiServiceInteractionEventTests {
 
         assertThat(copy)
                 .isNotSameAs(event)
-                .extracting(AiServiceEvent::invocationContext, AiServiceInteractionEvent::events)
+                .extracting(AiServiceEvent::invocationContext, AiServiceInvocationSummaryEvent::events)
                 .containsExactly(INVOCATION_CONTEXT, List.of(STARTED_EVENT, COMPLETED_EVENT));
-        assertThat(copy.eventClass()).isEqualTo(AiServiceInteractionEvent.class);
+        assertThat(copy.eventClass()).isEqualTo(AiServiceInvocationSummaryEvent.class);
     }
 }

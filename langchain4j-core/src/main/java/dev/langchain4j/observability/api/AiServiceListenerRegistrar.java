@@ -5,7 +5,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.spi.observability.AiServiceListenerRegistrarFactory;
 import java.util.Arrays;
@@ -94,7 +94,7 @@ public interface AiServiceListenerRegistrar {
      * Most invocations end by firing an {@link AiServiceCompletedEvent} or an {@link AiServiceErrorEvent}, but some
      * end without either, for example when an asynchronous or streaming invocation is canceled. AI Services call this
      * method once such an invocation is over so that implementations can release any state held for it (for example
-     * the events collected for an {@link AiServiceInteractionEvent}). It may also be called for an invocation that
+     * the events collected for an {@link AiServiceInvocationSummaryEvent}). It may also be called for an invocation that
      * has already fired an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent}, so implementations must
      * treat it as idempotent.
      * <p>

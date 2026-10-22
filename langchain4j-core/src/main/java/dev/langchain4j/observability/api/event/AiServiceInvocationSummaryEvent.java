@@ -1,12 +1,12 @@
 package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
+import dev.langchain4j.observability.event.DefaultAiServiceInvocationSummaryEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A composite event capturing the full interaction of a single AI Service invocation.
+ * A composite event summarizing a single AI Service invocation: all the events fired for it.
  * <p>
  * It is fired once an invocation is over, right after its {@link AiServiceCompletedEvent} or
  * {@link AiServiceErrorEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every event
@@ -16,7 +16,7 @@ import java.util.List;
  * A few things to keep in mind:
  * <ul>
  *     <li>
- *         Events are only collected for an invocation if an AiServiceInteractionListener is registered when its
+ *         Events are only collected for an invocation if an AiServiceInvocationSummaryListener is registered when its
  *         {@link AiServiceStartedEvent} is fired.
  *     </li>
  *     <li>
@@ -30,7 +30,7 @@ import java.util.List;
  *     </li>
  *     <li>
  *         An AI Service invoked while another AI Service invocation is in progress (for example from within a tool)
- *         is a separate invocation with its own invocation id, so it results in its own AiServiceInteractionEvent.
+ *         is a separate invocation with its own invocation id, so it results in its own AiServiceInvocationSummaryEvent.
  *     </li>
  *     <li>
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
@@ -40,14 +40,14 @@ import java.util.List;
  *     <li>
  *         All subscriptions to the reactive stream returned by an AI Service method share the same invocation id.
  *         Subscribing to it again after a previous subscription has ended (for example to retry) is fine, but the
- *         events of subscriptions that run at the same time are combined into a single AiServiceInteractionEvent.
+ *         events of subscriptions that run at the same time are combined into a single AiServiceInvocationSummaryEvent.
  *     </li>
  * </ul>
  * <p>
  * This event is fired by the {@link dev.langchain4j.observability.api.AiServiceListenerRegistrar} itself and cannot be
  * fired directly.
  */
-public interface AiServiceInteractionEvent extends AiServiceEvent {
+public interface AiServiceInvocationSummaryEvent extends AiServiceEvent {
 
     /**
      * Returns all the events fired for this AI Service invocation, in the order they were fired.
@@ -57,38 +57,38 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
     List<AiServiceEvent> events();
 
     @Override
-    default Class<AiServiceInteractionEvent> eventClass() {
-        return AiServiceInteractionEvent.class;
+    default Class<AiServiceInvocationSummaryEvent> eventClass() {
+        return AiServiceInvocationSummaryEvent.class;
     }
 
     @Override
-    default AiServiceInteractionEventBuilder toBuilder() {
-        return new AiServiceInteractionEventBuilder(this);
+    default AiServiceInvocationSummaryEventBuilder toBuilder() {
+        return new AiServiceInvocationSummaryEventBuilder(this);
     }
 
     /**
-     * Creates a new builder for constructing an {@link AiServiceInteractionEvent}.
+     * Creates a new builder for constructing an {@link AiServiceInvocationSummaryEvent}.
      *
      * @return A new builder instance
      */
-    static AiServiceInteractionEventBuilder builder() {
-        return new AiServiceInteractionEventBuilder();
+    static AiServiceInvocationSummaryEventBuilder builder() {
+        return new AiServiceInvocationSummaryEventBuilder();
     }
 
     /**
-     * Builder for {@link AiServiceInteractionEvent} instances.
+     * Builder for {@link AiServiceInvocationSummaryEvent} instances.
      */
-    class AiServiceInteractionEventBuilder extends Builder<AiServiceInteractionEvent> {
+    class AiServiceInvocationSummaryEventBuilder extends Builder<AiServiceInvocationSummaryEvent> {
         private final List<AiServiceEvent> events = new ArrayList<>();
 
-        protected AiServiceInteractionEventBuilder() {}
+        protected AiServiceInvocationSummaryEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link AiServiceInteractionEvent}.
+         * Creates a builder initialized from an existing {@link AiServiceInvocationSummaryEvent}.
          *
          * @param src The event to copy the values from
          */
-        protected AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
+        protected AiServiceInvocationSummaryEventBuilder(AiServiceInvocationSummaryEvent src) {
             super(src);
             events(src.events());
         }
@@ -99,8 +99,8 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
          * @param invocationContext The invocation context
          * @return This builder
          */
-        public AiServiceInteractionEventBuilder invocationContext(InvocationContext invocationContext) {
-            return (AiServiceInteractionEventBuilder) super.invocationContext(invocationContext);
+        public AiServiceInvocationSummaryEventBuilder invocationContext(InvocationContext invocationContext) {
+            return (AiServiceInvocationSummaryEventBuilder) super.invocationContext(invocationContext);
         }
 
         /**
@@ -109,7 +109,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
          * @param events The events, in the order they were fired. If {@code null}, all events are removed.
          * @return This builder
          */
-        public AiServiceInteractionEventBuilder events(List<AiServiceEvent> events) {
+        public AiServiceInvocationSummaryEventBuilder events(List<AiServiceEvent> events) {
             this.events.clear();
 
             if (events != null) {
@@ -125,7 +125,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
          * @param event The event to append. If {@code null}, no action is taken.
          * @return This builder
          */
-        public AiServiceInteractionEventBuilder event(AiServiceEvent event) {
+        public AiServiceInvocationSummaryEventBuilder event(AiServiceEvent event) {
             if (event != null) {
                 this.events.add(event);
             }
@@ -143,13 +143,13 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
         }
 
         /**
-         * Builds a new {@link AiServiceInteractionEvent}.
+         * Builds a new {@link AiServiceInvocationSummaryEvent}.
          *
-         * @return A new {@link AiServiceInteractionEvent}
+         * @return A new {@link AiServiceInvocationSummaryEvent}
          */
         @Override
-        public AiServiceInteractionEvent build() {
-            return new DefaultAiServiceInteractionEvent(this);
+        public AiServiceInvocationSummaryEvent build() {
+            return new DefaultAiServiceInvocationSummaryEvent(this);
         }
     }
 }

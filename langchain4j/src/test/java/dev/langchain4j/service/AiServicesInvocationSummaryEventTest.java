@@ -16,11 +16,11 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
-import dev.langchain4j.observability.api.listener.AiServiceInteractionListener;
+import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -36,10 +36,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests that an {@link AiServiceInteractionEvent} is fired exactly once for every way an AI Service invocation can end,
+ * Tests that an {@link AiServiceInvocationSummaryEvent} is fired exactly once for every way an AI Service invocation can end,
  * including the ones that don't fire an {@link AiServiceCompletedEvent} or {@link AiServiceErrorEvent}.
  */
-class AiServicesInteractionEventTest {
+class AiServicesInvocationSummaryEventTest {
 
     interface AsyncAssistant {
         CompletableFuture<String> chat(String message);
@@ -61,11 +61,11 @@ class AiServicesInteractionEventTest {
         String chat(String message);
     }
 
-    private final List<AiServiceInteractionEvent> interactions = new CopyOnWriteArrayList<>();
-    private final AiServiceInteractionListener interactionListener = interactions::add;
+    private final List<AiServiceInvocationSummaryEvent> summaries = new CopyOnWriteArrayList<>();
+    private final AiServiceInvocationSummaryListener invocationSummaryListener = summaries::add;
 
     @Test
-    void canceledAsyncInvocationFiresInteractionEventWithTheEventsCollectedSoFar() {
+    void canceledAsyncInvocationFiresInvocationSummaryEventWithTheEventsCollectedSoFar() {
         var modelCalled = new CountDownLatch(1);
         ChatModel neverRespondingModel = new ChatModel() {
             @Override
@@ -77,7 +77,7 @@ class AiServicesInteractionEventTest {
 
         var assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(neverRespondingModel)
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         var future = assistant.chat("Hi");
@@ -86,15 +86,15 @@ class AiServicesInteractionEventTest {
         future.cancel(true);
 
         assertThatThrownBy(future::join).isInstanceOf(CancellationException.class);
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
     }
 
     @Test
-    void completedAsyncInvocationFiresASingleInteractionEvent() {
+    void completedAsyncInvocationFiresASingleInvocationSummaryEvent() {
         var assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(new ChatModel() {
                     @Override
@@ -104,14 +104,14 @@ class AiServicesInteractionEventTest {
                                 .build());
                     }
                 })
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         assertThat(assistant.chat("Hi").join()).isEqualTo("Hello");
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(
                                 AiServiceStartedEvent.class,
@@ -121,11 +121,11 @@ class AiServicesInteractionEventTest {
     }
 
     @Test
-    void canceledReactiveInvocationFiresInteractionEventWithTheEventsCollectedSoFar() {
+    void canceledReactiveInvocationFiresInvocationSummaryEventWithTheEventsCollectedSoFar() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         var subscriber = new RecordingSubscriber();
@@ -134,19 +134,19 @@ class AiServicesInteractionEventTest {
         subscriber.subscription.get().cancel();
         subscriber.subscription.get().cancel();
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class));
     }
 
     @Test
-    void reactiveInvocationCanceledFromWithinOnSubscribeFiresInteractionEvent() {
+    void reactiveInvocationCanceledFromWithinOnSubscribeFiresInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         assistant.chat("Hi").subscribe(new RecordingSubscriber() {
@@ -156,21 +156,21 @@ class AiServicesInteractionEventTest {
             }
         });
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class));
     }
 
     @Test
-    void rejectedSecondReactiveSubscriptionDoesNotEndTheFirstSubscriptionsInteraction() {
+    void rejectedSecondReactiveSubscriptionDoesNotEndTheFirstSubscriptionsInvocationSummary() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
                 // With a chat memory, the publisher can only be subscribed to once
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         var publisher = assistant.chat("Hi");
@@ -181,22 +181,22 @@ class AiServicesInteractionEventTest {
         publisher.subscribe(second);
 
         awaitLatch(second.done);
-        assertThat(interactions).isEmpty();
+        assertThat(summaries).isEmpty();
 
         first.subscription.get().cancel();
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class));
     }
 
     @Test
-    void completedReactiveInvocationFiresASingleInteractionEvent() {
+    void completedReactiveInvocationFiresASingleInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         var subscriber = new RecordingSubscriber();
@@ -204,9 +204,9 @@ class AiServicesInteractionEventTest {
 
         awaitLatch(subscriber.done);
         assertThat(subscriber.completed).isTrue();
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .startsWith(AiServiceStartedEvent.class)
                         .endsWith(AiServiceCompletedEvent.class)
@@ -214,7 +214,7 @@ class AiServicesInteractionEventTest {
     }
 
     @Test
-    void canceledTokenStreamFiresInteractionEventWithTheEventsCollectedSoFar() {
+    void canceledTokenStreamFiresInvocationSummaryEventWithTheEventsCollectedSoFar() {
         var handle = new TestStreamingHandle();
         StreamingChatModel model = new StreamingChatModel() {
             @Override
@@ -226,7 +226,7 @@ class AiServicesInteractionEventTest {
 
         var assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         assistant
@@ -237,33 +237,33 @@ class AiServicesInteractionEventTest {
                 .start();
 
         assertThat(handle.isCancelled()).isTrue();
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class));
     }
 
     @Test
-    void tokenStreamThatFailsToStartFiresInteractionEvent() {
+    void tokenStreamThatFailsToStartFiresInvocationSummaryEvent() {
         var assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         // Neither onError nor ignoreErrors was configured, so start() fails
         var tokenStream = assistant.chat("Hi").onPartialResponse(partialResponse -> {});
 
         assertThatThrownBy(tokenStream::start).isInstanceOf(IllegalConfigurationException.class);
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(AiServiceStartedEvent.class));
     }
 
     @Test
-    void failedSynchronousInvocationFiresASingleInteractionEvent() {
+    void failedSynchronousInvocationFiresASingleInvocationSummaryEvent() {
         var assistant = AiServices.builder(Assistant.class)
                 .chatModel(new ChatModel() {
                     @Override
@@ -271,14 +271,14 @@ class AiServicesInteractionEventTest {
                         throw new RuntimeException("LLM invocation failed");
                     }
                 })
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("Hi")).hasMessage("LLM invocation failed");
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .singleElement()
-                .satisfies(interaction -> assertThat(interaction.events())
+                .satisfies(summary -> assertThat(summary.events())
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(
                                 AiServiceStartedEvent.class,
@@ -287,10 +287,10 @@ class AiServicesInteractionEventTest {
     }
 
     @Test
-    void nestedInvocationFiresItsOwnInteractionEvent() {
+    void nestedInvocationFiresItsOwnInvocationSummaryEvent() {
         var inner = AiServices.builder(InnerAssistant.class)
                 .chatModel(respondingWith("inner"))
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         // The outer AI Service calls the inner one while its own invocation is in progress
@@ -303,24 +303,24 @@ class AiServicesInteractionEventTest {
                                 .build();
                     }
                 })
-                .registerListener(interactionListener)
+                .registerListener(invocationSummaryListener)
                 .build();
 
         assertThat(outer.chat("Hi")).isEqualTo("outer: inner");
 
-        assertThat(interactions)
+        assertThat(summaries)
                 .hasSize(2)
-                .allSatisfy(interaction -> assertThat(interaction.events())
+                .allSatisfy(summary -> assertThat(summary.events())
                         .allSatisfy(event -> assertThat(
                                         event.invocationContext().invocationId())
-                                .isEqualTo(interaction.invocationContext().invocationId()))
+                                .isEqualTo(summary.invocationContext().invocationId()))
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(
                                 AiServiceStartedEvent.class,
                                 AiServiceRequestIssuedEvent.class,
                                 AiServiceResponseReceivedEvent.class,
                                 AiServiceCompletedEvent.class))
-                .extracting(interaction -> interaction.invocationContext().interfaceName())
+                .extracting(summary -> summary.invocationContext().interfaceName())
                 // The inner invocation ends first
                 .containsExactly(InnerAssistant.class.getName(), Assistant.class.getName());
     }
