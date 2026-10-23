@@ -54,7 +54,7 @@
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.3.0</awaitility.version>
         <aws.java.sdk.version>2.42.4</aws.java.sdk.version>
-        <azure-sdk.version>1.3.7</azure-sdk.version>
+        <azure-sdk.version>1.3.9</azure-sdk.version>
         <blockhound.version>1.0.17.RELEASE</blockhound.version>
         <jackson.version>2.22.4</jackson.version>
         <jackson3.version>3.2.4</jackson3.version>
@@ -348,7 +348,7 @@
             <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-cosmos</artifactId>
-                <version>4.71.0-beta.1</version>
+                <version>4.83.0</version>
             </dependency>
 
             <dependency>
