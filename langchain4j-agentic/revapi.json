@@ -5,6 +5,11 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.service.tool.search.ToolSearchStrategy",
+          "justification": "The new optional AgentBuilder configuration exposes ToolSearchStrategy from the existing langchain4j dependency. Existing API signatures are unchanged."
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
           "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."
