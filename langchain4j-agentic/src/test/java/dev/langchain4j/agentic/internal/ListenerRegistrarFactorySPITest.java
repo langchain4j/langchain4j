@@ -3,21 +3,28 @@ package dev.langchain4j.agentic.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
+import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.spi.observability.AiServiceListenerRegistrarFactory;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -54,8 +61,8 @@ class ListenerRegistrarFactorySPITest {
                         .build();
 
                 assertThatCode(() -> supervisor.invoke("test question"))
-                        .as("Before the fix, a shared SPI registrar caused NPE in AgentInvocationHandler " +
-                            "because managedParameters() was null when PlannerAgent fired events")
+                        .as("Before the fix, a shared SPI registrar caused NPE in AgentInvocationHandler "
+                                + "because managedParameters() was null when PlannerAgent fired events")
                         .doesNotThrowAnyException();
             } finally {
                 Thread.currentThread().setContextClassLoader(originalCL);
@@ -68,6 +75,61 @@ class ListenerRegistrarFactorySPITest {
         @UserMessage("You are a simple expert. Answer: {{request}}")
         @Agent(description = "A simple expert", outputKey = "response")
         String answer(@V("request") String request);
+    }
+
+    @Test
+    void should_nest_a_sub_agent_summary_and_still_notify_its_listener() throws Exception {
+        try (CompiledFactory compiledFactory = compileTestFactory()) {
+            ClassLoader originalCL = Thread.currentThread().getContextClassLoader();
+            Thread.currentThread().setContextClassLoader(compiledFactory.classLoader());
+            try {
+                var factory = compiledFactory
+                        .classLoader()
+                        .loadClass("dev.langchain4j.agentic.internal.generated.TestListenerRegistrarFactory")
+                        .asSubclass(AiServiceListenerRegistrarFactory.class)
+                        .getDeclaredConstructor()
+                        .newInstance();
+                var summaries = new ArrayList<AiServiceInvocationSummaryEvent>();
+                factory.get().register((AiServiceInvocationSummaryListener) summaries::add);
+                SimpleExpert child = AgenticServices.agentBuilder(SimpleExpert.class)
+                        .chatModel(new ChatModelMock("expert answer"))
+                        .build();
+                SimpleExpert parent = AgenticServices.agentBuilder(SimpleExpert.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("1")
+                                        .name("askExpert")
+                                        .arguments("{}")
+                                        .build()),
+                                AiMessage.from("final answer")))
+                        .tools(new ExpertTool(child))
+                        .build();
+
+                assertThat(parent.answer("question")).isEqualTo("final answer");
+
+                assertThat(summaries).hasSize(2);
+                assertThat(summaries.get(1).events()).contains(summaries.get(0));
+                assertThat(summaries.get(0).invocationContext().parentInvocationId())
+                        .isEqualTo(summaries.get(1).invocationContext().invocationId());
+                assertThat(summaries.get(1).invocationContext().parentInvocationId())
+                        .isNull();
+            } finally {
+                Thread.currentThread().setContextClassLoader(originalCL);
+            }
+        }
+    }
+
+    public static class ExpertTool {
+        private final SimpleExpert expert;
+
+        ExpertTool(SimpleExpert expert) {
+            this.expert = expert;
+        }
+
+        @Tool
+        public String askExpert() {
+            return expert.answer("question for expert");
+        }
     }
 
     private static CompiledFactory compileTestFactory() throws Exception {
@@ -99,16 +161,17 @@ class ListenerRegistrarFactorySPITest {
                 "dev.langchain4j.agentic.internal.generated.TestListenerRegistrarFactory",
                 StandardCharsets.UTF_8);
 
-        URLClassLoader classLoader = new URLClassLoader(
-                new URL[] {tempDir.toUri().toURL()}, ListenerRegistrarFactorySPITest.class.getClassLoader()) {
-            @Override
-            public Enumeration<URL> getResources(String name) throws IOException {
-                if (name.equals(SPI_SERVICE_FILE)) {
-                    return findResources(name);
-                }
-                return super.getResources(name);
-            }
-        };
+        URLClassLoader classLoader =
+                new URLClassLoader(
+                        new URL[] {tempDir.toUri().toURL()}, ListenerRegistrarFactorySPITest.class.getClassLoader()) {
+                    @Override
+                    public Enumeration<URL> getResources(String name) throws IOException {
+                        if (name.equals(SPI_SERVICE_FILE)) {
+                            return findResources(name);
+                        }
+                        return super.getResources(name);
+                    }
+                };
         return new CompiledFactory(classLoader);
     }
 
@@ -183,16 +246,15 @@ class ListenerRegistrarFactorySPITest {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             callCount++;
-            String response = switch (callCount) {
-                case 1 -> """
+            String response =
+                    switch (callCount) {
+                        case 1 -> """
                         {"agentName":"answer","arguments":{"request":"test question"}}""";
-                case 2 -> "stub expert answer";
-                default -> """
+                        case 2 -> "stub expert answer";
+                        default -> """
                         {"agentName":"done","arguments":{"response":"final answer"}}""";
-            };
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(response))
-                    .build();
+                    };
+            return ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
         }
     }
 }
