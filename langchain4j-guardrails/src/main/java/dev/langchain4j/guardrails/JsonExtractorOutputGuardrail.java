@@ -52,23 +52,28 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonExtractorOutputGuardrail.class);
     private final ObjectMapper objectMapper;
-    private Class<T> outputClass;
-    private Type reflectedType;
+    private final Class<T> outputClass;
+    private final Type reflectedType;
 
     /**
-     * Deserializes with a plain Jackson {@link ObjectMapper}, as this guardrail has always done.
+     * Creates a guardrail that checks the LLM response can be deserialized into the given class,
+     * using a plain Jackson {@link ObjectMapper} with its default settings.
      */
     public JsonExtractorOutputGuardrail(Class<T> outputClass) {
         this.objectMapper = new ObjectMapper();
         this.outputClass = ensureNotNull(outputClass, "outputClass");
+        this.reflectedType = null;
     }
 
     /**
-     * Deserializes with a plain Jackson {@link ObjectMapper}, matching
-     * {@link #JsonExtractorOutputGuardrail(Class)}.
+     * Creates a guardrail that checks the LLM response can be deserialized into the given type,
+     * using a plain Jackson {@link ObjectMapper} with its default settings. Use it for generic types
+     * such as {@code List<Foo>}, obtained for example with
+     * {@code new TypeReference<List<Foo>>() {}.getType()}.
      */
     public JsonExtractorOutputGuardrail(Type outputType) {
         this.objectMapper = new ObjectMapper();
+        this.outputClass = null;
         this.reflectedType = ensureNotNull(outputType, "outputType");
     }
 
@@ -123,7 +128,7 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     }
 
     /**
-     * Tries to deserialize the provided LLM response string into an object of type T using the configured {@link ObjectMapper}.
+     * Tries to deserialize the provided LLM response string into an object of type T using a plain Jackson {@link ObjectMapper}.
      * If deserialization fails, an empty Optional is returned.
      *
      * @param llmResponse the JSON-formatted response string to be deserialized
