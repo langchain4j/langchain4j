@@ -28,7 +28,7 @@ class JsonExtractorOutputGuardrailTests {
     private static final JsonExtractorOutputGuardrail<MyObject> MY_OBJECT_JSON_OUTPUT_GUARDRAIL =
             new JsonExtractorOutputGuardrail<>(MyObject.class);
     private static final JsonExtractorOutputGuardrail<Map<String, MyObject>> MAP_OF_MY_OBJECT_JSON_OUTPUT_GUARDRAIL =
-            new JsonExtractorOutputGuardrail<>(new TypeReference<>() {});
+            new JsonExtractorOutputGuardrail<>(new TypeReference<Map<String, MyObject>>() {}.getType());
 
     @ParameterizedTest
     @MethodSource("guardrails")

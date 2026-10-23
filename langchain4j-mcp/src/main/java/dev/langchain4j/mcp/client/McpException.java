@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.Map;
@@ -34,14 +33,6 @@ public class McpException extends LangChain4jException {
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.errorDataAsJson = errorDataAsJson;
-    }
-
-    /**
-     * @deprecated use {@link #withErrorData(int, String, String)}, which does not expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public McpException(int errorCode, String errorMessage, @Nullable JsonNode errorData) {
-        this(errorCode, errorMessage, errorData == null ? null : errorData.toString());
     }
 
     public int errorCode() {
@@ -85,11 +76,4 @@ public class McpException extends LangChain4jException {
         return (Map<String, Object>) value;
     }
 
-    /**
-     * @deprecated use {@link #errorDataAsMap()} or {@link #errorDataAsJson()}.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public @Nullable JsonNode errorData() {
-        return errorDataAsJson == null ? null : McpJson.parse(errorDataAsJson);
-    }
 }
