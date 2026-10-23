@@ -58,9 +58,20 @@ class PersistedDecisionAnswersTest {
 
     record PlainReview(Quality quality, boolean publish) {}
 
+    static class ConfidenceReview {
+        Choice<Quality> quality;
+    }
+
+    static class InheritedConfidentReview extends ConfidenceReview {
+        boolean publish;
+    }
+
     @Test
     void only_an_object_with_fields_of_the_answer_types_is_a_composite_answer() {
         assertThat(PersistedDecisionAnswers.isCompositeAnswer(new ConfidentReview(null, null)))
+                .isTrue();
+        // a field inherited from a superclass counts, as DecisionMethod fills it when it builds the answer
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer(new InheritedConfidentReview()))
                 .isTrue();
         assertThat(PersistedDecisionAnswers.isCompositeAnswer(new PlainReview(Quality.GOOD, true)))
                 .isFalse();
@@ -68,6 +79,20 @@ class PersistedDecisionAnswersTest {
                 .isFalse();
         assertThat(PersistedDecisionAnswers.isCompositeAnswer("a string")).isFalse();
         assertThat(PersistedDecisionAnswers.isCompositeAnswer(null)).isFalse();
+    }
+
+    @Test
+    void an_answer_inheriting_its_fields_is_dropped_from_the_persisted_scope() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        scope.writeState("review", new InheritedConfidentReview());
+        scope.writeState("story", "Once upon a time");
+
+        // the object is dropped when the scope is saved instead of failing when it is loaded, as its Choice
+        // field has no form the codec could read back
+        DefaultAgenticScope restored = AgenticScopeSerializer.fromJson(AgenticScopeSerializer.toJson(scope));
+
+        assertThat(restored.readState("review")).isNull();
+        assertThat(restored.readState("story")).isEqualTo("Once upon a time");
     }
 
     @Test

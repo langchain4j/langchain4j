@@ -4,8 +4,8 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.decision.Choice;
 import dev.langchain4j.service.decision.Scale;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,15 +33,27 @@ public final class PersistedDecisionAnswers {
             Enum<?> mostLikely, Double mean, Map<String, Double> probabilities, Double confidence) {}
 
     /**
-     * Whether the given value is an object with fields of the answer types, like the record a decision agent returns
-     * to answer several questions in one call. Its fields cannot be converted in place, so such a value is not
-     * persisted, like a {@code DecisionResult}: the records of a recoverable system should have {@code boolean} and
-     * enum fields instead.
+     * Whether the given value is an object with fields of the answer types, inherited ones included, like the record
+     * a decision agent returns to answer several questions in one call. Its fields cannot be converted in place, so
+     * such a value is not persisted, like a {@code DecisionResult}: the records of a recoverable system should have
+     * {@code boolean} and enum fields instead.
      */
     public static boolean isCompositeAnswer(Object value) {
-        return value != null
-                && Arrays.stream(value.getClass().getDeclaredFields())
-                        .anyMatch(field -> !Modifier.isStatic(field.getModifiers()) && isAnswerType(field.getType()));
+        if (value == null) {
+            return false;
+        }
+        // the same fields DecisionMethod fills when it builds the answer
+        for (Class<?> type = value.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                int modifiers = field.getModifiers();
+                if (!Modifier.isStatic(modifiers)
+                        && !Modifier.isTransient(modifiers)
+                        && isAnswerType(field.getType())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean isAnswerType(Class<?> type) {
