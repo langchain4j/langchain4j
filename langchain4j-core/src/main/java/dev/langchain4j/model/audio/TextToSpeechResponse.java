@@ -9,9 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Response containing the audio generated from text.
  */
 @Experimental
-public class TextToSpeechResponse {
-
-    private final Audio audio;
+public record TextToSpeechResponse(Audio audio) {
 
     /**
      * Creates a new response with the given audio.
@@ -25,6 +23,7 @@ public class TextToSpeechResponse {
     /**
      * @return The generated audio
      */
+    @Override
     public Audio audio() {
         return audio;
     }

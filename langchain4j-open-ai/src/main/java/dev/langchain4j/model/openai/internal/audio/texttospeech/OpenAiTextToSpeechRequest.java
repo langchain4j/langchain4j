@@ -19,7 +19,7 @@ public class OpenAiTextToSpeechRequest {
      * The text to generate audio for. The maximum length is 4096 characters.
      */
     @JsonProperty
-    private final String input;
+    private final String text;
 
     /**
      * ID of the model to use. The options are : <br/>
@@ -29,30 +29,76 @@ public class OpenAiTextToSpeechRequest {
     private final String model;
 
     /**
-     * The voice to use when generating the audio.
-     * Supported built-in voices are alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer,
-     * verse, marin, and cedar.
+     * The voice to use when generating the audio: a built-in voice
+     * (alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse, marin, or cedar)
+     * or a custom voice.
      */
     @JsonProperty
-    private final String voice;
+    private final OpenAiVoice voice;
+
+    /**
+     * Control the voice of your generated audio with additional instructions (Optional).
+     * Does not work with tts-1 or tts-1-hd.
+     */
+    @JsonProperty
+    private final String instructions;
+
+    /**
+     * The format to return audio in. Supported formats are mp3, opus, aac, flac, wav, and pcm.
+     */
+    @JsonProperty
+    private final String responseFormat;
+
+    /**
+     * The speed of the generated audio (Optional). Select a value from 0.25 to 4.0. 1.0 is the default.
+     */
+    @JsonProperty
+    private final Double speed;
+
+    /**
+     * The format to stream the audio in. Supported formats are sse and audio.
+     * sse is not supported for tts-1 or tts-1-hd.
+     */
+    @JsonProperty
+    private final String streamFormat;
 
     @JsonCreator
     public OpenAiTextToSpeechRequest(Builder builder) {
-        this.input = builder.text;
+        this.text = builder.text;
         this.model = builder.model;
         this.voice = builder.voice;
+        this.instructions = builder.instructions;
+        this.responseFormat = builder.responseFormat;
+        this.speed = builder.speed;
+        this.streamFormat = builder.streamFormat;
     }
 
     public String text() {
-        return input;
+        return text;
     }
 
     public String model() {
         return model;
     }
 
-    public String voice() {
+    public OpenAiVoice voice() {
         return voice;
+    }
+
+    public String instructions() {
+        return instructions;
+    }
+
+    public String responseFormat() {
+        return responseFormat;
+    }
+
+    public Double speed() {
+        return speed;
+    }
+
+    public String streamFormat() {
+        return streamFormat;
     }
 
     public static Builder builder() {
@@ -60,12 +106,26 @@ public class OpenAiTextToSpeechRequest {
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-
     public static class Builder {
 
         private String text;
         private String model;
-        private String voice;
+        private OpenAiVoice voice;
+        private String instructions;
+        private String responseFormat;
+        private Double speed;
+        private String streamFormat;
+
+        public Builder from(OpenAiTextToSpeechRequest request) {
+            text(request.text);
+            model(request.model);
+            voice(request.voice);
+            instructions(request.instructions);
+            responseFormat(request.responseFormat);
+            speed(request.speed);
+            streamFormat(request.streamFormat);
+            return this;
+        }
 
         public Builder text(String text) {
             this.text = text;
@@ -77,8 +137,28 @@ public class OpenAiTextToSpeechRequest {
             return this;
         }
 
-        public Builder voice(String voice) {
+        public Builder voice(OpenAiVoice voice) {
             this.voice = voice;
+            return this;
+        }
+
+        public Builder instructions(String instructions) {
+            this.instructions = instructions;
+            return this;
+        }
+
+        public Builder responseFormat(String responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder speed(Double speed) {
+            this.speed = speed;
+            return this;
+        }
+
+        public Builder streamFormat(String streamFormat) {
+            this.streamFormat = streamFormat;
             return this;
         }
 

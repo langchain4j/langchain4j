@@ -141,6 +141,18 @@
           "old": "method dev.langchain4j.model.decision.request.DecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
           "new": "method dev.langchain4j.model.openai.OpenAiDecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
           "justification": "defaultRequestParameters() now returns the provider-specific OpenAiDecisionRequestParameters (covariant return, the compiler keeps a bridge method), consistent with OpenAiChatModel and AnthropicChatModel"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method java.lang.String dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest::voice()",
+          "new": "method dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiVoice dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest::voice()",
+          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiVoice type. Affects an internal wire DTO only."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder::voice(===java.lang.String===)",
+          "new": "parameter dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest.Builder::voice(===dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiVoice===)",
+          "justification": "The OpenAI speech API's 'voice' field now accepts either a built-in voice name or a custom voice object ({\"id\": ...}), modelled by the sealed OpenAiVoice type. Affects an internal wire DTO only."
         }
       ]
     }

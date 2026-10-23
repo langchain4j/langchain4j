@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai.internal;
 
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
@@ -8,6 +7,15 @@ import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpee
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiCreateVoiceResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiDeleteVoiceConsentResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiListVoiceConsentsRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiUpdateVoiceConsentRequest;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentId;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentListResponse;
+import dev.langchain4j.model.openai.internal.audio.voice.OpenAiVoiceConsentResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
@@ -28,7 +36,6 @@ import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -72,12 +79,36 @@ public abstract class OpenAiClient {
         throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
     }
 
+    public SyncOrAsync<OpenAiCreateVoiceResponse> createVoice(OpenAiCreateVoiceRequest request) {
+        throw new UnsupportedOperationException("Custom voices are not supported by this client implementation");
+    }
+
     public SyncOrAsync<DecisionCreateResponse> decision(DecisionCreateRequest request) {
         throw new UnsupportedOperationException("Decisions are not supported by this client implementation");
     }
 
     public SyncOrAsync<ModelsListResponse> listModels() {
         throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiVoiceConsentResponse> createVoiceConsent(OpenAiCreateVoiceConsentRequest request) {
+        throw new UnsupportedOperationException("Voice consents are not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiVoiceConsentListResponse> listVoiceConsents(OpenAiListVoiceConsentsRequest request) {
+        throw new UnsupportedOperationException("Voice consents are not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiVoiceConsentResponse> retrieveVoiceConsent(OpenAiVoiceConsentId request) {
+        throw new UnsupportedOperationException("Voice consents are not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiVoiceConsentResponse> updateVoiceConsent(OpenAiUpdateVoiceConsentRequest request) {
+        throw new UnsupportedOperationException("Voice consents are not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiDeleteVoiceConsentResponse> deleteVoiceConsent(OpenAiVoiceConsentId request) {
+        throw new UnsupportedOperationException("Voice consents are not supported by this client implementation");
     }
 
     @SuppressWarnings("rawtypes")
