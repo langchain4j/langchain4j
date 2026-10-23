@@ -21,9 +21,15 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>26.63.0</version>
+                <version>26.90.0</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Fix dependency convergence issue -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.50.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
