@@ -15,7 +15,8 @@ public enum VoyageAiEmbeddingModelName {
     VOYAGE_LAW_2("voyage-law-2", 1024),
 
     VOYAGE_CODE_2("voyage-code-2", 1536),
-    VOYAGE_CODE_3("voyage-code-3", 1024);
+    VOYAGE_CODE_3("voyage-code-3", 1024),
+    VOYAGE_CODE_4("voyage-code-4", 1024);
 
     private final String stringValue;
     private final Integer dimension;
