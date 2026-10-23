@@ -6,5 +6,15 @@
     "labels": [
         // add "dependencies" label to PRs
         "dependencies"
+    ],
+    "packageRules": [
+        {
+            // Jackson parses untrusted JSON, so its updates must be the first to get a free PR slot
+            "matchPackageNames": [
+                "/^com\\.fasterxml\\.jackson[.:]/",
+                "/^tools\\.jackson[.:]/"
+            ],
+            "prPriority": 10
+        }
     ]
 }
