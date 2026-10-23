@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -228,12 +229,14 @@ public class AiServiceTokenStream implements TokenStream {
         List<ToolSpecification> effectiveTools =
                 toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
 
-        ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                ChatRequest.builder()
-                        .messages(messages)
-                        .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
-                        .build(),
-                runContext.chatMemoryId());
+        ChatRequest chatRequest = CurrentInvocation.callWith(
+                runContext,
+                () -> context.chatRequestTransformer.apply(
+                        ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
+                                .build(),
+                        runContext.chatMemoryId()));
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)

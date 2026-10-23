@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
@@ -347,13 +348,13 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> {
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
                         try {
                             return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
                         } catch (Exception e) {
                             return CompletableFuture.failedFuture(e);
                         }
-                    });
+                    }));
                 } else {
                     DefaultToolExecutor executor = DefaultToolExecutor.builder()
                             .object(objectWithTools)
@@ -361,9 +362,11 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> executor.executeAsync(
-                                    toolExecution.request(), ctx)
-                            .thenApply(result -> (Void) null));
+                    compensatingActions.put(
+                            toolName,
+                            (toolExecution, ctx) -> CurrentInvocation.callWith(
+                                            ctx, () -> executor.executeAsync(toolExecution.request(), ctx))
+                                    .thenApply(result -> (Void) null));
                 }
             }
         }
@@ -1237,12 +1240,10 @@ public class ToolService {
                 .toolSpecifications(toolServiceContext.effectiveTools())
                 .build());
 
-        ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                ChatRequest.builder()
-                        .messages(messages)
-                        .parameters(parameters)
-                        .build(),
-                memoryId);
+        ChatRequest untransformedRequest =
+                ChatRequest.builder().messages(messages).parameters(parameters).build();
+        ChatRequest chatRequest = CurrentInvocation.callWith(
+                invocationContext, () -> context.chatRequestTransformer.apply(untransformedRequest, memoryId));
 
         fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
 
@@ -2033,7 +2034,8 @@ public class ToolService {
             ToolExecutionErrorHandler executionErrorHandler) {
         CompletableFuture<ToolExecutionResult> futureToolResult;
         try {
-            futureToolResult = toolExecutor.executeAsync(toolRequest, invocationContext);
+            futureToolResult = CurrentInvocation.callWith(
+                    invocationContext, () -> toolExecutor.executeAsync(toolRequest, invocationContext));
         } catch (AsyncNotSupportedException e) {
             return CompletableFuture.failedFuture(e);
         } catch (Exception e) {
@@ -2235,7 +2237,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            return toolExecutor.executeWithContext(toolRequest, invocationContext);
+            return CurrentInvocation.callWith(
+                    invocationContext, () -> toolExecutor.executeWithContext(toolRequest, invocationContext));
         } catch (Exception e) {
             return toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
         }
