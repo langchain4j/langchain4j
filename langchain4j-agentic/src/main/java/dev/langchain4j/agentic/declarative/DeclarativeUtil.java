@@ -28,6 +28,7 @@ import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.ThresholdContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -85,6 +86,11 @@ public class DeclarativeUtil {
         getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class).ifPresent(method -> {
             checkReturnType(method, ToolProvider.class);
             agentBuilder.toolProvider(invokeSupplierWithResolvers(agentType, method, ToolProvider.class));
+        });
+
+        getAnnotatedMethodOnClass(agentType, ToolSearchStrategySupplier.class).ifPresent(method -> {
+            checkReturnType(method, ToolSearchStrategy.class);
+            agentBuilder.toolSearchStrategy(invokeSupplierWithResolvers(agentType, method, ToolSearchStrategy.class));
         });
 
         getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class).ifPresent(method -> {
