@@ -149,9 +149,9 @@ class JudgedTextAssertTest {
 
     @Test
     void should_assert_with_any_judge_implementation() {
-        Judge judge = request -> request.criteria().stream()
+        Judge judge = request -> JudgeResponse.from(request.criteria().stream()
                 .map(criterion -> JudgeVerdict.from(criterion, criterion.text().startsWith("is"), "custom judge"))
-                .toList();
+                .toList());
 
         judge.assertThat(TEXT).satisfies("is polite");
         assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("mentions a date"))
@@ -247,7 +247,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_fail_fast_when_a_custom_judge_returns_no_verdicts() {
-        Judge judge = request -> List.of();
+        Judge judge = request -> JudgeResponse.from(List.of());
 
         assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -256,7 +256,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_fail_fast_when_a_custom_judge_returns_fewer_verdicts_than_criteria() {
-        Judge judge = request -> List.of(JudgeVerdict.from(request.criteria().get(0), true, "ok"));
+        Judge judge = request -> JudgeResponse.from(List.of(JudgeVerdict.from(request.criteria().get(0), true, "ok")));
 
         assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("is polite", "mentions the booking"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -265,24 +265,25 @@ class JudgedTextAssertTest {
 
     @Test
     void should_fail_fast_when_a_custom_judge_returns_null() {
-        Judge nullList = request -> null;
-        Judge nullVerdict = request -> {
-            List<JudgeVerdict> verdicts = new ArrayList<>();
-            verdicts.add(null);
-            return verdicts;
-        };
+        Judge judge = request -> null;
 
-        assertThatThrownBy(() -> nullList.assertThat(TEXT).satisfies("is polite"))
+        assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
-                .hasMessageContaining("returned no verdicts for 1 criteria");
-        assertThatThrownBy(() -> nullVerdict.assertThat(TEXT).satisfies("is polite"))
-                .isExactlyInstanceOf(JudgeException.class)
-                .hasMessageContaining("returned 1 verdicts for 1 criteria");
+                .hasMessageContaining("returned no response");
+    }
+
+    @Test
+    void should_fail_fast_when_a_custom_judge_returns_a_null_verdict() {
+        Judge judge = request -> JudgeResponse.from(Arrays.asList((JudgeVerdict) null));
+
+        assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("is polite"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("verdict 1 cannot be null");
     }
 
     @Test
     void should_fail_fast_when_a_custom_judge_returns_a_verdict_for_another_criterion() {
-        Judge judge = request -> List.of(JudgeVerdict.from(JudgeCriterion.from("is short"), true, "ok"));
+        Judge judge = request -> JudgeResponse.from(List.of(JudgeVerdict.from(JudgeCriterion.from("is short"), true, "ok")));
 
         assertThatThrownBy(() -> judge.assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -323,7 +324,7 @@ class JudgedTextAssertTest {
         assertThatThrownBy(() -> assertion.basedOnContents(contentsWithNull))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("source");
-        assertThatThrownBy(() -> JudgeRequest.builder().conversation(conversationWithNull))
+        assertThatThrownBy(() -> JudgeContext.from(conversationWithNull))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("message");
         assertThatThrownBy(() -> JudgeRequest.builder().sources(sourcesWithNull))
@@ -339,7 +340,7 @@ class JudgedTextAssertTest {
                 .isNotInstanceOf(JudgeException.class)
                 .hasMessage("model is down");
         assertThatThrownBy(() ->
-                        Judge.from(judge).withOneCallPerCriterion().assertThat(TEXT).satisfies("is polite", "is short"))
+                        Judge.from(judge).withOneRequestPerCriterion().assertThat(TEXT).satisfies("is polite", "is short"))
                 .isNotInstanceOf(JudgeException.class)
                 .hasMessage("model is down");
     }

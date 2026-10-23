@@ -7,26 +7,27 @@ import java.util.Objects;
 
 /**
  * A criterion for a {@link Judge}, written in natural language, for example "mentions the refund amount".
- * Optionally, it defines when it passes and when it fails, which makes the verdicts more consistent and lets the team
+ * Optionally, it defines when it is satisfied and when it is not, which makes the verdicts more consistent and lets the team
  * agree on what the criterion means:
  * <pre>{@code
  * JudgeCriterion.from("mentions the refund amount")
- *         .withPassWhen("the response states the amount of money that will be refunded")
- *         .withFailWhen("the response only says that a refund will be made, without the amount");
+ *         .satisfiedWhen("the response states the amount of money that will be refunded")
+ *         .notSatisfiedWhen("the response only says that a refund will be made, without the amount");
  * }</pre>
- * A criterion is immutable: {@link #withPassWhen(String)} and {@link #withFailWhen(String)} return a new criterion.
+ * A criterion is immutable: {@link #satisfiedWhen(String)} and {@link #notSatisfiedWhen(String)} return a new
+ * criterion.
  */
 @Experimental
 public final class JudgeCriterion {
 
     private final String text;
-    private final String passWhen;
-    private final String failWhen;
+    private final String satisfiedWhen;
+    private final String notSatisfiedWhen;
 
-    private JudgeCriterion(String text, String passWhen, String failWhen) {
+    private JudgeCriterion(String text, String satisfiedWhen, String notSatisfiedWhen) {
         this.text = ensureNotBlank(text, "criterion");
-        this.passWhen = passWhen;
-        this.failWhen = failWhen;
+        this.satisfiedWhen = satisfiedWhen;
+        this.notSatisfiedWhen = notSatisfiedWhen;
     }
 
     /**
@@ -37,17 +38,17 @@ public final class JudgeCriterion {
     }
 
     /**
-     * Returns a copy of this criterion that defines when it passes.
+     * Returns a copy of this criterion that defines when it is satisfied.
      */
-    public JudgeCriterion withPassWhen(String passWhen) {
-        return new JudgeCriterion(text, ensureNotBlank(passWhen, "passWhen"), failWhen);
+    public JudgeCriterion satisfiedWhen(String satisfiedWhen) {
+        return new JudgeCriterion(text, ensureNotBlank(satisfiedWhen, "satisfiedWhen"), notSatisfiedWhen);
     }
 
     /**
-     * Returns a copy of this criterion that defines when it fails.
+     * Returns a copy of this criterion that defines when it is not satisfied.
      */
-    public JudgeCriterion withFailWhen(String failWhen) {
-        return new JudgeCriterion(text, passWhen, ensureNotBlank(failWhen, "failWhen"));
+    public JudgeCriterion notSatisfiedWhen(String notSatisfiedWhen) {
+        return new JudgeCriterion(text, satisfiedWhen, ensureNotBlank(notSatisfiedWhen, "notSatisfiedWhen"));
     }
 
     /**
@@ -58,34 +59,35 @@ public final class JudgeCriterion {
     }
 
     /**
-     * When this criterion passes, or {@code null} if not defined.
+     * When this criterion is satisfied, or {@code null} if not defined.
      */
-    public String passWhen() {
-        return passWhen;
+    public String satisfiedWhen() {
+        return satisfiedWhen;
     }
 
     /**
-     * When this criterion fails, or {@code null} if not defined.
+     * When this criterion is not satisfied, or {@code null} if not defined.
      */
-    public String failWhen() {
-        return failWhen;
+    public String notSatisfiedWhen() {
+        return notSatisfiedWhen;
     }
 
     @Override
     public boolean equals(Object o) {
         return o instanceof JudgeCriterion that
                 && text.equals(that.text)
-                && Objects.equals(passWhen, that.passWhen)
-                && Objects.equals(failWhen, that.failWhen);
+                && Objects.equals(satisfiedWhen, that.satisfiedWhen)
+                && Objects.equals(notSatisfiedWhen, that.notSatisfiedWhen);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(text, passWhen, failWhen);
+        return Objects.hash(text, satisfiedWhen, notSatisfiedWhen);
     }
 
     @Override
     public String toString() {
-        return "JudgeCriterion{text=" + text + ", passWhen=" + passWhen + ", failWhen=" + failWhen + '}';
+        return "JudgeCriterion{text=" + text + ", satisfiedWhen=" + satisfiedWhen + ", notSatisfiedWhen="
+                + notSatisfiedWhen + '}';
     }
 }

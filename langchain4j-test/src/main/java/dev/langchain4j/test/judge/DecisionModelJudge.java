@@ -83,8 +83,8 @@ public final class DecisionModelJudge implements Judge {
      * <pre>{@code
      * DecisionModelJudge judge = Judge.from(decisionModel).withQuestion(criterion -> YesNoQuestion.builder()
      *         .text("Would a support agent accept this response? It must: " + criterion.text())
-     *         .yesWhen(criterion.passWhen() != null ? criterion.passWhen() : "it clearly does")
-     *         .noWhen(criterion.failWhen() != null ? criterion.failWhen() : "it does not, or only partly")
+     *         .yesWhen(criterion.satisfiedWhen() != null ? criterion.satisfiedWhen() : "it clearly does")
+     *         .noWhen(criterion.notSatisfiedWhen() != null ? criterion.notSatisfiedWhen() : "it does not, or only partly")
      *         .build());
      * }</pre>
      * A judge can be created once and shared by all tests, for example in a constant or a test configuration.
@@ -98,30 +98,35 @@ public final class DecisionModelJudge implements Judge {
     }
 
     @Override
-    public List<JudgeVerdict> evaluate(JudgeRequest judgeRequest) {
+    public JudgeResponse evaluate(JudgeRequest judgeRequest) {
         ensureNotNull(judgeRequest, "request");
         DecisionRequest.Builder request = DecisionRequest.builder();
         Function<JudgeCriterion, YesNoQuestion> questions = this.questions;
-        if (judgeRequest.conversation() != null) {
-            ensureNoConversationWithSources(
-                    true, judgeRequest.sources() != null && !judgeRequest.sources().isEmpty());
+        JudgeContext context = judgeRequest.context();
+        if (context instanceof ConversationContext conversation) {
+            ensureNoSources(judgeRequest);
             List<ChatMessage> messages = new ArrayList<>();
-            judgeRequest.conversation().forEach(message -> messages.add(ChatMessageTexts.forJudge(message)));
+            conversation.messages().forEach(message -> messages.add(ChatMessageTexts.forJudge(message)));
             messages.add(AiMessage.from(judgeRequest.text()));
             request.inputMessages(messages);
             if (questions == DEFAULT_QUESTIONS) {
                 questions = DecisionModelJudge::defaultConversationQuestion;
             }
-        } else {
+        } else if (context == null || context instanceof UserMessageContext) {
             Map<String, Object> input = new LinkedHashMap<>();
-            if (judgeRequest.userMessage() != null) {
-                input.put("userMessage", judgeRequest.userMessage());
+            if (context instanceof UserMessageContext userMessage) {
+                input.put("userMessage", userMessage.text());
             }
             if (judgeRequest.sources() != null) {
                 input.put("sources", judgeRequest.sources());
             }
             input.put("response", judgeRequest.text());
             request.inputFields(input);
+        } else {
+            throw illegalArgument(
+                    "Unsupported JudgeContext %s: create it with JudgeContext.from(String) for a user message or"
+                            + " JudgeContext.from(List) for a conversation",
+                    context.getClass().getName());
         }
 
         List<JudgeCriterion> criteria = judgeRequest.criteria();
@@ -160,11 +165,14 @@ public final class DecisionModelJudge implements Judge {
                     String.format(Locale.ROOT, "P(yes) = %.3f, threshold = %.3f", answer.probability(), threshold),
                     answer.probability()));
         }
-        return verdicts;
+        return JudgeResponse.builder()
+                .verdicts(verdicts)
+                .tokenUsage(response.tokenUsage())
+                .build();
     }
 
-    private static void ensureNoConversationWithSources(boolean hasConversation, boolean hasSources) {
-        if (hasConversation && hasSources) {
+    private static void ensureNoSources(JudgeRequest judgeRequest) {
+        if (judgeRequest.sources() != null && !judgeRequest.sources().isEmpty()) {
             throw illegalArgument(
                     "A DecisionModelJudge cannot judge a text given a conversation and separate sources: put the"
                             + " sources in the conversation (the requests of an AI Service already contain the"
@@ -175,9 +183,9 @@ public final class DecisionModelJudge implements Judge {
     private static YesNoQuestion defaultQuestion(JudgeCriterion criterion) {
         return YesNoQuestion.builder()
                 .text("Does the response satisfy this condition: " + criterion.text())
-                .yesWhen(getOrDefault(criterion.passWhen(), "the response clearly and fully satisfies the condition"))
+                .yesWhen(getOrDefault(criterion.satisfiedWhen(), "the response clearly and fully satisfies the condition"))
                 .noWhen(getOrDefault(
-                        criterion.failWhen(),
+                        criterion.notSatisfiedWhen(),
                         "the response does not satisfy the condition, satisfies it only partly, or it is unclear"))
                 .build();
     }
@@ -186,9 +194,9 @@ public final class DecisionModelJudge implements Judge {
         return YesNoQuestion.builder()
                 .text("Does the last assistant message of the conversation satisfy this condition: " + criterion.text())
                 .yesWhen(getOrDefault(
-                        criterion.passWhen(), "the last assistant message clearly and fully satisfies the condition"))
+                        criterion.satisfiedWhen(), "the last assistant message clearly and fully satisfies the condition"))
                 .noWhen(getOrDefault(
-                        criterion.failWhen(),
+                        criterion.notSatisfiedWhen(),
                         "the last assistant message does not satisfy the condition, satisfies it only partly, or it is"
                                 + " unclear"))
                 .build();

@@ -44,17 +44,18 @@ import java.util.function.Function;
  * <p>
  * Use {@link #assertThat(String)} in tests. Use {@link #evaluate(JudgeRequest)} to get the verdicts as values, for
  * example to compute pass rates over a dataset. To use another way of judging, for example several judges that vote,
- * implement {@link #evaluate(JudgeRequest)}: {@link #assertThat(String)} works with any implementation.
+ * implement {@link #evaluate(JudgeRequest)} and return {@link JudgeResponse#from(List)}: {@link #assertThat(String)}
+ * works with any implementation.
  */
 @Experimental
 public interface Judge {
 
     /**
      * Returns a judge backed by the given chat model. By default, all criteria of one assertion are judged in a
-     * single call. The model must support JSON schema response formats ({@code ResponseFormat} with a
+     * single request. The model must support JSON schema response formats ({@code ResponseFormat} with a
      * {@code JsonSchema}).
      *
-     * @see ChatModelJudge#withOneCallPerCriterion()
+     * @see ChatModelJudge#withOneRequestPerCriterion()
      * @see ChatModelJudge#withSystemMessage(String)
      */
     static ChatModelJudge from(ChatModel chatModel) {
@@ -63,7 +64,7 @@ public interface Judge {
 
     /**
      * Returns a judge backed by the given decision model: each criterion is asked as a yes/no question, all in a
-     * single call.
+     * single request.
      *
      * @see DecisionModelJudge#withThreshold(double)
      * @see DecisionModelJudge#withQuestion(Function)
@@ -75,14 +76,14 @@ public interface Judge {
     /**
      * Judges the text of the request against each criterion, without failing.
      *
-     * @return one verdict per criterion, in the order of the criteria. A criterion the judge was not sure about is
-     *         not satisfied.
+     * @return one verdict per criterion, in the order of the criteria (a criterion the judge was not sure about is
+     *         not satisfied), and the tokens the judge model used
      * @throws JudgeException           if the judge model returned a response that could not be understood, or
      *                                  refused to judge
      * @throws IllegalArgumentException if the judge cannot judge this request, for example a
      *                                  {@link DecisionModelJudge} given both a conversation and sources
      */
-    List<JudgeVerdict> evaluate(JudgeRequest request);
+    JudgeResponse evaluate(JudgeRequest request);
 
     /**
      * Starts assertions on the given text, for example the response of an AI Service. Nothing is judged until

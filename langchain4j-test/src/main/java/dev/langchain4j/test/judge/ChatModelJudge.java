@@ -1,5 +1,6 @@
 package dev.langchain4j.test.judge;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.internal.ChatMessageTexts;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,12 +96,12 @@ public final class ChatModelJudge implements Judge {
             .build();
 
     private final ChatModel chatModel;
-    private final boolean oneCallPerCriterion;
+    private final boolean oneRequestPerCriterion;
     private final String systemMessage;
 
-    ChatModelJudge(ChatModel chatModel, boolean oneCallPerCriterion, String systemMessage) {
+    ChatModelJudge(ChatModel chatModel, boolean oneRequestPerCriterion, String systemMessage) {
         this.chatModel = ensureNotNull(chatModel, "chatModel");
-        this.oneCallPerCriterion = oneCallPerCriterion;
+        this.oneRequestPerCriterion = oneRequestPerCriterion;
         this.systemMessage = ensureNotBlank(systemMessage, "systemMessage");
     }
 
@@ -108,10 +110,11 @@ public final class ChatModelJudge implements Judge {
     }
 
     /**
-     * Returns a judge that judges each criterion in its own call, instead of all criteria of an assertion in a
-     * single call. This costs one call per criterion, but criteria cannot influence each other's verdicts.
+     * Returns a judge that judges each criterion in its own request to the model, instead of all criteria of an
+     * assertion in a single request. This costs one request per criterion, but criteria cannot influence each
+     * other's verdicts.
      */
-    public ChatModelJudge withOneCallPerCriterion() {
+    public ChatModelJudge withOneRequestPerCriterion() {
         return new ChatModelJudge(chatModel, true, systemMessage);
     }
 
@@ -139,23 +142,26 @@ public final class ChatModelJudge implements Judge {
      * system message on a few cases with known verdicts before relying on it.
      */
     public ChatModelJudge withSystemMessage(String systemMessage) {
-        return new ChatModelJudge(chatModel, oneCallPerCriterion, systemMessage);
+        return new ChatModelJudge(chatModel, oneRequestPerCriterion, systemMessage);
     }
 
     @Override
-    public List<JudgeVerdict> evaluate(JudgeRequest request) {
+    public JudgeResponse evaluate(JudgeRequest request) {
         ensureNotNull(request, "request");
-        if (!oneCallPerCriterion) {
-            return judgeInOneCall(request, request.criteria());
+        if (!oneRequestPerCriterion) {
+            return judgeInOneRequest(request, request.criteria());
         }
         List<JudgeVerdict> verdicts = new ArrayList<>();
+        TokenUsage tokenUsage = null;
         for (JudgeCriterion criterion : request.criteria()) {
-            verdicts.addAll(judgeInOneCall(request, List.of(criterion)));
+            JudgeResponse response = judgeInOneRequest(request, List.of(criterion));
+            verdicts.addAll(response.verdicts());
+            tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
         }
-        return verdicts;
+        return JudgeResponse.builder().verdicts(verdicts).tokenUsage(tokenUsage).build();
     }
 
-    private List<JudgeVerdict> judgeInOneCall(JudgeRequest request, List<JudgeCriterion> criteria) {
+    private JudgeResponse judgeInOneRequest(JudgeRequest request, List<JudgeCriterion> criteria) {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(SystemMessage.from(systemMessage), userMessage(request, criteria))
                 .responseFormat(RESPONSE_FORMAT)
@@ -211,22 +217,29 @@ public final class ChatModelJudge implements Judge {
                     result.equals("SATISFIED"),
                     "%s: %s".formatted(result, reasoning == null ? "no reasoning given" : reasoning)));
         }
-        return verdicts;
+        return JudgeResponse.builder()
+                .verdicts(verdicts)
+                .tokenUsage(chatResponse.tokenUsage())
+                .build();
     }
 
     private static UserMessage userMessage(JudgeRequest request, List<JudgeCriterion> criteria) {
         Prompt message = new Prompt();
-        if (request.userMessage() != null) {
-            message.append("<user_message>\n").append(escape(request.userMessage())).append("\n</user_message>\n\n");
-        }
-        if (request.conversation() != null) {
+        if (request.context() instanceof UserMessageContext userMessage) {
+            message.append("<user_message>\n").append(escape(userMessage.text())).append("\n</user_message>\n\n");
+        } else if (request.context() instanceof ConversationContext conversation) {
             message.append("<conversation>\n");
-            for (ChatMessage chatMessage : request.conversation()) {
+            for (ChatMessage chatMessage : conversation.messages()) {
                 message.append("<message role=\"%s\">\n".formatted(ChatMessageTexts.role(chatMessage)));
                 ChatMessageTexts.write(chatMessage, message);
                 message.append("\n</message>\n");
             }
             message.append("</conversation>\n\n");
+        } else if (request.context() != null) {
+            throw illegalArgument(
+                    "Unsupported JudgeContext %s: create it with JudgeContext.from(String) for a user message or"
+                            + " JudgeContext.from(List) for a conversation",
+                    request.context().getClass().getName());
         }
         if (request.sources() != null) {
             message.append("<sources>\n");
@@ -238,16 +251,16 @@ public final class ChatModelJudge implements Judge {
         message.append("<text>\n").append(escape(request.text())).append("\n</text>\n\n<conditions>\n");
         for (int i = 0; i < criteria.size(); i++) {
             JudgeCriterion criterion = criteria.get(i);
-            if (criterion.passWhen() == null && criterion.failWhen() == null) {
+            if (criterion.satisfiedWhen() == null && criterion.notSatisfiedWhen() == null) {
                 message.append("<condition number=\"%d\">%s</condition>\n".formatted(i + 1, escape(criterion.text())));
                 continue;
             }
             message.append("<condition number=\"%d\">\n%s\n".formatted(i + 1, escape(criterion.text())));
-            if (criterion.passWhen() != null) {
-                message.append("<passes_when>%s</passes_when>\n".formatted(escape(criterion.passWhen())));
+            if (criterion.satisfiedWhen() != null) {
+                message.append("<passes_when>%s</passes_when>\n".formatted(escape(criterion.satisfiedWhen())));
             }
-            if (criterion.failWhen() != null) {
-                message.append("<fails_when>%s</fails_when>\n".formatted(escape(criterion.failWhen())));
+            if (criterion.notSatisfiedWhen() != null) {
+                message.append("<fails_when>%s</fails_when>\n".formatted(escape(criterion.notSatisfiedWhen())));
             }
             message.append("</condition>\n");
         }

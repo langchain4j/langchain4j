@@ -34,6 +34,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import dev.langchain4j.model.output.TokenUsage;
 
 class DecisionModelJudgeTest {
 
@@ -254,7 +255,7 @@ class DecisionModelJudgeTest {
         assertThatThrownBy(() -> Judge.from(judge)
                         .evaluate(JudgeRequest.builder()
                                 .text(TEXT)
-                                .conversation(CONVERSATION)
+                                .context(JudgeContext.from(CONVERSATION))
                                 .sources(List.of("Bookings can be cancelled for free."))
                                 .criteria(JudgeCriterion.from("answers the user's request"))
                                 .build()))
@@ -292,7 +293,7 @@ class DecisionModelJudgeTest {
         DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
                 Map.of("condition1", YesNoAnswer.from(0.8), "condition2", YesNoAnswer.from(0.2)));
 
-        List<JudgeVerdict> verdicts = Judge.from(judge).evaluate(request(TEXT, "is polite", "is short"));
+        List<JudgeVerdict> verdicts = Judge.from(judge).evaluate(request(TEXT, "is polite", "is short")).verdicts();
 
         assertThat(verdicts.get(0).isSatisfied()).isTrue();
         assertThat(verdicts.get(0).probability()).isEqualTo(0.8);
@@ -309,8 +310,8 @@ class DecisionModelJudgeTest {
                 .assertThat(TEXT)
                 .satisfies(
                         JudgeCriterion.from("asks to check the booking number")
-                                .withPassWhen("asks the user to check or repeat the booking number"),
-                        JudgeCriterion.from("is short").withFailWhen("it is longer than two sentences"));
+                                .satisfiedWhen("asks the user to check or repeat the booking number"),
+                        JudgeCriterion.from("is short").notSatisfiedWhen("it is longer than two sentences"));
 
         YesNoQuestion first = (YesNoQuestion) judge.request().questions().get("condition1");
         assertThat(first.yesWhen()).isEqualTo("asks the user to check or repeat the booking number");
@@ -398,4 +399,39 @@ class DecisionModelJudgeTest {
                 .isExactlyInstanceOf(JudgeException.class)
                 .hasMessageContaining("The judge returned no answer for criterion 2");
     }
+
+    @Test
+    void decision_model_judge_should_report_the_token_usage_of_the_decision() {
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)))
+                .withTokenUsage(new TokenUsage(7, 3));
+
+        JudgeResponse response = Judge.from(judge).evaluate(request(TEXT, "is polite"));
+
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(7, 3));
+    }
+
+    @Test
+    void decision_model_judge_should_report_no_token_usage_when_the_model_does_not() {
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+
+        assertThat(Judge.from(judge).evaluate(request(TEXT, "is polite")).tokenUsage()).isNull();
+    }
+
+
+    @Test
+    void decision_model_judge_should_reject_an_unknown_context_before_calling_the_model() {
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        JudgeContext unknown = new JudgeContext() {};
+
+        assertThatThrownBy(() -> Judge.from(judge)
+                        .evaluate(JudgeRequest.builder()
+                                .text(TEXT)
+                                .context(unknown)
+                                .criteria(JudgeCriterion.from("is polite"))
+                                .build()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported JudgeContext");
+        assertThat(judge.requests()).isEmpty();
+    }
+
 }

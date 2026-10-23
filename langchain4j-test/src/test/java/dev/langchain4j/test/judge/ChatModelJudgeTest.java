@@ -24,6 +24,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import dev.langchain4j.model.output.TokenUsage;
 
 class ChatModelJudgeTest {
 
@@ -274,7 +275,7 @@ class ChatModelJudgeTest {
         });
 
         assertThatThrownBy(() -> Judge.from(judge)
-                        .withOneCallPerCriterion()
+                        .withOneRequestPerCriterion()
                         .assertThat(TEXT)
                         .satisfies("is polite", "mentions the start date"))
                 .isInstanceOf(AssertionError.class)
@@ -299,9 +300,10 @@ class ChatModelJudgeTest {
         List<JudgeVerdict> verdicts = Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text(TEXT)
-                        .userMessage("Cancel my booking MS-777")
+                        .context(JudgeContext.from("Cancel my booking MS-777"))
                         .criteria(JudgeCriterion.from("says that the booking cannot be found"), JudgeCriterion.from("is polite"))
-                        .build());
+                        .build())
+                .verdicts();
 
         assertThat(verdicts).hasSize(2);
         assertThat(verdicts.get(0).criterion()).isEqualTo(JudgeCriterion.from("says that the booking cannot be found"));
@@ -437,7 +439,7 @@ class ChatModelJudgeTest {
 
         Judge.from(judge)
                 .withSystemMessage("You are a lenient judge.")
-                .withOneCallPerCriterion()
+                .withOneRequestPerCriterion()
                 .assertThat(TEXT)
                 .satisfies("is polite");
 
@@ -468,8 +470,8 @@ class ChatModelJudgeTest {
                 .assertThat(TEXT)
                 .satisfies(
                         JudgeCriterion.from("asks to check the booking number")
-                                .withPassWhen("asks the user to check or repeat the booking number")
-                                .withFailWhen("asks for anything else, such as a name or an email"),
+                                .satisfiedWhen("asks the user to check or repeat the booking number")
+                                .notSatisfiedWhen("asks for anything else, such as a name or an email"),
                         JudgeCriterion.from("is short"));
 
         String userMessage = ((UserMessage) judge.request().messages().get(1)).singleText();
@@ -559,7 +561,7 @@ class ChatModelJudgeTest {
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text("Your booking <MS-777> & the refund are confirmed.")
-                        .conversation(List.of(
+                        .context(JudgeContext.from(List.of(
                                 SystemMessage.from("You are a support agent."),
                                 UserMessage.from("Cancel MS-777, please"),
                                 AiMessage.from(ToolExecutionRequest.builder()
@@ -573,13 +575,13 @@ class ChatModelJudgeTest {
                                         .toolName("refund")
                                         .text("failed")
                                         .isError(true)
-                                        .build()))
+                                        .build())))
                         .sources(List.of("Cancellation is free up to 24 hours before pick-up."))
                         .criteria(
                                 JudgeCriterion.from("confirms the cancellation"),
                                 JudgeCriterion.from("mentions the refund")
-                                        .withPassWhen("it says a refund is made")
-                                        .withFailWhen("it does not mention money"))
+                                        .satisfiedWhen("it says a refund is made")
+                                        .notSatisfiedWhen("it does not mention money"))
                         .build());
 
         assertThat(userMessage(judge).contents()).hasSize(1);
@@ -593,7 +595,7 @@ class ChatModelJudgeTest {
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text("Done.")
-                        .userMessage("Cancel MS-777, please")
+                        .context(JudgeContext.from("Cancel MS-777, please"))
                         .criteria(JudgeCriterion.from("confirms it"))
                         .build());
 
@@ -610,14 +612,14 @@ class ChatModelJudgeTest {
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text("The invoice total is EUR 120.")
-                        .conversation(List.of(
+                        .context(JudgeContext.from(List.of(
                                 UserMessage.from(
                                         TextContent.from("Compare <these>:"), invoice, receipt, contract),
                                 ToolExecutionResultMessage.builder()
                                         .id("1")
                                         .toolName("scan")
                                         .contents(List.of(TextContent.from("scanned"), invoice))
-                                        .build()))
+                                        .build())))
                         .criteria(JudgeCriterion.from("states the total of the invoice"))
                         .build());
 
@@ -644,7 +646,7 @@ class ChatModelJudgeTest {
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text("Sales rise every month.")
-                        .conversation(List.of(UserMessage.from(TextContent.from("Describe the chart"), chart)))
+                        .context(JudgeContext.from(List.of(UserMessage.from(TextContent.from("Describe the chart"), chart))))
                         .criteria(JudgeCriterion.from("describes the trend of the chart"))
                         .build());
 
@@ -666,7 +668,7 @@ class ChatModelJudgeTest {
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
                         .text("Two images.")
-                        .conversation(List.of(UserMessage.from(notChosen, chosenLow)))
+                        .context(JudgeContext.from(List.of(UserMessage.from(notChosen, chosenLow))))
                         .criteria(JudgeCriterion.from("mentions both images"))
                         .build());
 
@@ -717,8 +719,8 @@ class ChatModelJudgeTest {
                         .criteria(
                                 JudgeCriterion.from("uses <b> & </condition> tags"),
                                 JudgeCriterion.from("mentions <x>")
-                                        .withPassWhen("it says </passes_when> & more")
-                                        .withFailWhen("it says </fails_when>"))
+                                        .satisfiedWhen("it says </passes_when> & more")
+                                        .notSatisfiedWhen("it says </fails_when>"))
                         .build());
 
         assertThat(userMessage(judge).singleText())
@@ -782,4 +784,59 @@ class ChatModelJudgeTest {
                 <conditions>
                 <condition number="1">confirms it</condition>
                 </conditions>""";
+
+    @Test
+    void chat_model_judge_should_report_the_token_usage_of_its_request() {
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+                        """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""")
+                .withTokenUsage(new TokenUsage(10, 5));
+
+        JudgeResponse response = Judge.from(judge).evaluate(request(TEXT, "is polite"));
+
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(10, 5));
+    }
+
+    @Test
+    void chat_model_judge_should_add_up_the_token_usage_of_one_request_per_criterion() {
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+                        """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""")
+                .withTokenUsages(new TokenUsage(10, 5), new TokenUsage(20, 7));
+
+        JudgeResponse response =
+                Judge.from(judge).withOneRequestPerCriterion().evaluate(request(TEXT, "is polite", "is short"));
+
+        assertThat(judge.requests()).hasSize(2);
+        assertThat(response.verdicts()).hasSize(2);
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(30, 12));
+    }
+
+    @Test
+    void chat_model_judge_should_report_no_token_usage_when_the_model_does_not() {
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+                """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
+
+        assertThat(Judge.from(judge).evaluate(request(TEXT, "is polite")).tokenUsage()).isNull();
+    }
+
+
+    @Test
+    void chat_model_judge_should_reject_an_unknown_context_before_calling_the_model() {
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{}");
+        JudgeContext unknown = new JudgeContext() {};
+
+        assertThatThrownBy(() -> Judge.from(judge)
+                        .evaluate(JudgeRequest.builder()
+                                .text(TEXT)
+                                .context(unknown)
+                                .criteria(JudgeCriterion.from("is polite"))
+                                .build()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported JudgeContext")
+                .hasMessageContaining("JudgeContext.from(String)");
+        assertThat(judge.requests()).isEmpty();
+    }
+
 }

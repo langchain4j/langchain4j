@@ -58,7 +58,7 @@ class JudgeRequestTest {
                 .hasMessageContaining("criteria");
         assertThatThrownBy(() -> JudgeRequest.builder()
                         .text(TEXT)
-                        .userMessage(" ")
+                        .context(JudgeContext.from(" "))
                         .criteria(JudgeCriterion.from("is polite"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -69,32 +69,47 @@ class JudgeRequestTest {
         assertThatThrownBy(() -> JudgeCriterion.from(" "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("criterion");
-        assertThatThrownBy(() -> JudgeCriterion.from("is polite").withPassWhen(" "))
+        assertThatThrownBy(() -> JudgeCriterion.from("is polite").satisfiedWhen(" "))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("passWhen");
+                .hasMessageContaining("satisfiedWhen");
         assertThat(judge.requests()).isEmpty();
     }
 
     @Test
-    void request_should_reject_both_user_message_and_conversation() {
-        assertThatThrownBy(() -> JudgeRequest.builder()
-                        .text(TEXT)
-                        .userMessage("Where is my booking?")
-                        .conversation(List.of(UserMessage.from("Where is my booking?")))
-                        .criteria(JudgeCriterion.from("is polite"))
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("either the user message or the conversation");
+    void request_should_keep_the_context() {
+        JudgeContext conversation = JudgeContext.from(List.of(UserMessage.from("Where is my booking?")));
+
+        JudgeRequest request = JudgeRequest.builder()
+                .text(TEXT)
+                .context(conversation)
+                .criteria(JudgeCriterion.from("is polite"))
+                .build();
+
+        assertThat(request.context()).isEqualTo(conversation);
+        assertThat(request.toString()).contains("context=ConversationContext{messages=[");
     }
 
     @Test
-    void request_should_reject_an_empty_conversation() {
-        assertThatThrownBy(() -> JudgeRequest.builder()
-                        .text(TEXT)
-                        .conversation(List.of())
-                        .criteria(JudgeCriterion.from("is polite"))
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("conversation");
+    void request_should_have_no_context_by_default() {
+        JudgeRequest request = JudgeRequest.builder()
+                .text(TEXT)
+                .criteria(JudgeCriterion.from("is polite"))
+                .build();
+
+        assertThat(request.context()).isNull();
     }
+
+    @Test
+    void request_should_compare_the_context() {
+        JudgeRequest.Builder builder = JudgeRequest.builder().text(TEXT).criteria(JudgeCriterion.from("is polite"));
+
+        JudgeRequest withQuestion = builder.context(JudgeContext.from("Where is my booking?")).build();
+        JudgeRequest withSameQuestion = builder.context(JudgeContext.from("Where is my booking?")).build();
+        JudgeRequest withConversation = builder.context(JudgeContext.from(List.of(UserMessage.from("Where is my booking?"))))
+                .build();
+
+        assertThat(withQuestion).isEqualTo(withSameQuestion).hasSameHashCodeAs(withSameQuestion);
+        assertThat(withQuestion).isNotEqualTo(withConversation);
+    }
+
 }

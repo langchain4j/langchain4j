@@ -1,6 +1,5 @@
 package dev.langchain4j.test.judge;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -12,7 +11,6 @@ import dev.langchain4j.test.model.ChatRequestAssert;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import org.assertj.core.api.AbstractAssert;
 
 /**
@@ -30,8 +28,7 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
     private static final int MAX_MESSAGE_LENGTH = 1000;
 
     private final Judge judge;
-    private String userMessage;
-    private List<ChatMessage> conversation;
+    private JudgeContext context;
     private List<String> sources;
     private boolean judged;
 
@@ -49,8 +46,7 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
      */
     public JudgedTextAssert given(String userMessage) {
         ensureNotJudged("given(...)");
-        this.userMessage = ensureNotBlank(userMessage, "userMessage");
-        this.conversation = null;
+        this.context = JudgeContext.from(userMessage);
         return myself;
     }
 
@@ -79,10 +75,7 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
      */
     public JudgedTextAssert given(List<? extends ChatMessage> conversation) {
         ensureNotJudged("given(...)");
-        ensureNotEmpty(conversation, "conversation");
-        conversation.forEach(message -> ensureNotNull(message, "message"));
-        this.conversation = List.copyOf(conversation);
-        this.userMessage = null;
+        this.context = JudgeContext.from(conversation);
         return myself;
     }
 
@@ -169,12 +162,15 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
 
         JudgeRequest request = JudgeRequest.builder()
                 .text(actual)
-                .userMessage(userMessage)
-                .conversation(conversation)
+                .context(context)
                 .sources(sources)
                 .criteria(criteria)
                 .build();
-        List<JudgeVerdict> verdicts = judge.evaluate(request);
+        JudgeResponse response = judge.evaluate(request);
+        if (response == null) {
+            throw new JudgeException("The judge %s returned no response".formatted(judge));
+        }
+        List<JudgeVerdict> verdicts = response.verdicts();
         ensureOneVerdictPerCriterion(verdicts, request.criteria());
         List<JudgeVerdict> failed = verdicts.stream()
                 .filter(verdict -> !verdict.isSatisfied())
@@ -186,12 +182,9 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
     }
 
     private void ensureOneVerdictPerCriterion(List<JudgeVerdict> verdicts, List<JudgeCriterion> criteria) {
-        if (verdicts == null || verdicts.size() != criteria.size() || verdicts.stream().anyMatch(Objects::isNull)) {
-            throw new JudgeException("The judge %s returned %s for %d criteria: it must return one verdict per criterion"
-                    .formatted(
-                            judge,
-                            verdicts == null ? "no verdicts" : verdicts.size() + " verdicts",
-                            criteria.size()));
+        if (verdicts.size() != criteria.size()) {
+            throw new JudgeException("The judge %s returned %d verdicts for %d criteria: it must return one verdict per criterion"
+                    .formatted(judge, verdicts.size(), criteria.size()));
         }
         for (int i = 0; i < criteria.size(); i++) {
             if (!criteria.get(i).equals(verdicts.get(i).criterion())) {
@@ -217,30 +210,30 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
                     .append(newLine)
                     .append("Criterion: ")
                     .append(verdict.criterion().text());
-            if (verdict.criterion().passWhen() != null) {
-                message.append(newLine).append("Passes when: ").append(verdict.criterion().passWhen());
+            if (verdict.criterion().satisfiedWhen() != null) {
+                message.append(newLine).append("Satisfied when: ").append(verdict.criterion().satisfiedWhen());
             }
-            if (verdict.criterion().failWhen() != null) {
-                message.append(newLine).append("Fails when: ").append(verdict.criterion().failWhen());
+            if (verdict.criterion().notSatisfiedWhen() != null) {
+                message.append(newLine).append("Not satisfied when: ").append(verdict.criterion().notSatisfiedWhen());
             }
             message.append(newLine)
                     .append("Verdict: ")
                     .append(verdict.explanation());
         }
         message.append(newLine).append(newLine).append("Text:").append(newLine).append(actual);
-        if (userMessage != null) {
+        if (context instanceof UserMessageContext userMessage) {
             message.append(newLine)
                     .append(newLine)
                     .append("User message:")
                     .append(newLine)
-                    .append(ChatMessageTexts.truncate(userMessage, MAX_MESSAGE_LENGTH));
+                    .append(ChatMessageTexts.truncate(userMessage.text(), MAX_MESSAGE_LENGTH));
         }
-        if (conversation != null) {
+        if (context instanceof ConversationContext conversation) {
             message.append(newLine)
                     .append(newLine)
                     .append("Conversation:")
                     .append(newLine)
-                    .append(ChatMessageTexts.describe(conversation, MAX_MESSAGE_LENGTH));
+                    .append(ChatMessageTexts.describe(conversation.messages(), MAX_MESSAGE_LENGTH));
         }
         if (sources != null) {
             message.append(newLine).append(newLine).append("Sources:");
