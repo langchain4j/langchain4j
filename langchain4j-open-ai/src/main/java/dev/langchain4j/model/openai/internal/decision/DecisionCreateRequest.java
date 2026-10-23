@@ -23,6 +23,8 @@ public class DecisionCreateRequest {
 
     public List<Question> questions;
 
+    public String promptCacheKey;
+
     @JsonIgnore
     public Map<String, Object> customParameters;
 
