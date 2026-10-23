@@ -73,7 +73,8 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
      * slower than the server produces and the buffer overflows, the stream terminates with an error.
      * <p>
      * The default is {@value JdkHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
-     * This setting is not used when {@link #streamingBackpressure(boolean)} is enabled.
+     * Cannot be combined with {@link #streamingBackpressure(boolean) streamingBackpressure(true)}, which does not
+     * use this buffer.
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
@@ -102,6 +103,8 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
      * <p>
      * Disabled by default to retain the bounded event-buffer behavior used by existing integrations.
      * This option applies only to the publisher streaming API, not blocking or callback-based requests.
+     * Cannot be combined with {@link #streamingBufferSize(Integer)}: {@link #build()} throws an
+     * {@link IllegalArgumentException} if both are set.
      *
      * @param streamingBackpressure whether to make streaming body reads follow subscriber demand
      * @return this builder

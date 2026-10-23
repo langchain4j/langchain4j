@@ -16,13 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class StreamableHttpMcpTransportStatusCodeTest {
 
@@ -33,14 +30,8 @@ class StreamableHttpMcpTransportStatusCodeTest {
 
     private HttpServer server;
     private StreamableHttpMcpTransport transport;
-    private final CountDownLatch errorBodyRelease = new CountDownLatch(1);
-    private final CountDownLatch errorHeadersSent = new CountDownLatch(1);
 
     private void startServer(int toolsListStatus) throws IOException {
-        startServer(toolsListStatus, false);
-    }
-
-    private void startServer(int toolsListStatus, boolean holdErrorBody) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/mcp", exchange -> {
             String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
@@ -52,8 +43,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
                 respond(exchange, 200, "{}");
             } else if (toolsListStatus == 200) {
                 respond(exchange, 200, TOOLS_LIST_RESULT);
-            } else if (holdErrorBody) {
-                respondWithHeldErrorBody(exchange, toolsListStatus);
             } else {
                 respond(exchange, toolsListStatus, "{}");
             }
@@ -90,7 +79,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
 
     @AfterEach
     void tearDown() throws IOException {
-        errorBodyRelease.countDown();
         if (transport != null) {
             transport.close();
         }
@@ -119,18 +107,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
         assertThat(failureOf(response).statusCode()).isEqualTo(500);
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {401, 503})
-    void error_status_fails_before_the_response_body_is_released(int status) throws Exception {
-        startServer(status, true);
-        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
-        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
-
-        assertThat(errorHeadersSent.await(5, TimeUnit.SECONDS)).isTrue();
-        assertThat(failureOf(response).statusCode()).isEqualTo(status);
-        assertThat(errorBodyRelease.getCount()).isEqualTo(1);
-    }
-
     @Test
     void successful_request_is_unaffected() throws Exception {
         startServer(200);
@@ -145,28 +121,5 @@ class StreamableHttpMcpTransportStatusCodeTest {
         Throwable thrown = catchThrowable(() -> response.get(5, TimeUnit.SECONDS));
         assertThat(thrown).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(HttpException.class);
         return (HttpException) thrown.getCause();
-    }
-
-    private void respondWithHeldErrorBody(HttpExchange exchange, int status) throws IOException {
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.sendResponseHeaders(status, 0);
-        try (OutputStream out = exchange.getResponseBody()) {
-            out.write("partial error".getBytes(StandardCharsets.UTF_8));
-            out.flush();
-            errorHeadersSent.countDown();
-            try {
-                if (!errorBodyRelease.await(10, TimeUnit.SECONDS)) {
-                    throw new IOException("Error body was not released");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException(e);
-            }
-            try {
-                out.write(" remainder".getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ignored) {
-                // Early cancellation can close the response before the server writes its remainder.
-            }
-        }
     }
 }

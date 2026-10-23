@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StreamableHttpMcpTransportBackpressureTest {
 
@@ -54,9 +55,11 @@ class StreamableHttpMcpTransportBackpressureTest {
         }
     }
 
-    @Test
-    void should_preserve_progress_and_result_when_the_callback_cannot_keep_up_with_an_sse_burst() throws Exception {
-        CompletableFuture<String> response = startRequest();
+    @ParameterizedTest(name = "with executor: {0}")
+    @ValueSource(booleans = {true, false})
+    void should_preserve_progress_and_result_when_the_callback_cannot_keep_up_with_an_sse_burst(boolean withExecutor)
+            throws Exception {
+        CompletableFuture<String> response = startRequest(withExecutor);
         awaitBurstWhileCallbackIsPaused(response);
 
         releaseCallback.countDown();
@@ -70,17 +73,21 @@ class StreamableHttpMcpTransportBackpressureTest {
         assertThat(progress).extracting(McpProgressNotification::progressToken).containsOnly("progress-1");
     }
 
-    @Test
-    void should_cancel_while_a_progress_callback_is_busy_without_delivering_queued_notifications() throws Exception {
-        CompletableFuture<String> response = startRequest();
+    @ParameterizedTest(name = "with executor: {0}")
+    @ValueSource(booleans = {true, false})
+    void should_cancel_while_a_progress_callback_is_busy_without_delivering_queued_notifications(boolean withExecutor)
+            throws Exception {
+        CompletableFuture<String> response = startRequest(withExecutor);
         awaitBurstWhileCallbackIsPaused(response);
 
         assertThat(response.cancel(true)).isTrue();
         releaseCallback.countDown();
         assertThat(callbackReturned.await(10, TimeUnit.SECONDS)).isTrue();
         transport.close();
-        executor.shutdown();
-        assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        if (executor != null) {
+            executor.shutdown();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
 
         assertThat(response).isCancelled();
         assertThat(progress).extracting(McpProgressNotification::progress).containsExactly(0d);
@@ -95,16 +102,18 @@ class StreamableHttpMcpTransportBackpressureTest {
         assertThatThrownBy(() -> response.get(500, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
     }
 
-    private CompletableFuture<String> startRequest() throws IOException {
+    private CompletableFuture<String> startRequest(boolean withExecutor) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/mcp", this::respond);
         server.start();
-        executor = Executors.newFixedThreadPool(4);
-        transport = StreamableHttpMcpTransport.builder()
+        StreamableHttpMcpTransport.Builder builder = StreamableHttpMcpTransport.builder()
                 .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
-                .setHttpVersion1_1()
-                .executor(executor)
-                .build();
+                .setHttpVersion1_1();
+        if (withExecutor) {
+            executor = Executors.newFixedThreadPool(4);
+            builder.executor(executor);
+        }
+        transport = builder.build();
         transport.setModernProtocol(true);
         transport.start(new McpOperationHandler(
                 new ConcurrentHashMap<>(),

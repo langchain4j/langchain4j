@@ -110,6 +110,8 @@ class McpPendingOperationTest {
 
     @Test
     void transport_failure_should_fail_a_raw_operation() {
+        // A non-concurrent map: failing the futures while iterating must not trigger the
+        // cancellation cleanup in expectResponse, which would throw ConcurrentModificationException.
         Map<Long, CompletableFuture<String>> pending = new HashMap<>();
         McpOperationHandler handler = handler(pending);
         CompletableFuture<String> first = new CompletableFuture<>();

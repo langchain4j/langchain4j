@@ -2,13 +2,11 @@ package dev.langchain4j.mcp.client.transport.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -63,25 +61,6 @@ class McpResponseSubscriberTest {
         tasks.remove().run();
 
         assertThat(downstream.signals).containsExactly(EVENT, error);
-        assertThat(upstream.requests).containsExactly(1L);
-    }
-
-    @Test
-    void error_head_cancels_upstream_before_executor_drains_but_still_reaches_transport() {
-        Queue<Runnable> tasks = new ArrayDeque<>();
-        RecordingSubscriber downstream = new RecordingSubscriber();
-        McpResponseSubscriber subscriber = new McpResponseSubscriber(downstream, tasks::add);
-        RecordingSubscription upstream = new RecordingSubscription();
-        subscriber.onSubscribe(upstream);
-        HttpErrorResponseReceived errorHead = new HttpErrorResponseReceived(503, Map.of());
-
-        subscriber.onNext(errorHead);
-
-        assertThat(upstream.cancelled).isTrue();
-        assertThat(downstream.signals).isEmpty();
-        assertThat(tasks).hasSize(1);
-        tasks.remove().run();
-        assertThat(downstream.signals).containsExactly(errorHead);
         assertThat(upstream.requests).containsExactly(1L);
     }
 

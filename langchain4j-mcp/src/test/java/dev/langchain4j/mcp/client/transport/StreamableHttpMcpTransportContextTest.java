@@ -3,30 +3,22 @@ package dev.langchain4j.mcp.client.transport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
-import dev.langchain4j.http.client.sse.HttpResponseReceived;
-import dev.langchain4j.http.client.sse.HttpStreamingEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClient.StreamExchange;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpPingResponse;
 import dev.langchain4j.spi.CapturedContext;
+import dev.langchain4j.spi.ExecutorProvider;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Flow;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,7 +26,15 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 
+/**
+ * {@link ExecutorProvider#set(ExecutorProvider)} is process-wide, so this class runs alone and sequentially.
+ */
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 class StreamableHttpMcpTransportContextTest {
 
     private static final String URL = "https://mcp.example.test/mcp";
@@ -43,7 +43,7 @@ class StreamableHttpMcpTransportContextTest {
 
     private final ThreadLocal<String> identity = new ThreadLocal<>();
     private final AtomicInteger captures = new AtomicInteger();
-    private final RecordingHttpClient httpClient = new RecordingHttpClient();
+    private final MockHttpClient httpClient = MockHttpClient.withScriptedStreaming().withContextProbe(identity::get);
     private final Map<Long, CompletableFuture<String>> pendingOperations = new ConcurrentHashMap<>();
     private final AtomicReference<String> toolUpdateIdentity = new AtomicReference<>();
     private StreamableHttpMcpTransport transport;
@@ -53,6 +53,7 @@ class StreamableHttpMcpTransportContextTest {
         if (transport != null) {
             transport.close();
         }
+        ExecutorProvider.set(null);
         identity.remove();
     }
 
@@ -61,25 +62,25 @@ class StreamableHttpMcpTransportContextTest {
         start(false);
         identity.set("connection");
         CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
-        Exchange initialization = httpClient.nextExchange();
+        StreamExchange initialization = httpClient.nextExchange();
         assertScope(initialization, "connection");
 
         identity.set("user-a");
         CompletableFuture<String> first = transport.sendRequest(new McpListToolsRequest(1L, null));
         identity.set("user-b");
         CompletableFuture<String> second = transport.sendRequest(new McpListToolsRequest(2L, null));
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
         assertThat(captures).hasValue(3);
 
         identity.remove();
         onOtherThread(() -> initialization.respond(200, INITIALIZE_RESULT));
 
-        List<Exchange> followUps = new ArrayList<>();
+        List<StreamExchange> followUps = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             followUps.add(httpClient.nextExchange());
         }
-        for (Exchange exchange : followUps) {
-            String body = exchange.request.body();
+        for (StreamExchange exchange : followUps) {
+            String body = exchange.request().body();
             if (body.contains("notifications/initialized")) {
                 assertScope(exchange, "connection");
                 onOtherThread(() -> exchange.respond(202, null));
@@ -107,7 +108,7 @@ class StreamableHttpMcpTransportContextTest {
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
         AtomicReference<String> continuationIdentity = new AtomicReference<>();
         result.whenComplete((ignored, failure) -> continuationIdentity.set(identity.get()));
-        Exchange exchange = httpClient.nextExchange();
+        StreamExchange exchange = httpClient.nextExchange();
         assertScope(exchange, "user-a");
 
         identity.remove();
@@ -133,8 +134,8 @@ class StreamableHttpMcpTransportContextTest {
         start(false);
         identity.set("user-a");
         transport.sendMessage(new McpPingResponse(7L));
-        Exchange exchange = httpClient.nextExchange();
-        assertThat(exchange.request.body()).contains("\"id\":7");
+        StreamExchange exchange = httpClient.nextExchange();
+        assertThat(exchange.request().body()).contains("\"id\":7");
         assertScope(exchange, "user-a");
         identity.remove();
 
@@ -150,31 +151,31 @@ class StreamableHttpMcpTransportContextTest {
         start(false);
         identity.set("connection");
         CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
-        Exchange initialization = httpClient.nextExchange();
+        StreamExchange initialization = httpClient.nextExchange();
         identity.remove();
         onOtherThread(() -> initialization.respond(200, INITIALIZE_RESULT));
-        Exchange notification = httpClient.nextExchange();
+        StreamExchange notification = httpClient.nextExchange();
         assertScope(notification, "connection");
         onOtherThread(() -> notification.respond(202, null));
         assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
 
         identity.set("user-a");
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
-        Exchange rejected = httpClient.nextExchange();
+        StreamExchange rejected = httpClient.nextExchange();
         assertScope(rejected, "user-a");
         identity.remove();
-        onOtherThread(() -> rejected.errorHead(404));
+        onOtherThread(() -> rejected.fail(new HttpException(404, "session expired")));
 
-        Exchange reinitialization = httpClient.nextExchange();
-        assertThat(reinitialization.request.body()).contains("\"method\":\"initialize\"");
+        StreamExchange reinitialization = httpClient.nextExchange();
+        assertThat(reinitialization.request().body()).contains("\"method\":\"initialize\"");
         assertScope(reinitialization, "connection");
         onOtherThread(() -> reinitialization.respond(200, INITIALIZE_RESULT));
-        Exchange reinitializationNotification = httpClient.nextExchange();
+        StreamExchange reinitializationNotification = httpClient.nextExchange();
         assertScope(reinitializationNotification, "connection");
         onOtherThread(() -> reinitializationNotification.respond(202, null));
 
-        Exchange retry = httpClient.nextExchange();
-        assertThat(retry.request.body()).contains("\"id\":1");
+        StreamExchange retry = httpClient.nextExchange();
+        assertThat(retry.request().body()).contains("\"id\":1");
         assertScope(retry, "user-a");
         onOtherThread(() -> retry.respond(200, toolsResult(1)));
 
@@ -188,15 +189,15 @@ class StreamableHttpMcpTransportContextTest {
         start(true);
         identity.set("connection");
         CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
-        Exchange initialization = httpClient.nextExchange();
+        StreamExchange initialization = httpClient.nextExchange();
         identity.remove();
         onOtherThread(() -> initialization.respond(200, INITIALIZE_RESULT));
-        Exchange notification = httpClient.nextExchange();
+        StreamExchange notification = httpClient.nextExchange();
         assertScope(notification, "connection");
         onOtherThread(() -> notification.respond(202, null));
 
-        Exchange channel = httpClient.nextExchange();
-        assertThat(channel.request.method().name()).isEqualTo("GET");
+        StreamExchange channel = httpClient.nextExchange();
+        assertThat(channel.request().method().name()).isEqualTo("GET");
         assertScope(channel, "connection");
         onOtherThread(() -> channel.open(200, Map.of("Content-Type", List.of("text/event-stream"))));
         assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
@@ -205,9 +206,9 @@ class StreamableHttpMcpTransportContextTest {
             channel.complete();
         });
 
-        Exchange reconnect = httpClient.nextExchange();
-        assertThat(reconnect.request.method().name()).isEqualTo("GET");
-        assertThat(reconnect.request.headers()).containsEntry("Last-Event-ID", List.of("event-7"));
+        StreamExchange reconnect = httpClient.nextExchange();
+        assertThat(reconnect.request().method().name()).isEqualTo("GET");
+        assertThat(reconnect.request().headers()).containsEntry("Last-Event-ID", List.of("event-7"));
         assertScope(reconnect, "connection");
         assertThat(captures).hasValue(1);
         assertThat(identity.get()).isNull();
@@ -218,7 +219,7 @@ class StreamableHttpMcpTransportContextTest {
         start(false);
         identity.set("connection");
         CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
-        Exchange initialization = httpClient.nextExchange();
+        StreamExchange initialization = httpClient.nextExchange();
         identity.set("user-a");
         CompletableFuture<String> queued = transport.sendRequest(new McpListToolsRequest(1L, null));
         identity.remove();
@@ -226,13 +227,13 @@ class StreamableHttpMcpTransportContextTest {
         assertThat(queued.cancel(true)).isTrue();
         assertThat(identity.get()).isNull();
         onOtherThread(() -> initialization.respond(200, INITIALIZE_RESULT));
-        Exchange notification = httpClient.nextExchange();
+        StreamExchange notification = httpClient.nextExchange();
         assertScope(notification, "connection");
         onOtherThread(() -> notification.respond(202, null));
 
         assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
         assertThat(queued).isCancelled();
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
         assertThat(captures).hasValue(2);
         assertThat(identity.get()).isNull();
     }
@@ -242,13 +243,13 @@ class StreamableHttpMcpTransportContextTest {
         start(false);
         identity.set("user-a");
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
-        Exchange exchange = httpClient.nextExchange();
+        StreamExchange exchange = httpClient.nextExchange();
         identity.remove();
 
         assertThat(result.cancel(true)).isTrue();
 
-        assertThat(exchange.cancelled).isTrue();
-        assertThat(exchange.cancelIdentity).isEqualTo("user-a");
+        assertThat(exchange.isCancelled()).isTrue();
+        assertThat(exchange.cancelContext()).isEqualTo("user-a");
         assertThat(identity.get()).isNull();
         assertThat(captures).hasValue(1);
     }
@@ -262,7 +263,7 @@ class StreamableHttpMcpTransportContextTest {
         CompletableFuture<String> failedCapture = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThatThrownBy(() -> failedCapture.get(5, TimeUnit.SECONDS)).hasCause(captureFailure);
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
 
         transport.close();
         start(false, () -> null);
@@ -270,7 +271,7 @@ class StreamableHttpMcpTransportContextTest {
 
         assertThatThrownBy(() -> nullCapture.get(5, TimeUnit.SECONDS))
                 .hasCauseInstanceOf(IllegalArgumentException.class);
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
     }
 
     @Test
@@ -286,7 +287,7 @@ class StreamableHttpMcpTransportContextTest {
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCause(scopeFailure);
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
         assertThat(pendingOperations).isEmpty();
         assertThat(identity.get()).isEqualTo("user-a");
     }
@@ -302,7 +303,7 @@ class StreamableHttpMcpTransportContextTest {
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCause(wrappingFailure);
-        assertThat(httpClient.exchanges).isEmpty();
+        assertThat(httpClient.hasNoPendingExchanges()).isTrue();
         assertThat(pendingOperations).isEmpty();
         assertThat(identity.get()).isEqualTo("user-a");
     }
@@ -321,14 +322,14 @@ class StreamableHttpMcpTransportContextTest {
                 });
         identity.set("user-a");
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
-        Exchange exchange = httpClient.nextExchange();
+        StreamExchange exchange = httpClient.nextExchange();
         identity.remove();
         failScope.set(true);
 
         onOtherThread(() -> exchange.respond(200, toolsResult(1)));
 
         assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCause(scopeFailure);
-        assertThat(exchange.cancelled).isTrue();
+        assertThat(exchange.isCancelled()).isTrue();
         assertThat(identity.get()).isNull();
     }
 
@@ -336,12 +337,22 @@ class StreamableHttpMcpTransportContextTest {
         start(subsidiaryChannel, this::capture);
     }
 
-    private void start(boolean subsidiaryChannel, Supplier<CapturedContext> requestContextFactory) {
+    private void start(boolean subsidiaryChannel, Supplier<CapturedContext> captureContext) {
+        ExecutorProvider.set(new ExecutorProvider() {
+            @Override
+            public Executor executor() {
+                return null;
+            }
+
+            @Override
+            public CapturedContext captureContext() {
+                return captureContext.get();
+            }
+        });
         transport = StreamableHttpMcpTransport.builder()
                 .url(URL)
                 .httpClient(httpClient)
                 .customHeaders(context -> Map.of("X-Identity", identity.get()))
-                .requestContextFactory(requestContextFactory)
                 .subsidiaryChannel(subsidiaryChannel)
                 .build();
         transport.start(new McpOperationHandler(
@@ -382,10 +393,10 @@ class StreamableHttpMcpTransportContextTest {
         };
     }
 
-    private void assertScope(Exchange exchange, String expected) {
-        assertThat(exchange.streamIdentity).isEqualTo(expected);
-        assertThat(exchange.subscribeIdentity).isEqualTo(expected);
-        assertThat(exchange.request.headers()).containsEntry("X-Identity", List.of(expected));
+    private void assertScope(StreamExchange exchange, String expected) {
+        assertThat(exchange.streamContext()).isEqualTo(expected);
+        assertThat(exchange.subscribeContext()).isEqualTo(expected);
+        assertThat(exchange.request().headers()).containsEntry("X-Identity", List.of(expected));
     }
 
     private void onOtherThread(Runnable task) throws Exception {
@@ -399,100 +410,5 @@ class StreamableHttpMcpTransportContextTest {
 
     private static String toolsResult(long id) {
         return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"tools\":[]}}";
-    }
-
-    private final class RecordingHttpClient implements HttpClient {
-
-        private final BlockingQueue<Exchange> exchanges = new LinkedBlockingQueue<>();
-
-        Exchange nextExchange() throws InterruptedException {
-            Exchange exchange = exchanges.poll(5, TimeUnit.SECONDS);
-            assertThat(exchange).as("request sent through supplied HTTP client").isNotNull();
-            return exchange;
-        }
-
-        @Override
-        public SuccessfulHttpResponse execute(HttpRequest request) {
-            throw new AssertionError("MCP requests must use the streaming SPI");
-        }
-
-        @Override
-        public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-            throw new AssertionError("MCP requests must use the streaming SPI");
-        }
-
-        @Override
-        public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-            String streamIdentity = identity.get();
-            return subscriber -> {
-                Exchange exchange =
-                        new Exchange(request, parser.incremental(), subscriber, streamIdentity, identity.get());
-                subscriber.onSubscribe(exchange);
-                exchanges.add(exchange);
-            };
-        }
-    }
-
-    private final class Exchange implements Flow.Subscription {
-
-        private final HttpRequest request;
-        private final ServerSentEventParser.Incremental parser;
-        private final Flow.Subscriber<? super HttpStreamingEvent> subscriber;
-        private final String streamIdentity;
-        private final String subscribeIdentity;
-        private volatile boolean cancelled;
-        private volatile String cancelIdentity;
-
-        private Exchange(
-                HttpRequest request,
-                ServerSentEventParser.Incremental parser,
-                Flow.Subscriber<? super HttpStreamingEvent> subscriber,
-                String streamIdentity,
-                String subscribeIdentity) {
-            this.request = request;
-            this.parser = parser;
-            this.subscriber = subscriber;
-            this.streamIdentity = streamIdentity;
-            this.subscribeIdentity = subscribeIdentity;
-        }
-
-        void open(int status, Map<String, List<String>> headers) {
-            subscriber.onNext(new HttpResponseReceived(SuccessfulHttpResponse.builder()
-                    .statusCode(status)
-                    .headers(headers)
-                    .build()));
-        }
-
-        void errorHead(int status) {
-            subscriber.onNext(new HttpErrorResponseReceived(status, Map.of()));
-        }
-
-        void body(String body) {
-            for (byte value : body.getBytes(StandardCharsets.UTF_8)) {
-                parser.feed(ByteBuffer.wrap(new byte[] {value})).forEach(subscriber::onNext);
-            }
-        }
-
-        void complete() {
-            parser.flush().forEach(subscriber::onNext);
-            subscriber.onComplete();
-        }
-
-        void respond(int status, String body) {
-            open(status, body == null ? Map.of() : Map.of("Content-Type", List.of("application/json")));
-            if (body != null) {
-                body(body);
-            }
-            complete();
-        }
-
-        @Override
-        public void request(long n) {}
-
-        @Override
-        public void cancel() {
-            cancelled = true;
-            cancelIdentity = identity.get();
-        }
     }
 }

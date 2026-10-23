@@ -3,6 +3,7 @@ package dev.langchain4j.http.client.jdk;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -13,7 +14,6 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
-import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -27,9 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -320,113 +318,30 @@ class JdkHttpClientBackpressureTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void should_deliver_error_head_before_reading_body_and_cancel_immediately(boolean backpressured) {
-        Exchange exchange = new Exchange(backpressured);
-        RecordingSubscriber subscriber = exchange.subscribe();
-        subscriber.cancelOnErrorHead = true;
-        subscriber.subscription.request(1);
-
-        exchange.respond(404);
-
-        assertThat(subscriber.events).singleElement().isInstanceOf(HttpErrorResponseReceived.class);
-        HttpErrorResponseReceived head = (HttpErrorResponseReceived) subscriber.events.get(0);
-        assertThat(head.statusCode()).isEqualTo(404);
-        assertThat(head.headers()).containsEntry("content-type", List.of("text/event-stream"));
-        assertThat(exchange.body.requests).isEmpty();
-        assertThat(exchange.body.cancelled).isTrue();
-        assertThat(subscriber.signals).containsExactly("next");
-    }
-
-    @Test
-    void buffered_mode_should_wait_for_error_head_callback_before_reading_body() throws Exception {
-        Exchange exchange = new Exchange(false);
-        CountDownLatch headEntered = new CountDownLatch(1);
-        CountDownLatch releaseHead = new CountDownLatch(1);
-        HttpRequest request =
-                HttpRequest.builder().method(GET).url("http://localhost/stream").build();
-        exchange.client.stream(request, new DefaultServerSentEventParser()).subscribe(new Flow.Subscriber<>() {
-            private Flow.Subscription subscription;
-
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                this.subscription = subscription;
-                subscription.request(1);
-            }
-
-            @Override
-            public void onNext(HttpStreamingEvent item) {
-                assertThat(item).isInstanceOf(HttpErrorResponseReceived.class);
-                headEntered.countDown();
-                try {
-                    if (!releaseHead.await(5, TimeUnit.SECONDS)) {
-                        throw new AssertionError("Error head callback was not released");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(e);
-                }
-                subscription.cancel();
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                throw new AssertionError("No error after cancellation expected", throwable);
-            }
-
-            @Override
-            public void onComplete() {
-                throw new AssertionError("No completion after cancellation expected");
-            }
-        });
-        Thread responder = new Thread(() -> exchange.respond(404));
-        responder.start();
-        try {
-            assertThat(headEntered.await(5, TimeUnit.SECONDS)).isTrue();
-            assertThat(exchange.body.subscriber)
-                    .as("body not subscribed before error head is handled")
-                    .isNull();
-        } finally {
-            releaseHead.countDown();
-            responder.join(5_000);
-        }
-        assertThat(responder.isAlive()).isFalse();
-        assertThat(exchange.body.cancelled).isTrue();
-        assertThat(exchange.body.requests).isEmpty();
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void should_keep_full_error_body_for_subscriber_that_ignores_error_head(boolean backpressured) {
+    void should_report_http_errors_with_the_full_response_body_when_events_are_requested(boolean backpressured) {
         Exchange exchange = new Exchange(backpressured);
         RecordingSubscriber subscriber = exchange.subscribe();
         subscriber.subscription.request(1);
 
         exchange.respond(401);
-        assertThat(subscriber.events).singleElement().isInstanceOf(HttpErrorResponseReceived.class);
-        assertThat(exchange.body.requests).isNotEmpty();
+        assertThat(subscriber.events).isEmpty();
         exchange.body.emit("credentials expired");
         exchange.body.complete();
 
         assertThat(subscriber.failure).isInstanceOf(HttpException.class).hasMessage("credentials expired");
         assertThat(((HttpException) subscriber.failure).statusCode()).isEqualTo(401);
-        assertThat(subscriber.signals).containsExactly("next", "error");
+        assertThat(subscriber.signals).containsExactly("error");
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void should_keep_no_demand_error_terminal_without_emitting_advisory(boolean backpressured) {
-        Exchange exchange = new Exchange(backpressured);
-        RecordingSubscriber subscriber = exchange.subscribe();
+    @Test
+    void should_reject_streaming_buffer_size_with_backpressure() {
+        JdkHttpClientBuilder builder =
+                JdkHttpClient.builder().streamingBackpressure(true).streamingBufferSize(16);
 
-        exchange.respond(503);
-        assertThat(subscriber.events).isEmpty();
-        assertThat(exchange.body.requests).isNotEmpty();
-        exchange.body.emit("temporarily unavailable");
-        exchange.body.complete();
-
-        assertThat(subscriber.failure).isInstanceOf(HttpException.class).hasMessage("temporarily unavailable");
-        assertThat(((HttpException) subscriber.failure).statusCode()).isEqualTo(503);
-        assertThat(subscriber.signals).containsExactly("error");
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "streamingBufferSize cannot be combined with streamingBackpressure(true), which does not buffer events");
     }
 
     @Test
@@ -548,7 +463,6 @@ class JdkHttpClientBackpressureTest {
         private Flow.Subscription subscription;
         private Throwable failure;
         private boolean completed;
-        private boolean cancelOnErrorHead;
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
@@ -559,9 +473,6 @@ class JdkHttpClientBackpressureTest {
         public void onNext(HttpStreamingEvent item) {
             events.add(item);
             signals.add("next");
-            if (cancelOnErrorHead && item instanceof HttpErrorResponseReceived) {
-                subscription.cancel();
-            }
         }
 
         @Override

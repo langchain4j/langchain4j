@@ -13,7 +13,6 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -66,6 +65,10 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
         this.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
         this.streamingBackpressure = builder.streamingBackpressure();
+        if (streamingBackpressure && builder.streamingBufferSize() != null) {
+            throw new IllegalArgumentException(
+                    "streamingBufferSize cannot be combined with streamingBackpressure(true), which does not buffer events");
+        }
     }
 
     public static JdkHttpClientBuilder builder() {
@@ -290,40 +293,6 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                     .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                     .withBufferSize(bufferSize);
 
-            CompletableFuture<Void> errorHeadDelivered = new CompletableFuture<>();
-            Subscriber<HttpStreamingEvent> trackingSubscriber = new Subscriber<>() {
-                private Subscription subscription;
-
-                @Override
-                public void onSubscribe(Subscription subscription) {
-                    this.subscription = subscription;
-                    subscriber.onSubscribe(subscription);
-                }
-
-                @Override
-                public void onNext(HttpStreamingEvent event) {
-                    try {
-                        subscriber.onNext(event);
-                        if (event instanceof HttpErrorResponseReceived) {
-                            errorHeadDelivered.complete(null);
-                        }
-                    } catch (Throwable error) {
-                        errorHeadDelivered.completeExceptionally(error);
-                        subscription.cancel();
-                    }
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    subscriber.onError(error);
-                }
-
-                @Override
-                public void onComplete() {
-                    subscriber.onComplete();
-                }
-            };
-
             Publisher<HttpStreamingEvent> publisher = ZeroPublisher.create(config, tube -> {
                 if (tube.cancelled()) {
                     return;
@@ -353,14 +322,12 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                 tube.whenTerminates(() -> {
                     future.cancel(true);
                     cancelBody.run();
-                    errorHeadDelivered.cancel(false);
                 });
                 // Cancellation may have won after sendAsync started but before the termination
                 // action was registered. Tube does not replay termination to late listeners.
                 if (tube.cancelled()) {
                     future.cancel(true);
                     cancelBody.run();
-                    errorHeadDelivered.cancel(false);
                 }
 
                 future.thenAccept(jdkResponse -> {
@@ -371,33 +338,17 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                                 return;
                             }
                             if (!isSuccessful(jdkResponse)) {
-                                Runnable readErrorBody = () -> {
-                                    if (tube.cancelled() || !bodySubscribed.compareAndSet(false, true)) {
-                                        return;
-                                    }
-                                    readErrorBodyAsync(body, bodySubRef, tube::cancelled)
-                                            .whenComplete((bodyText, err) -> {
-                                                if (err != null) {
-                                                    tube.fail(err);
-                                                } else {
-                                                    tube.fail(new HttpException(jdkResponse.statusCode(), bodyText));
-                                                }
-                                            });
-                                };
-                                if (tube.outstandingRequests() > 0) {
-                                    tube.send(new HttpErrorResponseReceived(
-                                            jdkResponse.statusCode(),
-                                            jdkResponse.headers().map()));
-                                    errorHeadDelivered.whenComplete((ignored, error) -> {
-                                        if (error == null) {
-                                            readErrorBody.run();
-                                        } else {
-                                            cancelBody.run();
-                                        }
-                                    });
-                                } else {
-                                    readErrorBody.run();
+                                if (!bodySubscribed.compareAndSet(false, true)) {
+                                    return;
                                 }
+                                readErrorBodyAsync(body, bodySubRef, tube::cancelled)
+                                        .whenComplete((bodyText, err) -> {
+                                            if (err != null) {
+                                                tube.fail(err);
+                                            } else {
+                                                tube.fail(new HttpException(jdkResponse.statusCode(), bodyText));
+                                            }
+                                        });
                                 return;
                             }
                             tube.send(new HttpResponseReceived(fromJdkResponse(jdkResponse, null)));
@@ -478,7 +429,7 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                         });
             });
 
-            publisher.subscribe(trackingSubscriber);
+            publisher.subscribe(subscriber);
         }
 
         private static void subscribeAndCancel(

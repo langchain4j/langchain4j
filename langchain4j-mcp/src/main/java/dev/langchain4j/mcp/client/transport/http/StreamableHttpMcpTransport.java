@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -11,9 +12,9 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
-import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
@@ -29,6 +30,7 @@ import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
 import dev.langchain4j.spi.CapturedContext;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +52,6 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
-    private final Supplier<CapturedContext> requestContextFactory;
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
@@ -83,25 +84,33 @@ public class StreamableHttpMcpTransport implements McpTransport {
         trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
-        requestContextFactory =
-                builder.requestContextFactory == null ? () -> CapturedContext.NONE : builder.requestContextFactory;
         sslContext = builder.sslContext;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
-        responseExecutor = builder.httpClientBuilder == null && builder.httpClient == null ? builder.executor : null;
+        responseExecutor = builder.executor;
         if (builder.httpClientBuilder != null && builder.httpClient != null) {
             throw new IllegalArgumentException("Configure either httpClientBuilder or httpClient, not both");
         }
         if (builder.httpClientBuilder != null || builder.httpClient != null) {
-            if (sslContext != null || builder.forceHttpVersion1_1 || builder.followRedirects) {
-                throw new IllegalArgumentException(
-                        "Configure TLS, HTTP version and redirects on the supplied httpClientBuilder, "
-                                + "not on the MCP transport");
+            String supplied = builder.httpClient != null ? "httpClient(...)" : "httpClientBuilder(...)";
+            List<String> conflicting = new ArrayList<>();
+            if (sslContext != null) {
+                conflicting.add("sslContext(...)");
+            }
+            if (builder.forceHttpVersion1_1) {
+                conflicting.add("setHttpVersion1_1()");
+            }
+            if (builder.followRedirects) {
+                conflicting.add("followRedirects(true)");
+            }
+            if (builder.httpClient != null && builder.timeout != null) {
+                conflicting.add("timeout(...)");
+            }
+            if (!conflicting.isEmpty()) {
+                throw new IllegalArgumentException(String.join(", ", conflicting) + " cannot be combined with "
+                        + supplied + "; configure it on the HTTP client instead");
             }
             if (builder.httpClient != null) {
-                if (builder.timeout != null) {
-                    throw new IllegalArgumentException("Configure the connection timeout before supplying httpClient");
-                }
                 httpClient = builder.httpClient;
                 ownedHttpClient = null;
             } else {
@@ -326,7 +335,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CapturedContext captureRequestContext() {
-        return ensureNotNull(requestContextFactory.get(), "requestContextFactory.get()");
+        return getOrDefault(DefaultExecutorProvider.captureContext(), CapturedContext.NONE);
     }
 
     private static void runInContext(CapturedContext context, CompletableFuture<?> result, Runnable action) {
@@ -598,10 +607,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private void handleNext(HttpStreamingEvent event) {
             try {
-                if (event instanceof HttpErrorResponseReceived errorHead) {
-                    handleError(new HttpException(
-                            errorHead.statusCode(), "Unexpected status code: " + errorHead.statusCode()));
-                } else if (event instanceof HttpResponseReceived received) {
+                if (event instanceof HttpResponseReceived received) {
                     responseReceived = true;
                     onResponse(received.response());
                 } else if (event instanceof McpResponseParser.Line line) {
@@ -674,12 +680,21 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (!finish()) {
                 return;
             }
+            if (error instanceof HttpException httpError) {
+                error = new HttpException(httpError.statusCode(), "Unexpected status code: " + httpError.statusCode());
+            }
             cancelSubscription();
             if (closed.get()) {
                 completeCancellation();
             } else if (opened != null) {
                 if (firstAttempt && !sseResponse) {
-                    LOG.warn("Failed to open subsidiary SSE channel", error);
+                    if (error instanceof HttpException httpError) {
+                        LOG.warn(
+                                "Failed to open subsidiary SSE channel (status={}), will not re-attempt",
+                                httpError.statusCode());
+                    } else {
+                        LOG.warn("Failed to open subsidiary SSE channel", error);
+                    }
                 } else {
                     LOG.debug("Subsidiary SSE channel failed, scheduling retry", error);
                     scheduleSubsidiaryReconnect(requestContext);
@@ -820,7 +835,6 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private Executor executor;
         private String url;
         private McpHeadersSupplier customHeadersSupplier;
-        private Supplier<CapturedContext> requestContextFactory;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -832,21 +846,29 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * Supplies the HTTP backend used for all requests, including the subsidiary SSE channel.
-         * The client must implement {@link HttpClient#stream(HttpRequest,
-         * dev.langchain4j.http.client.sse.ServerSentEventParser)} and honor subscription cancellation.
+         * The client must implement {@link HttpClient#stream(HttpRequest, ServerSentEventParser)}
+         * and honor subscription cancellation; otherwise every request fails.
          * Without a custom builder, the transport uses the JDK HTTP client.
          * <p>
-         * The transport owns the client it builds and closes it if it implements {@link AutoCloseable}.
+         * The transport owns the client it builds and closes it on {@link StreamableHttpMcpTransport#close()} if it implements
+         * {@link AutoCloseable}; clients that do not implement it are not closed.
          * Use {@link #httpClient(HttpClient)} to supply a caller-owned, shared client instead.
          * Configure TLS, HTTP version and redirects on the supplied builder instead of using the
          * corresponding transport options. Cannot be combined with {@code httpClient}.
-         * An explicit transport {@link #timeout(Duration)} overrides the builder's connection timeout;
+         * An explicit transport {@link #timeout(Duration)} is set as the connection timeout on the supplied builder;
          * otherwise the supplied backend retains its connection timeout settings and defaults.
-         * The 60-second default applies only to the transport's default JDK backend. No read timeout is imposed.
+         * The 60-second default applies only to the transport's default JDK backend.
+         * <p>
+         * The transport does not override the backend's read timeout, and MCP responses and SSE streams
+         * can stay idle for a long time. Some backends have a short default read timeout (10 seconds for OkHttp),
+         * so disable or raise it. Some backends follow redirects by default (OkHttp, Apache), which can send
+         * custom headers and the request body to another host; disable redirects on the backend if not needed.
          *
          * @param httpClientBuilder the HTTP client builder
          * @return this builder
+         * @since 1.23.0
          */
+        @Experimental
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = ensureNotNull(httpClientBuilder, "httpClientBuilder");
             return this;
@@ -859,39 +881,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * Configure connection timeout, TLS, HTTP version and redirects before supplying the client;
          * the corresponding transport options cannot be combined with this method.
          * Cannot be combined with {@code httpClientBuilder}.
+         * The backend's read timeout and redirect settings apply, see {@link #httpClientBuilder(HttpClientBuilder)}.
          *
          * @param httpClient the HTTP client
          * @return this builder
-         */
-        public Builder httpClient(HttpClient httpClient) {
-            this.httpClient = ensureNotNull(httpClient, "httpClient");
-            return this;
-        }
-
-        /**
-         * Captures execution context on the calling thread for each explicit send or initialization.
-         * The factory must return a non-null context; it is not called again for deferred dispatch,
-         * initialized notifications, retries or subsidiary reconnects. Without a factory, actions
-         * run directly without context binding.
-         * <p>
-         * Each request's capture is used for header/request preparation, HTTP streaming submission,
-         * and transport-owned response and cancellation callbacks. The HTTP backend remains responsible
-         * for propagating context across its own asynchronous work. Standard CompletableFuture semantics
-         * still apply to caller-added continuations and caller-initiated completion or cancellation.
-         * The transport invokes each wrapped action inline via {@code captured.wrap(action).run()}.
-         * <p>
-         * Explicit initialization captures the connection context, retained for reinitialization,
-         * the initialized notification and subsidiary channel/reconnects. Active channels can retain
-         * that capture until they finish or the transport closes, even after another explicit initialization.
-         * Initialize shared clients under an application or session context whose lifetime is appropriate.
-         * Each caller's request, including its retry after reinitialization, retains its own context.
-         *
-         * @param requestContextFactory factory capturing the current execution context
-         * @return this builder
          * @since 1.23.0
          */
-        public Builder requestContextFactory(Supplier<CapturedContext> requestContextFactory) {
-            this.requestContextFactory = ensureNotNull(requestContextFactory, "requestContextFactory");
+        @Experimental
+        public Builder httpClient(HttpClient httpClient) {
+            this.httpClient = ensureNotNull(httpClient, "httpClient");
             return this;
         }
 
@@ -932,6 +930,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * The connection timeout (applied on the http client level). Application-level
          * timeouts are handled by the MCP client itself.
+         * Cannot be combined with {@link #httpClient(HttpClient)}; configure it on the HTTP client instead.
          */
         public StreamableHttpMcpTransport.Builder timeout(Duration timeout) {
             this.timeout = timeout;
@@ -970,9 +969,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * An optional {@link Executor} that will be used for executing requests and handling responses.
          * It will also be used for scheduling auto-reconnect attempts of the subsidiary SSE channel if that is enabled.
-         * With a custom HTTP client or builder, this executor controls reconnect scheduling only;
-         * configure HTTP execution on the supplied backend.
-         * If not provided, a default shared executor will be used.
+         * Responses are handled on this executor also with {@link #httpClientBuilder(HttpClientBuilder)} or
+         * {@link #httpClient(HttpClient)}; the HTTP client itself still sends requests on its own threads.
+         * If not provided, a default shared executor is used for reconnects and responses are handled
+         * on the HTTP client's threads.
          */
         public StreamableHttpMcpTransport.Builder executor(Executor executor) {
             this.executor = executor;
@@ -982,6 +982,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * Supplies a custom {@link SSLContext} used when establishing HTTPS connections to the MCP server,
          * allowing private CAs or certificates.
+         * Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or {@link #httpClient(HttpClient)};
+         * configure it on the HTTP client instead.
          */
         public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
@@ -990,6 +992,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * Forces the transport to use HTTP/1.1 instead of the default HTTP/2.
+         * Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or {@link #httpClient(HttpClient)};
+         * configure it on the HTTP client instead.
          */
         public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
             this.forceHttpVersion1_1 = true;
@@ -1002,6 +1006,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * using {@link java.net.http.HttpClient.Redirect#NORMAL} policy (always redirect,
          * except from HTTPS to HTTP).
          * Defaults to {@code false}.
+         * Enabling it cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or
+         * {@link #httpClient(HttpClient)}; configure redirects on the HTTP client instead.
          */
         public StreamableHttpMcpTransport.Builder followRedirects(boolean followRedirects) {
             this.followRedirects = followRedirects;

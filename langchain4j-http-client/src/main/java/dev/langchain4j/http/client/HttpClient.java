@@ -1,12 +1,13 @@
 package dev.langchain4j.http.client;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.internal.AsyncNotSupported;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 
@@ -95,14 +96,6 @@ public interface HttpClient {
      * <p>
      * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
      * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
-     * <p>
-     * Implementations may emit {@link dev.langchain4j.http.client.sse.HttpErrorResponseReceived} for a
-     * non-2xx response when demand is available at header arrival. Deliver this advisory event before
-     * reading the error body, and honor cancellation from its {@code onNext} before starting body reads.
-     * Merely queueing the event for later delivery is insufficient. If the subscriber remains active,
-     * preserve normal error-body handling and the terminal {@link HttpException}, which requires no
-     * additional demand. With no demand at header arrival, the event may be omitted so terminal errors
-     * remain deliverable. Existing implementations that do not emit this event remain supported.
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *
