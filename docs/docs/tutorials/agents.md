@@ -1187,6 +1187,8 @@ In a very similar way, annotating other `static` methods in the agent interface,
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
 | `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
+| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`. |
+| `@DecisionThresholdSupplier`  | Returns the threshold of the `boolean` answers of a [decision agent](#decision-agents), as a `double`. It takes the `ThresholdContext` describing the question and is invoked at every invocation. |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
@@ -3034,6 +3036,177 @@ Hi Mario, what is your sign?
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
 Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
+
+## Decision agents
+
+:::note
+Decision agents are based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+In some cases what an agentic system asks a model could be not to generate text but to make a small decision: which category does this request belong to, is this answer good enough, does this transaction look suspicious, is this customer eligible. The agents discussed so far make these decisions with an LLM, like the `CategoryRouter` of the [conditional workflow](#conditional-workflow), which has to be instructed to reply with exactly one word, or the `StyleScorer` of the [loop workflow](#loop-workflow), which generates a number as text. A [decision model](/tutorials/decision-models) is built for exactly these questions: it answers typed questions about an input, together with the probability of each possible answer, and it costs a fraction of an LLM call.
+
+A decision agent is an agent of an agentic system whose implementation is a single call to a decision model. It is defined by a [Decision Service](/tutorials/decision-services) interface whose method also carries the `@Agent` annotation: the question is the one of `@Decide`, the parameters of the method are the input of the decision, and its return type determines the kind of answer.
+
+```java
+public enum RequestCategory {
+    @Description("Questions about laws, contracts, liabilities and legal rights") LEGAL,
+    @Description("Questions about symptoms, diseases, treatments and drugs") MEDICAL,
+    @Description("Questions about software, hardware, networks and devices") TECHNICAL,
+    @Description("Requests that belong to none of the other categories") UNKNOWN
+}
+
+public interface CategoryRouter {
+
+    @Decide("Which kind of expert should handle this request?")
+    @Agent(value = "Categorizes a user request", outputKey = "category")
+    RequestCategory classify(@V("request") String request);
+}
+```
+
+Compared with the LLM-based `CategoryRouter` of the conditional workflow, there is no prompt to engineer and no text to parse: the options are the constants of the enum, described by their `@Description`, and the decision model returns one of them. The agent is built with the `decisionAgentBuilder` method of `AgenticServices`, providing a decision model instead of a chat model:
+
+```java
+CategoryRouter routerAgent = AgenticServices
+        .decisionAgentBuilder(CategoryRouter.class)
+        .decisionModel(decisionModel)
+        .build();
+```
+
+and it can replace the LLM-based router of the conditional workflow without any other change, since it writes its answer to the same `category` key. The `decisionModelProvider` method of the builder takes instead a function of the `AgenticScope` resolving the decision model before each invocation, like `chatModel(Function)` does for AI agents, while `name`, `description`, `outputKey`, `async`, `optional`, `activationCondition` and `listener` have the same meaning as on the builders of the other agents.
+
+The two [decision-based patterns](#decision-router-agentic-pattern) also use a decision model, but inside their orchestration: the decision router selects which subagents run, and the confidence cascade decides when to stop escalating. Use one of them when the decision drives the orchestration of a pattern, and a decision agent when the decision is a value that your code or other agents consume: a category that predicates route on, a grade that an exit condition compares, a flag that gates a side effect, an answer that a supervisor needs before its next step.
+
+### Return types and thresholds
+
+The return types are the ones of Decision Services: a `boolean` or a `YesNoAnswer` for a yes/no question, an enum or a `Choice<enum>` for a choice among the constants of the enum, a `Scale<enum>` for a position on the ordered scale made of its constants, an object or a record whose fields are of these types for several questions answered in a single call, each of them optionally wrapped in a `DecisionResult` to also get the raw response of the model. `CompletableFuture` return types are not supported: an agent that must not block the workflow is made asynchronous with `async(true)`, like any other agent, and its decision call then runs on the executor used by every asynchronous agent. The method must not be annotated with `@UserMessage` or `@SystemMessage`, since a decision agent has no prompt, and its parameters cannot be a `@MemoryId`, an `AgenticScope` or `DecisionRequestParameters`: the parameters of the decision requests, such as the model name, are set with the `requestParameters` method of the builder, or as the default parameters of the decision model. All these rules are checked when the agent is built.
+
+A `boolean` answer is `true` when the probability of "yes" is at least a threshold, 0.5 by default. The threshold is fixed with `threshold(double)`, or provided at every invocation by a `ThresholdProvider` set with `thresholdProvider(...)`, for instance to read it from a configuration that changes at runtime. As discussed for the [decision-based patterns](#confidence-cascade-agentic-pattern), probabilities are not calibrated in the same way by different decision models, so a threshold should be tuned on your own inputs, and tuned again when the decision model or its version changes.
+
+### Inputs
+
+The arguments of a decision agent are read from the `AgenticScope` by name and converted to the declared types of its parameters, like for every agent, so an amount produced as text by a previous agent, or by a supervisor, is safely read as a `Double`. They are then sent to the decision model as Decision Services send them: strings, numbers and booleans as they are, enums as their names, maps and lists element by element, `Content`s such as an `ImageContent` as contents, so that a decision agent can also judge an image produced by a previous step, and any other object converted to a map through the JSON codec, so that a typed value produced by another agent can be an argument. Keep in mind that everything reaching the decision model is sent to its provider, which can differ from the provider of the chat models of the other agents.
+
+### Reading the answer
+
+The answer is written as it is to the output key, so a `Choice`, a `Scale` or a `YesNoAnswer` keeps its probabilities, and the predicates of a conditional workflow, the exit condition of a loop and the agents that follow can read them. For instance, a router returning a `Choice<RequestCategory>` lets the conditional workflow send to a human the requests the decision model is not sure about:
+
+```java
+public interface ConfidentCategoryRouter {
+
+    @Decide("Which kind of expert should handle this request?")
+    @Agent(value = "Categorizes a user request", outputKey = "category")
+    Choice<RequestCategory> classify(@V("request") String request);
+}
+
+private static boolean confident(AgenticScope scope, RequestCategory category) {
+    Choice<RequestCategory> choice = (Choice<RequestCategory>) scope.readState("category");
+    return choice.value() == category && choice.probabilityOf(category) >= 0.6;
+}
+
+UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+        .subAgents(scope -> confident(scope, RequestCategory.MEDICAL), medicalExpert)
+        .subAgents(scope -> confident(scope, RequestCategory.LEGAL), legalExpert)
+        .subAgents(scope -> !confident(scope, RequestCategory.MEDICAL) && !confident(scope, RequestCategory.LEGAL), humanInTheLoop)
+        .build();
+```
+
+In the same way, the `StyleScorer` of the loop workflow can be a decision agent returning a `Scale`, whose `mean()` is the probability-weighted mean of the indexes of its levels, from 0 for the first constant of the enum to 3 for the last one of `Quality`, so that a mean of at least 2 means that the story is, on average, at least `GOOD`: a grade that comes from the probabilities of the decision model, instead of a number generated as text.
+
+```java
+public enum Quality {
+    @Description("The story ignores the required style") POOR,
+    @Description("The story follows the required style only in places") FAIR,
+    @Description("The story mostly follows the required style") GOOD,
+    @Description("The story is a perfect example of the required style") EXCELLENT
+}
+
+public interface StyleScorer {
+
+    @Decide("How well does the story match the required style?")
+    @Agent(value = "Scores a story against a style", outputKey = "styleScore")
+    Scale<Quality> scoreStyle(@V("story") String story, @V("style") String style);
+}
+
+UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .exitCondition(scope -> ((Scale<Quality>) scope.readState("styleScore")).mean() >= 2)
+        .build();
+```
+
+A third typical use is a gate before a side effect. Here a yes/no decision agent checks the transfer that an LLM decided to make, a human approves the suspicious ones through a `HumanInTheLoop` agent activated only when the gate says so, and a non-AI agent executes it, so that the LLM decides, the decision model checks, and deterministic code acts:
+
+```java
+public interface TransactionGate {
+
+    @Decide("""
+            Does this money transfer look suspicious?
+            Yes: an unusually large amount, an unknown or foreign beneficiary, an urgent or unusual justification.
+            No: a routine payment to a known beneficiary.""")
+    @Agent(value = "Checks whether a money transfer looks suspicious", outputKey = "suspicious")
+    boolean check(@V("transfer") String transfer);
+}
+
+TransactionGate gate = AgenticServices.decisionAgentBuilder(TransactionGate.class)
+        .decisionModel(decisionModel)
+        .threshold(0.5)
+        .build();
+
+HumanInTheLoop complianceApproval = AgenticServices.humanInTheLoopBuilder()
+        .description("Compliance approval of a suspicious transfer")
+        .outputKey("approval")
+        .responseProvider(scope -> new SuspendedResponse<>("compliance-approval"))
+        .activationCondition("the transfer looks suspicious", scope -> scope.readState("suspicious", false))
+        .build();
+
+UntypedAgent transfers = AgenticServices.sequenceBuilder()
+        .subAgents(gate, complianceApproval, moneyMover)
+        .outputKey("receipt")
+        .build();
+```
+
+A record answer is a single value under the output key: a record with several `@Decide` fields answers several questions in one call, and when its fields are needed under separate keys, a `beforeCall` on the agent that follows, or an `agentAction`, spreads them, as shown for the [conditional workflow](#conditional-workflow). A decision agent can also be one of the subagents of a [supervisor](#pure-agentic-ai), which generates its arguments like for any other subagent and reads its typed answer: its description should then say which question the agent answers.
+
+### Errors, observability and persistence
+
+A failure of the decision model, an invalid response and a refusal fail the invocation of the agent, like a failure of a chat model fails an AI agent: nothing is written to the output key, and the [error handler](#error-handling) of the agentic system decides whether to retry, to return a substitute result or to fail. A refusal is reported as a `ContentFilteredException`, as in Decision Services.
+
+Every invocation of a decision agent makes one blocking call to the decision model. Its response, with the answers and their probabilities, the name of the model and its token usage, is reported to the listeners through the `decisionResponse()` method of the `AgentResponse`, next to the chat request and response reported by AI agents, and recorded by the `AgentMonitor`: the `decisionResponse()`, `tokenUsage()` and `modelName()` methods of the `AgentInvocation` return it, so the tokens of decision agents are counted in the [monitoring](#monitoring) reports like the ones of LLM calls, and the HTML report shows decision agents with a "Decision" badge and their answers, with their probabilities, in the tooltip of their output. A decision agent has no chat memory, tools, retrieval, guardrails or streaming: it answers a question, it does not converse.
+
+The answers of decision agents survive the JSON serialization of the `AgenticScope` discussed in the [recoverability](#agenticscope-and-agentic-systems-recoverability) section: `YesNoAnswer`, `Choice` and `Scale` values are converted to a persistable form when the scope is saved and restored when it is loaded, while a `DecisionResult` is not persisted, like a `TokenStream`, and neither is a record, or object, answering several questions with fields of these three types, whose fields cannot be converted in place. A recoverable system should therefore not return a `DecisionResult`, and its records answering several questions should have `boolean` and enum fields.
+
+### Declarative decision agents
+
+With the [declarative API](#declarative-api), the decision model is provided by a static method annotated with `@DecisionModelSupplier`: without parameters, the method is invoked once when the agent is built, while with parameters annotated with `@V` it is invoked before each invocation with the values read from the `AgenticScope`, so that the model can depend on the state, like `@ChatModelSupplier` does for AI agents. The threshold of a `boolean` answer is declared with `@DecisionThresholdSupplier` on a static method that takes the `ThresholdContext` describing the question and returns a `double`: like a `ThresholdProvider`, it is invoked at every invocation, so the threshold can come from configuration that changes at runtime. `@ActivationCondition` and `@AgentListenerSupplier` work as for every other agent. With these annotations, the `TransactionGate` of the gate shown above is declared as follows:
+
+```java
+public interface TransactionGate {
+
+    @Decide("""
+            Does this money transfer look suspicious?
+            Yes: an unusually large amount, an unknown or foreign beneficiary, an urgent or unusual justification.
+            No: a routine payment to a known beneficiary.""")
+    @Agent(value = "Checks whether a money transfer looks suspicious", outputKey = "suspicious")
+    boolean check(@V("transfer") String transfer);
+
+    @DecisionModelSupplier
+    static DecisionModel decisionModel() {
+        return TypeSafeDecisionModel.builder()
+                .apiKey(System.getenv("TYPESAFE_API_KEY"))
+                .modelName("jev-1.13.0")
+                .build();
+    }
+
+    @DecisionThresholdSupplier
+    static double threshold(ThresholdContext context) {
+        // thresholds are specific to a model, so the one tuned for the model that answered is read,
+        // at every invocation, from a system property like suspicious.threshold.jev-1.13.0
+        return Double.parseDouble(System.getProperty("suspicious.threshold." + context.modelName(), "0.5"));
+    }
+}
+```
+
+An interface is recognized as a decision agent when its `@Agent` method is annotated with `@Decide`, or when it declares a `@DecisionModelSupplier`, so an agent returning a record, whose questions are on the fields of the record, needs the supplier to be recognized. Such an interface can be listed among the `subAgents` of any declarative workflow, planner or supervisor, passed as a class to the `subAgents` of a programmatic builder, or given directly to `createAgenticSystem`. The `ChatModel` passed to `createAgenticSystem` does not apply to decision agents, so a decision agent without a `@DecisionModelSupplier` fails at build time with a message saying so, as does one that also declares a `@ChatModelSupplier`, and any other kind of agent, like an AI agent, a workflow or a non-AI agent, declaring a `@DecisionModelSupplier` or a `@DecisionThresholdSupplier`. An `AgentConfigurator` callback receives the `DecisionAgentBuilder` of a decision agent through the `decisionAgentBuilder()` method of its creation context, whose `agentBuilder()` is then `null`.
 
 ## Memory and context engineering
 

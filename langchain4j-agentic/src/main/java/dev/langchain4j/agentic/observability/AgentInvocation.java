@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
@@ -38,7 +39,7 @@ public class AgentInvocation {
     static AgentInvocation skipped(AgentSkipped agentSkipped) {
         AgentInvocation invocation =
                 new AgentInvocation(new AgentRequest(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of()));
-        invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of(), null);
+        invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of());
         invocation.finishTime = invocation.startTime;
         invocation.skipReason = agentSkipped.reason();
         return invocation;
@@ -114,27 +115,45 @@ public class AgentInvocation {
         return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
     }
 
+    /**
+     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. It is
+     * empty if the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider
+     * didn't report the token usage.
+     */
     public Optional<TokenUsage> tokenUsage() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Optional.ofNullable(agentResponse.chatResponse())
+        Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
                 .map(ChatResponseMetadata::tokenUsage);
+        return chatTokenUsage.isPresent() ? chatTokenUsage : decisionResponse().map(DecisionResponse::tokenUsage);
     }
 
     /**
-     * Returns the name of the model that answered the last LLM call of this invocation, as reported by the provider
-     * in the response metadata. It is empty if the agent didn't call any LLM, like a workflow or a non-AI agent,
-     * if it was skipped, or if the provider didn't report the model name.
+     * Returns the name of the model that answered the last LLM call of an AI agent, or the decision call of a
+     * decision agent, as reported by the provider in the response metadata. It is empty if the agent called no
+     * model, like a workflow or a non-AI agent, if it was skipped, or if the provider didn't report the model name.
      */
     public Optional<String> modelName() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Optional.ofNullable(agentResponse.chatResponse())
+        Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
                 .map(ChatResponseMetadata::modelName);
+        return chatModelName.isPresent() ? chatModelName : decisionResponse().map(DecisionResponse::modelName);
+    }
+
+    /**
+     * Returns the response of the decision model of a decision agent, with its answers and their probabilities. It
+     * is empty for every other kind of agent, and if the agent was skipped.
+     */
+    public Optional<DecisionResponse> decisionResponse() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        return Optional.ofNullable(agentResponse.decisionResponse());
     }
 
     /**
@@ -162,17 +181,16 @@ public class AgentInvocation {
     }
 
     private String toString(String prefix) {
-        StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
-                "agent=" + agent().name() +
-                (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
-                (skipped() ? ", skipped=" + skipReason : "") +
-                ", startTime=" + startTime +
-                ", finishTime=" + finishTime +
-                ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
-                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
-                ", inputs=" + shortToString(inputs()) +
-                ", output=" + (done() ? shortToString(output()) : "in progress") +
-                '}');
+        StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" + "agent="
+                + agent().name() + (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "")
+                + (skipped() ? ", skipped=" + skipReason : "")
+                + ", startTime="
+                + startTime + ", finishTime="
+                + finishTime + ", duration="
+                + (done() ? duration().toMillis() + " ms" : "in progress") + ", tokens="
+                + (done() ? totalTokenCount() : "in progress") + ", inputs="
+                + shortToString(inputs()) + ", output="
+                + (done() ? shortToString(output()) : "in progress") + '}');
         if (!toolExecutions.isEmpty()) {
             String toolPrefix = prefix.isEmpty() ? "|-> " : "    " + prefix;
             for (ToolExecution toolExec : toolExecutions) {
@@ -204,7 +222,7 @@ public class AgentInvocation {
         boolean first = true;
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        for (Map.Entry<?,?> e : map.entrySet()) {
+        for (Map.Entry<?, ?> e : map.entrySet()) {
             if (first) {
                 first = false;
             } else {

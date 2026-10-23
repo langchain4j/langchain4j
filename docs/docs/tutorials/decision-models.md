@@ -25,6 +25,8 @@ Typical uses are:
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
   (see the [confidence cascade agentic pattern](/tutorials/agents#confidence-cascade-agentic-pattern))
+- **Decisions inside an agentic system**: a classifier, a grader or a check whose typed answer other agents consume
+  (see [decision agents](/tutorials/agents#decision-agents))
 
 Decision models are built for these tasks: they return typed answers with probabilities,
 so there is no text to parse, and all questions of a request are answered against the same input in a single call.
@@ -385,6 +387,7 @@ needed. They work with any `DecisionModel` implementation.
 | `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
 | `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
+| `AgenticServices.decisionAgentBuilder`, `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic`, `langchain4j-agentic-patterns` |
 
 Each of these components makes an additional call to the decision model. Its token usage is not included in the token
 usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
@@ -534,6 +537,17 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
 
 `DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
 See [Model Routing](/tutorials/model-routing).
+
+### Decision agents
+
+A [decision agent](/tutorials/agents#decision-agents) is an agent of an agentic system built on a
+[Decision Service](/tutorials/decision-services) interface: its arguments are read from the `AgenticScope` and sent
+as the input of the decision, and its typed answer, with its probabilities, is written to the scope for the
+predicates, the exit conditions and the agents that follow. It is created with
+`AgenticServices.decisionAgentBuilder(...)` of the `langchain4j-agentic` module, or declaratively with
+`@DecisionModelSupplier`. The [decision router](/tutorials/agents#decision-router-agentic-pattern) and the
+[confidence cascade](/tutorials/agents#confidence-cascade-agentic-pattern) patterns use a decision model inside
+their orchestration instead, to choose which agents run and when to stop escalating.
 
 ### What the components send to the decision model
 
