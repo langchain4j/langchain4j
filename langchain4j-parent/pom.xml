@@ -80,6 +80,7 @@
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
         <jsoup.version>1.23.2</jsoup.version>
+        <onnxruntime.version>1.23.2</onnxruntime.version>
     </properties>
 
     <dependencyManagement>
@@ -354,6 +355,12 @@
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
                 <version>${jsoup.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.microsoft.onnxruntime</groupId>
+                <artifactId>onnxruntime</artifactId>
+                <version>${onnxruntime.version}</version>
             </dependency>
 
         </dependencies>
