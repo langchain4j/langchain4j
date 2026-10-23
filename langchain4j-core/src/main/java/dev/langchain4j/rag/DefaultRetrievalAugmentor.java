@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
@@ -286,7 +287,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
         CompletableFuture<T> async;
         try {
-            async = asyncCall.get();
+            async = CurrentInvocation.callWith(invocationContextOf(query), asyncCall);
         } catch (Throwable t) {
             async = CompletableFuture.failedFuture(t);
         }
@@ -295,7 +296,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
                     return supplyAsync(
-                            blockingCall,
+                            () -> CurrentInvocation.callWith(invocationContextOf(query), blockingCall),
                             CapturedContextSupport.restoringIn(
                                     DefaultExecutorProvider.getDefaultExecutor(), invocationContextOf(query)));
                 }
@@ -318,7 +319,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Collection<ContentRetriever> retrievers = queryRouter.route(query);
             if (retrievers.size() == 1) {
                 ContentRetriever contentRetriever = retrievers.iterator().next();
-                List<Content> contents = contentRetriever.retrieve(query);
+                List<Content> contents =
+                        CurrentInvocation.callWith(invocationContextOf(query), () -> contentRetriever.retrieve(query));
                 return singletonMap(query, singletonList(contents));
             } else if (retrievers.size() > 1) {
                 Collection<List<Content>> contents = retrieveFromAll(retrievers, query).join();
@@ -331,7 +333,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             queries.forEach(query -> {
                 CompletableFuture<Collection<List<Content>>> futureContents =
                         supplyAsync(
-                                        () -> queryRouter.route(query),
+                                        () -> CurrentInvocation.callWith(
+                                                invocationContextOf(query), () -> queryRouter.route(query)),
                                         CapturedContextSupport.restoringIn(executor, invocationContextOf(query)))
                                 .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
                 queryToFutureContents.put(query, futureContents);
@@ -346,7 +349,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
             .map(retriever -> supplyAsync(
-                    () -> retriever.retrieve(query), CapturedContextSupport.restoringIn(executor, invocationContextOf(query))))
+                    () -> CurrentInvocation.callWith(invocationContextOf(query), () -> retriever.retrieve(query)),
+                    CapturedContextSupport.restoringIn(executor, invocationContextOf(query))))
             .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))

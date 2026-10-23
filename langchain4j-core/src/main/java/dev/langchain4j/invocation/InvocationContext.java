@@ -1,5 +1,6 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -29,6 +30,19 @@ public interface InvocationContext {
      * method as a separate invocation, with its own identifier.
      */
     UUID invocationId();
+
+    /**
+     * The {@link #invocationId()} of the AI Service invocation whose own work started this invocation, for example
+     * when a tool, guardrail or content retriever of one AI Service calls another AI Service. It is not set when the
+     * caller's code calls an AI Service, for example from a handler of a {@code TokenStream}.
+     *
+     * @return the id of the parent invocation, or {@code null} if there is none or it is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    default UUID parentInvocationId() {
+        return null;
+    }
 
     /**
      * The fully-qualified name of the AI Service interface where the invocation was initiated from
@@ -138,6 +152,7 @@ public interface InvocationContext {
     class Builder {
 
         private UUID invocationId;
+        private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
@@ -157,6 +172,7 @@ public interface InvocationContext {
 
         protected Builder(InvocationContext invocationContext) {
             invocationId(invocationContext.invocationId());
+            parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
@@ -180,6 +196,17 @@ public interface InvocationContext {
          */
         public Builder invocationId(UUID invocationId) {
             this.invocationId = invocationId;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext#parentInvocationId()}.
+         *
+         * @since 1.23.0
+         */
+        @Experimental
+        public Builder parentInvocationId(UUID parentInvocationId) {
+            this.parentInvocationId = parentInvocationId;
             return this;
         }
 
@@ -307,6 +334,11 @@ public interface InvocationContext {
 
         public UUID invocationId() {
             return invocationId;
+        }
+
+        @Experimental
+        public UUID parentInvocationId() {
+            return parentInvocationId;
         }
 
         public String interfaceName() {

@@ -38,6 +38,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -222,6 +223,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
+                                .parentInvocationId(parentInvocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
@@ -745,7 +747,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                             AugmentationRequest augmentationRequest =
                                     new AugmentationRequest(userMessageForAugmentation, metadata);
-                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            augmentationResult = CurrentInvocation.callWith(
+                                    invocationContext, () -> context.retrievalAugmentor.augment(augmentationRequest));
                             fireRetrievalAugmentedEvent(
                                     invocationContext, userMessageForAugmentation, augmentationResult);
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
@@ -806,7 +809,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
-                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest chatRequest = transformChatRequest(
+                                invocationContext,
                                 ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
@@ -970,7 +974,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.toolService.createContext(invocationContext, userMessage, messages);
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
-                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest chatRequest = transformChatRequest(
+                                invocationContext,
                                 ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
@@ -1087,6 +1092,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
                     }
 
+                    private ChatRequest transformChatRequest(
+                            InvocationContext invocationContext, ChatRequest chatRequest, Object memoryId) {
+                        return CurrentInvocation.callWith(
+                                invocationContext, () -> context.chatRequestTransformer.apply(chatRequest, memoryId));
+                    }
+
                     /**
                      * Runs RAG augmentation off the calling thread for the asynchronous and reactive return-type
                      * modes: reads the chat memory via the asynchronous {@code messagesAsync} and delegates to
@@ -1108,8 +1119,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? chatMemory.messagesAsync()
                                     : CompletableFuture.completedFuture(null);
                             async = chatMemoryMessages
-                                    .thenCompose(memoryMessages -> augmentor.augmentAsync(augmentationRequest(
-                                            originalUserMessage, systemMessage, memoryMessages, invocationContext)))
+                                    .thenCompose(memoryMessages -> CurrentInvocation.callWith(
+                                            invocationContext,
+                                            () -> augmentor.augmentAsync(augmentationRequest(
+                                                    originalUserMessage,
+                                                    systemMessage,
+                                                    memoryMessages,
+                                                    invocationContext))))
                                     .thenApply(augmentationResult -> {
                                         fireRetrievalAugmentedEvent(
                                                 invocationContext, originalUserMessage, augmentationResult);
@@ -1961,6 +1977,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                 Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
+    }
+
+    private static UUID parentInvocationId() {
+        InvocationContext current = CurrentInvocation.get();
+        return current != null ? current.invocationId() : null;
     }
 
     private static Optional<Object> findMemoryId(Method method, Object[] args) {
