@@ -35,6 +35,10 @@ import java.util.List;
  *         is a separate invocation with its own invocation id, so it results in its own AiServiceInvocationSummaryEvent.
  *     </li>
  *     <li>
+ *         The parent is detected on the thread that runs the tool: an AI Service invoked from a thread the tool
+ *         starts itself is a top-level invocation.
+ *     </li>
+ *     <li>
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
  *         but only ends once the stream has been started with {@code TokenStream.start()}. Events collected for a
  *         {@code TokenStream} that is never started are never released, so always start the streams you create.
