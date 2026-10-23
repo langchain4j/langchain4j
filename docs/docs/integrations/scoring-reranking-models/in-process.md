@@ -50,7 +50,7 @@ If you want to use the GPU, `onnxruntime_gpu` version can be found
     </exclusions>
 </dependency>
 
-<!-- 1.23.2 needs CUDA 12.8 or newer and cuDNN 9 -->
+<!-- use the same version as the onnxruntime dependency of langchain4j-onnx-scoring; 1.23.2 needs CUDA 12.x (12.8 or newer) and cuDNN 9 -->
 <dependency>
     <groupId>com.microsoft.onnxruntime</groupId>
     <artifactId>onnxruntime_gpu</artifactId>
