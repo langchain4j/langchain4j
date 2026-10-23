@@ -199,6 +199,85 @@ class OpenAiOfficialDecisionModelTest {
     }
 
     @Test
+    void should_send_prompt_cache_key_set_on_builder_and_replace_it_per_request() throws Exception {
+
+        // given
+        for (int i = 0; i < 4; i++) {
+            httpClient.enqueue("decisions", RESPONSE);
+        }
+        OpenAiOfficialDecisionModel model = OpenAiOfficialDecisionModel.builder()
+                .openAIClient(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(httpClient)
+                        .build()))
+                .modelName("gpt-6-luna")
+                .promptCacheKey("builder-key")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+        model.decide(REQUEST.toBuilder()
+                .parameters(OpenAiOfficialDecisionRequestParameters.builder()
+                        .promptCacheKey("request-key")
+                        .build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .build());
+        model.decideAsync(REQUEST).join();
+
+        // then
+        assertThat(model.defaultRequestParameters().promptCacheKey()).isEqualTo("builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(0).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(1).body(), Map.class))
+                .containsEntry("prompt_cache_key", "request-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(2).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key")
+                .containsEntry("model", "other-model");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(3).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+    }
+
+    @Test
+    void should_not_send_prompt_cache_key_by_default() throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", RESPONSE);
+
+        // when
+        model().decide(REQUEST);
+
+        // then
+        assertThat(OBJECT_MAPPER.readValue(httpClient.recordedRequests().get(0).body(), Map.class))
+                .doesNotContainKey("prompt_cache_key");
+    }
+
+    @Test
+    void should_replace_prompt_cache_key_with_custom_parameter_of_the_same_name() throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", RESPONSE);
+        OpenAiOfficialDecisionModel model = OpenAiOfficialDecisionModel.builder()
+                .openAIClient(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(httpClient)
+                        .build()))
+                .modelName("gpt-6-luna")
+                .promptCacheKey("typed-key")
+                .customParameters(Map.of("prompt_cache_key", "custom-key"))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        String body = httpClient.recordedRequests().get(0).body();
+        assertThat(OBJECT_MAPPER.readValue(body, Map.class)).containsEntry("prompt_cache_key", "custom-key");
+        assertThat(body).containsOnlyOnce("\"prompt_cache_key\"");
+    }
+
+    @Test
     void should_send_request_in_openai_format_and_map_answers() throws Exception {
 
         // given

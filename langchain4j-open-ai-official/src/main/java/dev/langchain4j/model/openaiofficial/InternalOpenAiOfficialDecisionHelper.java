@@ -64,6 +64,10 @@ class InternalOpenAiOfficialDecisionHelper {
         addInput(params, request.input());
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
+            if (parameters.promptCacheKey() != null) {
+                // the SDK has no typed setter for it yet
+                params.putAdditionalBodyProperty("prompt_cache_key", JsonValue.from(parameters.promptCacheKey()));
+            }
             parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
         }
         return params.build();
