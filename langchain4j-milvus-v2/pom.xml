@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <milvus-sdk-java.version>2.6.14</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.6.25</milvus-sdk-java.version>
         <jackson.version>2.22.4</jackson.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
     </properties>
