@@ -139,7 +139,7 @@ class DecisionRouterPlannerResumeTest {
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
         DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                Map.of("medical", YesNoAnswer.of(0.8), "askUser", YesNoAnswer.of(0.7)));
+                Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .outputKey("responses")
@@ -159,7 +159,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
         DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                Map.of("medical", YesNoAnswer.of(0.8), "askUser", YesNoAnswer.of(0.7)));
+                Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .planner(() -> new DecisionRouterPlanner(model, 0.5))

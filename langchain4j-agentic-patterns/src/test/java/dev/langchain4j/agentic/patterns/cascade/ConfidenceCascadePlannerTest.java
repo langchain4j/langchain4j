@@ -151,14 +151,14 @@ class ConfidenceCascadePlannerTest {
     private final SeniorExpertAgent seniorExpertAgent = new SeniorExpertAgent();
 
     private static DecisionModelMock modelGrading(double probability) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.of(probability)));
+        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
     /** A model grading the successive answers with the given probabilities, in turn. */
     private static DecisionModelMock modelGradingInTurn(double... probabilities) {
         AtomicInteger grades = new AtomicInteger();
         return DecisionModelMock.thatAnswers(
-                request -> Map.of(QUESTION_NAME, YesNoAnswer.of(probabilities[grades.getAndIncrement()])));
+                request -> Map.of(QUESTION_NAME, YesNoAnswer.from(probabilities[grades.getAndIncrement()])));
     }
 
     private static <T> T cascade(Class<T> cascadeType, ConfidenceCascadePlanner planner, Object... tiers) {

@@ -46,8 +46,8 @@ class DecisionModelQueryRouterTest {
 
     DecisionModelMock answering(double hrProbability, double wikiProbability) {
         decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
-                "source1", YesNoAnswer.of(hrProbability),
-                "source2", YesNoAnswer.of(wikiProbability)));
+                "source1", YesNoAnswer.from(hrProbability),
+                "source2", YesNoAnswer.from(wikiProbability)));
         return decisionModel;
     }
 
@@ -63,7 +63,7 @@ class DecisionModelQueryRouterTest {
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "source1",
-                        YesNoQuestion.of(
+                        YesNoQuestion.from(
                                 "Could the following data source contain information that helps answer the query?\n"
                                         + "HR policies"));
     }
@@ -256,7 +256,7 @@ class DecisionModelQueryRouterTest {
     void should_apply_fallback_strategy_when_decision_model_refuses_to_answer() {
 
         DecisionModel refusing = DecisionModelMock.thatAlwaysAnswers(
-                Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.of(0.9)));
+                Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.from(0.9)));
         QueryRouter router = DecisionModelQueryRouter.builder()
                 .decisionModel(refusing)
                 .retrieverToDescription(retrievers)
@@ -319,7 +319,7 @@ class DecisionModelQueryRouterTest {
                 .route(Query.from("query"));
 
         assertThat(decisionModel.request().questions())
-                .containsEntry("source1", YesNoQuestion.of("Can this source answer the question? Source: HR policies"));
+                .containsEntry("source1", YesNoQuestion.from("Can this source answer the question? Source: HR policies"));
     }
 
     @Test

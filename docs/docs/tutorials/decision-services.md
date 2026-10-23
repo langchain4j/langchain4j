@@ -592,7 +592,7 @@ Use the `DecisionModel` API directly: all checks of a test case are answered in 
 ```java
 DecisionRequest.Builder request = DecisionRequest.builder()
         .inputFields(Map.of("question", testCase.question(), "answer", answer));
-testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.of(check.text())));
+testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.from(check.text())));
 
 DecisionResponse response = decisionModel.decide(request.build());
 testCase.checks().forEach(check ->
@@ -650,13 +650,13 @@ interface SpamCheck {
     YesNoAnswer isSpam(String message);
 }
 
-SpamCheck spamCheck = message -> YesNoAnswer.of(0.97);
+SpamCheck spamCheck = message -> YesNoAnswer.from(0.97);
 
 CommentService commentService = new CommentService(spamCheck);
 assertThat(commentService.accept("Buy now!")).isFalse();
 ```
 
-Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()`, `Scale.builder(Severity.class)` and `DecisionResult.builder()`.
+Results are easy to create in tests: `YesNoAnswer.from(0.97)`, `Choice.builder()`, `Scale.builder(Severity.class)` and `DecisionResult.builder()`.
 
 ## Errors
 

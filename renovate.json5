@@ -6,5 +6,36 @@
     "labels": [
         // add "dependencies" label to PRs
         "dependencies"
+    ],
+    "packageRules": [
+        {
+            // Jackson parses untrusted JSON, so its updates must be the first to get a free PR slot
+            "matchPackageNames": [
+                "/^com\\.fasterxml\\.jackson[.:]/",
+                "/^tools\\.jackson[.:]/"
+            ],
+            "prPriority": 10
+        },
+        {
+            // these come from the same Google release train; updated separately, they fail dependency convergence
+            "matchPackageNames": ["com.google.cloud:*"],
+            "groupName": "Google Cloud libraries"
+        },
+        {
+            // updated separately, they fail dependency convergence
+            "matchPackageNames": ["com.github.docker-java:*"],
+            "groupName": "docker-java"
+        },
+        {
+            // "_special_" versions are IBM hotfix builds, not regular releases
+            "matchPackageNames": ["com.ibm.db2:jcc"],
+            "allowedVersions": "!/_special_/"
+        },
+        {
+            // 1.24+ no longer ships the native library for macOS on Intel, which would break in-process models there
+            "matchPackageNames": ["com.microsoft.onnxruntime:*"],
+            "allowedVersions": "(,1.24)",
+            "groupName": "onnxruntime"
+        }
     ]
 }

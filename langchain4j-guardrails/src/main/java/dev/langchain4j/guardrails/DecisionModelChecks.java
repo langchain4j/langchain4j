@@ -54,7 +54,7 @@ final class DecisionModelChecks {
         ensureNotEmpty(questions, "checks")
                 .forEach((name, text) -> yesNoQuestions.put(
                         ensureNotBlank(name, "check name"),
-                        YesNoQuestion.of(questionPrefix + ensureNotBlank(text, "question of check '%s'".formatted(name)))));
+                        YesNoQuestion.from(questionPrefix + ensureNotBlank(text, "question of check '%s'".formatted(name)))));
         this.questions = yesNoQuestions;
         double defaultThreshold = ensureBetween(getOrDefault(threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
         Map<String, Double> thresholds = new LinkedHashMap<>();

@@ -82,7 +82,7 @@ public final class DecisionModelToolSelector {
             DecisionRequest.Builder decisionRequest = DecisionRequest.builder();
             decisionRequest.input(input);
             for (int i = 0; i < batch.size(); i++) {
-                decisionRequest.question("tool" + i, YesNoQuestion.of(question(batch.get(i))));
+                decisionRequest.question("tool" + i, YesNoQuestion.from(question(batch.get(i))));
             }
             DecisionResponse response = decisionModel.decide(decisionRequest.build());
             for (int i = 0; i < batch.size(); i++) {

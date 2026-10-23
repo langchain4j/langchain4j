@@ -117,13 +117,13 @@ class ConfidenceCascadePlannerResumeTest {
     }
 
     private static DecisionModelMock modelGrading(double probability) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.of(probability)));
+        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
     private static DecisionModelMock modelGradingInTurn(double... probabilities) {
         AtomicInteger grades = new AtomicInteger();
         return DecisionModelMock.thatAnswers(
-                request -> Map.of(QUESTION_NAME, YesNoAnswer.of(probabilities[grades.getAndIncrement()])));
+                request -> Map.of(QUESTION_NAME, YesNoAnswer.from(probabilities[grades.getAndIncrement()])));
     }
 
     private static ResumableCascade cascade(DecisionModelMock model, Object... tiers) {
