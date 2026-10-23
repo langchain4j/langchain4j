@@ -14,7 +14,7 @@
 
     <properties>
         <openai-java.version>4.78.0</openai-java.version>
-        <httpclient5.version>5.4.3</httpclient5.version>
+        <httpclient5.version>5.4.4</httpclient5.version>
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
