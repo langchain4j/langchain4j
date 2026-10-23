@@ -235,8 +235,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .timestampNow()
                                 .build();
                         try {
-                            InvocationContext withCapturedContext =
-                                    CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
+                            InvocationContext withCapturedContext = CapturedContextSupport.captureInto(
+                                            invocationContext.toBuilder())
+                                    .build();
                             return CurrentInvocation.callWithout(() -> invoke(method, args, withCapturedContext));
                         } catch (VirtualMachineError e) {
                             throw e;
@@ -544,12 +545,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Flow.Publisher<AiServiceStreamingEvent> eventsOfSubscription = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                    subscriber.onError(new IllegalStateException(
-                                            "This AI Service reactive stream cannot be subscribed to more than once "
-                                                    + "because a ChatMemory is configured: re-subscribing would re-run "
-                                                    + "the interaction and duplicate messages in the chat memory. To "
-                                                    + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
-                                                    + "Mono.retry() around the call), not re-subscribe the publisher."));
+                                    subscriber.onError(
+                                            new IllegalStateException(
+                                                    "This AI Service reactive stream cannot be subscribed to more than once "
+                                                            + "because a ChatMemory is configured: re-subscribing would re-run "
+                                                            + "the interaction and duplicate messages in the chat memory. To "
+                                                            + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
+                                                            + "Mono.retry() around the call), not re-subscribe the publisher."));
                                     return;
                                 }
 
@@ -587,7 +589,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 });
 
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
-                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, subscriptionContext);
+                                        reactiveChatMemory,
+                                        reactiveSystemMessage,
+                                        originalUserMessage,
+                                        subscriptionContext);
                                 subscription.setCancelAction(() -> augmentation.cancel(true));
 
                                 augmentation.whenComplete((augmentationResult, augmentationError) -> {
@@ -723,7 +728,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onNext(AiServiceStreamingEvent item) {
-                                                                    if (item instanceof AiServiceStreamingEvent.FinalResponseEvent) {
+                                                                    if (item
+                                                                            instanceof
+                                                                            AiServiceStreamingEvent
+                                                                                    .FinalResponseEvent) {
                                                                         terminated.set(true);
                                                                     }
                                                                     subscriber.onNext(item);
@@ -731,7 +739,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onError(Throwable error) {
-                                                                    fireErrorIfNotEnded(terminated, subscriptionContext, error);
+                                                                    fireErrorIfNotEnded(
+                                                                            terminated, subscriptionContext, error);
                                                                     subscriber.onError(error);
                                                                 }
 
