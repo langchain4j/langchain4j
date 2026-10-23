@@ -52,7 +52,7 @@ public final class PersistedDecisionAnswers {
      */
     public static Object fromPersisted(Object value) {
         if (value instanceof PersistedYesNoAnswer yesNo) {
-            return YesNoAnswer.of(yesNo.probability());
+            return YesNoAnswer.from(yesNo.probability());
         }
         if (value instanceof PersistedChoice choice) {
             return restoreChoice(choice);

@@ -119,7 +119,7 @@ public class DecisionAgentBuilder<T> {
         }
         this.agenticMethod = validateAgentClass(agentServiceClass);
         validateMethod(agentServiceClass, agenticMethod);
-        this.decisionMethod = DecisionMethod.of(agenticMethod);
+        this.decisionMethod = DecisionMethod.from(agenticMethod);
         if (decisionMethod.isAsync()) {
             throw new IllegalArgumentException(
                     ("Method '%s' of the decision agent %s returns a %s, which is not supported: "

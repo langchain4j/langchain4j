@@ -297,7 +297,7 @@ class DecisionAgentScenariosTest {
                 .name("specialist")
                 .outputKey("consultation")
                 .activationCondition(scope ->
-                        scope.readState("needsReview", YesNoAnswer.of(0)).probability() >= 0.5)
+                        scope.readState("needsReview", YesNoAnswer.from(0)).probability() >= 0.5)
                 .build();
         // the sensing agent runs before its input exists (skipped) and again after the labs wrote it
         UntypedAgent system = AgenticServices.sequenceBuilder()

@@ -29,7 +29,7 @@ class PersistedDecisionAnswersTest {
                 .mean(2.4)
                 .probabilities(Map.of(Quality.GOOD, 0.6, Quality.EXCELLENT, 0.4))
                 .build();
-        YesNoAnswer yesNo = YesNoAnswer.of(0.42);
+        YesNoAnswer yesNo = YesNoAnswer.from(0.42);
 
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
         scope.writeState("choice", choice);

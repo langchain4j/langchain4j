@@ -34,13 +34,13 @@ class DecisionMethodTest {
     void should_return_the_result_and_the_response_of_the_model() throws Exception {
         DecisionModelMock model =
                 DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7).withTokenUsage(new TokenUsage(10, 1));
-        DecisionMethod method = DecisionMethod.of(SpamFilter.class.getMethod("isSpam", String.class));
+        DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpam", String.class));
         DecisionRequest request = method.toRequest(new Object[] {"Buy now!"});
 
         DecisionResult<Object> result = method.invokeWithResponse(config(model, null), request);
 
         assertThat(result.content()).isEqualTo(true);
-        assertThat(result.response().yesNo("isSpam")).isEqualTo(YesNoAnswer.of(0.7));
+        assertThat(result.response().yesNo("isSpam")).isEqualTo(YesNoAnswer.from(0.7));
         assertThat(result.tokenUsage()).isEqualTo(new TokenUsage(10, 1));
         assertThat(model.request()).isEqualTo(request);
     }
@@ -48,7 +48,7 @@ class DecisionMethodTest {
     @Test
     void should_apply_the_thresholds() throws Exception {
         DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7);
-        DecisionMethod method = DecisionMethod.of(SpamFilter.class.getMethod("isSpam", String.class));
+        DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpam", String.class));
         DecisionRequest request = method.toRequest(new Object[] {"Buy now!"});
 
         DecisionResult<Object> result = method.invokeWithResponse(config(model, context -> 0.8), request);
@@ -59,7 +59,7 @@ class DecisionMethodTest {
     @Test
     void should_return_the_same_content_as_invoke() throws Exception {
         DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7);
-        DecisionMethod method = DecisionMethod.of(SpamFilter.class.getMethod("isSpamWithResponse", String.class));
+        DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpamWithResponse", String.class));
         Object[] args = {"Buy now!"};
 
         Object invoked = method.invoke(config(model, null), args);

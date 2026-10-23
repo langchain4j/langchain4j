@@ -131,7 +131,7 @@ class DecisionAgentTest {
 
         Object spam = sequenceOf(spamCheck, "spam").invoke(Map.of("message", "Buy now!"));
 
-        assertThat(spam).isEqualTo(YesNoAnswer.of(0.42));
+        assertThat(spam).isEqualTo(YesNoAnswer.from(0.42));
     }
 
     @Test

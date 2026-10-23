@@ -74,7 +74,7 @@ final class DecisionMocks {
     static DecisionModelMock triaging(String team, double urgency, String sentiment) {
         return DecisionModelMock.thatAnswersQuestions(question -> {
             if (question instanceof YesNoQuestion) {
-                return YesNoAnswer.of(urgency);
+                return YesNoAnswer.from(urgency);
             }
             ChoiceQuestion choice = (ChoiceQuestion) question;
             String option = choice.options().containsKey(team) ? team : sentiment;
@@ -83,6 +83,6 @@ final class DecisionMocks {
     }
 
     static DecisionAnswer yes(double probability) {
-        return YesNoAnswer.of(probability);
+        return YesNoAnswer.from(probability);
     }
 }
