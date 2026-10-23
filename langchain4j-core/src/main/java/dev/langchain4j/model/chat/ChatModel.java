@@ -1,8 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -11,8 +8,11 @@ import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -209,6 +209,8 @@ public interface ChatModel {
 
     /**
      * Non-blocking convenience counterpart of {@link #chat(String)}: completes with the text of the model's response.
+     * <p>
+     * Cancelling the returned future propagates cancellation to the underlying chat request.
      *
      * @since 1.20.0
      */
@@ -218,7 +220,11 @@ public interface ChatModel {
         ChatRequest chatRequest =
                 ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
-        return chatAsync(chatRequest).thenApply(chatResponse -> chatResponse.aiMessage().text());
+        CompletableFuture<ChatResponse> chatFuture = chatAsync(chatRequest);
+        CompletableFuture<String> result =
+                chatFuture.thenApply(chatResponse -> chatResponse.aiMessage().text());
+        propagateCancellation(result, chatFuture);
+        return result;
     }
 
     /**
