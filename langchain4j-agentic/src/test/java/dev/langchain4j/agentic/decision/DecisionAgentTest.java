@@ -17,6 +17,8 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.decision.DecisionAgents.AuditedCategoryRouter;
 import dev.langchain4j.agentic.decision.DecisionAgents.CategoryRouter;
 import dev.langchain4j.agentic.decision.DecisionAgents.ConfidentCategoryRouter;
+import dev.langchain4j.agentic.decision.DecisionAgents.ConfidentTicketTriage;
+import dev.langchain4j.agentic.decision.DecisionAgents.ConfidentTriage;
 import dev.langchain4j.agentic.decision.DecisionAgents.CreditEligibility;
 import dev.langchain4j.agentic.decision.DecisionAgents.MonitoredCategoryRouter;
 import dev.langchain4j.agentic.decision.DecisionAgents.Quality;
@@ -512,6 +514,36 @@ class DecisionAgentTest {
         assertThat(restored.readState("category")).isEqualTo(scope.readState("category"));
         assertThat(restored.readState("styleScore")).isEqualTo(scope.readState("styleScore"));
         assertThat(restored.readState("spam")).isEqualTo(scope.readState("spam"));
+    }
+
+    @Test
+    void should_drop_a_record_answer_holding_probabilities_from_the_persisted_scope() {
+        ConfidentTicketTriage confidentTriage = AgenticServices.decisionAgentBuilder(ConfidentTicketTriage.class)
+                .decisionModel(triaging("BILLING", 0.8, "ANGRY"))
+                .build();
+        TicketTriage plainTriage = AgenticServices.decisionAgentBuilder(TicketTriage.class)
+                .decisionModel(triaging("BILLING", 0.8, "ANGRY"))
+                .build();
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(confidentTriage, plainTriage)
+                .outputKey("triage")
+                .build();
+        AgenticScopeSerializer.allowDeserializationType(Triage.class);
+
+        AgenticScope scope = sequence.invokeWithAgenticScope(Map.of("ticket", "I was charged twice!"))
+                .agenticScope();
+        ConfidentTriage confident = (ConfidentTriage) scope.readState("confidentTriage");
+        assertThat(confident.team().value()).isEqualTo(Team.BILLING);
+        assertThat(confident.urgent().probability()).isCloseTo(0.8, offset(0.001));
+        assertThat(DefaultAgenticScope.isSerializable(confident)).isFalse();
+
+        DefaultAgenticScope restored =
+                AgenticScopeSerializer.fromJson(AgenticScopeSerializer.toJson((DefaultAgenticScope) scope));
+
+        // the record with Choice and YesNoAnswer fields is dropped, the one with enum and boolean fields is kept
+        assertThat(restored.readState("confidentTriage")).isNull();
+        assertThat(restored.readState("triage")).isEqualTo(scope.readState("triage"));
+        assertThat(scope.readState("confidentTriage")).isSameAs(confident);
     }
 
     @Test

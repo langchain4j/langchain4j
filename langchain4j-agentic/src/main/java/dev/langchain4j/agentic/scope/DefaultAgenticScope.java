@@ -76,8 +76,10 @@ public class DefaultAgenticScope implements AgenticScope {
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
             .and(Predicate.not(DefaultAgenticScope::isFuture))
-            // the raw response of a decision model, written by decision agents returning a DecisionResult
-            .and(Predicate.not(value -> value instanceof DecisionResult<?>));
+            // the raw response of a decision model, written by decision agents returning a DecisionResult, and the
+            // records answering several questions with Choice, Scale or YesNoAnswer fields, which cannot be converted
+            .and(Predicate.not(
+                    value -> value instanceof DecisionResult<?> || PersistedDecisionAnswers.isCompositeAnswer(value)));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());

@@ -119,6 +119,23 @@ public class DecisionAgents {
         Triage triage(@V("ticket") String ticket);
     }
 
+    /** Scenario 5: the same questions, with the probabilities of the team and of the urgency. */
+    public record ConfidentTriage(
+            @Decide("Which team should handle this ticket?") Choice<Team> team,
+
+            @Decide("Does this ticket need attention today?")
+            YesNoAnswer urgent,
+
+            @Decide("What is the sentiment of the customer?")
+            Sentiment sentiment) {}
+
+    /** Scenario 5: a record answer holding probabilities, which is not persisted. */
+    public interface ConfidentTicketTriage {
+
+        @Agent(value = "Triages a support ticket, with the probability of each team", outputKey = "confidentTriage")
+        ConfidentTriage triage(@V("ticket") String ticket);
+    }
+
     /** Scenario 7: a decision on an image. */
     public interface BannerCheck {
 

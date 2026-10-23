@@ -54,6 +54,22 @@ class PersistedDecisionAnswersTest {
         assertThat(scope.readState("choice")).isSameAs(choice);
     }
 
+    record ConfidentReview(Choice<Quality> quality, YesNoAnswer publish) {}
+
+    record PlainReview(Quality quality, boolean publish) {}
+
+    @Test
+    void only_an_object_with_fields_of_the_answer_types_is_a_composite_answer() {
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer(new ConfidentReview(null, null)))
+                .isTrue();
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer(new PlainReview(Quality.GOOD, true)))
+                .isFalse();
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer(YesNoAnswer.from(0.5)))
+                .isFalse();
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer("a string")).isFalse();
+        assertThat(PersistedDecisionAnswers.isCompositeAnswer(null)).isFalse();
+    }
+
     @Test
     void a_scale_without_probabilities_is_restored_from_its_mean() {
         Scale<Quality> scale = Scale.builder(Quality.class).mean(2.4).build();
