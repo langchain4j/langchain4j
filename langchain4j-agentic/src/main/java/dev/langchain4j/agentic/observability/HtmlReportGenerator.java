@@ -1137,6 +1137,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 --c-rtr: #dc2626;
                 --c-star: #ca8a04;
                 --c-tool: #e74694;
+                --c-decision: #0d9488;
                 --bg: #f8faf9;
                 --bg2: #f0f4f2;
                 --fg: #1a1a2e;
@@ -1225,6 +1226,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .topology-badge.rtr   { background:var(--c-rtr); }
             .topology-badge.star  { background:var(--c-star); }
             .topology-badge.tool  { background:var(--c-tool); }
+            .topology-badge.decision { background:var(--c-decision); }
 
             .node-border-ai    { border-left:3px solid var(--c-ai); }
             .node-border-nonai { border-left:3px solid var(--c-nonai); }
@@ -1234,6 +1236,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .node-border-loop  { border-left:3px solid var(--c-loop); }
             .node-border-rtr   { border-left:3px solid var(--c-rtr); }
             .node-border-star  { border-left:3px solid var(--c-star); }
+            .node-border-decision { border-left:3px solid var(--c-decision); }
 
             .async-badge { font-size:9px; background:#fef3c7; color:#92400e; padding:0 5px;
                            border-radius:3px; border:1px solid #fcd34d; }
@@ -1352,6 +1355,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .bar-rtr   { background:var(--c-rtr); }
             .bar-star  { background:var(--c-star); }
             .bar-tool  { background:var(--c-tool); }
+            .bar-decision { background:var(--c-decision); }
 
             .wf-io { font-size:11px; color:var(--fg3); white-space:nowrap; }
 

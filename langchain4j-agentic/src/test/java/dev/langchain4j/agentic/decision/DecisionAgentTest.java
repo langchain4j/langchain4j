@@ -399,6 +399,13 @@ class DecisionAgentTest {
 
         String report = HtmlReportGenerator.generateReport(monitor);
         assertThat(report).contains("Decision").contains("classify = ChoiceAnswer{value=LEGAL");
+        // the badge, the card border and the timeline bar of the new topology are styled like the other ones
+        assertThat(report)
+                .contains("node-border-decision\"")
+                .contains("--c-decision: #0d9488;")
+                .contains(".topology-badge.decision { background:var(--c-decision); }")
+                .contains(".node-border-decision { border-left:3px solid var(--c-decision); }")
+                .contains(".bar-decision { background:var(--c-decision); }");
         assertThat(HtmlReportGenerator.generateTopology(sequence)).contains("topology-badge decision");
     }
 
