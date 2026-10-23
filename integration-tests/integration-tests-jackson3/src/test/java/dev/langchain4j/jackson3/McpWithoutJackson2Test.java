@@ -1,6 +1,7 @@
 package dev.langchain4j.jackson3;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -8,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.McpException;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.registryclient.McpRegistryJson;
@@ -49,6 +51,11 @@ class McpWithoutJackson2Test {
                 toolCallHeaders.put("Mcp-Method", String.valueOf(exchange.getRequestHeaders().getFirst("Mcp-Method")));
                 toolCallHeaders.put("Mcp-Name", String.valueOf(exchange.getRequestHeaders().getFirst("Mcp-Name")));
             }
+            if ("prompts/list".equals(method)) {
+                respond(exchange, 200, "{\"jsonrpc\":\"2.0\",\"id\":" + id
+                        + ",\"error\":{\"code\":-32001,\"message\":\"Rate limited\",\"data\":{\"retryAfter\":5}}}");
+                return;
+            }
             respond(exchange, 200, "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":" + resultOf(method) + "}");
         });
         server.start();
@@ -73,6 +80,18 @@ class McpWithoutJackson2Test {
         }
 
         assertThat(toolCallHeaders).containsEntry("Mcp-Method", "tools/call").containsEntry("Mcp-Name", "echo");
+    }
+
+    @Test
+    void reads_the_data_of_an_error_response() throws Exception {
+        try (McpClient client = client("2025-11-25")) {
+            Throwable thrown = catchThrowable(client::listPrompts);
+
+            assertThat(thrown).isInstanceOf(McpException.class);
+            McpException exception = (McpException) thrown;
+            assertThat(exception.errorCode()).isEqualTo(-32001);
+            assertThat(exception.errorDataAsMap()).containsEntry("retryAfter", 5);
+        }
     }
 
     @Test

@@ -9,8 +9,10 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The transport contract between the MCP client and a server connection.
  *
- * <p>Requests and responses cross this interface as unparsed JSON text, so that a transport does
- * not need a JSON library.
+ * <p>Responses cross this interface as unparsed JSON text, so that a transport does not need a JSON
+ * library. A transport registers each request it sends with
+ * {@link McpOperationHandler#expectResponse(Long, CompletableFuture)} and passes every message it
+ * receives to {@link McpOperationHandler#onMessage(String)}.
  *
  * <p>Besides the lifecycle methods, a transport implements three methods:
  * {@link #sendInitializeRequest(McpInitializeRequest)}, {@link #sendRequest(McpCallContext)} and
@@ -35,7 +37,8 @@ public interface McpTransport extends Closeable {
     CompletableFuture<String> sendInitializeRequest(McpInitializeRequest request);
 
     /**
-     * Sends a JSON-RPC request and returns the server's response as unparsed JSON text.
+     * Sends a JSON-RPC request and returns the server's response as unparsed JSON text. The context
+     * carries the message and its per-call headers and {@code _meta}, which the transport applies.
      */
     CompletableFuture<String> sendRequest(McpCallContext context);
 
@@ -49,7 +52,8 @@ public interface McpTransport extends Closeable {
 
     /**
      * Sends a message that does not expect a reply - in MCP terms a notification, or a
-     * response to a server-initiated request.
+     * response to a server-initiated request. The context carries the message and its per-call
+     * headers and {@code _meta}, which the transport applies.
      */
     void sendMessage(McpCallContext context);
 

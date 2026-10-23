@@ -703,12 +703,12 @@ public class DefaultMcpClientTest {
             McpCallContext context = invocation.getArgument(0);
             if (context.message() instanceof McpCallToolRequest) {
                 toolCallContext.set(context);
-                return CompletableFuture.completedFuture(buildToolCompleteResponse("done").toString().toString());
+                return CompletableFuture.completedFuture(buildToolCompleteResponse("done").toString());
             }
             if (context.message() instanceof McpListToolsRequest) {
                 return CompletableFuture.completedFuture(toolsListWithParamHeader());
             }
-            return CompletableFuture.completedFuture(getDiscoverResult().toString().toString());
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
         });
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
@@ -750,7 +750,7 @@ public class DefaultMcpClientTest {
             if (context.message() instanceof McpListToolsRequest) {
                 return CompletableFuture.completedFuture(toolsListWithParamHeader());
             }
-            return CompletableFuture.completedFuture(getDiscoverResult().toString().toString());
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
         });
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
@@ -1170,8 +1170,8 @@ public class DefaultMcpClientTest {
 
         when(transport.sendRequest(any(McpCallContext.class)))
                 .thenReturn(
-                        CompletableFuture.completedFuture(getDiscoverResult().toString().toString()))
-                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false).toString().toString()))
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false).toString()))
                 .thenAnswer(invocation -> {
                     McpCallContext retryContext = invocation.getArgument(0);
                     Long retryRequestId = retryContext.message().getId();
@@ -1422,7 +1422,7 @@ public class DefaultMcpClientTest {
         CountDownLatch pingSent = new CountDownLatch(1);
         when(transport.sendRequest(any(McpCallContext.class)))
                 .thenReturn(
-                        CompletableFuture.completedFuture(getDiscoverResult().toString().toString()))
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
                 .thenAnswer(invocation -> {
                     pingSent.countDown();
                     return new CompletableFuture<>();

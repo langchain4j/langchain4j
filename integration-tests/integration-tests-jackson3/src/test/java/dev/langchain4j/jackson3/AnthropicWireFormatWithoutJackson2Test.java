@@ -37,7 +37,9 @@ class AnthropicWireFormatWithoutJackson2Test {
         assertThat(response.stopReason).isEqualTo("tool_use");
         assertThat(response.content).hasSize(2);
         assertThat(response.content.get(0).text).isEqualTo("Let me check.");
+        assertThat(response.content.get(1).id).isEqualTo("toolu_1");
         assertThat(response.content.get(1).name).isEqualTo("get_weather");
+        assertThat(response.content.get(1).input).containsEntry("city", "Paris");
         assertThat(response.usage.inputTokens).isEqualTo(12);
         assertThat(response.usage.outputTokens).isEqualTo(7);
         assertThat(response.usage.cacheReadInputTokens).isEqualTo(3);

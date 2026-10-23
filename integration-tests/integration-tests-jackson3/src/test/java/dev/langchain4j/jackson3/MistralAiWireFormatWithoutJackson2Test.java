@@ -8,6 +8,7 @@ import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiTextContent;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiToolType;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -55,7 +56,7 @@ class MistralAiWireFormatWithoutJackson2Test {
         MistralAiChatMessage message = response.getChoices().get(0).getMessage();
         assertThat(message.getToolCalls()).hasSize(1);
         assertThat(message.getToolCalls().get(0).getId()).isEqualTo("call_1");
-        assertThat(message.getToolCalls().get(0).getType()).isNotNull();
+        assertThat(message.getToolCalls().get(0).getType()).isEqualTo(MistralAiToolType.FUNCTION);
         assertThat(message.getToolCalls().get(0).getFunction().getName()).isEqualTo("get_weather");
         assertThat(message.getToolCalls().get(0).getFunction().getArguments()).isEqualTo("{\"city\":\"Paris\"}");
     }

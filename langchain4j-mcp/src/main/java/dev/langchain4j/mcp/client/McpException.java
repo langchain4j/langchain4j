@@ -19,10 +19,8 @@ public class McpException extends LangChain4jException {
     }
 
     /**
-     * Creates an exception carrying the JSON-RPC {@code error.data} member as JSON text.
-     *
-     * <p>This is a factory rather than a constructor so that {@code new McpException(code, message, null)}
-     * keeps resolving to a single constructor and continues to compile.
+     * Creates an exception carrying the JSON-RPC {@code error.data} member as JSON text, or no data
+     * when {@code errorDataAsJson} is null.
      */
     public static McpException withErrorData(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
         return new McpException(errorCode, errorMessage, errorDataAsJson);
