@@ -32,6 +32,11 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegistrar {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAiServiceListenerRegistrar.class);
+
+    // Parent and child AI Services can have different registrars. Keep only in-flight tracked invocations here,
+    // and remove the registrar before notifying terminal listeners, including when a listener throws.
+    private static final Map<UUID, DefaultAiServiceListenerRegistrar> INVOCATION_REGISTRARS = new ConcurrentHashMap<>();
+
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
 
@@ -91,6 +96,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
         // Track the event before notifying listeners so a failing listener can't leave a tracked invocation behind
         var invocationSummaryEvent = trackInvocation(event);
+        invocationSummaryEvent.ifPresent(this::appendToParent);
         notifyListeners(event);
         invocationSummaryEvent.ifPresent(this::notifyListeners);
     }
@@ -132,19 +138,36 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     }
 
     private void startTrackingInvocation(UUID invocationId, AiServiceEvent startedEvent) {
-        // Only pay the cost of holding on to the events if someone is listening for the invocation summary
-        if (hasInvocationSummaryListeners()) {
+        // A parent's listener also needs the child's summary, even if the child has no summary listener.
+        UUID parentId = startedEvent.invocationContext().parentInvocationId();
+        if (hasInvocationSummaryListeners() || (parentId != null && INVOCATION_REGISTRARS.containsKey(parentId))) {
             this.trackedInvocations.putIfAbsent(invocationId, new ArrayList<>(List.of(startedEvent)));
+            INVOCATION_REGISTRARS.put(invocationId, this);
         }
     }
 
     private Optional<AiServiceInvocationSummaryEvent> endTrackedInvocation(
             UUID invocationId, InvocationContext invocationContext, Stream<AiServiceEvent> finalEvents) {
+        INVOCATION_REGISTRARS.remove(invocationId, this);
         return Optional.ofNullable(this.trackedInvocations.remove(invocationId))
                 .map(events -> AiServiceInvocationSummaryEvent.builder()
                         .invocationContext(invocationContext)
                         .events(Stream.concat(events.stream(), finalEvents).toList())
                         .build());
+    }
+
+    private void appendToParent(AiServiceInvocationSummaryEvent summary) {
+        UUID parentId = summary.invocationContext().parentInvocationId();
+        if (parentId != null) {
+            DefaultAiServiceListenerRegistrar parentRegistrar = INVOCATION_REGISTRARS.get(parentId);
+            if (parentRegistrar != null) {
+                // The parent may already have ended, for example after cancellation. Never restart its tracking.
+                parentRegistrar.trackedInvocations.computeIfPresent(parentId, (id, events) -> {
+                    events.add(summary);
+                    return events;
+                });
+            }
+        }
     }
 
     private boolean hasInvocationSummaryListeners() {

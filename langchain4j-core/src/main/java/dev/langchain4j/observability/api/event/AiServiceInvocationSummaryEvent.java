@@ -12,13 +12,13 @@ import java.util.List;
  * or {@link AiServiceCancelledEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every
  * event sharing its {@link InvocationContext#invocationId()}), in the order they were fired, starting with the
  * {@link AiServiceStartedEvent} and ending with the {@link AiServiceCompletedEvent}, {@link AiServiceErrorEvent} or
- * {@link AiServiceCancelledEvent}.
+ * {@link AiServiceCancelledEvent}. Summaries of nested invocations are included when those invocations end.
  * <p>
  * A few things to keep in mind:
  * <ul>
  *     <li>
- *         Events are only collected for an invocation if an AiServiceInvocationSummaryListener is registered when its
- *         {@link AiServiceStartedEvent} is fired.
+ *         Events are collected if an AiServiceInvocationSummaryListener is registered when the invocation starts,
+ *         or if its parent invocation is being tracked for a summary.
  *     </li>
  *     <li>
  *         The event is only fired once the invocation fires its {@link AiServiceCompletedEvent},
@@ -32,7 +32,9 @@ import java.util.List;
  *     </li>
  *     <li>
  *         An AI Service invoked while another AI Service invocation is in progress (for example from within a tool)
- *         is a separate invocation with its own invocation id, so it results in its own AiServiceInvocationSummaryEvent.
+ *         has its own invocation id and carries the enclosing invocation's id in
+ *         {@link InvocationContext#parentInvocationId()}. Its summary is appended to the parent's events when it ends,
+ *         and is still fired independently to its own listeners. A child that ends after the parent is not included.
  *     </li>
  *     <li>
  *         The parent is detected on the thread that runs the tool: an AI Service invoked from a thread the tool
