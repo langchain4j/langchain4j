@@ -31,6 +31,15 @@ public interface InvocationContext {
     UUID invocationId();
 
     /**
+     * The id of the enclosing AI Service invocation, or {@code null} for a top-level invocation.
+     *
+     * @since 1.23.0
+     */
+    default UUID parentInvocationId() {
+        return null;
+    }
+
+    /**
      * The fully-qualified name of the AI Service interface where the invocation was initiated from
      *
      * @see #methodName()
@@ -138,6 +147,7 @@ public interface InvocationContext {
     class Builder {
 
         private UUID invocationId;
+        private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
@@ -157,6 +167,7 @@ public interface InvocationContext {
 
         protected Builder(InvocationContext invocationContext) {
             invocationId(invocationContext.invocationId());
+            parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
@@ -180,6 +191,16 @@ public interface InvocationContext {
          */
         public Builder invocationId(UUID invocationId) {
             this.invocationId = invocationId;
+            return this;
+        }
+
+        /**
+         * Sets the enclosing invocation id, or {@code null} for a top-level invocation.
+         *
+         * @since 1.23.0
+         */
+        public Builder parentInvocationId(UUID parentInvocationId) {
+            this.parentInvocationId = parentInvocationId;
             return this;
         }
 
@@ -307,6 +328,10 @@ public interface InvocationContext {
 
         public UUID invocationId() {
             return invocationId;
+        }
+
+        public UUID parentInvocationId() {
+            return parentInvocationId;
         }
 
         public String interfaceName() {

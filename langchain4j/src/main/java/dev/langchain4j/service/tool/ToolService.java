@@ -30,6 +30,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -2032,7 +2033,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         CompletableFuture<ToolExecutionResult> futureToolResult;
-        try {
+        // Model callbacks can submit tools from a different thread than the invocation's caller.
+        try (var ignored = CurrentInvocation.enter(invocationContext)) {
             futureToolResult = toolExecutor.executeAsync(toolRequest, invocationContext);
         } catch (AsyncNotSupportedException e) {
             return CompletableFuture.failedFuture(e);
@@ -2234,7 +2236,7 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
-        try {
+        try (var ignored = CurrentInvocation.enter(invocationContext)) {
             return toolExecutor.executeWithContext(toolRequest, invocationContext);
         } catch (Exception e) {
             return toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
