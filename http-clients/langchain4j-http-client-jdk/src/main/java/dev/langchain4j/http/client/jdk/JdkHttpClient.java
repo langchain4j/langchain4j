@@ -1,5 +1,12 @@
 package dev.langchain4j.http.client.jdk;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.FormDataFile;
@@ -11,10 +18,6 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import mutiny.zero.BackpressureStrategy;
-import mutiny.zero.TubeConfiguration;
-import mutiny.zero.ZeroPublisher;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,16 +36,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
-public class JdkHttpClient implements HttpClient {
+public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
@@ -50,6 +51,7 @@ public class JdkHttpClient implements HttpClient {
     private final boolean useHttp1ForPlainHttp;
     private final Duration readTimeout;
     private final int streamingBufferSize;
+    private final boolean streamingBackpressure;
 
     public JdkHttpClient(JdkHttpClientBuilder builder) {
         java.net.http.HttpClient.Builder httpClientBuilder =
@@ -60,11 +62,41 @@ public class JdkHttpClient implements HttpClient {
         this.delegate = httpClientBuilder.build();
         this.useHttp1ForPlainHttp = builder.httpClientBuilder() == null;
         this.readTimeout = builder.readTimeout();
-        this.streamingBufferSize = ensureGreaterThanZero(getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
+        this.streamingBackpressure = builder.streamingBackpressure();
+        if (streamingBackpressure && builder.streamingBufferSize() != null) {
+            throw new IllegalArgumentException(
+                    "streamingBufferSize cannot be combined with streamingBackpressure(true), which does not buffer events");
+        }
     }
 
     public static JdkHttpClientBuilder builder() {
         return new JdkHttpClientBuilder();
+    }
+
+    /**
+     * Closes the underlying JDK HTTP client on Java 21 and later. On earlier Java versions,
+     * which do not support explicitly closing HTTP clients, this method does nothing.
+     * <p>
+     * The caller owns this client and should close it when it is no longer needed. Complete
+     * or cancel outstanding requests, including streaming subscriptions, before closing it,
+     * as closing the JDK HTTP client waits for outstanding requests to finish.
+     *
+     * @throws IOException if the underlying client cannot be closed
+     */
+    @Override
+    public void close() throws IOException {
+        if (delegate instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while closing HTTP client", e);
+            } catch (Exception e) {
+                throw new IOException("Failed to close HTTP client", e);
+            }
+        }
     }
 
     @Override
@@ -94,8 +126,7 @@ public class JdkHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-        CompletableFuture<HttpResponse<byte[]>> sendFuture =
-                delegate.sendAsync(jdkRequest, BodyHandlers.ofByteArray());
+        CompletableFuture<HttpResponse<byte[]>> sendFuture = delegate.sendAsync(jdkRequest, BodyHandlers.ofByteArray());
 
         CompletableFuture<SuccessfulHttpResponse> result = new CompletableFuture<>();
         sendFuture.whenComplete((jdkResponse, throwable) -> {
@@ -152,6 +183,9 @@ public class JdkHttpClient implements HttpClient {
 
     @Override
     public Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        if (streamingBackpressure) {
+            return new BackpressuredHttpStreamingEventPublisher(delegate, toJdkRequest(request), parser);
+        }
         return new HttpStreamingEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
     }
 
@@ -238,10 +272,11 @@ public class JdkHttpClient implements HttpClient {
         private final ServerSentEventParser parser;
         private final int bufferSize;
 
-        HttpStreamingEventPublisher(java.net.http.HttpClient client,
-                                    java.net.http.HttpRequest request,
-                                    ServerSentEventParser parser,
-                                    int bufferSize) {
+        HttpStreamingEventPublisher(
+                java.net.http.HttpClient client,
+                java.net.http.HttpRequest request,
+                ServerSentEventParser parser,
+                int bufferSize) {
             this.client = ensureNotNull(client, "client");
             this.request = ensureNotNull(request, "request");
             this.parser = ensureNotNull(parser, "parser");
@@ -259,6 +294,9 @@ public class JdkHttpClient implements HttpClient {
                     .withBufferSize(bufferSize);
 
             Publisher<HttpStreamingEvent> publisher = ZeroPublisher.create(config, tube -> {
+                if (tube.cancelled()) {
+                    return;
+                }
                 CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =
                         client.sendAsync(request, BodyHandlers.ofPublisher());
 
@@ -268,107 +306,154 @@ public class JdkHttpClient implements HttpClient {
                 // so a slow consumer that overflows the buffer aborts the socket read instead of draining it to EOF.
                 // On a normal completion the future/subscription are already done, so the cancels are no-ops.
                 AtomicReference<Subscription> bodySubRef = new AtomicReference<>();
-                tube.whenTerminates(() -> {
-                    future.cancel(true);
+                AtomicReference<Publisher<List<ByteBuffer>>> bodyPublisherRef = new AtomicReference<>();
+                AtomicBoolean bodySubscribed = new AtomicBoolean();
+                Runnable cancelBody = () -> {
                     Subscription bodySub = bodySubRef.get();
                     if (bodySub != null) {
                         bodySub.cancel();
+                    } else {
+                        Publisher<List<ByteBuffer>> body = bodyPublisherRef.get();
+                        if (body != null && bodySubscribed.compareAndSet(false, true)) {
+                            subscribeAndCancel(body, bodySubRef);
+                        }
                     }
+                };
+                tube.whenTerminates(() -> {
+                    future.cancel(true);
+                    cancelBody.run();
                 });
+                // Cancellation may have won after sendAsync started but before the termination
+                // action was registered. Tube does not replay termination to late listeners.
+                if (tube.cancelled()) {
+                    future.cancel(true);
+                    cancelBody.run();
+                }
 
                 future.thenAccept(jdkResponse -> {
-                    if (tube.cancelled()) {
-                        return;
-                    }
-                    if (!isSuccessful(jdkResponse)) {
-                        readErrorBodyAsync(jdkResponse.body(), bodySubRef).whenComplete((body, err) -> {
-                            if (err != null) {
-                                tube.fail(err);
-                            } else {
-                                tube.fail(new HttpException(jdkResponse.statusCode(), body));
-                            }
-                        });
-                        return;
-                    }
-                    tube.send(new HttpResponseReceived(fromJdkResponse(jdkResponse, null)));
-
-                    ServerSentEventParser.Incremental incremental = parser.incremental();
-                    jdkResponse.body().subscribe(new Subscriber<>() {
-
-                        @Override
-                        public void onSubscribe(Subscription subscription) {
-                            bodySubRef.set(subscription);
+                            Publisher<List<ByteBuffer>> body = jdkResponse.body();
+                            bodyPublisherRef.set(body);
                             if (tube.cancelled()) {
-                                subscription.cancel();
+                                cancelBody.run();
                                 return;
                             }
-                            // Unbounded demand on purpose. The JDK client's demand maps to TCP / HTTP-2 flow
-                            // control, so we *could* throttle the socket — but it is pointless here: it cannot
-                            // slow token generation (already produced and billed server-side), and stalling the
-                            // read risks an idle-timeout reset mid-stream. Heap is bounded by the Tube buffer
-                            // downstream: on overflow the tube fails, and the whenTerminates hook above then
-                            // cancels this body subscription and aborts the socket read.
-                            subscription.request(Long.MAX_VALUE);
-                        }
-
-                        @Override
-                        public void onNext(List<ByteBuffer> buffers) {
-                            if (tube.cancelled()) {
+                            if (!isSuccessful(jdkResponse)) {
+                                if (!bodySubscribed.compareAndSet(false, true)) {
+                                    return;
+                                }
+                                readErrorBodyAsync(body, bodySubRef, tube::cancelled)
+                                        .whenComplete((bodyText, err) -> {
+                                            if (err != null) {
+                                                tube.fail(err);
+                                            } else {
+                                                tube.fail(new HttpException(jdkResponse.statusCode(), bodyText));
+                                            }
+                                        });
                                 return;
                             }
-                            try {
-                                for (ByteBuffer buf : buffers) {
-                                    for (ServerSentEvent event : incremental.feed(buf)) {
-                                        tube.send(event);
+                            tube.send(new HttpResponseReceived(fromJdkResponse(jdkResponse, null)));
+
+                            ServerSentEventParser.Incremental incremental = parser.incremental();
+                            if (!bodySubscribed.compareAndSet(false, true)) {
+                                return;
+                            }
+                            body.subscribe(new Subscriber<>() {
+
+                                @Override
+                                public void onSubscribe(Subscription subscription) {
+                                    bodySubRef.set(subscription);
+                                    if (tube.cancelled()) {
+                                        subscription.cancel();
+                                        return;
+                                    }
+                                    // Unbounded demand on purpose. The JDK client's demand maps to TCP / HTTP-2 flow
+                                    // control, so we *could* throttle the socket — but it is pointless here: it cannot
+                                    // slow token generation (already produced and billed server-side), and stalling the
+                                    // read risks an idle-timeout reset mid-stream. Heap is bounded by the Tube buffer
+                                    // downstream: on overflow the tube fails, and the whenTerminates hook above then
+                                    // cancels this body subscription and aborts the socket read.
+                                    subscription.request(Long.MAX_VALUE);
+                                }
+
+                                @Override
+                                public void onNext(List<ByteBuffer> buffers) {
+                                    if (tube.cancelled()) {
+                                        return;
+                                    }
+                                    try {
+                                        for (ByteBuffer buf : buffers) {
+                                            for (ServerSentEvent event : incremental.feed(buf)) {
+                                                tube.send(event);
+                                            }
+                                        }
+                                    } catch (Exception e) {
+                                        Subscription bodySub = bodySubRef.get();
+                                        if (bodySub != null) bodySub.cancel();
+                                        if (!tube.cancelled()) tube.fail(e);
                                     }
                                 }
-                            } catch (Exception e) {
-                                Subscription bodySub = bodySubRef.get();
-                                if (bodySub != null) bodySub.cancel();
-                                if (!tube.cancelled()) tube.fail(e);
-                            }
-                        }
 
-                        @Override
-                        public void onError(Throwable throwable) {
-                            if (!tube.cancelled()) {
-                                tube.fail(throwable);
-                            }
-                        }
-
-                        @Override
-                        public void onComplete() {
-                            if (tube.cancelled()) {
-                                return;
-                            }
-                            try {
-                                for (ServerSentEvent event : incremental.flush()) {
-                                    tube.send(event);
+                                @Override
+                                public void onError(Throwable throwable) {
+                                    if (!tube.cancelled()) {
+                                        tube.fail(throwable);
+                                    }
                                 }
-                                tube.complete();
-                            } catch (Exception e) {
-                                if (!tube.cancelled()) tube.fail(e);
+
+                                @Override
+                                public void onComplete() {
+                                    if (tube.cancelled()) {
+                                        return;
+                                    }
+                                    try {
+                                        for (ServerSentEvent event : incremental.flush()) {
+                                            tube.send(event);
+                                        }
+                                        tube.complete();
+                                    } catch (Exception e) {
+                                        if (!tube.cancelled()) tube.fail(e);
+                                    }
+                                }
+                            });
+                        })
+                        .exceptionally(throwable -> {
+                            if (!tube.cancelled()) {
+                                Throwable cause = unwrapCompletionException(throwable);
+                                if (cause instanceof HttpTimeoutException) {
+                                    tube.fail(new TimeoutException(cause));
+                                } else {
+                                    tube.fail(cause);
+                                }
                             }
-                        }
-                    });
-                }).exceptionally(throwable -> {
-                    if (!tube.cancelled()) {
-                        Throwable cause = unwrapCompletionException(throwable);
-                        if (cause instanceof HttpTimeoutException) {
-                            tube.fail(new TimeoutException(cause));
-                        } else {
-                            tube.fail(cause);
-                        }
-                    }
-                    return null;
-                });
+                            return null;
+                        });
             });
 
             publisher.subscribe(subscriber);
         }
 
-        private static CompletableFuture<String> readErrorBodyAsync(
+        private static void subscribeAndCancel(
                 Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef) {
+            body.subscribe(new Subscriber<>() {
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    bodySubRef.set(subscription);
+                    subscription.cancel();
+                }
+
+                @Override
+                public void onNext(List<ByteBuffer> ignored) {}
+
+                @Override
+                public void onError(Throwable ignored) {}
+
+                @Override
+                public void onComplete() {}
+            });
+        }
+
+        private static CompletableFuture<String> readErrorBodyAsync(
+                Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef, BooleanSupplier cancelled) {
             CompletableFuture<String> future = new CompletableFuture<>();
             body.subscribe(new Subscriber<>() {
                 private final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -376,7 +461,11 @@ public class JdkHttpClient implements HttpClient {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     bodySubRef.set(subscription);
-                    subscription.request(Long.MAX_VALUE);
+                    if (cancelled.getAsBoolean()) {
+                        subscription.cancel();
+                    } else {
+                        subscription.request(Long.MAX_VALUE);
+                    }
                 }
 
                 @Override
