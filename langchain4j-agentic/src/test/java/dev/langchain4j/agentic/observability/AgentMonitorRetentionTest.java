@@ -142,7 +142,7 @@ class AgentMonitorRetentionTest {
         AgenticScope scope = stubScope(memoryId);
         Map<String, Object> inputs = Map.of();
         monitor.beforeAgentInvocation(new AgentRequest(scope, agent, inputs));
-        monitor.afterAgentInvocation(new AgentResponse(scope, agent, inputs, "ok", null, null));
+        monitor.afterAgentInvocation(new AgentResponse(scope, agent, inputs, "ok"));
     }
 
     private static void playOneFailedRun(AgentMonitor monitor, AgentInstance agent, Object memoryId) {

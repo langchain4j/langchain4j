@@ -8,7 +8,8 @@ import java.lang.reflect.Parameter;
  * such as a dependency injection container.
  * <p>
  * Applies to the methods annotated with any supplier annotation: {@link ChatModelSupplier},
- * {@link StreamingChatModelSupplier}, {@link ContentRetrieverSupplier},
+ * {@link StreamingChatModelSupplier}, {@link DecisionModelSupplier}, {@link DecisionThresholdSupplier},
+ * {@link ContentRetrieverSupplier},
  * {@link RetrievalAugmentorSupplier}, {@link ChatMemorySupplier},
  * {@link ChatMemoryProviderSupplier}, {@link ToolProviderSupplier},
  * {@link ToolsSupplier}, {@link AgentListenerSupplier}, {@link SystemMessageProviderSupplier},

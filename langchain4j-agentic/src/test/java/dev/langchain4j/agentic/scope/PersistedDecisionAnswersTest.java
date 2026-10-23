@@ -1,0 +1,83 @@
+package dev.langchain4j.agentic.scope;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.service.decision.Choice;
+import dev.langchain4j.service.decision.Scale;
+import java.util.HashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class PersistedDecisionAnswersTest {
+
+    enum Quality {
+        POOR,
+        FAIR,
+        GOOD,
+        EXCELLENT
+    }
+
+    @Test
+    void answers_of_decision_agents_are_persisted_with_their_enum_type_and_probabilities() {
+        Choice<Quality> choice = Choice.<Quality>builder()
+                .value(Quality.GOOD)
+                .probabilities(Map.of(Quality.GOOD, 0.7, Quality.FAIR, 0.3))
+                .confidence(0.9)
+                .build();
+        Scale<Quality> scale = Scale.builder(Quality.class)
+                .mean(2.4)
+                .probabilities(Map.of(Quality.GOOD, 0.6, Quality.EXCELLENT, 0.4))
+                .build();
+        YesNoAnswer yesNo = YesNoAnswer.of(0.42);
+
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        scope.writeState("choice", choice);
+        scope.writeState("scale", scale);
+        scope.writeState("yesNo", yesNo);
+        scope.registerAgentInvocation(
+                new AgentInvocation(String.class, "scorer", "scorer$0", Map.of("choice", choice), scale), null);
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope restored = AgenticScopeSerializer.fromJson(json);
+
+        // the codec writes the type of the enum next to one of its constants, and resolves it when reading
+        assertThat(json).contains("\"value\":[\"" + Quality.class.getName() + "\",\"GOOD\"]");
+        assertThat(restored.readState("choice")).isEqualTo(choice);
+        assertThat(restored.readState("scale")).isEqualTo(scale);
+        assertThat(restored.readState("yesNo")).isEqualTo(yesNo);
+        assertThat(restored.agentInvocations()).singleElement().satisfies(invocation -> {
+            assertThat(invocation.input()).containsEntry("choice", choice);
+            assertThat(invocation.output()).isEqualTo(scale);
+        });
+        // the scope that was written is left untouched
+        assertThat(scope.readState("choice")).isSameAs(choice);
+    }
+
+    @Test
+    void a_scale_without_probabilities_is_restored_from_its_mean() {
+        Scale<Quality> scale = Scale.builder(Quality.class).mean(2.4).build();
+
+        Object persisted = PersistedDecisionAnswers.toPersisted(scale);
+
+        assertThat(persisted).isInstanceOf(PersistedDecisionAnswers.PersistedScale.class);
+        assertThat(PersistedDecisionAnswers.fromPersisted(persisted)).isEqualTo(scale);
+    }
+
+    @Test
+    void a_scope_without_answers_of_decision_agents_is_persisted_as_recorded() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        scope.writeState("story", "Once upon a time");
+        AgentInvocation invocation = new AgentInvocation(
+                String.class, "writer", "writer$0", new HashMap<>(Map.of("topic", "dragons")), "story");
+        scope.registerAgentInvocation(invocation, null);
+
+        String json = AgenticScopeSerializer.toJson(scope);
+
+        // the invocation is not rebuilt by the conversion, so its input map keeps its type in the document
+        assertThat(json).contains("\"input\":[\"java.util.HashMap\"");
+        assertThat(AgenticScopeSerializer.fromJson(json).agentInvocations())
+                .singleElement()
+                .isEqualTo(invocation);
+    }
+}

@@ -2,11 +2,14 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCondition;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePredicate;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkNoDecisionSuppliers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureDecisionAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParameterCount;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.isDecisionAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
@@ -16,7 +19,9 @@ import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
@@ -138,6 +143,23 @@ public class AgenticServices {
      */
     public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
         return new AgentBuilder<>(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for a decision agent: an agent whose implementation is a single call to a
+     * {@link dev.langchain4j.model.decision.DecisionModel} instead of a chat model. The agent is defined by a
+     * Decision Service interface whose method also carries {@link Agent @Agent}: its arguments are read from the
+     * {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope} and sent to the decision model as the input,
+     * its return type defines the question(s), and the typed answer is written to the output key. See
+     * {@link DecisionAgentBuilder} for the details.
+     *
+     * @param agentServiceClass the decision agent interface
+     * @return a new DecisionAgentBuilder instance
+     * @since 1.23.0
+     */
+    @Experimental
+    public static <T> DecisionAgentBuilder<T> decisionAgentBuilder(Class<T> agentServiceClass) {
+        return new DecisionAgentBuilder<>(agentServiceClass);
     }
 
     /**
@@ -298,7 +320,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
     }
 
     /**
@@ -317,11 +339,31 @@ public class AgenticServices {
     public interface DeclarativeAgentCreationContext<T> {
         Class<T> agentServiceClass();
 
+        /**
+         * The builder of the AI agent being created, or {@code null} when it is a decision agent.
+         */
         AgentBuilder<T, ?> agentBuilder();
+
+        /**
+         * The builder of the decision agent being created, or {@code null} when it is an AI agent.
+         */
+        default DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return null;
+        }
     }
 
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
+
+    public record DefaultDeclarativeDecisionAgentCreationContext<T>(
+            Class<T> agentServiceClass, DecisionAgentBuilder<T> decisionAgentBuilder)
+            implements DeclarativeAgentCreationContext<T> {
+
+        @Override
+        public AgentBuilder<T, ?> agentBuilder() {
+            return null;
+        }
+    }
 
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
@@ -391,6 +433,10 @@ public class AgenticServices {
             Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
             if (a2aClientMethod.isPresent()) {
                 return createA2AClient(agentServiceClass, a2aClientMethod.get());
+            }
+
+            if (isDecisionAgent(agentServiceClass)) {
+                return createDecisionAgent(agentServiceClass, agentConfigurator);
             }
 
             var agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
@@ -759,9 +805,14 @@ public class AgenticServices {
             return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
         }
 
+        if (isDecisionAgent(agentServiceClass)) {
+            return agentToExecutor(createDecisionAgent(agentServiceClass, agentConfigurator));
+        }
+
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
+                checkNoDecisionSuppliers(agentServiceClass);
                 ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, agenticMethod);
                 return nonAiAgentToExecutor(
                         new AgenticScopeFunction<>(scope -> invokeStatic(
@@ -776,16 +827,29 @@ public class AgenticServices {
         return null;
     }
 
+    private static <T> T createDecisionAgent(Class<T> agentServiceClass, AgentConfigurator agentConfigurator) {
+        DecisionAgentBuilder<T> builder = DecisionAgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
+        configureDecisionAgent(agentServiceClass, builder, agentConfigurator);
+        if (!builder.hasDecisionModel()) {
+            throw new AgenticSystemConfigurationException("DecisionModel not provided for the decision agent "
+                    + agentServiceClass.getName()
+                    + ". Please provide one with a static method annotated with @DecisionModelSupplier.");
+        }
+        return builder.build();
+    }
+
     private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
     }
 
     private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
         if (activationCondition(agentServiceClass) != null) {
-            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
-                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
-                    + "Set the activation condition when building the agent registered as '"
-                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+            throw new AgenticSystemConfigurationException(
+                    "An @ActivationCondition is not supported on the @RegistryAgent "
+                            + agentServiceClass.getName()
+                            + ", because its agent is taken already built from the registry. "
+                            + "Set the activation condition when building the agent registered as '"
+                            + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
         }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
@@ -851,8 +915,7 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
@@ -886,6 +949,7 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
+        checkNoDecisionSuppliers(agentServiceClass);
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
 
         ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);

@@ -211,6 +211,26 @@
           "annotationType": "com.fasterxml.jackson.annotation.JsonInclude",
           "justification": "Keeps null properties out of persisted agent state, as the Jackson-2-only mixin did before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest.",
           "package": "dev.langchain4j.agentic.scope"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.response.DecisionResponse",
+          "justification": "Decision agents report the response of their decision model (answers with probabilities, model name, token usage) through AgentResponse.decisionResponse(), AgentInvocation.decisionResponse() and DecisionResponseAccess, like AI agents expose the ChatResponse of their chat model. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.service.decision.ThresholdProvider",
+          "justification": "DecisionAgentBuilder.thresholdProvider(...) takes the threshold provider of Decision Services for the boolean answers of a decision agent, the same type DecisionServices.Builder takes. The type is the public, experimental decision API of the langchain4j module."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.DecisionModel",
+          "justification": "DecisionAgentBuilder.decisionModel(...) and decisionModelProvider(...) take the decision model of a decision agent, like AgentBuilder.chatModel(...) takes the chat model of an AI agent. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.request.DecisionRequestParameters",
+          "justification": "DecisionAgentBuilder.requestParameters(...) sets the parameters of the decision requests of a decision agent, the same type the decision model and Decision Services use. The type is the public, experimental decision API of langchain4j-core."
         }
       ]
     }

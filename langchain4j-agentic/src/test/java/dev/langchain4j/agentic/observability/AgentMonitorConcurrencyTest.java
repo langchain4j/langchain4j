@@ -43,7 +43,7 @@ class AgentMonitorConcurrencyTest {
                     AgentInstance agent = stubAgent("root-" + idx, null);
                     AgenticScope scope = stubScope(memoryId);
                     AgentRequest request = new AgentRequest(scope, agent, Map.of());
-                    AgentResponse response = new AgentResponse(scope, agent, Map.of(), "ok", null, null);
+                    AgentResponse response = new AgentResponse(scope, agent, Map.of(), "ok");
                     awaitStart(start);
                     monitor.beforeAgentInvocation(request);
                     monitor.afterAgentInvocation(response);
@@ -85,7 +85,7 @@ class AgentMonitorConcurrencyTest {
             for (int i = 0; i < subAgents; i++) {
                 AgentInstance sub = stubAgent("sub-" + i, root);
                 AgentRequest subRequest = new AgentRequest(scope, sub, Map.of());
-                AgentResponse subResponse = new AgentResponse(scope, sub, Map.of(), "ok", null, null);
+                AgentResponse subResponse = new AgentResponse(scope, sub, Map.of(), "ok");
                 futures.add(pool.submit(() -> {
                     awaitStart(start);
                     monitor.beforeAgentInvocation(subRequest);
@@ -101,7 +101,7 @@ class AgentMonitorConcurrencyTest {
             pool.shutdownNow();
         }
 
-        AgentResponse rootResponse = new AgentResponse(scope, root, Map.of(), "ok", null, null);
+        AgentResponse rootResponse = new AgentResponse(scope, root, Map.of(), "ok");
         monitor.afterAgentInvocation(rootResponse);
 
         List<MonitoredExecution> successful = monitor.successfulExecutionsFor(memoryId);

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
+import dev.langchain4j.agentic.agent.DecisionResponseAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -23,6 +24,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.lang.reflect.Proxy;
@@ -39,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +75,9 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
-            .and(Predicate.not(DefaultAgenticScope::isFuture));
+            .and(Predicate.not(DefaultAgenticScope::isFuture))
+            // the raw response of a decision model, written by decision agents returning a DecisionResult
+            .and(Predicate.not(value -> value instanceof DecisionResult<?>));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());
@@ -93,6 +98,14 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private final Kind kind;
+
+    /**
+     * Replaces every registered invocation with the one returned by the given converter, for a JSON codec adapting
+     * the values of the invocations before writing the scope or after reading it.
+     */
+    void replaceAgentInvocations(UnaryOperator<AgentInvocation> converter) {
+        agentInvocations.replaceAll(converter);
+    }
 
     /**
      * The state that is safe to persist. Public so that a JSON codec supplied through the SPI can
@@ -284,6 +297,9 @@ public class DefaultAgenticScope implements AgenticScope {
         }
         if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
             chatMessagesAccess.removeLastResponseEvent(memoryId());
+        }
+        if (agent instanceof DecisionResponseAccess decisionResponseAccess) {
+            decisionResponseAccess.removeLastDecisionResponse(memoryId());
         }
     }
 

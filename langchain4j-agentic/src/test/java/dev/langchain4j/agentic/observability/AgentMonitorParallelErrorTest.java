@@ -54,7 +54,7 @@ class AgentMonitorParallelErrorTest {
         // 4. Sub-agent B completes successfully — this should NOT throw NPE
         assertThatNoException()
                 .isThrownBy(
-                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
+                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok")));
     }
 
     /**
@@ -89,7 +89,7 @@ class AgentMonitorParallelErrorTest {
 
             Future<?> successFuture = pool.submit(() -> {
                 awaitStart(start);
-                monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null));
+                monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok"));
             });
 
             start.countDown();
@@ -128,12 +128,12 @@ class AgentMonitorParallelErrorTest {
         // Sub-agent B succeeds
         assertThatNoException()
                 .isThrownBy(
-                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
+                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok")));
 
         // Root agent finishes — should not throw
         assertThatNoException()
                 .isThrownBy(() ->
-                        monitor.afterAgentInvocation(new AgentResponse(scope, root, Map.of(), "result", null, null)));
+                        monitor.afterAgentInvocation(new AgentResponse(scope, root, Map.of(), "result")));
 
         // The execution should be done and tracked (either as failed or successful)
         assertThat(monitor.ongoingExecutionFor(memoryId)).isNull();
@@ -157,7 +157,7 @@ class AgentMonitorParallelErrorTest {
         monitor.onAgentInvocationError(new AgentInvocationError(scope, failingChild, Map.of(), rootCause));
         monitor.onAgentInvocationError(
                 new AgentInvocationError(scope, root, Map.of(), new RuntimeException("propagated root failure")));
-        monitor.afterAgentInvocation(new AgentResponse(scope, asyncSibling, Map.of(), "ok", null, null));
+        monitor.afterAgentInvocation(new AgentResponse(scope, asyncSibling, Map.of(), "ok"));
 
         assertThat(monitor.ongoingExecutionFor(memoryId)).isNull();
         assertThat(monitor.failedExecutionsFor(memoryId)).hasSize(1);
