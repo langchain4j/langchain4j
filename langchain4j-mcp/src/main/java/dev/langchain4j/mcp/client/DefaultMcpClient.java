@@ -237,7 +237,8 @@ public class DefaultMcpClient implements McpClient {
                         if (ackFuture != null) {
                             ackFuture.complete(message);
                         }
-                    });
+                    },
+                    serverMessage -> notifyListeners(l -> l.onServerMessage(serverMessage)));
             transport.onFailure(() -> {
                 if (!closed) {
                     try {
@@ -635,7 +636,10 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private void cancelTimedOutOperation(
-            TimeoutException timeout, long operationId, CompletableFuture<?> resultFuture) {
+            TimeoutException timeout,
+            long operationId,
+            CompletableFuture<?> resultFuture,
+            @Nullable InvocationContext invocationContext) {
         long timedOutOperationId = operationId;
         CompletableFuture<?> timedOutResultFuture = resultFuture;
         if (timeout instanceof McpOperationTimeoutException operationTimeout) {
@@ -646,13 +650,15 @@ public class DefaultMcpClient implements McpClient {
             timedOutResultFuture.cancel(true);
         }
         pendingOperations.remove(timedOutOperationId);
-        sendCancellationNotification(timedOutOperationId, "Timeout");
+        sendCancellationNotification(timedOutOperationId, "Timeout", invocationContext);
     }
 
-    private void sendCancellationNotification(long operationId, String reason) {
+    private void sendCancellationNotification(
+            long operationId, String reason, @Nullable InvocationContext invocationContext) {
         if (shouldSendCancellationNotification()) {
             McpCancellationNotification cancellation = new McpCancellationNotification(operationId, reason);
-            applyMeta(cancellation, null);
+            McpCallContext cancellationContext = new McpCallContext(invocationContext, cancellation);
+            applyMeta(cancellation, cancellationContext);
             transport.sendMessage(cancellation);
         }
     }
@@ -754,7 +760,13 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolExecutionException(e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onExecuteToolError(context, re));
+            throw re;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
+            notifyListeners(l -> l.onExecuteToolError(context, e));
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -795,6 +807,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = executeViaTransport(context);
         } catch (Exception e) {
             pendingOperations.remove(operationId);
+            notifyListeners(l -> l.onExecuteToolError(context, e));
             return CompletableFuture.failedFuture(e);
         }
 
@@ -828,7 +841,7 @@ public class DefaultMcpClient implements McpClient {
                 try {
                     if (resultFuture.cancel(true)) {
                         pendingOperations.remove(operationId);
-                        sendCancellationNotification(operationId, "Cancelled");
+                        sendCancellationNotification(operationId, "Cancelled", context.invocationContext());
                     }
                 } finally {
                     if (notifyCancellation) {
@@ -861,8 +874,12 @@ public class DefaultMcpClient implements McpClient {
 
     private ToolExecutionResult handleToolTimeout(
             McpCallContext context, long operationId, CompletableFuture<?> resultFuture, TimeoutException timeout) {
-        notifyListeners(l -> l.onExecuteToolError(context, timeout));
-        cancelTimedOutOperation(timeout, operationId, resultFuture);
+        // cancel before notifying the listeners, so that they see the cancellation as part of the operation
+        try {
+            cancelTimedOutOperation(timeout, operationId, resultFuture, context.invocationContext());
+        } finally {
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
+        }
         // built on demand, not once at construction: a custom converter must not be invoked
         // for a tool call that never happened
         return toolResultConverter.convert(
@@ -942,16 +959,25 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(finalResult, (l, response) -> l.afterResourceGet(context, resourceResult, response));
             return resourceResult;
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onResourceGetError(context, timeout));
-            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            try {
+                cancelTimedOutOperation(timeout, operationId, resultFuture, context.invocationContext());
+            } finally {
+                notifyListeners(l -> l.onResourceGetError(context, timeout));
+            }
             throw new RuntimeException(timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceGetError(context, re));
+            throw re;
         } catch (McpException e) {
+            notifyListeners(l -> l.onResourceGetError(context, e));
+            throw e;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
             notifyListeners(l -> l.onResourceGetError(context, e));
             throw e;
         } finally {
@@ -998,16 +1024,25 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(finalResult, (l, response) -> l.afterPromptGet(context, promptResult, response));
             return promptResult;
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onPromptGetError(context, timeout));
-            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            try {
+                cancelTimedOutOperation(timeout, operationId, resultFuture, context.invocationContext());
+            } finally {
+                notifyListeners(l -> l.onPromptGetError(context, timeout));
+            }
             throw new RuntimeException(timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPromptGetError(context, re));
+            throw re;
         } catch (McpException e) {
+            notifyListeners(l -> l.onPromptGetError(context, e));
+            throw e;
+        } catch (RuntimeException e) {
+            // e.g. the multi round-trip errors
             notifyListeners(l -> l.onPromptGetError(context, e));
             throw e;
         } finally {
@@ -1119,11 +1154,7 @@ public class DefaultMcpClient implements McpClient {
             if (resultFuture != null) {
                 resultFuture.cancel(true);
             }
-            if (shouldSendCancellationNotification()) {
-                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-                applyMeta(cancellation, null);
-                transport.sendMessage(cancellation);
-            }
+            sendCancellationNotification(operationId, "Timeout", context.invocationContext());
             RuntimeException re = new RuntimeException(timeout);
             notifyListeners(l -> l.onResourceSubscribeError(context, re));
             throw re;
@@ -1136,7 +1167,9 @@ public class DefaultMcpClient implements McpClient {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceSubscribeError(context, re));
+            throw re;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -1165,11 +1198,7 @@ public class DefaultMcpClient implements McpClient {
             if (resultFuture != null) {
                 resultFuture.cancel(true);
             }
-            if (shouldSendCancellationNotification()) {
-                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-                applyMeta(cancellation, null);
-                transport.sendMessage(cancellation);
-            }
+            sendCancellationNotification(operationId, "Timeout", context.invocationContext());
             RuntimeException re = new RuntimeException(timeout);
             notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
             throw re;
@@ -1182,7 +1211,9 @@ public class DefaultMcpClient implements McpClient {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
+            throw re;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -1294,7 +1325,9 @@ public class DefaultMcpClient implements McpClient {
             throw re;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourcesSubscribeError(context, re));
+            throw re;
         } finally {
             pendingSubscriptionAcks.remove(subscriptionId);
         }
@@ -1553,7 +1586,7 @@ public class DefaultMcpClient implements McpClient {
                 resultFuture = executeViaTransport(context);
                 result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
-                cancelTimedOutOperation(e, operation.getId(), resultFuture);
+                cancelTimedOutOperation(e, operation.getId(), resultFuture, invocationContext);
                 throw new RuntimeException(e);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
