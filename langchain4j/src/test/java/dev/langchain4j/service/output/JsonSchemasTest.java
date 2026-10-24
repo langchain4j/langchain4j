@@ -1,22 +1,22 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.Result;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-
-import static dev.langchain4j.service.output.JsonSchemas.jsonSchemaFrom;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class JsonSchemasTest {
 
@@ -28,8 +28,8 @@ class JsonSchemasTest {
     @Test
     void should_return_json_schema_for_pojos() {
         assertThat(jsonSchemaFrom(Pojo.class)).isPresent();
-        assertThat(jsonSchemaFrom(new TypeReference<Result<Pojo>>() {
-        }.getType())).isPresent();
+        assertThat(jsonSchemaFrom(new TypeReference<Result<Pojo>>() {}.getType()))
+                .isPresent();
     }
 
     @Test
@@ -37,13 +37,12 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(void.class)).isEmpty();
         assertThat(jsonSchemaFrom(String.class)).isEmpty();
         assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
+        assertThat(jsonSchemaFrom(ChatResponse.class)).isEmpty();
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
         assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
-        assertThat(jsonSchemaFrom(new TypeReference<List<Pojo>>() {
-        }.getType())).isEmpty();
+        assertThat(jsonSchemaFrom(new TypeReference<List<Pojo>>() {}.getType())).isEmpty();
     }
-
 
     // POJO
 
@@ -68,7 +67,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -93,7 +93,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address");
     }
 
@@ -119,16 +120,16 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonObjectSchema addressSchema = (JsonObjectSchema) rootElement.properties().get("address");
+        JsonObjectSchema addressSchema =
+                (JsonObjectSchema) rootElement.properties().get("address");
         assertThat(addressSchema.description()).isEqualTo("an address 2");
     }
-
 
     // ENUM
 
     enum MaritalStatus {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -146,15 +147,15 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
-
     @Description("marital status")
     enum MaritalStatus2 {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -171,15 +172,15 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status");
     }
 
-
     @Description("marital status")
     enum MaritalStatus3 {
-
-        SINGLE, MARRIED
+        SINGLE,
+        MARRIED
     }
 
     @Test
@@ -197,7 +198,8 @@ class JsonSchemasTest {
 
         // then
         JsonObjectSchema rootElement = (JsonObjectSchema) jsonSchema.get().rootElement();
-        JsonEnumSchema maritalStatusSchema = (JsonEnumSchema) rootElement.properties().get("maritalStatus");
+        JsonEnumSchema maritalStatusSchema =
+                (JsonEnumSchema) rootElement.properties().get("maritalStatus");
         assertThat(maritalStatusSchema.description()).isEqualTo("marital status 2");
     }
 
