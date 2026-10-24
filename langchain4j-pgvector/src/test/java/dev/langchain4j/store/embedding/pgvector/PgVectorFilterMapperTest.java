@@ -143,4 +143,22 @@ class PgVectorFilterMapperTest {
                 .isEqualTo("(metadata->>'name')::text is not null"
                         + " and position('O''Brien' in (metadata->>'name')::text) > 0");
     }
+
+    @Test
+    void mapNot_shouldTreatNullAsFalse_jsonMapper() {
+        Filter filter = Filter.not(metadataKey("age").isGreaterThan(30));
+
+        String sql = jsonMapper.map(filter);
+
+        assertThat(sql).isEqualTo("not(coalesce((metadata->>'age')::int > 30, false))");
+    }
+
+    @Test
+    void mapNot_shouldTreatNullAsFalse_columnMapper() {
+        Filter filter = Filter.not(metadataKey("age").isGreaterThan(30));
+
+        String sql = columnMapper.map(filter);
+
+        assertThat(sql).isEqualTo("not(coalesce(age::int > 30, false))");
+    }
 }
