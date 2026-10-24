@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +166,39 @@ class McpProtocolSerializationTest {
 
         assertThat(json.get("method").asText()).isEqualTo("ping");
         assertThat(json.has("params")).isFalse();
+    }
+
+    @Test
+    void should_serialize_ping_response_with_the_numeric_id_of_the_request() throws Exception {
+        String serialized = McpJson.serialize(new McpPingResponse(42L));
+
+        JsonNode json = McpJson.parse(serialized);
+        assertThat(serialized).containsOnlyOnce("\"id\"");
+        assertThat(json.get("id").isNumber()).isTrue();
+        assertThat(json.get("id").asLong()).isEqualTo(42L);
+        assertThat(json.get("result").isEmpty()).isTrue();
+    }
+
+    @Test
+    void should_serialize_ping_response_with_the_string_id_of_the_request() throws Exception {
+        String serialized = McpJson.serialize(new McpPingResponse("3f1c9a2e-0"));
+
+        JsonNode json = McpJson.parse(serialized);
+        assertThat(serialized).containsOnlyOnce("\"id\"");
+        assertThat(json.get("id").isTextual()).isTrue();
+        assertThat(json.get("id").asText()).isEqualTo("3f1c9a2e-0");
+        assertThat(json.get("result").isEmpty()).isTrue();
+    }
+
+    @Test
+    void should_serialize_roots_list_response_with_the_string_id_of_the_request() throws Exception {
+        String serialized = McpJson.serialize(
+                new McpRootsListResponse("3f1c9a2e-1", List.of(new McpRoot("project", "file:///tmp/project"))));
+
+        JsonNode json = McpJson.parse(serialized);
+        assertThat(serialized).containsOnlyOnce("\"id\"");
+        assertThat(json.get("id").asText()).isEqualTo("3f1c9a2e-1");
+        assertThat(json.get("result").get("roots").get(0).get("uri").asText()).isEqualTo("file:///tmp/project");
     }
 
     @Test

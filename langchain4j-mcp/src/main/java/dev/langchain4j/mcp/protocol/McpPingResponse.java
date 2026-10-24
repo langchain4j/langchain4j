@@ -19,6 +19,13 @@ public class McpPingResponse extends McpClientResponse {
         super(id);
     }
 
+    /**
+     * @param requestId the id of the ping request exactly as the server sent it (a string or a number)
+     */
+    public McpPingResponse(Object requestId) {
+        super(requestId);
+    }
+
     public Map<String, Object> getResult() {
         return result;
     }

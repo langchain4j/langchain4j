@@ -116,13 +116,14 @@ public class McpOperationHandler {
     }
 
     private void handleMessageWithId(Map<String, Object> message, String json) {
-        Long messageId = toLong(message.get("id"));
-        if (messageId == null) {
-            log.warn("Received message with an unusable id: {}", message);
-            return;
-        }
+        Object id = message.get("id");
         if (message.containsKey("result") || message.containsKey("error")) {
             // response to a client-initiated operation
+            Long messageId = toLong(id);
+            if (messageId == null) {
+                log.warn("Received message with an unusable id: {}", message);
+                return;
+            }
             CompletableFuture<String> op = pendingOperations.remove(messageId);
             if (op != null) {
                 op.complete(json);
@@ -130,30 +131,35 @@ public class McpOperationHandler {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
         } else if (message.containsKey("method")) {
-            // server-initiated request requiring a response
+            // server-initiated request requiring a response. The response has to carry the id
+            // exactly as the server sent it, and the server may use a string (the MCP Java SDK does)
+            if (!(id instanceof String) && !(id instanceof Number)) {
+                log.warn("Received message with an unusable id: {}", message);
+                return;
+            }
             McpServerMethod method = McpServerMethod.from(String.valueOf(message.get("method")));
             if (method == null) {
-                log.warn("Received response for unknown message id: {}", messageId);
+                log.warn("Received response for unknown message id: {}", id);
                 return;
             }
             switch (method) {
                 case PING:
-                    transport.sendMessage(new McpPingResponse(messageId));
+                    transport.sendMessage(new McpPingResponse(id));
                     if (onServerPing != null) {
                         onServerPing.run();
                     }
                     break;
                 case ROOTS_LIST:
-                    transport.sendMessage(new McpRootsListResponse(messageId, roots.get()));
+                    transport.sendMessage(new McpRootsListResponse(id, roots.get()));
                     if (onServerRootsList != null) {
                         onServerRootsList.run();
                     }
                     break;
                 default:
-                    log.warn("Received response for unknown message id: {}", messageId);
+                    log.warn("Received response for unknown message id: {}", id);
             }
         } else {
-            log.warn("Received response for unknown message id: {}", messageId);
+            log.warn("Received response for unknown message id: {}", id);
         }
     }
 
