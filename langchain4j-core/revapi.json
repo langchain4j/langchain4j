@@ -42,6 +42,16 @@
           "old": "method java.lang.Object dev.langchain4j.model.decision.request.DecisionRequest::input()",
           "new": "method dev.langchain4j.model.decision.request.DecisionInput dev.langchain4j.model.decision.request.DecisionRequest::input()",
           "justification": "DecisionRequest is @Experimental and its Map and List<Content> inputs are not adopted yet: they are replaced in place (no deprecation, decided by the maintainer) by inputFields(Map), inputContents(List) and inputMessages(List), and input() now returns the typed DecisionInput instead of Object."
+        },
+        {
+          "code": "java.annotation.attributeRemoved",
+          "new": "parameter java.lang.String dev.langchain4j.web.search.WebSearchTool::searchWeb(===java.lang.String===)",
+          "justification": "@P carries the parameter name and description sent to the LLM, not a Java API contract; the parameter is now named explicitly so that the LLM no longer sees it as arg0"
+        },
+        {
+          "code": "java.annotation.attributeAdded",
+          "new": "parameter java.lang.String dev.langchain4j.web.search.WebSearchTool::searchWeb(===java.lang.String===)",
+          "justification": "@P carries the parameter name and description sent to the LLM, not a Java API contract; the parameter is now named explicitly so that the LLM no longer sees it as arg0"
         }
       ]
     }
