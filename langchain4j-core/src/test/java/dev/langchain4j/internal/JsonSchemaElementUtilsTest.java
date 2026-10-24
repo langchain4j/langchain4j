@@ -18,7 +18,13 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
@@ -94,6 +100,7 @@ class JsonSchemaElementUtilsTest {
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonStringSchema.builder()
                         .description("String in a UUID format")
+                        .format("uuid")
                         .build());
     }
 
@@ -114,9 +121,96 @@ class JsonSchemaElementUtilsTest {
         // then
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonObjectSchema.builder()
-                        .addStringProperty("uuid", "String in a UUID format")
+                        .addProperty(
+                                "uuid",
+                                JsonStringSchema.builder()
+                                        .description("String in a UUID format")
+                                        .format("uuid")
+                                        .build())
                         .required("uuid")
                         .build());
+    }
+
+    @Test
+    void should_map_java_time_types_to_string_schema_with_format() {
+
+        assertThat(jsonSchemaElementFrom(LocalDate.class))
+                .isEqualTo(JsonStringSchema.builder().format("date").build());
+        assertThat(jsonSchemaElementFrom(LocalTime.class))
+                .isEqualTo(JsonStringSchema.builder().format("time").build());
+        assertThat(jsonSchemaElementFrom(LocalDateTime.class))
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
+        assertThat(jsonSchemaElementFrom(Instant.class))
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
+        assertThat(jsonSchemaElementFrom(OffsetDateTime.class))
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
+        assertThat(jsonSchemaElementFrom(ZonedDateTime.class))
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
+        assertThat(jsonSchemaElementFrom(Duration.class))
+                .isEqualTo(JsonStringSchema.builder().format("duration").build());
+    }
+
+    static class MyClassWithLocalDate {
+
+        LocalDate birthDate;
+    }
+
+    @Test
+    void should_map_java_time_field_to_string_schema_with_format() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(MyClassWithLocalDate.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "birthDate",
+                                JsonStringSchema.builder().format("date").build())
+                        .required("birthDate")
+                        .build());
+    }
+
+    static class MyClassWithDescribedLocalDate {
+
+        @Description("birth date")
+        LocalDate birthDate;
+    }
+
+    @Test
+    void should_use_non_null_description_for_java_time_field() {
+
+        // given
+        Class<MyClassWithDescribedLocalDate> clazz = MyClassWithDescribedLocalDate.class;
+
+        // when
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "birthDate",
+                                JsonStringSchema.builder()
+                                        .format("date")
+                                        .description("birth date")
+                                        .build())
+                        .required("birthDate")
+                        .build());
+    }
+
+    @Test
+    void shouldConvertJsonStringSchemaWithFormatToMap() {
+
+        // given
+        JsonStringSchema schema = JsonStringSchema.builder().format("date").build();
+
+        // when
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        // then
+        assertThat(map).containsEntry("type", "string").containsEntry("format", "date");
     }
 
     static class MyClassWithDescribedUuid {
@@ -137,7 +231,12 @@ class JsonSchemaElementUtilsTest {
         // then
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonObjectSchema.builder()
-                        .addStringProperty("uuid", "My UUID")
+                        .addProperty(
+                                "uuid",
+                                JsonStringSchema.builder()
+                                        .description("My UUID")
+                                        .format("uuid")
+                                        .build())
                         .required("uuid")
                         .build());
     }

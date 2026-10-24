@@ -815,10 +815,25 @@ If LLM and LLM provider supports the methods described above, it is better to us
 | `BigInteger`                                               | ✅           | ✅         |
 | `BigDecimal`                                               | ✅           | ✅         |
 | `Date`                                                     | ❌           | ✅         |
-| `LocalDate`                                                | ❌           | ✅         |
-| `LocalTime`                                                | ❌           | ✅         |
-| `LocalDateTime`                                            | ❌           | ✅         |
+| `LocalDate`                                                | ✅           | ✅         |
+| `LocalTime`                                                | ✅           | ✅         |
+| `LocalDateTime`                                            | ✅           | ✅         |
+| `Instant`                                                  | ✅           | ✅         |
+| `OffsetDateTime`                                           | ✅           | ✅         |
+| `ZonedDateTime`                                            | ✅           | ✅         |
+| `Duration`                                                 | ✅           | ✅         |
+| `UUID`                                                     | ✅           | ✅         |
 | `Map<?, ?>`                                                | ❌           | ✅         |
+
+When a `UUID` or java.time type is used in structured outputs, it is mapped to a JSON Schema string with the
+corresponding `format`: `UUID` → `uuid`, `LocalDate` → `date`, `LocalTime` → `time`, `LocalDateTime` → `date-time`,
+`Instant` → `date-time`, `OffsetDateTime` → `date-time`, `ZonedDateTime` → `date-time`,
+`Duration` → `duration`. LLMs honoring these formats may emit strings with a timezone offset
+(e.g., `2023-01-15T10:20:00Z`), which is accepted and discarded when parsing back into
+`LocalDateTime` and `LocalTime` (they cannot represent an offset). `Instant`, `OffsetDateTime`,
+`ZonedDateTime`, and `Duration` are serialized as ISO-8601 strings and deserialize back preserving
+the offset (e.g., `+02:00` is not shifted to UTC). Note that `ZonedDateTime` is serialized
+offset-only, so on round-trip the region (e.g., `[Europe/Paris]`) is lost.
 
 A few examples:
 ```java
