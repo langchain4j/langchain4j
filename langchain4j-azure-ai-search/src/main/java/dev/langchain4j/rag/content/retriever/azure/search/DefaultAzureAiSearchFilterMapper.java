@@ -112,7 +112,9 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String mapSearchInValues(Collection<?> comparisonValues) {
-        return comparisonValues.stream().map(Object::toString).sorted().collect(Collectors.joining(", "));
+        // search.in() splits the list on the delimiter without trimming whitespace, so joining with
+        // ", " would produce leading-space tokens that never match. Join with a plain comma instead.
+        return comparisonValues.stream().map(Object::toString).sorted().collect(Collectors.joining(","));
     }
 
     private String formatComparisonFilter(String key, String value, String format) {
