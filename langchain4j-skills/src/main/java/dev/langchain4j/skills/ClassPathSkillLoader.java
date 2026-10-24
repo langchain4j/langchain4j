@@ -149,13 +149,7 @@ public class ClassPathSkillLoader {
         try (Stream<Path> files = Files.walk(skillDirectory)) {
             return files.filter(Files::isRegularFile)
                     .filter(path -> !path.getFileName().toString().equals("SKILL.md"))
-                    .filter(path -> {
-                        String relativePath = stream(
-                                        skillDirectory.relativize(path).spliterator(), false)
-                                .map(Path::toString)
-                                .collect(joining("/"));
-                        return !relativePath.startsWith("scripts");
-                    })
+                    .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
                         try {
                             String content = Files.readString(path);
