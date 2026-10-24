@@ -58,6 +58,14 @@ class SchemaMapper {
             JsonStringSchema jsonStringSchema = (JsonStringSchema) jsonSchema;
             schemaBuilder.description(jsonStringSchema.description());
             schemaBuilder.type(GeminiType.STRING);
+            if (jsonStringSchema.minLength() != null) {
+                schemaBuilder.minLength(String.valueOf(jsonStringSchema.minLength()));
+            }
+            if (jsonStringSchema.maxLength() != null) {
+                schemaBuilder.maxLength(String.valueOf(jsonStringSchema.maxLength()));
+            }
+            schemaBuilder.pattern(jsonStringSchema.pattern());
+            schemaBuilder.format(jsonStringSchema.format());
         } else if (jsonSchema instanceof JsonBooleanSchema) {
             JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchema;
             schemaBuilder.description(jsonBooleanSchema.description());
@@ -66,10 +74,20 @@ class SchemaMapper {
             JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchema;
             schemaBuilder.description(jsonNumberSchema.description());
             schemaBuilder.type(GeminiType.NUMBER);
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Gemini API and are ignored
+            schemaBuilder.minimum(jsonNumberSchema.minimum());
+            schemaBuilder.maximum(jsonNumberSchema.maximum());
         } else if (jsonSchema instanceof JsonIntegerSchema) {
             JsonIntegerSchema jsonIntegerSchema = (JsonIntegerSchema) jsonSchema;
             schemaBuilder.description(jsonIntegerSchema.description());
             schemaBuilder.type(GeminiType.INTEGER);
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Gemini API and are ignored
+            if (jsonIntegerSchema.minimum() != null) {
+                schemaBuilder.minimum(jsonIntegerSchema.minimum().doubleValue());
+            }
+            if (jsonIntegerSchema.maximum() != null) {
+                schemaBuilder.maximum(jsonIntegerSchema.maximum().doubleValue());
+            }
         } else if (jsonSchema instanceof JsonEnumSchema) {
             JsonEnumSchema jsonEnumSchema = (JsonEnumSchema) jsonSchema;
             schemaBuilder.description(jsonEnumSchema.description());
@@ -98,6 +116,13 @@ class SchemaMapper {
 
             if (jsonArraySchema.items() != null) {
                 schemaBuilder.items(fromJsonSchemaToGSchema(jsonArraySchema.items()));
+            }
+            // uniqueItems is not supported by the Gemini API and is ignored
+            if (jsonArraySchema.minItems() != null) {
+                schemaBuilder.minItems(String.valueOf(jsonArraySchema.minItems()));
+            }
+            if (jsonArraySchema.maxItems() != null) {
+                schemaBuilder.maxItems(String.valueOf(jsonArraySchema.maxItems()));
             }
         } else if (jsonSchema instanceof JsonAnyOfSchema) {
             JsonAnyOfSchema jsonAnyOfSchema = (JsonAnyOfSchema) jsonSchema;
