@@ -169,6 +169,33 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
                 .hasMessageContaining("100 characters long");
     }
 
+    @Test
+    void split_should_skip_a_whitespace_only_buffer_instead_of_creating_an_empty_segment() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(1, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from(" a"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("a");
+    }
+
+    @Test
+    void split_should_skip_a_whitespace_only_buffer_instead_of_throwing() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(1, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("a b"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("a", "b");
+    }
+
+    @Test
+    void split_should_not_report_whitespace_as_oversized() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(2, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("ab  cd"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("ab", "c", "d");
+    }
+
     static class EmptyResultSplitter extends HierarchicalDocumentSplitter {
 
         EmptyResultSplitter() {
