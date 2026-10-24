@@ -1,5 +1,15 @@
 package dev.langchain4j.guardrails;
 
+import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.InputGuardrailResult;
@@ -9,13 +19,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.ModerationException;
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 class MessageModeratorInputGuardrailTest {
 
     @Test
@@ -24,7 +27,7 @@ class MessageModeratorInputGuardrailTest {
         ModerationModel moderationModel = mock(ModerationModel.class);
         Moderation moderation = Moderation.notFlagged();
         Response<Moderation> response = Response.from(moderation);
-        when(moderationModel.moderate(any(UserMessage.class))).thenReturn(response);
+        when(moderationModel.moderate(anyString())).thenReturn(response);
 
         MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
         UserMessage userMessage = UserMessage.from("This is a safe message");
@@ -38,7 +41,7 @@ class MessageModeratorInputGuardrailTest {
                 .extracting(InputGuardrailResult::result)
                 .isEqualTo(GuardrailResult.Result.SUCCESS);
 
-        verify(moderationModel).moderate(userMessage);
+        verify(moderationModel).moderate("This is a safe message");
     }
 
     @Test
@@ -47,7 +50,7 @@ class MessageModeratorInputGuardrailTest {
         ModerationModel moderationModel = mock(ModerationModel.class);
         Moderation moderation = Moderation.flagged("I kill you!");
         Response<Moderation> response = Response.from(moderation);
-        when(moderationModel.moderate(any(UserMessage.class))).thenReturn(response);
+        when(moderationModel.moderate(anyString())).thenReturn(response);
 
         MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
         UserMessage userMessage = UserMessage.from("I kill you!");
@@ -56,17 +59,14 @@ class MessageModeratorInputGuardrailTest {
         InputGuardrailResult result = moderatorInputGuardrail.validate(userMessage);
 
         // Then
-        assertThat(result)
-                .isNotNull()
-                .extracting(InputGuardrailResult::result)
-                .isEqualTo(GuardrailResult.Result.FATAL);
+        assertThat(result).isNotNull().extracting(InputGuardrailResult::result).isEqualTo(GuardrailResult.Result.FATAL);
 
         assertThat(result.getFirstFailureException())
                 .isNotNull()
                 .isInstanceOf(ModerationException.class)
                 .hasMessage("User message has been flagged");
 
-        verify(moderationModel).moderate(userMessage);
+        verify(moderationModel).moderate("I kill you!");
     }
 
     @Test
@@ -75,7 +75,7 @@ class MessageModeratorInputGuardrailTest {
         ModerationModel moderationModel = mock(ModerationModel.class);
         Moderation moderation = Moderation.notFlagged();
         Response<Moderation> response = Response.from(moderation);
-        when(moderationModel.moderate(any(UserMessage.class))).thenReturn(response);
+        when(moderationModel.moderate(anyString())).thenReturn(response);
 
         MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
         UserMessage textMessage = UserMessage.from("Hello, how are you?");
@@ -89,8 +89,78 @@ class MessageModeratorInputGuardrailTest {
         assertThat(result1.result()).isEqualTo(GuardrailResult.Result.SUCCESS);
         assertThat(result2.result()).isEqualTo(GuardrailResult.Result.SUCCESS);
 
-        verify(moderationModel).moderate(textMessage);
-        verify(moderationModel).moderate(questionMessage);
+        verify(moderationModel).moderate("Hello, how are you?");
+        verify(moderationModel).moderate("What is the weather today?");
+    }
+
+    @Test
+    void should_return_success_when_multimodal_content_is_safe() {
+        // Given
+        ModerationModel moderationModel = mock(ModerationModel.class);
+        Moderation moderation = Moderation.notFlagged();
+        Response<Moderation> response = Response.from(moderation);
+        when(moderationModel.moderate(anyString())).thenReturn(response);
+
+        MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("Please describe this image"), ImageContent.from("http://example.com/img.png"));
+
+        // When
+        InputGuardrailResult result = moderatorInputGuardrail.validate(userMessage);
+
+        // Then
+        assertThat(result)
+                .isNotNull()
+                .extracting(InputGuardrailResult::result)
+                .isEqualTo(GuardrailResult.Result.SUCCESS);
+
+        verify(moderationModel).moderate("Please describe this image");
+    }
+
+    @Test
+    void should_return_fatal_when_multimodal_content_is_not_safe() {
+        // Given
+        ModerationModel moderationModel = mock(ModerationModel.class);
+        Moderation moderation = Moderation.flagged("I kill you!");
+        Response<Moderation> response = Response.from(moderation);
+        when(moderationModel.moderate(anyString())).thenReturn(response);
+
+        MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("I kill you!"), ImageContent.from("http://example.com/img.png"));
+
+        // When
+        InputGuardrailResult result = moderatorInputGuardrail.validate(userMessage);
+
+        // Then
+        assertThat(result).isNotNull().extracting(InputGuardrailResult::result).isEqualTo(GuardrailResult.Result.FATAL);
+
+        assertThat(result.getFirstFailureException())
+                .isNotNull()
+                .isInstanceOf(ModerationException.class)
+                .hasMessage("User message has been flagged");
+
+        verify(moderationModel).moderate("I kill you!");
+    }
+
+    @Test
+    void should_return_success_for_image_only_message_without_invoking_moderation() {
+        // Given
+        ModerationModel moderationModel = mock(ModerationModel.class);
+
+        MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
+        UserMessage userMessage = UserMessage.from(ImageContent.from("http://example.com/img.png"));
+
+        // When
+        InputGuardrailResult result = moderatorInputGuardrail.validate(userMessage);
+
+        // Then
+        assertThat(result)
+                .isNotNull()
+                .extracting(InputGuardrailResult::result)
+                .isEqualTo(GuardrailResult.Result.SUCCESS);
+
+        verify(moderationModel, never()).moderate(anyString());
     }
 
     @Test
@@ -100,4 +170,3 @@ class MessageModeratorInputGuardrailTest {
                 .hasMessage("moderationModel cannot be null");
     }
 }
-
