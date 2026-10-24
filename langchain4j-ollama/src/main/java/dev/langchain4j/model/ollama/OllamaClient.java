@@ -187,10 +187,11 @@ class OllamaClient {
         });
     }
 
-    void streamingChat(ChatRequest request, boolean returnThinking, StreamingChatResponseHandler handler) {
+    void streamingChat(
+            ChatRequest request, boolean returnThinking, boolean sendThinking, StreamingChatResponseHandler handler) {
         ensureNotEmpty(request.messages(), "messages");
 
-        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true, sendThinking);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
