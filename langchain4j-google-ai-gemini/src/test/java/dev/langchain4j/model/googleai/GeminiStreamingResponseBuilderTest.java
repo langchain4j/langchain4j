@@ -16,6 +16,7 @@ import dev.langchain4j.model.googleai.GeminiStreamingResponseBuilder.TextAndTool
 import dev.langchain4j.model.googleai.GroundingMetadata.GroundingChunk;
 import dev.langchain4j.model.googleai.GroundingMetadata.GroundingSupport;
 import dev.langchain4j.model.googleai.GroundingMetadata.SearchEntryPoint;
+import dev.langchain4j.model.output.FinishReason;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,50 @@ class GeminiStreamingResponseBuilderTest {
         assertThat(result.maybeText()).isEmpty();
         assertThat(result.maybeThought()).isEmpty();
         assertThat(result.tools()).isEmpty();
+    }
+
+    @Test
+    void should_keep_usage_id_and_model_of_a_blocked_prompt_response_without_candidates() {
+        GeminiGenerateContentResponse blocked = new GeminiGenerateContentResponse(
+                "id-1",
+                "gemini-pro",
+                null,
+                GeminiGenerateContentResponse.GeminiUsageMetadata.builder()
+                        .promptTokenCount(7)
+                        .totalTokenCount(7)
+                        .build(),
+                null,
+                new GeminiGenerateContentResponse.GeminiPromptFeedback("PROHIBITED_CONTENT", null));
+
+        builder.append(blocked);
+        ChatResponse response = builder.build();
+
+        assertThat(response.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(response.id()).isEqualTo("id-1");
+        assertThat(response.modelName()).isEqualTo("gemini-pro");
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
+    }
+
+    @Test
+    void should_keep_usage_from_a_trailing_chunk_without_candidates() {
+        builder.append(chunkWith(GeminiPart.ofText("Hello")));
+        builder.append(new GeminiGenerateContentResponse(
+                null,
+                null,
+                null,
+                GeminiGenerateContentResponse.GeminiUsageMetadata.builder()
+                        .promptTokenCount(3)
+                        .candidatesTokenCount(2)
+                        .totalTokenCount(5)
+                        .build(),
+                null,
+                null));
+
+        ChatResponse response = builder.build();
+
+        assertThat(response.aiMessage().text()).isEqualTo("Hello");
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(3);
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(2);
     }
 
     @Test
