@@ -320,7 +320,7 @@ PGVector supports **hybrid search** that combines vector similarity search with 
 Enable hybrid search by setting the `searchMode` parameter:
 
 ```java
-import dev.langchain4j.store.embedding.pgvector.SearchMode;
+import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore.SearchMode;
 
 EmbeddingStore<TextSegment> embeddingStore = PgVectorEmbeddingStore.builder()
         .host("localhost")
