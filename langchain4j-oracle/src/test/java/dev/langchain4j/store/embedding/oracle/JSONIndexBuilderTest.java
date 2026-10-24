@@ -21,4 +21,20 @@ class JSONIndexBuilderTest {
             Locale.setDefault(defaultLocale);
         }
     }
+
+    @Test
+    void indexNameIsUpperCasedInEnglishLocale() {
+        Locale defaultLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.ENGLISH);
+            EmbeddingTable table = EmbeddingTable.builder().name("vectors").build();
+            JSONIndexBuilder builder = Index.jsonIndexBuilder()
+                    .key("city", String.class, JSONIndexBuilder.Order.ASC)
+                    .key("zip", String.class, JSONIndexBuilder.Order.DESC);
+
+            assertThat(builder.getIndexName(table)).isEqualTo("vectors_METADATA_CITY_ZIP");
+        } finally {
+            Locale.setDefault(defaultLocale);
+        }
+    }
 }
