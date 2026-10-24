@@ -10,6 +10,13 @@ import org.junit.jupiter.api.Test;
 class DefaultChatRequestParametersTest {
 
     @Test
+    void should_default_seed_to_null() {
+        ChatRequestParameters parameters = DefaultChatRequestParameters.EMPTY;
+
+        assertThat(parameters.seed()).isNull();
+    }
+
+    @Test
     void override_with() {
 
         // given
