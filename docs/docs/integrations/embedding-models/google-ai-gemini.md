@@ -16,7 +16,7 @@ https://ai.google.dev/gemini-api/docs/embeddings
     - [Output Dimensionality](#output-dimensionality)
     - [Batch Processing](#batch-processing)
 - [Batch Embedding Processing](#batch-embedding-processing)
-    - [GoogleAiGeminiBatchEmbeddingModel](#googleaigeminibatchembeddingmodel)
+    - [Batch Embedding Processing](#batch-embedding-processing)
     - [Creating Batch Embedding Jobs](#creating-batch-embedding-jobs)
     - [Handling Batch Responses](#handling-batch-responses)
     - [Polling for Results](#polling-for-results)
