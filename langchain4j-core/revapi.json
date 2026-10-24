@@ -21,6 +21,11 @@
           "justification": "UnsupportedFeatureException now extends NonRetriableException instead of extending LangChain4jException directly. NonRetriableException is itself a LangChain4jException, so the type is still assignable everywhere it was before and every existing catch clause keeps compiling and catching; only an intermediate supertype is inserted. The behavioural effect is that RetryUtils stops retrying it, which is the intended fix: a provider that does not support a feature will not begin to support it on a retry, so the retries only added latency before the same failure."
         },
         {
+          "code": "java.method.visibilityIncreased",
+          "new": "method void dev.langchain4j.store.embedding.EmbeddingStoreIngestor::<init>(dev.langchain4j.data.document.DocumentTransformer, dev.langchain4j.data.document.DocumentSplitter, dev.langchain4j.data.segment.TextSegmentTransformer, dev.langchain4j.data.segment.EmbeddingInputMapper, dev.langchain4j.model.embedding.EmbeddingModel, dev.langchain4j.store.embedding.EmbeddingStore<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "This constructor is new: it accepts an optional EmbeddingInputMapper. Revapi matches it against the private constructor that previously had the same number of parameters, the last one being EmbeddingInputType. That constructor was never part of the public API, so making it public with a different last parameter type is not a breaking change. The existing public constructor is unchanged."
+        },
+        {
           "regex": true,
           "code": "java\\.method\\.(parameterTypeErasureChanged|returnTypeErasureChanged)",
           "new": "(parameter|method) dev\\.langchain4j\\.guardrail\\.OutputGuardrailResult dev\\.langchain4j\\.guardrail\\.OutputGuardrailExecutor::composeResult\\(.*",
