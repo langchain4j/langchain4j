@@ -19,7 +19,7 @@ steps:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artificatId>langchain4j-community-cloud-sql-pg</artificatId>
+    <artifactId>langchain4j-community-cloud-sql-pg</artificatId>
     <version>${latest version here}</version>
 </dependency>
 ```
@@ -50,10 +50,10 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.engine.EmbeddingStoreConfig;
-import dev.langchain4j.engine.PostgresEngine;
-import dev.langchain4j.engine.MetadataColumn;
-import dev.langchain4j.store.embedding.cloudsql.PostgresEmbeddingStore;
+import dev.langchain4j.community.store.embedding.cloudsql.EmbeddingStoreConfig;
+import dev.langchain4j.community.store.embedding.cloudsql.PostgresEngine;
+import dev.langchain4j.community.store.embedding.cloudsql.MetadataColumn;
+import dev.langchain4j.community.store.embedding.cloudsql.PostgresEmbeddingStore;
 
 import java.util.ArrayList;
 import java.util.List;
