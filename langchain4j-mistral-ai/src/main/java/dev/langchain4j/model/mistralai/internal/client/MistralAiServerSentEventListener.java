@@ -53,7 +53,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
     private final MappingTrackingStreamingChatResponseHandler handler;
 
-    private List<ToolExecutionRequest> toolExecutionRequests;
+    private final List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
     private TokenUsage tokenUsage;
     private FinishReason finishReason;
 
@@ -128,10 +128,11 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
             List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();
             if (isNotNullOrEmpty(toolCalls)) {
-                toolExecutionRequests = toToolExecutionRequests(toolCalls);
+                List<ToolExecutionRequest> newRequests = toToolExecutionRequests(toolCalls);
 
-                for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    CompleteToolCall completeToolCall = new CompleteToolCall(i, toolExecutionRequests.get(i));
+                for (ToolExecutionRequest request : newRequests) {
+                    CompleteToolCall completeToolCall = new CompleteToolCall(toolExecutionRequests.size(), request);
+                    toolExecutionRequests.add(request);
                     onCompleteToolCall(handler, completeToolCall);
                 }
             }
