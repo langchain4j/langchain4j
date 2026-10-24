@@ -53,10 +53,13 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("2020-01-12"))
                 .isEqualTo(parser.parse(" 2020-01-12 "))
                 .isEqualTo(LocalDate.of(2020, 1, 12));
+        assertThat(parser.parse("{\"value\": \"2020-01-12\"}")).isEqualTo(LocalDate.of(2020, 1, 12));
 
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("01-12-2020"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("01-12-2020"));
 
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("red"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("red"));
+
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse(null));
     }
 
     @Test
@@ -67,10 +70,14 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("2020-01-12T12:34:56"))
                 .isEqualTo(parser.parse(" 2020-01-12T12:34:56 "))
                 .isEqualTo(LocalDateTime.of(2020, 1, 12, 12, 34, 56));
+        assertThat(parser.parse("{\"value\": \"2020-01-12T12:34:56\"}"))
+                .isEqualTo(LocalDateTime.of(2020, 1, 12, 12, 34, 56));
 
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("01-12-2020T12:34:56"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("01-12-2020T12:34:56"));
 
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("red"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("red"));
+
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse(null));
     }
 
     @Test
@@ -83,8 +90,11 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo(LocalTime.of(12, 34, 56));
 
         assertThat(parser.parse("12:34:56.789")).isEqualTo(LocalTime.of(12, 34, 56, 789_000_000));
+        assertThat(parser.parse("{\"value\": \"12:34:56\"}")).isEqualTo(LocalTime.of(12, 34, 56));
 
-        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> parser.parse("red"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("red"));
+
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse(null));
     }
 
     @Test
