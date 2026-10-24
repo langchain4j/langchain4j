@@ -38,6 +38,7 @@ class ElasticsearchConfigurationHybridTest {
 
         assertThat(transport.capturedRequest).isNotNull();
         assertThat(transport.capturedRequest.retriever().rrf().retrievers()).hasSize(2);
+        assertThat(transport.capturedRequest.retriever().rrf().rankWindowSize()).isEqualTo(10);
 
         var standardRetriever = transport
                 .capturedRequest
@@ -62,6 +63,24 @@ class ElasticsearchConfigurationHybridTest {
         assertThat(knnRetriever.filter()).hasSize(1);
         assertThat(knnRetriever.filter().get(0))
                 .isEqualTo(standardRetriever.filter().get(0));
+    }
+
+    @Test
+    void should_set_rrf_rank_window_to_requested_max_results() throws IOException {
+        CapturingTransport transport = new CapturingTransport();
+        ElasticsearchClient client = new ElasticsearchClient(transport);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(new float[] {0.1f, 0.2f}))
+                .maxResults(20)
+                .build();
+
+        ElasticsearchConfigurationHybrid.builder()
+                .build()
+                .hybridSearch(client, "movies", searchRequest, "movies about space battles");
+
+        assertThat(transport.capturedRequest).isNotNull();
+        assertThat(transport.capturedRequest.size()).isEqualTo(20);
+        assertThat(transport.capturedRequest.retriever().rrf().rankWindowSize()).isEqualTo(20);
     }
 
     private static class CapturingTransport implements ElasticsearchTransport {
