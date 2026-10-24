@@ -53,10 +53,12 @@ When the collection already exists, it is used as is, whichever distance metric 
 
 ```java
 ChromaEmbeddingStore store = ChromaEmbeddingStore.builder()
-    .baseUrl("http://localhost:8000")
+    .baseUrl("http://127.0.0.1:8000")
     .collectionName("my-collection")
     .build();
 ```
+
+> **Note:** on Windows, `chroma run` with default `--host localhost` binds only the IPv6 loopback (`[::1]`), while the JDK `HttpClient` used by langchain4j does not fall back across resolved addresses. As a result, `http://localhost:8000` may fail with `ConnectException` even though browsers and curl work. Use `127.0.0.1` on both sides: start the server with `chroma run --host 127.0.0.1` and set `baseUrl("http://127.0.0.1:8000")`. For details, see [issue #4471](https://github.com/langchain4j/langchain4j/issues/4471).
 
 The relevance score returned by `EmbeddingMatch.score()` is always in the `[0, 1]` range, where 1 means the most
 relevant. It is derived from the distance metric of the collection, so scores obtained from collections with
