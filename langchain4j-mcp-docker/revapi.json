@@ -1,0 +1,52 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method java.util.concurrent.CompletableFuture<com.fasterxml.jackson.databind.JsonNode> dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::executeOperationWithResponse(dev.langchain4j.mcp.client.McpCallContext)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: sendRequest(...), which returns the response as JSON text."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method java.util.concurrent.CompletableFuture<com.fasterxml.jackson.databind.JsonNode> dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::executeOperationWithResponse(dev.langchain4j.mcp.protocol.McpClientMessage)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: sendRequest(...), which returns the response as JSON text."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::executeOperationWithoutResponse(dev.langchain4j.mcp.client.McpCallContext)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: sendMessage(...)."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::executeOperationWithoutResponse(dev.langchain4j.mcp.protocol.McpClientMessage)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: sendMessage(...)."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method java.util.concurrent.CompletableFuture<com.fasterxml.jackson.databind.JsonNode> dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::initialize(dev.langchain4j.mcp.protocol.McpInitializeRequest)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: sendInitializeRequest(McpInitializeRequest)."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method java.util.concurrent.CompletableFuture<java.lang.String> dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::sendRequest(dev.langchain4j.mcp.protocol.McpClientMessage)",
+          "justification": "Still available: the override only wrapped the message in an McpCallContext, which is now the default implementation inherited from McpTransport. Revapi does not see inherited methods here because dependencies are not analysed."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport::sendMessage(dev.langchain4j.mcp.protocol.McpClientMessage)",
+          "justification": "Still available: the override only wrapped the message in an McpCallContext, which is now the default implementation inherited from McpTransport. Revapi does not see inherited methods here because dependencies are not analysed."
+        }
+      ]
+    }
+  }
+]

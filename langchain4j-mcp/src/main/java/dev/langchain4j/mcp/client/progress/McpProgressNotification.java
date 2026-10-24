@@ -1,7 +1,5 @@
 package dev.langchain4j.mcp.client.progress;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.McpJsonConversions;
 import java.util.Map;
 import java.util.Objects;
 
@@ -56,14 +54,6 @@ public class McpProgressNotification {
             }
         }
         return null;
-    }
-
-    /**
-     * @deprecated use {@link #fromMap(Map)}, which does not expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public static McpProgressNotification fromJson(JsonNode params) {
-        return fromMap(McpJsonConversions.toMap(params));
     }
 
     public String progressToken() {

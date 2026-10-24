@@ -3,7 +3,6 @@ package dev.langchain4j.guardrails;
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
@@ -53,65 +52,34 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonExtractorOutputGuardrail.class);
     private final ObjectMapper objectMapper;
-    private Class<T> outputClass;
-    private Type reflectedType;
-    private TypeReference<T> outputType;
+    private final Class<T> outputClass;
+    private final Type reflectedType;
 
     /**
-     * @deprecated use {@link #JsonExtractorOutputGuardrail(Class)}, which does not expose Jackson
-     * types in its signature. It parses with a default {@link ObjectMapper}, so pass one here only
-     * if you need a mapper configured differently.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, Class<T> outputClass) {
-        this.objectMapper = ensureNotNull(objectMapper, "objectMapper");
-        this.outputClass = ensureNotNull(outputClass, "outputClass");
-    }
-
-    /**
-     * @deprecated use {@link #JsonExtractorOutputGuardrail(Type)}, which does not expose Jackson
-     * types in its signature. Pass {@code new TypeReference<Foo>() {}.getType()} to migrate, and
-     * pass a mapper here only if you need one configured differently from the default.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, TypeReference<T> outputType) {
-        this.objectMapper = ensureNotNull(objectMapper, "objectMapper");
-        this.outputType = ensureNotNull(outputType, "outputType");
-    }
-
-    /**
-     * Deserializes with a plain Jackson {@link ObjectMapper}, as this guardrail has always done.
+     * Creates a guardrail that checks the LLM response can be deserialized into the given class,
+     * using a plain Jackson {@link ObjectMapper} with its default settings.
      */
     public JsonExtractorOutputGuardrail(Class<T> outputClass) {
         this.objectMapper = new ObjectMapper();
         this.outputClass = ensureNotNull(outputClass, "outputClass");
+        this.reflectedType = null;
     }
 
     /**
-     * Deserializes with a plain Jackson {@link ObjectMapper}, matching
-     * {@link #JsonExtractorOutputGuardrail(Class)}.
+     * Creates a guardrail that checks the LLM response can be deserialized into the given type,
+     * using a plain Jackson {@link ObjectMapper} with its default settings. Use it for generic types
+     * such as {@code List<Foo>}, obtained for example with
+     * {@code new TypeReference<List<Foo>>() {}.getType()}.
      */
     public JsonExtractorOutputGuardrail(Type outputType) {
         this.objectMapper = new ObjectMapper();
+        this.outputClass = null;
         this.reflectedType = ensureNotNull(outputType, "outputType");
-    }
-
-    /**
-     * @deprecated use {@link #JsonExtractorOutputGuardrail(Type)}, which does not expose Jackson
-     * types - {@code TypeReference} lives in Jackson's core package, which moved in Jackson 3.
-     * Pass {@code new TypeReference<Foo>() {}.getType()} to migrate.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public JsonExtractorOutputGuardrail(TypeReference<T> outputType) {
-        this(new ObjectMapper(), outputType);
     }
 
     private T parse(String text) throws Exception {
         if (outputClass != null) {
             return objectMapper.readValue(text, outputClass);
-        }
-        if (outputType != null) {
-            return objectMapper.readValue(text, outputType);
         }
         return objectMapper.readValue(text, objectMapper.constructType(reflectedType));
     }
@@ -160,7 +128,7 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     }
 
     /**
-     * Tries to deserialize the provided LLM response string into an object of type T using the configured {@link ObjectMapper}.
+     * Tries to deserialize the provided LLM response string into an object of type T using a plain Jackson {@link ObjectMapper}.
      * If deserialization fails, an empty Optional is returned.
      *
      * @param llmResponse the JSON-formatted response string to be deserialized

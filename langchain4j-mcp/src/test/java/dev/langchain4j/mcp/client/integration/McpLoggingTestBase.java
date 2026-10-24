@@ -36,7 +36,7 @@ public abstract class McpLoggingTestBase {
         McpLogMessage message = receivedMessages.get(0);
         assertThat(message.level()).isEqualTo(McpLogLevel.INFO);
         assertThat(message.logger()).isEqualTo("tool:info");
-        assertThat(message.data().asText()).isEqualTo("HELLO. data: 1234");
+        assertThat(message.dataAsObject()).isEqualTo("HELLO. data: 1234");
     }
 
     @Test
@@ -53,6 +53,6 @@ public abstract class McpLoggingTestBase {
         McpLogMessage message = receivedMessages.get(0);
         assertThat(message.level()).isEqualTo(McpLogLevel.DEBUG);
         assertThat(message.logger()).isEqualTo("tool:debug");
-        assertThat(message.data().asText()).isEqualTo("HELLO DEBUG");
+        assertThat(message.dataAsObject()).isEqualTo("HELLO DEBUG");
     }
 }
