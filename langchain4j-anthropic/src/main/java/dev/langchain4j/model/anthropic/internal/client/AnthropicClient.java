@@ -6,6 +6,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.model.anthropic.AnthropicModelLifecycle;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResult;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
@@ -78,7 +79,8 @@ public abstract class AnthropicClient {
         throw new UnsupportedOperationException("Token counting is not implemented");
     }
 
-    public AnthropicModelsListResponse listModels() {
+    public AnthropicModelsListResponse listModels(
+            Integer limit, String afterId, List<AnthropicModelLifecycle> lifecycles) {
         throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
     }
 

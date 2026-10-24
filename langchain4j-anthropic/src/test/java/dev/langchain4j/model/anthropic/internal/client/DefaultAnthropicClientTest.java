@@ -12,6 +12,7 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
+import dev.langchain4j.model.anthropic.AnthropicModelLifecycle;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
@@ -361,7 +362,7 @@ class DefaultAnthropicClientTest {
             var subject = createClient(mockHttpClient);
 
             // When
-            var actualResponse = subject.listModels();
+            var actualResponse = subject.listModels(null, null, null);
 
             // Then
             assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -380,12 +381,38 @@ class DefaultAnthropicClientTest {
             DefaultAnthropicClient subject = createClient(mockHttpClient);
 
             // When
-            subject.listModels();
+            subject.listModels(null, null, null);
 
             // Then
             HttpRequest sentRequest = mockHttpClient.request();
             assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
             assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/models");
+            assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
+            assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+        }
+
+        @Test
+        void shouldSendListModelsHttpRequestWithPagingAndLifecycles() {
+            // Given
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(createEmptyModelsListResponse()))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            // When
+            subject.listModels(
+                    1000, "claude-last", List.of(AnthropicModelLifecycle.ACTIVE, AnthropicModelLifecycle.DEPRECATED));
+
+            // Then
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url())
+                    .isEqualTo(
+                            TEST_BASE_URL
+                                    + "/models?lifecycle%5B%5D=active&lifecycle%5B%5D=deprecated&limit=1000&after_id=claude-last");
             assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
             assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
         }
