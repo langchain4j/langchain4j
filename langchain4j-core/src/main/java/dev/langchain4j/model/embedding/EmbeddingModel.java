@@ -4,6 +4,7 @@ import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
@@ -63,6 +64,7 @@ public interface EmbeddingModel {
         }
 
         List<TextSegment> textSegments = finalRequest.inputs().stream()
+                .filter(input -> !isNullOrBlank(input.text()))
                 .map(input -> TextSegment.from(input.text()))
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
@@ -133,6 +135,7 @@ public interface EmbeddingModel {
         }
 
         List<TextSegment> textSegments = finalRequest.inputs().stream()
+                .filter(input -> !isNullOrBlank(input.text()))
                 .map(input -> TextSegment.from(input.text()))
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();

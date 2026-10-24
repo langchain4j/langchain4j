@@ -1,6 +1,7 @@
 package dev.langchain4j.model.embedding;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onError;
 import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onRequest;
@@ -184,8 +185,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public EmbeddingResponse embed(EmbeddingRequest request) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        List<TextSegment> textSegmentsForContext =
-                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList();
+        List<TextSegment> textSegmentsForContext = request.inputs().stream()
+                .filter(input -> !isNullOrBlank(input.text()))
+                .map(input -> TextSegment.from(input.text()))
+                .toList();
 
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)

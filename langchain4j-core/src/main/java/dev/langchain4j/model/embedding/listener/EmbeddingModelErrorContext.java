@@ -74,8 +74,9 @@ public class EmbeddingModelErrorContext {
     }
 
     /**
-     * @return the text of each input that was being embedded. For the full request, including per-call
-     * parameters and multimodal inputs, use {@link #embeddingRequest()}.
+     * @return the non-blank text of the inputs that were being embedded, in request order. Inputs without
+     * non-blank text (for example image-only inputs) are omitted. For the full request, including per-call
+     * parameters and all multimodal inputs, use {@link #embeddingRequest()}.
      */
     public List<TextSegment> textSegments() {
         return textSegments;
