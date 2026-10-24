@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.tika.exception.ZeroByteFileException;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -139,7 +140,11 @@ public class ApacheTikaDocumentParser implements DocumentParser {
             Metadata metadata = metadataSupplier.get();
             ParseContext parseContext = parseContextSupplier.get();
 
-            parser.parse(inputStream, contentHandler, metadata, parseContext);
+            // Since Tika 4.0, Parser.parse takes a TikaInputStream; the wrapper releases any
+            // spooled temporary resources when closed.
+            try (TikaInputStream tikaInputStream = TikaInputStream.get(inputStream)) {
+                parser.parse(tikaInputStream, contentHandler, metadata, parseContext);
+            }
             String text = contentHandler.toString();
 
             if (isNullOrBlank(text)) {
