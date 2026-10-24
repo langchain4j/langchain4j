@@ -31,6 +31,8 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -129,6 +131,16 @@ class SessionsREPLToolTest {
         assertThat(result).containsKey("result");
         assertThat(result).containsKey("stdout");
         assertThat(result).containsKey("stderr");
+    }
+
+    @Test
+    void testUseMethodExposesInputParameterByName() {
+        ToolSpecification toolSpecification = ToolSpecifications.toolSpecificationsFrom(SessionsREPLTool.class)
+                .get(0);
+
+        assertThat(toolSpecification.name()).isEqualTo("sessions_REPL");
+        assertThat(toolSpecification.parameters().properties()).containsOnlyKeys("input");
+        assertThat(toolSpecification.parameters().required()).containsExactly("input");
     }
 
     @Test
