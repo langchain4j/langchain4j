@@ -58,6 +58,12 @@ public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
                     "disregard\\s+(all\\s+|your\\s+)?(previous\\s+|prior\\s+)?(instructions?|rules?|context)",
                     CASE_INSENSITIVE),
             Pattern.compile("override\\s+(your\\s+|the\\s+)?(instructions?|rules?|system\\s+prompt)", CASE_INSENSITIVE),
+            // Instruction override with intervening words within the same clause,
+            // e.g. "ignore all your previous instructions", "disregard any and all prior rules"
+            Pattern.compile(
+                    "\\b(ignore|disregard|forget|override|bypass)\\b[^.;!?\\n]*?"
+                            + "\\b(instructions?|rules?|directives?|context|prompts?|everything)\\b",
+                    CASE_INSENSITIVE),
 
             // Role hijacking
             Pattern.compile("you\\s+are\\s+now\\s+(a|an)\\s+", CASE_INSENSITIVE),
