@@ -26,11 +26,13 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            boolean streaming,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, modelProvider, attributes);
+        ChatModelRequestContext requestContext =
+                new ChatModelRequestContext(chatRequest, modelProvider, attributes, streaming);
         listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
@@ -48,12 +50,13 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            boolean streaming,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
         ChatModelResponseContext responseContext =
-                new ChatModelResponseContext(chatResponse, chatRequest, modelProvider, attributes);
+                new ChatModelResponseContext(chatResponse, chatRequest, modelProvider, attributes, streaming);
         listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
@@ -71,11 +74,13 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            boolean streaming,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, modelProvider, attributes);
+        ChatModelErrorContext errorContext =
+                new ChatModelErrorContext(error, chatRequest, modelProvider, attributes, streaming);
         listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
