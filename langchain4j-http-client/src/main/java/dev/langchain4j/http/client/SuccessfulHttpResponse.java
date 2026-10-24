@@ -63,8 +63,26 @@ public class SuccessfulHttpResponse {
         if (contentType == null) {
             return StandardCharsets.UTF_8;
         }
-        for (String part : contentType.split(";")) {
-            String trimmed = part.trim();
+        int parameterStart = 0;
+        boolean quoted = false;
+        for (int i = 0; i <= contentType.length(); i++) {
+            if (i < contentType.length()) {
+                char c = contentType.charAt(i);
+                if (quoted && c == '\\') {
+                    // A quoted-pair cannot end the quoted value.
+                    i++;
+                    continue;
+                }
+                if (c == '"') {
+                    quoted = !quoted;
+                }
+                // Only unquoted semicolons delimit media type parameters.
+                if (c != ';' || quoted) {
+                    continue;
+                }
+            }
+            String trimmed = contentType.substring(parameterStart, i).trim();
+            parameterStart = i + 1;
             if (trimmed.regionMatches(true, 0, "charset=", 0, "charset=".length())) {
                 String charsetName =
                         trimmed.substring("charset=".length()).trim().replaceAll("^\"|\"$", "");
