@@ -1,0 +1,20 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.azure.cosmos.CosmosAsyncClient",
+          "classQualifiedName": "com.azure.cosmos.CosmosAsyncClient",
+          "classSimpleName": "CosmosAsyncClient",
+          "package": "com.azure.cosmos",
+          "elementKind": "class",
+          "justification": "CosmosAsyncClient is intentionally exposed on the public API of this module to allow callers to provide preconfigured Cosmos clients."
+        }
+      ]
+    }
+  }
+]
