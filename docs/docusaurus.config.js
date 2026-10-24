@@ -111,19 +111,15 @@ const config = {
                     },
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
-                        label: 'GitHub',
                         position: 'right',
+                        className: 'header-github-link',
+                        'aria-label': 'GitHub repository',
                     },
                     {
-                        href: 'https://twitter.com/langchain4j',
-                        label: 'Twitter',
+                        type: 'docsVersionDropdown',
                         position: 'right',
-                    },
-                    {
-                        href: 'https://discord.com/invite/JzTFvyjG6R',
-                        label: 'Discord',
-                        position: 'right',
-                    },
+                        dropdownActiveClassDisabled: true
+                    }
                 ],
             },
             footer: {
