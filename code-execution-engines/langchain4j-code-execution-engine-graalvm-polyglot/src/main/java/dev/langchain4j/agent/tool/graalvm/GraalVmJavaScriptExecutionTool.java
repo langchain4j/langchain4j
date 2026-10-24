@@ -15,7 +15,10 @@ public class GraalVmJavaScriptExecutionTool {
 
     @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
     public String executeJavaScriptCode(
-            @P("JavaScript code to execute, result MUST be returned or printed by the code") String code) {
+            @P(
+                            name = "code",
+                            description = "JavaScript code to execute, result MUST be returned or printed by the code")
+                    String code) {
         return engine.execute(code);
     }
 }
