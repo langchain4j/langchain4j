@@ -673,7 +673,7 @@
             <!-- spring boot 3 -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-http-client-spring-restclient</artifactId>
+                <artifactId>langchain4j-http-client-spring</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
@@ -734,7 +734,7 @@
             <!-- spring boot 4 -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-http-client-spring-boot4-restclient</artifactId>
+                <artifactId>langchain4j-http-client-spring-boot4</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

@@ -15,7 +15,7 @@ and any other HTTP client can be integrated by implementing the `HttpClient` SPI
 Currently, there are the following out-of-the-box implementations:
 - `JdkHttpClient` from the `langchain4j-http-client-jdk` module.
 It is used by default when a supported module (e.g., `langchain4j-open-ai`) is used.
-- `SpringRestClient` from the `langchain4j-http-client-spring-boot4-restclient`/`langchain4j-http-client-spring-restclient` modules.
+- `SpringHttpClient` from the `langchain4j-http-client-spring-boot4`/`langchain4j-http-client-spring` modules.
 It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter`) is used.
 - `ApacheHttpClient` from the `langchain4j-http-client-apache` module.
 - `OkHttpClient` from the `langchain4j-http-client-okhttp` module.
@@ -72,37 +72,37 @@ provide a builder with `.version(HttpClient.Version.HTTP_2)`.
 :::note
 An `HttpClient` implementation can also provide non-blocking counterparts: `executeAsync(...)` for a single
 response and `stream(...)` for a cold `Flow.Publisher` of parsed server-sent events. The bundled JDK, OkHttp and
-Apache clients implement both, and so does `SpringRestClient` when `spring-webflux` is on the classpath.
+Apache clients implement both, and so does `SpringHttpClient` when `spring-webflux` is on the classpath.
 See [Non-blocking and Reactive](/tutorials/non-blocking).
 :::
 
-## Customizing Spring's `RestClient`
+## Customizing Spring's `HttpClient`
 
 ```java
-SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
+SpringHttpClientBuilder springHttpClientBuilder = SpringHttpClient.builder()
         .restClientBuilder(RestClient.builder())
         .clientHttpRequestFactoryBuilder(ClientHttpRequestFactoryBuilder.httpComponents())
         .streamingRequestExecutor(new VirtualThreadTaskExecutor());
 
 OpenAiChatModel model = OpenAiChatModel.builder()
-        .httpClientBuilder(springRestClientBuilder)
+        .httpClientBuilder(springHttpClientBuilder)
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
         .build();
 ```
 
-`SpringRestClient` sends blocking requests with `RestClient` and non-blocking requests (`executeAsync(...)` and
+`SpringHttpClient` sends blocking requests with `RestClient` and non-blocking requests (`executeAsync(...)` and
 `stream(...)`) with `WebClient`, which needs `spring-webflux` on the classpath. Because `spring-webflux` is optional,
 the `WebClient.Builder` is passed in a `WebClientBuilderHolder`:
 
 ```java
-SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
+SpringHttpClientBuilder springHttpClientBuilder = SpringHttpClient.builder()
         .restClientBuilder(RestClient.builder())
         .webClientBuilder(WebClientBuilderHolder.of(WebClient.builder()))
         .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.reactor()); // optional: pins the connector
 ```
 
-`SpringRestClient` builds the request factory and the connector itself, to apply its timeouts. So a request factory
+`SpringHttpClient` builds the request factory and the connector itself, to apply its timeouts. So a request factory
 set on the `RestClient.Builder`, or a connector set on the `WebClient.Builder`, is not used: choose the HTTP client
 with `clientHttpRequestFactoryBuilder(...)` and `clientHttpConnectorBuilder(...)` instead.
 
@@ -116,17 +116,17 @@ models, which always set their own: set the timeout on the model builder instead
 
 When the JDK `HttpClient` is used, whether Spring picks it (no Apache HttpComponents, Jetty or Reactor Netty on the
 classpath) or you set it with `clientHttpRequestFactoryBuilder(...)` or `clientHttpConnectorBuilder(...)`,
-`SpringRestClient` behaves like `JdkHttpClient`: plain `http://` requests are sent over HTTP/1.1, and `https://`
+`SpringHttpClient` behaves like `JdkHttpClient`: plain `http://` requests are sent over HTTP/1.1, and `https://`
 requests use HTTP/2 when the server supports it. This applies to both blocking and non-blocking requests.
 See [HTTP version](#http-version) for why plain HTTP does not use HTTP/2.
 
 :::note
-Before version 1.23.0-beta33, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
+Before version 1.23.0-beta33, `SpringHttpClient` used HTTP/2 for plain `http://` URLs as well.
 If you use an older version and see the symptoms described in [HTTP version](#http-version),
 set the version explicitly:
 
 ```java
-SpringRestClientBuilder springRestClientBuilder = SpringRestClient.builder()
+SpringHttpClientBuilder springHttpClientBuilder = SpringHttpClient.builder()
         .clientHttpRequestFactoryBuilder(ClientHttpRequestFactoryBuilder.jdk()
                 .withHttpClientCustomizer(builder -> builder.version(HttpClient.Version.HTTP_1_1)))
         .clientHttpConnectorBuilder(ClientHttpConnectorBuilder.jdk() // only needed for non-blocking requests
