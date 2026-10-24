@@ -8,13 +8,14 @@ import dev.langchain4j.http.client.FormDataFile;
 import java.net.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Experimental
 class MultipartBodyPublisher {
 
-    private static final String BOUNDARY = "----LangChain4j";
     private static final String CRLF = "\r\n";
 
+    private final String boundary = "----LangChain4j-" + UUID.randomUUID();
     private final List<byte[]> parts = new ArrayList<>();
 
     List<byte[]> parts() {
@@ -25,12 +26,12 @@ class MultipartBodyPublisher {
      * The {@code Content-Type} header value (including the boundary) that must accompany the body produced by
      * {@link #build()}. Without this header the server cannot parse the multipart payload.
      */
-    static String contentType() {
-        return "multipart/form-data; boundary=" + BOUNDARY;
+    String contentType() {
+        return "multipart/form-data; boundary=" + boundary;
     }
 
     void addField(String name, String value) {
-        String part = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\""
+        String part = "--" + boundary + CRLF + "Content-Disposition: form-data; name=\""
                 + name + "\"" + CRLF + CRLF
                 + value
                 + CRLF;
@@ -38,7 +39,7 @@ class MultipartBodyPublisher {
     }
 
     void addFile(String name, FormDataFile file) {
-        String header = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\"" + name + "\"; filename=\""
+        String header = "--" + boundary + CRLF + "Content-Disposition: form-data; name=\"" + name + "\"; filename=\""
                 + file.fileName() + "\"" + CRLF;
         if (!isNullOrBlank(file.contentType())) {
             header += "Content-Type: " + file.contentType() + CRLF;
@@ -51,7 +52,7 @@ class MultipartBodyPublisher {
     }
 
     HttpRequest.BodyPublisher build() {
-        String end = "--" + BOUNDARY + "--" + CRLF;
+        String end = "--" + boundary + "--" + CRLF;
         parts.add(end.getBytes(UTF_8));
         return HttpRequest.BodyPublishers.ofByteArrays(parts);
     }
