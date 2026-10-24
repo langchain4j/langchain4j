@@ -19,6 +19,8 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
+import com.google.genai.types.ToolCall;
+import com.google.genai.types.ToolResponse;
 import com.google.genai.types.Transcription;
 import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -27,6 +29,8 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -40,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1526,6 +1531,161 @@ class GoogleGenAiContentMapperTest {
                         .aiMessage()
                         .text())
                 .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    @Test
+    void should_keep_server_side_tool_parts_in_the_order_they_were_received() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class))
+                .containsExactly(searchCall.toJson(), searchResponse.toJson());
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
+    void should_keep_executed_code_and_its_result_as_server_side_tool_parts() {
+        Part code = Part.builder()
+                .executableCode(ExecutableCode.builder().language("PYTHON").code("print(6 * 7)"))
+                .thoughtSignature("code-signature".getBytes())
+                .build();
+        Part result = resultPart("OUTCOME_OK", "42\n");
+        GenerateContentResponse response = responseWithParts(code, result, functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class))
+                .containsExactly(code.toJson(), result.toJson());
+    }
+
+    @Test
+    void should_not_keep_executed_code_as_server_side_tool_parts_when_it_is_added_to_the_text() {
+        Part searchCall = searchCallPart();
+        GenerateContentResponse response = responseWithParts(
+                searchCall, codePart("PYTHON", "print(6 * 7)"), resultPart("OUTCOME_OK", "42\n"), functionCallPart());
+
+        AiMessage aiMessage = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true)
+                .aiMessage();
+
+        assertThat(aiMessage.text()).contains("print(6 * 7)").contains("42");
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class)).containsExactly(searchCall.toJson());
+    }
+
+    @Test
+    void should_send_back_server_side_tool_parts_before_the_function_call() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow();
+
+        assertThat(parts).hasSize(3);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(0).thoughtSignature())
+                .hasValueSatisfying(signature -> assertThat(signature).isEqualTo("search-call-signature".getBytes()));
+        assertThat(parts.get(1).toJson()).isEqualTo(searchResponse.toJson());
+        assertThat(parts.get(2).functionCall().orElseThrow().id()).hasValue("call-2");
+        assertThat(parts.get(2).thoughtSignature())
+                .hasValueSatisfying(signature -> assertThat(signature).isEqualTo("function-call-signature".getBytes()));
+    }
+
+    @Test
+    void should_send_back_server_side_tool_parts_after_the_message_is_stored_and_loaded() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        ChatMessage loaded = ChatMessageDeserializer.messageFromJson(ChatMessageSerializer.messageToJson(aiMessage));
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(loaded, false).parts().orElseThrow();
+        assertThat(parts).hasSize(3);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(1).toJson()).isEqualTo(searchResponse.toJson());
+    }
+
+    @Test
+    void should_send_back_only_the_server_side_tool_parts_stored_as_json_strings() {
+        Part searchCall = searchCallPart();
+        AiMessage aiMessage = AiMessage.builder()
+                .text("It was completed in 1889.")
+                .attributes(Map.of(
+                        "server_side_tool_parts",
+                        Arrays.asList(Map.of("toolCall", Map.of("id", "call-1")), null, searchCall.toJson())))
+                .build();
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow();
+
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(1).text()).hasValue("It was completed in 1889.");
+    }
+
+    @Test
+    void should_not_capture_the_thought_signature_of_a_server_side_tool_part() {
+        GenerateContentResponse response = responseWithParts(searchCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_not_add_server_side_tool_parts_when_the_response_has_none() {
+        GenerateContentResponse response = responseWithParts(Part.fromText("42"), functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("server_side_tool_parts");
+        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow())
+                .hasSize(2);
+    }
+
+    private static Part searchCallPart() {
+        return Part.builder()
+                .toolCall(ToolCall.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .args(Map.of("queries", List.of("Eiffel Tower completion year")))
+                        .build())
+                .thoughtSignature("search-call-signature".getBytes())
+                .build();
+    }
+
+    private static Part searchResponsePart() {
+        return Part.builder()
+                .toolResponse(ToolResponse.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .response(Map.of("search_suggestions", "<div>Eiffel Tower</div>"))
+                        .build())
+                .thoughtSignature("search-response-signature".getBytes())
+                .build();
+    }
+
+    private static Part functionCallPart() {
+        return Part.builder()
+                .functionCall(FunctionCall.builder()
+                        .id("call-2")
+                        .name("record_fact")
+                        .args(Map.of("value", "1889"))
+                        .build())
+                .thoughtSignature("function-call-signature".getBytes())
+                .build();
     }
 
     private static Part codePart(String language, String code) {
