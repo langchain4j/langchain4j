@@ -55,7 +55,7 @@
         <awaitility.version>4.3.0</awaitility.version>
         <aws.java.sdk.version>2.42.4</aws.java.sdk.version>
         <azure-sdk.version>1.3.7</azure-sdk.version>
-        <blockhound.version>1.0.17.RELEASE</blockhound.version>
+        <blockhound.version>1.0.18.RELEASE</blockhound.version>
         <jackson.version>2.22.4</jackson.version>
         <jackson3.version>3.2.4</jackson3.version>
         <jspecify.version>1.0.1</jspecify.version>
