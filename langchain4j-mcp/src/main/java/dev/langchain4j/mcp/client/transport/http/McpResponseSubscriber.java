@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.transport.http;
 
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -58,6 +59,18 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
 
     @Override
     public void onNext(HttpStreamingEvent event) {
+        if (event instanceof HttpErrorResponseReceived) {
+            // Keep the error queued for MCP handling, but stop body reads even if the executor is busy.
+            enqueue(() -> delegate.onNext(event), true);
+            Flow.Subscription subscription;
+            synchronized (this) {
+                subscription = upstream;
+            }
+            if (subscription != null) {
+                subscription.cancel();
+            }
+            return;
+        }
         enqueue(
                 () -> {
                     delegate.onNext(event);

@@ -2,11 +2,13 @@ package dev.langchain4j.mcp.client.transport.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -62,6 +64,66 @@ class McpResponseSubscriberTest {
 
         assertThat(downstream.signals).containsExactly(EVENT, error);
         assertThat(upstream.requests).containsExactly(1L);
+    }
+
+    @Test
+    void error_head_cancels_upstream_before_queued_delivery_and_ignores_late_signals() {
+        Queue<Runnable> tasks = new ArrayDeque<>();
+        RecordingSubscriber downstream = new RecordingSubscriber();
+        McpResponseSubscriber subscriber = new McpResponseSubscriber(downstream, tasks::add);
+        RecordingSubscription upstream = new RecordingSubscription();
+        subscriber.onSubscribe(upstream);
+        HttpErrorResponseReceived head = new HttpErrorResponseReceived(404, Map.of());
+
+        subscriber.onNext(head);
+
+        assertThat(upstream.cancelled).isTrue();
+        assertThat(downstream.signals).isEmpty();
+        assertThat(tasks).hasSize(1);
+        assertThat(upstream.requests).containsExactly(1L);
+
+        subscriber.onNext(EVENT);
+        subscriber.onError(new RuntimeException("late error"));
+        subscriber.onComplete();
+        assertThat(tasks).hasSize(1);
+
+        tasks.remove().run();
+        assertThat(downstream.signals).containsExactly(head);
+        assertThat(upstream.requests).containsExactly(1L);
+    }
+
+    @Test
+    void direct_executor_does_not_request_after_error_head_when_delegate_keeps_subscription() {
+        RecordingSubscriber downstream = new RecordingSubscriber();
+        McpResponseSubscriber subscriber = new McpResponseSubscriber(downstream, Runnable::run);
+        RecordingSubscription upstream = new RecordingSubscription();
+        subscriber.onSubscribe(upstream);
+        HttpErrorResponseReceived head = new HttpErrorResponseReceived(503, Map.of());
+
+        subscriber.onNext(head);
+        subscriber.onNext(EVENT);
+
+        assertThat(downstream.signals).containsExactly(head);
+        assertThat(upstream.cancelled).isTrue();
+        assertThat(upstream.requests).containsExactly(1L);
+    }
+
+    @Test
+    void rejected_error_head_delivery_fails_once_and_cancels_upstream() {
+        RecordingSubscriber downstream = new RecordingSubscriber();
+        RejectedExecutionException rejection = new RejectedExecutionException("executor stopped");
+        McpResponseSubscriber subscriber = new McpResponseSubscriber(downstream, task -> {
+            throw rejection;
+        });
+        RecordingSubscription upstream = new RecordingSubscription();
+        subscriber.onSubscribe(upstream);
+
+        subscriber.onNext(new HttpErrorResponseReceived(401, Map.of()));
+        subscriber.onError(new RuntimeException("late error"));
+
+        assertThat(upstream.cancelled).isTrue();
+        assertThat(upstream.requests).containsExactly(1L);
+        assertThat(downstream.signals).containsExactly(rejection);
     }
 
     @Test
