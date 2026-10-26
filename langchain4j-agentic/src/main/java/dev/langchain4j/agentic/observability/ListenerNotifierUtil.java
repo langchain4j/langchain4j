@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -43,10 +44,24 @@ public class ListenerNotifierUtil {
             Object output,
             ChatRequest chatRequest,
             ChatResponse chatResponse) {
+        afterAgentInvocation(
+                listener, agent, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+    }
+
+    public static void afterAgentInvocation(
+            AgentListener listener,
+            AgenticScope agenticScope,
+            AgentInstance agent,
+            Map<String, Object> inputs,
+            Object output,
+            DecisionResponse decisionResponse) {
+        afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
+    }
+
+    private static void afterAgentInvocation(AgentListener listener, AgentInstance agent, AgentResponse agentResponse) {
         if (listener != null) {
             try {
-                listener.afterAgentInvocation(
-                        new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+                listener.afterAgentInvocation(agentResponse);
             } catch (Exception e) {
                 LOG.error("afterAgentInvocation listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
             }

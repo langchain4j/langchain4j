@@ -169,6 +169,13 @@ public final class DecisionMethod {
     }
 
     /**
+     * Whether any question is answered as a {@code boolean}, the only kind of answer a threshold applies to.
+     */
+    public boolean hasBooleanAnswer() {
+        return mappings.values().stream().anyMatch(mapping -> mapping.kind() == Kind.BOOLEAN);
+    }
+
+    /**
      * Whether the method returns a {@link CompletableFuture} or a {@link CompletionStage}.
      */
     public boolean isAsync() {
@@ -319,9 +326,21 @@ public final class DecisionMethod {
         if (async) {
             return invokeAsync(config, args);
         }
-        DecisionRequest request = toRequest(args);
+        return invokeWithResponse(config, toRequest(args)).content();
+    }
+
+    /**
+     * Invokes this method synchronously with the given request, typically created with {@link #toRequest(Object[])},
+     * and returns both its result and the response of the decision model, for frameworks that need the raw answers
+     * (for example their probabilities or the token usage) whatever the declared return type of the method.
+     *
+     * @return the result of the method as {@link DecisionResult#content() content} (itself a {@link DecisionResult}
+     * when the method declares one) and the response of the model as {@link DecisionResult#response() response}.
+     */
+    public DecisionResult<Object> invokeWithResponse(DecisionServiceConfig config, DecisionRequest request) {
         DecisionResponse response = config.decisionModel().decide(request);
-        return toResult(response, thresholds(config, request, response));
+        Object result = toResult(response, thresholds(config, request, response));
+        return DecisionResult.builder().content(result).response(response).build();
     }
 
     /**
