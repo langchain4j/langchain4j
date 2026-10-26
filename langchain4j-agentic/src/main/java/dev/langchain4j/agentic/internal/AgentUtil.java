@@ -31,6 +31,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -525,6 +526,10 @@ public class AgentUtil {
         Class<?> keyClass = rawType(type);
         if (TokenStream.class.isAssignableFrom(keyClass)) {
             keyClass = String.class;
+        }
+        if (keyClass.isPrimitive()) {
+            // the values of the scope are boxed, so a boolean output is compatible with a Boolean or Object key
+            keyClass = MethodType.methodType(keyClass).wrap().returnType();
         }
         if (!dataTypes.containsKey(name)) {
             dataTypes.put(name, keyClass);

@@ -41,6 +41,10 @@ Any `DecisionModel` can be used, for example [TypeSafe](/integrations/decision-m
 Decision Services are not related to the decision services of DMN (Decision Model and Notation), as found in Drools,
 Kogito or Camunda: they answer questions with a decision model, and can be called like any other Java service.
 
+A decision service interface can also be an agent of an agentic system: annotated with `@Agent` as well, its method
+reads its arguments from the `AgenticScope` and writes its typed answer back to it, where the other agents can read
+it together with its probabilities. See [decision agents](/tutorials/agents#decision-agents).
+
 ## Maven dependency
 
 Decision Services are part of the `langchain4j` module; add it next to the module of your `DecisionModel`:
