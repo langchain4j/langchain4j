@@ -43,7 +43,8 @@ class StreamableHttpMcpTransportContextTest {
 
     private final ThreadLocal<String> identity = new ThreadLocal<>();
     private final AtomicInteger captures = new AtomicInteger();
-    private final MockHttpClient httpClient = MockHttpClient.withScriptedStreaming().withContextProbe(identity::get);
+    private final MockHttpClient httpClient =
+            MockHttpClient.withScriptedStreaming().withContextProbe(identity::get);
     private final Map<Long, CompletableFuture<String>> pendingOperations = new ConcurrentHashMap<>();
     private final AtomicReference<String> toolUpdateIdentity = new AtomicReference<>();
     private StreamableHttpMcpTransport transport;

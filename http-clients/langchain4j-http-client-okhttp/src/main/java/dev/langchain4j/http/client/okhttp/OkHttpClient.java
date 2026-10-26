@@ -2,6 +2,7 @@ package dev.langchain4j.http.client.okhttp;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -16,17 +17,6 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import mutiny.zero.BackpressureStrategy;
-import mutiny.zero.TubeConfiguration;
-import mutiny.zero.ZeroPublisher;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
@@ -37,8 +27,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class OkHttpClient implements HttpClient {
 
@@ -130,46 +128,50 @@ public class OkHttpClient implements HttpClient {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
-            Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
-                @Override
-                public void onOpen(SuccessfulHttpResponse response) {
-                    if (!tube.cancelled()) {
-                        tube.send(new HttpResponseReceived(response));
-                    }
-                }
+            Call call = enqueueServerSentEvents(
+                    request,
+                    parser,
+                    new ServerSentEventListener() {
+                        @Override
+                        public void onOpen(SuccessfulHttpResponse response) {
+                            if (!tube.cancelled()) {
+                                tube.send(new HttpResponseReceived(response));
+                            }
+                        }
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                        @Override
+                        public void onEvent(ServerSentEvent event) {
+                            if (!tube.cancelled()) {
+                                tube.send(event);
+                            }
+                        }
 
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                        @Override
+                        public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                            if (!tube.cancelled()) {
+                                tube.send(event);
+                            }
+                        }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        tube.fail(throwable);
-                    }
-                }
+                        @Override
+                        public void onError(Throwable throwable) {
+                            if (!tube.cancelled()) {
+                                tube.fail(throwable);
+                            }
+                        }
 
-                @Override
-                public void onClose() {
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
-                }
-            }, (statusCode, headers) -> {
-                if (!tube.cancelled() && tube.outstandingRequests() > 0) {
-                    tube.send(new HttpErrorResponseReceived(statusCode, headers));
-                }
-            });
+                        @Override
+                        public void onClose() {
+                            if (!tube.cancelled()) {
+                                tube.complete();
+                            }
+                        }
+                    },
+                    (statusCode, headers) -> {
+                        if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                            tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                        }
+                    });
             // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
             // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
             // first event - also aborts a cancel that arrives before the first event.

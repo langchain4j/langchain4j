@@ -1,14 +1,13 @@
 package dev.langchain4j.http.client;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-
+import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 

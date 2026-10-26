@@ -1032,5 +1032,4 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return new StreamableHttpMcpTransport(this);
         }
     }
-
 }

@@ -14,17 +14,10 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpMethod;
-import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClient.StreamExchange;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import dev.langchain4j.http.client.sse.HttpResponseReceived;
-import dev.langchain4j.http.client.sse.HttpStreamingEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -32,20 +25,15 @@ import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpPingResponse;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLContext;
@@ -190,7 +178,7 @@ class StreamableHttpMcpTransportSpiTest {
 
         assertThat(result).isCancelled();
         assertThat(pendingOperations).isEmpty();
-                assertThat(httpClient.closeCount()).isEqualTo(1);
+        assertThat(httpClient.closeCount()).isEqualTo(1);
     }
 
     @ParameterizedTest
@@ -235,8 +223,7 @@ class StreamableHttpMcpTransportSpiTest {
 
             exchange.errorHead(401);
 
-            ExecutionException failure =
-                    assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+            ExecutionException failure = assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
             assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(401);
             assertThat(exchange.isCancelled()).isTrue();
         } finally {
@@ -511,7 +498,8 @@ class StreamableHttpMcpTransportSpiTest {
 
         for (int i = 0; i < 2; i++) {
             StreamExchange exchange = httpClient.nextExchange();
-            if ("notifications/initialized".equals(McpJson.toMap(exchange.request().body()).get("method"))) {
+            if ("notifications/initialized"
+                    .equals(McpJson.toMap(exchange.request().body()).get("method"))) {
                 exchange.open(202, Map.of());
             } else {
                 assertThat(exchange.request().headers()).containsEntry("Authorization", List.of("Bearer original"));
@@ -537,8 +525,7 @@ class StreamableHttpMcpTransportSpiTest {
         initialization.body(INITIALIZE_RESULT);
         initialization.complete();
         StreamExchange notification = httpClient.nextExchange();
-        assertThat(McpJson.toMap(notification.request().body()).get("method"))
-                .isEqualTo("notifications/initialized");
+        assertThat(McpJson.toMap(notification.request().body()).get("method")).isEqualTo("notifications/initialized");
         notification.open(202, Map.of());
         notification.complete();
 
@@ -623,7 +610,8 @@ class StreamableHttpMcpTransportSpiTest {
         try {
             start(builder().executor(executor));
             CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
-            CompletableFuture<String> callbackThread = result.thenApply(ignored -> Thread.currentThread().getName());
+            CompletableFuture<String> callbackThread =
+                    result.thenApply(ignored -> Thread.currentThread().getName());
 
             httpClient.nextExchange().respond(200, TOOLS_RESULT);
 

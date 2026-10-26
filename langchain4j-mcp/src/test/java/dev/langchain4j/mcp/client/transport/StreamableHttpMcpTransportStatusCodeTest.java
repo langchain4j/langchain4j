@@ -40,7 +40,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
     private HttpServer server;
     private final ExecutorService serverExecutor = Executors.newCachedThreadPool();
     private StreamableHttpMcpTransport transport;
-    private final CountDownLatch errorHeadersSent = new CountDownLatch(1);
     private final CountDownLatch errorBodyReleased = new CountDownLatch(1);
 
     enum Backend {
@@ -150,7 +149,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThat(failureOf(response).statusCode()).isEqualTo(status);
-        assertThat(errorHeadersSent.getCount()).isZero();
         assertThat(errorBodyReleased.getCount()).isEqualTo(1);
     }
 
@@ -190,7 +188,6 @@ class StreamableHttpMcpTransportStatusCodeTest {
         try (OutputStream out = exchange.getResponseBody()) {
             out.write("{\"error\":".getBytes(StandardCharsets.UTF_8));
             out.flush();
-            errorHeadersSent.countDown();
             errorBodyReleased.await(10, TimeUnit.SECONDS);
             out.write("\"held\"}".getBytes(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {

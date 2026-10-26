@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.sse;
 
 import dev.langchain4j.Experimental;
+
 /**
  * An event emitted while consuming a streaming HTTP response via
  * {@link dev.langchain4j.http.client.HttpClient#stream(dev.langchain4j.http.client.HttpRequest)}. This is the
@@ -14,5 +15,4 @@ import dev.langchain4j.Experimental;
  * @since 1.20.0
  */
 @Experimental
-public interface HttpStreamingEvent {
-}
+public interface HttpStreamingEvent {}
