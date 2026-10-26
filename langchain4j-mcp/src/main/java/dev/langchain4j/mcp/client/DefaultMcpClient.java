@@ -50,7 +50,9 @@ import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -671,6 +673,107 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private enum TerminalOwner {
+        NONE,
+        CALLER_CANCEL,
+        TIMEOUT
+    }
+
+    private final class AsyncToolOperation {
+
+        private final AtomicBoolean callerCancelled = new AtomicBoolean();
+        private final AtomicBoolean cancellationNotificationSent = new AtomicBoolean();
+        private final AtomicReference<ActiveRequest> activeRequest = new AtomicReference<>();
+
+        private AsyncToolOperation(long operationId, CompletableFuture<?> resultFuture) {
+            activeRequest.set(new ActiveRequest(operationId, resultFuture));
+        }
+
+        private boolean isCallerCancelled() {
+            return callerCancelled.get();
+        }
+
+        private void activate(long operationId, CompletableFuture<?> resultFuture) {
+            activeRequest.set(new ActiveRequest(operationId, resultFuture));
+            if (callerCancelled.get()) {
+                cancelActiveRequest();
+            }
+        }
+
+        private boolean cancelFromCaller() {
+            callerCancelled.set(true);
+            return cancelActiveRequest();
+        }
+
+        private boolean cancelActiveRequest() {
+            ActiveRequest current = activeRequest.get();
+            if (current == null) {
+                return false;
+            }
+            if (!current.terminalOwner.compareAndSet(TerminalOwner.NONE, TerminalOwner.CALLER_CANCEL)) {
+                // Activation may have already cancelled this request on the caller's behalf.
+                return current.terminalOwner.get() == TerminalOwner.CALLER_CANCEL;
+            }
+            boolean cancelled = current.resultFuture.cancel(true);
+            boolean pending = pendingOperations.remove(current.operationId) != null;
+            if (cancelled || pending) {
+                sendCancellationNotificationOnce(current.operationId, "Cancelled");
+            }
+            return true;
+        }
+
+        private CompletableFuture<String> withTimeout(
+                long operationId, CompletableFuture<String> resultFuture, long timeoutMillis, McpCallContext context) {
+            // Both the initial response and retries must finish timeout side effects before
+            // result conversion or driver completion can race with public-future cancellation.
+            return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).whenComplete((result, error) -> {
+                Throwable cause = unwrapCompletionException(error);
+                if (cause instanceof TimeoutException timeout) {
+                    claimTimeout(operationId, resultFuture, context, timeout);
+                }
+            });
+        }
+
+        private void sendCancellationNotificationOnce(long operationId, String reason) {
+            if (cancellationNotificationSent.compareAndSet(false, true)) {
+                try {
+                    sendCancellationNotification(operationId, reason);
+                } catch (Exception e) {
+                    // Notification delivery must not suppress cleanup, listeners or future completion.
+                    log.warn("Failed to send MCP cancellation notification for request {}", operationId, e);
+                }
+            }
+        }
+
+        private boolean claimTimeout(
+                long operationId, CompletableFuture<?> resultFuture, McpCallContext context, TimeoutException timeout) {
+            ActiveRequest current = activeRequest.get();
+            if (current == null
+                    || current.operationId != operationId
+                    || current.resultFuture != resultFuture
+                    || !current.terminalOwner.compareAndSet(TerminalOwner.NONE, TerminalOwner.TIMEOUT)) {
+                return false;
+            }
+            resultFuture.cancel(true);
+            pendingOperations.remove(operationId);
+            sendCancellationNotificationOnce(operationId, "Timeout");
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
+            return true;
+        }
+    }
+
+    private static final class ActiveRequest {
+
+        private final long operationId;
+        private final CompletableFuture<?> resultFuture;
+        private final AtomicReference<TerminalOwner> terminalOwner = new AtomicReference<>(TerminalOwner.NONE);
+
+        private ActiveRequest(long operationId, CompletableFuture<?> resultFuture) {
+            this.operationId = operationId;
+            this.resultFuture = resultFuture;
+        }
+    }
+
     @Override
     public String key() {
         return key;
@@ -800,8 +903,22 @@ public class DefaultMcpClient implements McpClient {
 
         // Caller cancellation can race with a response handler that has already started.
         AtomicBoolean completionHandled = new AtomicBoolean();
-        CompletableFuture<ToolExecutionResult> handledFuture = resultFuture
-                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+        AsyncToolOperation asyncOperation = new AsyncToolOperation(operationId, resultFuture);
+        CompletableFuture<String> timedResultFuture =
+                asyncOperation.withTimeout(operationId, resultFuture, timeoutMillis, context);
+        CompletableFuture<ToolExecutionResult> handledFuture = timedResultFuture
+                .thenCompose(result -> handleMultiRoundTripAsync(
+                        result,
+                        timeoutMillis,
+                        context,
+                        (retryId, requestState) -> {
+                            McpCallToolRequest retryOp =
+                                    new McpCallToolRequest(retryId, executionRequest.name(), arguments, progressToken);
+                            ((McpCallToolParams) retryOp.getParams()).setRequestState(requestState);
+                            return retryOp;
+                        },
+                        "tools/call",
+                        asyncOperation))
                 .handle((result, error) -> {
                     pendingOperations.remove(operationId);
                     if (!completionHandled.compareAndSet(false, true)) {
@@ -814,7 +931,7 @@ public class DefaultMcpClient implements McpClient {
                             throw (CancellationException) cause;
                         }
                         if (cause instanceof TimeoutException timeout) {
-                            return handleToolTimeout(context, operationId, resultFuture, timeout);
+                            return handleToolTimeout(context, operationId, resultFuture, timeout, false);
                         }
                         notifyListeners(l -> l.onExecuteToolError(context, cause));
                         throw new ToolExecutionException(cause);
@@ -824,21 +941,126 @@ public class DefaultMcpClient implements McpClient {
 
         handledFuture.whenComplete((result, error) -> {
             if (handledFuture.isCancelled()) {
-                boolean notifyCancellation = completionHandled.compareAndSet(false, true);
-                try {
-                    if (resultFuture.cancel(true)) {
-                        pendingOperations.remove(operationId);
-                        sendCancellationNotification(operationId, "Cancelled");
-                    }
-                } finally {
-                    if (notifyCancellation) {
-                        Throwable cause = unwrapCompletionException(error);
-                        notifyListeners(l -> l.onExecuteToolError(context, cause));
-                    }
+                boolean callerWon = asyncOperation.cancelFromCaller();
+                boolean notifyCancellation = callerWon && completionHandled.compareAndSet(false, true);
+                if (notifyCancellation) {
+                    Throwable cause = unwrapCompletionException(error);
+                    notifyListeners(l -> l.onExecuteToolError(context, cause));
                 }
             }
         });
         return handledFuture;
+    }
+
+    private CompletableFuture<String> handleMultiRoundTripAsync(
+            String initialResult,
+            long timeoutMillis,
+            McpCallContext originalContext,
+            BiFunction<Long, Object, McpClientRequest> retryRequestFactory,
+            String operationName,
+            AsyncToolOperation asyncOperation) {
+        if (!modernProtocol) {
+            return CompletableFuture.completedFuture(initialResult);
+        }
+
+        CompletableFuture<String> terminalFuture = new CompletableFuture<>();
+        Deque<Runnable> work = new ArrayDeque<>();
+        AtomicBoolean draining = new AtomicBoolean();
+
+        class Driver {
+
+            private void enqueue(Runnable task) {
+                boolean startDraining;
+                synchronized (work) {
+                    work.addLast(task);
+                    startDraining = !draining.getAndSet(true);
+                }
+                if (!startDraining) {
+                    return;
+                }
+                for (; ; ) {
+                    Runnable next;
+                    synchronized (work) {
+                        next = work.pollFirst();
+                        if (next == null) {
+                            draining.set(false);
+                            return;
+                        }
+                    }
+                    try {
+                        next.run();
+                    } catch (Throwable throwable) {
+                        terminalFuture.completeExceptionally(throwable);
+                    }
+                }
+            }
+
+            private void processResult(String result, int retryCount) {
+                if (asyncOperation.isCallerCancelled()) {
+                    terminalFuture.completeExceptionally(new CancellationException());
+                    return;
+                }
+
+                try {
+                    McpServerDiscoverResponse.Result parsed = multiRoundTripResult(result);
+                    String resultType = resultTypeOf(parsed);
+                    if (!"input_required".equals(resultType)) {
+                        if (!"complete".equals(resultType)) {
+                            terminalFuture.completeExceptionally(new RuntimeException(
+                                    "Unexpected resultType for " + operationName + ": " + resultType));
+                        } else {
+                            terminalFuture.complete(result);
+                        }
+                        return;
+                    }
+                    if (retryCount >= multiRoundTripMaxRetries) {
+                        terminalFuture.completeExceptionally(
+                                new RuntimeException("Multi round-trip retry limit exceeded for " + operationName));
+                        return;
+                    }
+                    if (isNotEmpty(parsed.getInputRequests())) {
+                        terminalFuture.completeExceptionally(
+                                new RuntimeException("Server sent inputRequests that the client cannot handle"));
+                        return;
+                    }
+                    Object requestState = parsed.getRequestState();
+                    if (requestState == null) {
+                        terminalFuture.completeExceptionally(new RuntimeException(
+                                "Server sent input_required without requestState or inputRequests"));
+                        return;
+                    }
+                    if (asyncOperation.isCallerCancelled()) {
+                        terminalFuture.completeExceptionally(new CancellationException());
+                        return;
+                    }
+
+                    long retryOperationId = idGenerator.getAndIncrement();
+                    McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
+                    McpCallContext retryContext = new McpCallContext(
+                            originalContext.invocationContext(), retryOperation, originalContext.mcpParamHeaders());
+                    applyMeta(retryOperation, retryContext);
+                    CompletableFuture<String> retryResultFuture = executeViaTransport(retryContext);
+                    asyncOperation.activate(retryOperationId, retryResultFuture);
+
+                    asyncOperation
+                            .withTimeout(retryOperationId, retryResultFuture, timeoutMillis, originalContext)
+                            .whenComplete((retryResult, error) -> enqueue(() -> {
+                                pendingOperations.remove(retryOperationId);
+                                if (error != null) {
+                                    terminalFuture.completeExceptionally(unwrapCompletionException(error));
+                                } else {
+                                    processResult(retryResult, retryCount + 1);
+                                }
+                            }));
+                } catch (Throwable throwable) {
+                    terminalFuture.completeExceptionally(throwable);
+                }
+            }
+        }
+
+        Driver driver = new Driver();
+        driver.enqueue(() -> driver.processResult(initialResult, 0));
+        return terminalFuture;
     }
 
     private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
@@ -861,8 +1083,19 @@ public class DefaultMcpClient implements McpClient {
 
     private ToolExecutionResult handleToolTimeout(
             McpCallContext context, long operationId, CompletableFuture<?> resultFuture, TimeoutException timeout) {
-        notifyListeners(l -> l.onExecuteToolError(context, timeout));
-        cancelTimedOutOperation(timeout, operationId, resultFuture);
+        return handleToolTimeout(context, operationId, resultFuture, timeout, true);
+    }
+
+    private ToolExecutionResult handleToolTimeout(
+            McpCallContext context,
+            long operationId,
+            CompletableFuture<?> resultFuture,
+            TimeoutException timeout,
+            boolean notifyAndCleanup) {
+        if (notifyAndCleanup) {
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
+            cancelTimedOutOperation(timeout, operationId, resultFuture);
+        }
         // built on demand, not once at construction: a custom converter must not be invoked
         // for a tool call that never happened
         return toolResultConverter.convert(
