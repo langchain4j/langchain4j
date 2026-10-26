@@ -2,15 +2,47 @@ package dev.langchain4j.http.client.jdk;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
-
 import java.time.Duration;
 
 public class JdkHttpClientBuilder implements HttpClientBuilder {
 
+    private java.net.http.HttpClient httpClient;
     private java.net.http.HttpClient.Builder httpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
     private Integer streamingBufferSize;
+
+    /**
+     * Returns the supplied JDK HTTP client.
+     *
+     * @return the supplied JDK HTTP client, or {@code null} when one will be created during {@link #build()}
+     * @since 1.23.0
+     */
+    public java.net.http.HttpClient httpClient() {
+        return httpClient;
+    }
+
+    /**
+     * Sets the JDK {@link java.net.http.HttpClient} to use as the underlying client.
+     * <p>
+     * This allows multiple {@link JdkHttpClient} instances to share the connection pool and other resources owned by
+     * the supplied client, while retaining their own read timeout and streaming buffer size.
+     * <p>
+     * When set, {@link #httpClientBuilder(java.net.http.HttpClient.Builder)} and
+     * {@link #connectTimeout(Duration)} are ignored because an already-built JDK HTTP client cannot be reconfigured.
+     * The supplied client is used as-is and is not modified or closed by {@link JdkHttpClient}.
+     * Its configured HTTP version is respected for all requests; callers using plain {@code http://} URLs can build
+     * it with {@code .version(java.net.http.HttpClient.Version.HTTP_1_1)} to avoid a JDK-default {@code Upgrade: h2c}
+     * request to servers that do not support it.
+     *
+     * @param httpClient the JDK HTTP client, or {@code null} to create one when {@link #build()} is called
+     * @return this builder
+     * @since 1.23.0
+     */
+    public JdkHttpClientBuilder httpClient(java.net.http.HttpClient httpClient) {
+        this.httpClient = httpClient;
+        return this;
+    }
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;
