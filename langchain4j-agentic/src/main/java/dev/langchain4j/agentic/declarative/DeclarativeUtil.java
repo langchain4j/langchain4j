@@ -5,6 +5,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeAgentCreationContext;
 import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeDecisionAgentCreationContext;
@@ -180,7 +181,7 @@ public class DeclarativeUtil {
     }
 
     /**
-     * Whether the given type is a decision agent: an interface whose {@link dev.langchain4j.agentic.Agent @Agent}
+     * Whether the given type is a decision agent: an interface whose {@link Agent @Agent}
      * method is annotated with {@link Decide @Decide}, or which declares a {@link DecisionModelSupplier} method.
      */
     public static boolean isDecisionAgent(Class<?> agentType) {

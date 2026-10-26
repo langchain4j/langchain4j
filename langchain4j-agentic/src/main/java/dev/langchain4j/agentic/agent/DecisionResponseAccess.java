@@ -1,13 +1,15 @@
 package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 
 /**
  * Gives access to the last response of the decision model of a decision agent, so that it can be reported to the
- * {@link dev.langchain4j.agentic.observability.AgentListener AgentListener}s together with the agent's output. It
+ * {@link AgentListener AgentListener}s together with the agent's output. It
  * is the counterpart of {@link ChatMessagesAccess} for the agents built with
- * {@link dev.langchain4j.agentic.AgenticServices#decisionAgentBuilder(Class)}.
+ * {@link AgenticServices#decisionAgentBuilder(Class)}.
  *
  * @since 1.23.0
  */

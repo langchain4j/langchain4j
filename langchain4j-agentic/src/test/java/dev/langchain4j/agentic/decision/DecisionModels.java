@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.decision;
 
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.ollama.OllamaDecisionModel;
 import dev.langchain4j.model.openai.OpenAiDecisionModel;
 import dev.langchain4j.model.openai.OpenAiDecisionModelName;
 import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
@@ -25,15 +24,6 @@ public class DecisionModels {
         return OpenAiDecisionModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(OpenAiDecisionModelName.GPT_6_LUNA)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-    }
-
-    public static DecisionModel local() {
-        return OllamaDecisionModel.builder()
-                .baseUrl("http://localhost:11434")
-                .modelName("tev1:0.8b")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

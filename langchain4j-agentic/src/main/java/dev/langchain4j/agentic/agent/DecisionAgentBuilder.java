@@ -10,12 +10,17 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.declarative.DecisionModelSupplier;
+import dev.langchain4j.agentic.declarative.DecisionThresholdSupplier;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -28,6 +33,7 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.decision.DecisionServices;
 import dev.langchain4j.service.decision.ThresholdProvider;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
 import java.lang.reflect.Method;
@@ -40,7 +46,7 @@ import java.util.function.Predicate;
 /**
  * Builds a <em>decision agent</em>: an agent of an agentic system whose implementation is a single call to a
  * {@link DecisionModel} instead of a chat model. It is defined by a Decision Service interface (see
- * {@link dev.langchain4j.service.decision.DecisionServices}) whose method also carries the
+ * {@link DecisionServices}) whose method also carries the
  * {@link Agent @Agent} annotation:
  * <pre>{@code
  * public interface CategoryRouter {
@@ -64,7 +70,7 @@ import java.util.function.Predicate;
  * <p>
  * Each invocation makes one blocking call to the decision model. The response of the model, with the probabilities
  * of its answers, its model name and its token usage, is reported to the {@link AgentListener}s through
- * {@link dev.langchain4j.agentic.observability.AgentResponse#decisionResponse()} and recorded by the
+ * {@link AgentResponse#decisionResponse()} and recorded by the
  * {@link AgentMonitor}. A decision agent has no chat memory, tools, retrieval or guardrails.
  *
  * @param <T> the decision agent interface
@@ -95,10 +101,10 @@ public class DecisionAgentBuilder<T> {
 
     /**
      * Creates a builder for the given decision agent interface, applying its declarative configuration
-     * ({@link dev.langchain4j.agentic.declarative.DecisionModelSupplier @DecisionModelSupplier},
-     * {@link dev.langchain4j.agentic.declarative.DecisionThresholdSupplier @DecisionThresholdSupplier},
-     * {@link dev.langchain4j.agentic.declarative.ActivationCondition @ActivationCondition} and
-     * {@link dev.langchain4j.agentic.declarative.AgentListenerSupplier @AgentListenerSupplier}) when present.
+     * ({@link DecisionModelSupplier @DecisionModelSupplier},
+     * {@link DecisionThresholdSupplier @DecisionThresholdSupplier},
+     * {@link ActivationCondition @ActivationCondition} and
+     * {@link AgentListenerSupplier @AgentListenerSupplier}) when present.
      *
      * @throws IllegalArgumentException if the interface cannot be a decision agent
      */
@@ -216,6 +222,7 @@ public class DecisionAgentBuilder<T> {
      * {@link #thresholdProvider(ThresholdProvider)}. Thresholds are specific to a decision model and to its version.
      *
      * @param threshold a value between 0 and 1
+     * @throws IllegalArgumentException if the threshold is not between 0 and 1
      */
     public DecisionAgentBuilder<T> threshold(double threshold) {
         if (!(threshold >= 0 && threshold <= 1)) {

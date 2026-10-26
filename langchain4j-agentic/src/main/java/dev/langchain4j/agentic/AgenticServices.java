@@ -20,6 +20,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
@@ -71,6 +72,7 @@ import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.decision.DecisionModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -147,9 +149,9 @@ public class AgenticServices {
 
     /**
      * Creates a builder for a decision agent: an agent whose implementation is a single call to a
-     * {@link dev.langchain4j.model.decision.DecisionModel} instead of a chat model. The agent is defined by a
+     * {@link DecisionModel} instead of a chat model. The agent is defined by a
      * Decision Service interface whose method also carries {@link Agent @Agent}: its arguments are read from the
-     * {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope} and sent to the decision model as the input,
+     * {@link AgenticScope} and sent to the decision model as the input,
      * its return type defines the question(s), and the typed answer is written to the output key. See
      * {@link DecisionAgentBuilder} for the details.
      *
@@ -320,7 +322,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
     }
 
     /**
@@ -355,13 +357,32 @@ public class AgenticServices {
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
-    public record DefaultDeclarativeDecisionAgentCreationContext<T>(
-            Class<T> agentServiceClass, DecisionAgentBuilder<T> decisionAgentBuilder)
+    @Internal
+    public static final class DefaultDeclarativeDecisionAgentCreationContext<T>
             implements DeclarativeAgentCreationContext<T> {
+
+        private final Class<T> agentServiceClass;
+        private final DecisionAgentBuilder<T> decisionAgentBuilder;
+
+        public DefaultDeclarativeDecisionAgentCreationContext(
+                Class<T> agentServiceClass, DecisionAgentBuilder<T> decisionAgentBuilder) {
+            this.agentServiceClass = agentServiceClass;
+            this.decisionAgentBuilder = decisionAgentBuilder;
+        }
+
+        @Override
+        public Class<T> agentServiceClass() {
+            return agentServiceClass;
+        }
 
         @Override
         public AgentBuilder<T, ?> agentBuilder() {
             return null;
+        }
+
+        @Override
+        public DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return decisionAgentBuilder;
         }
     }
 
@@ -844,12 +865,10 @@ public class AgenticServices {
 
     private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
         if (activationCondition(agentServiceClass) != null) {
-            throw new AgenticSystemConfigurationException(
-                    "An @ActivationCondition is not supported on the @RegistryAgent "
-                            + agentServiceClass.getName()
-                            + ", because its agent is taken already built from the registry. "
-                            + "Set the activation condition when building the agent registered as '"
-                            + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
+                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
+                    + "Set the activation condition when building the agent registered as '"
+                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
         }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
@@ -915,7 +934,8 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);

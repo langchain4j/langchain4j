@@ -181,16 +181,17 @@ public class AgentInvocation {
     }
 
     private String toString(String prefix) {
-        StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" + "agent="
-                + agent().name() + (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "")
-                + (skipped() ? ", skipped=" + skipReason : "")
-                + ", startTime="
-                + startTime + ", finishTime="
-                + finishTime + ", duration="
-                + (done() ? duration().toMillis() + " ms" : "in progress") + ", tokens="
-                + (done() ? totalTokenCount() : "in progress") + ", inputs="
-                + shortToString(inputs()) + ", output="
-                + (done() ? shortToString(output()) : "in progress") + '}');
+        StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
+                "agent=" + agent().name() +
+                (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
+                (skipped() ? ", skipped=" + skipReason : "") +
+                ", startTime=" + startTime +
+                ", finishTime=" + finishTime +
+                ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
+                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
+                ", inputs=" + shortToString(inputs()) +
+                ", output=" + (done() ? shortToString(output()) : "in progress") +
+                '}');
         if (!toolExecutions.isEmpty()) {
             String toolPrefix = prefix.isEmpty() ? "|-> " : "    " + prefix;
             for (ToolExecution toolExec : toolExecutions) {
@@ -222,7 +223,7 @@ public class AgentInvocation {
         boolean first = true;
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        for (Map.Entry<?, ?> e : map.entrySet()) {
+        for (Map.Entry<?,?> e : map.entrySet()) {
             if (first) {
                 first = false;
             } else {

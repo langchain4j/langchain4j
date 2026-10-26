@@ -25,9 +25,7 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -184,23 +182,6 @@ class DecisionAgentScenariosTest {
 
     // Scenario 4: oracle subagent of a supervisor
 
-    /** Replies with the given responses in order. */
-    static class ScriptedChatModel implements ChatModel {
-
-        private final Iterator<String> responses;
-
-        ScriptedChatModel(String... responses) {
-            this.responses = List.of(responses).iterator();
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(responses.next()))
-                    .build();
-        }
-    }
-
     @Test
     void supervisor_consults_the_oracle_before_crediting() {
         DecisionModelMock eligibilityModel = answeringYes(0.95);
@@ -217,13 +198,13 @@ class DecisionAgentScenariosTest {
                 .inputKey(Double.class, "amount")
                 .outputKey("receipt")
                 .build();
-        ScriptedChatModel plannerModel = new ScriptedChatModel("""
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(AiMessage.from("""
                 {"agentName": "isEligible", "arguments": {"customerProfile": "Mario, income 3000 USD, no debts", "amount": 1000}}
-                """, """
+                """), AiMessage.from("""
                 {"agentName": "credit", "arguments": {"amount": 1000}}
-                """, """
+                """), AiMessage.from("""
                 {"agentName": "done", "arguments": {"response": "Mario has been credited 1000 USD"}}
-                """);
+                """));
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.LAST)

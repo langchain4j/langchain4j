@@ -44,7 +44,7 @@ public record AgentResponse(
         this(agenticScope, agent, inputs, output, chatRequest, chatResponse, null);
     }
 
-    public AgentResponse(
+    AgentResponse(
             AgenticScope agenticScope,
             AgentInstance agent,
             Map<String, Object> inputs,

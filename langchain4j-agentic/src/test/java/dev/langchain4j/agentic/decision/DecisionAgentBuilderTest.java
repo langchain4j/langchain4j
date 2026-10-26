@@ -17,12 +17,15 @@ import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DecisionAgentBuilderTest {
 
@@ -125,6 +128,23 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(PromptedRouter.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Method 'classify' of the decision agent " + PromptedRouter.class.getName()
+                        + " must not be annotated with @UserMessage or @SystemMessage: a decision agent has no prompt, "
+                        + "its question is the one of @Decide");
+    }
+
+    public interface SystemPromptedRouter {
+
+        @SystemMessage("You are a router")
+        @Decide("Which kind of expert should handle this request?")
+        @Agent(outputKey = "category")
+        RequestCategory classify(@V("request") String request);
+    }
+
+    @Test
+    void should_reject_a_system_message() {
+        assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(SystemPromptedRouter.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Method 'classify' of the decision agent " + SystemPromptedRouter.class.getName()
                         + " must not be annotated with @UserMessage or @SystemMessage: a decision agent has no prompt, "
                         + "its question is the one of @Decide");
     }
@@ -238,6 +258,25 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> builder.threshold(1.5))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The threshold of the decision agent 'classify' must be between 0 and 1, but was 1.5");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {-0.1, 1.0001, Double.NaN})
+    void should_reject_a_threshold_outside_of_zero_and_one(double threshold) {
+        DecisionAgentBuilder<CategoryRouter> builder = AgenticServices.decisionAgentBuilder(CategoryRouter.class);
+
+        assertThatThrownBy(() -> builder.threshold(threshold)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {0.0, 1.0})
+    void should_accept_a_threshold_of_zero_or_one(double threshold) {
+        CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
+                .decisionModel(MODEL)
+                .threshold(threshold)
+                .build();
+
+        assertThat(router).isNotNull();
     }
 
     @Test

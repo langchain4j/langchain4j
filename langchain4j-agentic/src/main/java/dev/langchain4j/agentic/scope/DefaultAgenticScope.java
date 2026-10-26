@@ -10,7 +10,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
-import dev.langchain4j.agentic.agent.DecisionResponseAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -299,9 +298,6 @@ public class DefaultAgenticScope implements AgenticScope {
         }
         if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
             chatMessagesAccess.removeLastResponseEvent(memoryId());
-        }
-        if (agent instanceof DecisionResponseAccess decisionResponseAccess) {
-            decisionResponseAccess.removeLastDecisionResponse(memoryId());
         }
     }
 

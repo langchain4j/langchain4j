@@ -387,10 +387,13 @@ needed. They work with any `DecisionModel` implementation.
 | `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
 | `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
-| `AgenticServices.decisionAgentBuilder`, `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic`, `langchain4j-agentic-patterns` |
+| `AgenticServices.decisionAgentBuilder` | `langchain4j-agentic` |
+| `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic-patterns` |
 
 Each of these components makes an additional call to the decision model. Its token usage is not included in the token
 usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
+to the agent listeners and counted by the `AgentMonitor`.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`

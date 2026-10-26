@@ -82,6 +82,27 @@ class DecisionAgentTest {
     }
 
     @Test
+    void should_pass_a_boolean_answer_to_an_agent_reading_a_boxed_boolean() {
+        TransactionGate gate = AgenticServices.decisionAgentBuilder(TransactionGate.class)
+                .decisionModel(answeringYes(0.7))
+                .build();
+        Object review = AgenticServices.nonAiAgentBuilder(
+                        scope -> scope.readState("suspicious", false) ? "review" : "proceed")
+                .name("review")
+                .inputKey(Boolean.class, "suspicious")
+                .outputKey("decision")
+                .build();
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(gate, review)
+                .outputKey("decision")
+                .build();
+
+        Object decision = sequence.invoke(Map.of("transfer", "50000 USD to an unknown account"));
+
+        assertThat(decision).isEqualTo("review");
+    }
+
+    @Test
     void should_answer_a_boolean_with_a_fixed_threshold() {
         TransactionGate gate = AgenticServices.decisionAgentBuilder(TransactionGate.class)
                 .decisionModel(answeringYes(0.7))
@@ -547,6 +568,23 @@ class DecisionAgentTest {
     }
 
     @Test
+    void should_leave_a_decision_result_out_of_the_json_of_the_scope() {
+        AuditedCategoryRouter router = AgenticServices.decisionAgentBuilder(AuditedCategoryRouter.class)
+                .decisionModel(choosing("LEGAL", 0.9))
+                .build();
+
+        ResultWithAgenticScope<String> result =
+                sequenceOf(router, "category").invokeWithAgenticScope(Map.of("request", LEGAL_REQUEST));
+
+        DefaultAgenticScope restored = AgenticScopeSerializer.fromJson(
+                AgenticScopeSerializer.toJson((DefaultAgenticScope) result.agenticScope()));
+
+        assertThat(result.agenticScope().readState("category")).isInstanceOf(DecisionResult.class);
+        assertThat(restored.hasState("category")).isFalse();
+        assertThat(restored.readState("request")).isEqualTo(LEGAL_REQUEST);
+    }
+
+    @Test
     void should_compose_its_listener_with_the_inherited_one_of_its_parent() {
         List<String> events = new ArrayList<>();
         AgentListener inherited = new AgentListener() {
@@ -593,5 +631,20 @@ class DecisionAgentTest {
 
         // the scope forgets the response once it has registered the invocation
         assertThat(afterInvocation).isNull();
+    }
+
+    @Test
+    void should_not_keep_the_decision_response_of_an_asynchronous_invocation() {
+        CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
+                .decisionModel(choosing("LEGAL", 0.9))
+                .async(true)
+                .build();
+        UntypedAgent sequence = sequenceOf(router, "category");
+
+        ResultWithAgenticScope<String> result = sequence.invokeWithAgenticScope(Map.of("request", LEGAL_REQUEST));
+
+        assertThat(result.agenticScope().readState("category")).isEqualTo(RequestCategory.LEGAL);
+        assertThat(((DecisionResponseAccess) router).lastDecisionResponse(result.agenticScope().memoryId()))
+                .isNull();
     }
 }

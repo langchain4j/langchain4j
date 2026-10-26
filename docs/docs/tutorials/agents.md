@@ -3100,7 +3100,7 @@ public interface ConfidentCategoryRouter {
 
 private static boolean confident(AgenticScope scope, RequestCategory category) {
     Choice<RequestCategory> choice = (Choice<RequestCategory>) scope.readState("category");
-    return choice.value() == category && choice.probabilityOf(category) >= 0.6;
+    return choice.value() == category && choice.probabilities().getOrDefault(category, 0.0) >= 0.6;
 }
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
@@ -3156,7 +3156,7 @@ HumanInTheLoop complianceApproval = AgenticServices.humanInTheLoopBuilder()
         .description("Compliance approval of a suspicious transfer")
         .outputKey("approval")
         .responseProvider(scope -> new SuspendedResponse<>("compliance-approval"))
-        .activationCondition("the transfer looks suspicious", scope -> scope.readState("suspicious", false))
+        .activationCondition("the transfer looks suspicious", scope -> scope.readState("suspicious", true))
         .build();
 
 UntypedAgent transfers = AgenticServices.sequenceBuilder()
