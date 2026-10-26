@@ -46,6 +46,12 @@
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-typesafe</artifactId>
+            <version>1.23.0-beta33-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.23.0-SNAPSHOT</version>
             <classifier>tests</classifier>
