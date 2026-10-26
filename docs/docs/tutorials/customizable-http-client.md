@@ -36,6 +36,31 @@ OpenAiChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 
+### Reusing an `HttpClient`
+
+`JdkHttpClient` creates its own `HttpClient` by default. If you create models dynamically, share one JDK client
+instead, so its connection pool and selector thread are reused:
+
+```java
+HttpClient shared = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(10))
+        .build();
+
+JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
+        .httpClient(shared);
+
+OpenAiChatModel model = OpenAiChatModel.builder()
+        .httpClientBuilder(jdkHttpClientBuilder)
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
+```
+
+When a client is supplied, `httpClientBuilder(...)` and `connectTimeout(...)` are ignored: configure those on the
+shared client instead. `readTimeout(...)` and `streamingBufferSize(...)` still apply per `JdkHttpClient`, so models
+sharing a client can keep their own request timeouts and buffer sizes. The shared client keeps the HTTP version
+configured on it, including for plain `http://` URLs (see [HTTP version](#http-version)).
+
 ### HTTP version
 
 By default, `JdkHttpClient` uses HTTP/2 for `https://` URLs (when the server supports it) and HTTP/1.1 for
