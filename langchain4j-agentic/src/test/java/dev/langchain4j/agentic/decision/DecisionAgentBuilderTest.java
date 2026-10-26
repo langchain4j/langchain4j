@@ -291,7 +291,8 @@ class DecisionAgentBuilderTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
                         "The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
-                                + "apply it to the probabilities of the answer instead, for instance with YesNoAnswer.isYes(threshold)");
+                                + "apply it to the probabilities of a YesNoAnswer, Choice or Scale answer instead, "
+                                + "for instance with YesNoAnswer.isYes(threshold)");
     }
 
     @Test

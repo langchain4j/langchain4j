@@ -222,7 +222,7 @@ public class DecisionAgentBuilder<T> {
      * probability of "yes" is at least the threshold. Mutually exclusive with
      * {@link #thresholdProvider(ThresholdProvider)}. Thresholds are specific to a decision model and to its version.
      * A threshold is only allowed when the agent has a {@code boolean} answer, otherwise {@link #build()} fails: a
-     * {@code YesNoAnswer}, a {@code Choice} or a {@code Scale} carry the probabilities to apply a threshold to.
+     * {@code YesNoAnswer}, a {@code Choice} or a {@code Scale} carries the probabilities to apply a threshold to.
      *
      * @param threshold a value between 0 and 1
      * @throws IllegalArgumentException if the threshold is not between 0 and 1
@@ -355,8 +355,8 @@ public class DecisionAgentBuilder<T> {
      * Builds the decision agent.
      *
      * @throws IllegalArgumentException if neither or both of the decision model and its provider are set, if both
-     * a threshold and a threshold provider are set, or if one of them is set on an agent without {@code boolean}
-     * answer
+     * a threshold and a threshold provider are set, or if one of them is set on an agent without a
+     * {@code boolean} answer
      */
     public T build() {
         if ((decisionModel == null) == (decisionModelProvider == null)) {
@@ -371,7 +371,8 @@ public class DecisionAgentBuilder<T> {
         if ((threshold != null || thresholdProvider != null) && !decisionMethod.hasBooleanAnswer()) {
             throw new IllegalArgumentException("The decision agent '" + name
                     + "' has no boolean answer, so a threshold would never be used: apply it to the probabilities"
-                    + " of the answer instead, for instance with YesNoAnswer.isYes(threshold)");
+                    + " of a YesNoAnswer, Choice or Scale answer instead, for instance with"
+                    + " YesNoAnswer.isYes(threshold)");
         }
 
         AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);

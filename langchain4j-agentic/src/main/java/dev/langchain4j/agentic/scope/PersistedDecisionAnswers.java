@@ -23,6 +23,13 @@ import java.util.Map;
 @Internal
 public final class PersistedDecisionAnswers {
 
+    private static final ClassValue<Boolean> IS_COMPOSITE_ANSWER = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            return hasAnswerField(type);
+        }
+    };
+
     private PersistedDecisionAnswers() {}
 
     public record PersistedYesNoAnswer(double probability) {}
@@ -40,15 +47,8 @@ public final class PersistedDecisionAnswers {
      * an untyped agent or persisted, so its result is computed once per class.
      */
     public static boolean isCompositeAnswer(Object value) {
-        return value != null && COMPOSITE_ANSWER_TYPES.get(value.getClass());
+        return value != null && IS_COMPOSITE_ANSWER.get(value.getClass());
     }
-
-    private static final ClassValue<Boolean> COMPOSITE_ANSWER_TYPES = new ClassValue<>() {
-        @Override
-        protected Boolean computeValue(Class<?> type) {
-            return hasAnswerField(type);
-        }
-    };
 
     private static boolean hasAnswerField(Class<?> valueType) {
         // the same fields DecisionMethod fills when it builds the answer
