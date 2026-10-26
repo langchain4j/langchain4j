@@ -9,7 +9,10 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.decision.DecisionAgents.CategoryRouter;
+import dev.langchain4j.agentic.decision.DecisionAgents.ConfidentCategoryRouter;
 import dev.langchain4j.agentic.decision.DecisionAgents.RequestCategory;
+import dev.langchain4j.agentic.decision.DecisionAgents.TicketTriage;
+import dev.langchain4j.agentic.decision.DecisionAgents.TransactionGate;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -271,12 +274,44 @@ class DecisionAgentBuilderTest {
     @ParameterizedTest
     @ValueSource(doubles = {0.0, 1.0})
     void should_accept_a_threshold_of_zero_or_one(double threshold) {
-        CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
+        TransactionGate gate = AgenticServices.decisionAgentBuilder(TransactionGate.class)
                 .decisionModel(MODEL)
                 .threshold(threshold)
                 .build();
 
-        assertThat(router).isNotNull();
+        assertThat(gate).isNotNull();
+    }
+
+    @Test
+    void should_reject_a_threshold_on_an_agent_without_boolean_answer() {
+        assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(CategoryRouter.class)
+                        .decisionModel(MODEL)
+                        .threshold(0.7)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
+                                + "apply it to the probabilities of the answer instead, for instance with YesNoAnswer.isYes(threshold)");
+    }
+
+    @Test
+    void should_reject_a_threshold_provider_on_an_agent_without_boolean_answer() {
+        assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(ConfidentCategoryRouter.class)
+                        .decisionModel(MODEL)
+                        .thresholdProvider(context -> 0.7)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("has no boolean answer");
+    }
+
+    @Test
+    void should_accept_a_threshold_on_a_record_with_a_boolean_answer() {
+        TicketTriage triage = AgenticServices.decisionAgentBuilder(TicketTriage.class)
+                .decisionModel(MODEL)
+                .threshold(0.7)
+                .build();
+
+        assertThat(triage).isNotNull();
     }
 
     @Test

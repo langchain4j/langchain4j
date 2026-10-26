@@ -451,6 +451,30 @@ class DeclarativeDecisionAgentTest {
                 .hasMessage(notBuiltAsADecisionAgent(SpamCheckingAiAgent.class, DecisionThresholdSupplier.class));
     }
 
+    public interface ThresholdOnCategoryRouter {
+
+        @Decide("Which kind of expert should handle this request?")
+        @Agent(value = "Categorizes a user request", outputKey = "category")
+        RequestCategory classify(@V("request") String request);
+
+        @DecisionModelSupplier
+        static DecisionModel decisionModel() {
+            return choosing("LEGAL", 0.9);
+        }
+
+        @DecisionThresholdSupplier
+        static double threshold(ThresholdContext context) {
+            return 0.8;
+        }
+    }
+
+    @Test
+    void should_fail_with_a_threshold_supplier_on_an_agent_without_boolean_answer() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(ThresholdOnCategoryRouter.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("The decision agent 'classify' has no boolean answer");
+    }
+
     @Test
     void should_fail_to_build_a_decision_agent_interface_with_the_ai_agent_builder() {
         assertThatThrownBy(() -> AgenticServices.agentBuilder(CategoryRouter.class))

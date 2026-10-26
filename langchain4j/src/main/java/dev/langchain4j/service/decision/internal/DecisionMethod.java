@@ -169,6 +169,13 @@ public final class DecisionMethod {
     }
 
     /**
+     * Whether any question is answered as a {@code boolean}, the only kind of answer a threshold applies to.
+     */
+    public boolean hasBooleanAnswer() {
+        return mappings.values().stream().anyMatch(mapping -> mapping.kind() == Kind.BOOLEAN);
+    }
+
+    /**
      * Whether the method returns a {@link CompletableFuture} or a {@link CompletionStage}.
      */
     public boolean isAsync() {
