@@ -16,10 +16,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StreamableHttpMcpTransportStatusCodeTest {
 
@@ -29,10 +34,18 @@ class StreamableHttpMcpTransportStatusCodeTest {
     private static final String TOOLS_LIST_RESULT = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"tools\":[]}}";
 
     private HttpServer server;
+    private final ExecutorService serverExecutor = Executors.newCachedThreadPool();
     private StreamableHttpMcpTransport transport;
+    private final CountDownLatch errorHeadersSent = new CountDownLatch(1);
+    private final CountDownLatch errorBodyReleased = new CountDownLatch(1);
 
     private void startServer(int toolsListStatus) throws IOException {
+        startServer(toolsListStatus, false);
+    }
+
+    private void startServer(int toolsListStatus, boolean holdErrorBody) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.setExecutor(serverExecutor);
         server.createContext("/mcp", exchange -> {
             String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             String method = McpJson.parse(body).path("method").asText();
@@ -43,6 +56,8 @@ class StreamableHttpMcpTransportStatusCodeTest {
                 respond(exchange, 200, "{}");
             } else if (toolsListStatus == 200) {
                 respond(exchange, 200, TOOLS_LIST_RESULT);
+            } else if (holdErrorBody) {
+                respondWithHeldErrorBody(exchange, toolsListStatus);
             } else {
                 respond(exchange, toolsListStatus, "{}");
             }
@@ -79,12 +94,14 @@ class StreamableHttpMcpTransportStatusCodeTest {
 
     @AfterEach
     void tearDown() throws IOException {
+        errorBodyReleased.countDown();
         if (transport != null) {
             transport.close();
         }
         if (server != null) {
             server.stop(0);
         }
+        serverExecutor.shutdownNow();
     }
 
     @Test
@@ -107,6 +124,32 @@ class StreamableHttpMcpTransportStatusCodeTest {
         assertThat(failureOf(response).statusCode()).isEqualTo(500);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {401, 503})
+    void error_status_fails_before_the_response_body_is_complete(int status) throws Exception {
+        startServer(status, true);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        assertThat(failureOf(response).statusCode()).isEqualTo(status);
+        assertThat(errorHeadersSent.getCount()).isZero();
+        assertThat(errorBodyReleased.getCount()).isEqualTo(1);
+    }
+
+    @Test
+    void expired_session_is_reinitialized_before_the_response_body_is_complete() throws Exception {
+        startServer(404, true);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        HttpException failure = failureOf(response);
+        assertThat(failure.statusCode()).isEqualTo(404);
+        assertThat(failure).hasMessage("Session expired again after reinitialization: server returned status code 404");
+        assertThat(errorBodyReleased.getCount()).isEqualTo(1);
+    }
+
     @Test
     void successful_request_is_unaffected() throws Exception {
         startServer(200);
@@ -121,5 +164,21 @@ class StreamableHttpMcpTransportStatusCodeTest {
         Throwable thrown = catchThrowable(() -> response.get(5, TimeUnit.SECONDS));
         assertThat(thrown).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(HttpException.class);
         return (HttpException) thrown.getCause();
+    }
+
+    private void respondWithHeldErrorBody(HttpExchange exchange, int statusCode) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(statusCode, 0);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write("{\"error\":".getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            errorHeadersSent.countDown();
+            errorBodyReleased.await(10, TimeUnit.SECONDS);
+            out.write("\"held\"}".getBytes(StandardCharsets.UTF_8));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException ignored) {
+            // the client may have closed the connection after reading the status
+        }
     }
 }

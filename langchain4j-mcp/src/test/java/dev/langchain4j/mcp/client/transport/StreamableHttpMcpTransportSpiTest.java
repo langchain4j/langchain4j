@@ -208,8 +208,45 @@ class StreamableHttpMcpTransportSpiTest {
         assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(status);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {401, 503})
+    void should_fail_as_soon_as_the_error_response_head_arrives(int status) throws Exception {
+        start(builder());
+        CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+        StreamExchange exchange = httpClient.nextExchange();
+
+        exchange.errorHead(status);
+
+        ExecutionException failure = assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+        assertThat(failure.getCause())
+                .isInstanceOf(HttpException.class)
+                .hasMessage("Unexpected status code: " + status);
+        assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(status);
+        assertThat(exchange.isCancelled()).isTrue();
+    }
+
     @Test
-    void should_reinitialize_and_retry_after_404() throws Exception {
+    void should_fail_as_soon_as_the_error_response_head_arrives_on_configured_executor() throws Exception {
+        ExecutorService executor = Executors.newSingleThreadExecutor(task -> new Thread(task, "mcp-test-executor"));
+        try {
+            start(builder().executor(executor));
+            CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+            StreamExchange exchange = httpClient.nextExchange();
+
+            exchange.errorHead(401);
+
+            ExecutionException failure =
+                    assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+            assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(401);
+            assertThat(exchange.isCancelled()).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void should_reinitialize_and_retry_after_404(boolean errorHead) throws Exception {
         start(builder());
         CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
         StreamExchange initialization = httpClient.nextExchange();
@@ -223,7 +260,12 @@ class StreamableHttpMcpTransportSpiTest {
 
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
         StreamExchange expired = httpClient.nextExchange();
-        expired.fail(new HttpException(404, "session expired"));
+        if (errorHead) {
+            expired.errorHead(404);
+            assertThat(expired.isCancelled()).isTrue();
+        } else {
+            expired.fail(new HttpException(404, "session expired"));
+        }
 
         StreamExchange reinitialization = httpClient.nextExchange();
         assertThat(reinitialization.request().body()).contains("\"method\":\"initialize\"");

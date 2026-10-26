@@ -12,6 +12,7 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
@@ -610,6 +611,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 if (event instanceof HttpResponseReceived received) {
                     responseReceived = true;
                     onResponse(received.response());
+                } else if (event instanceof HttpErrorResponseReceived errorResponse) {
+                    handleError(new HttpException(
+                            errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
                         handleSseLine(line.data());

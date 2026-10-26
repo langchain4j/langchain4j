@@ -14,6 +14,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -303,9 +304,10 @@ class JdkHttpClientBackpressureTest {
         assertThat(subscriber.signals).containsExactly("next", "error");
     }
 
-    @Test
-    void should_report_http_errors_with_the_response_body_even_without_event_demand() {
-        Exchange exchange = new Exchange();
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void should_report_http_errors_with_the_response_body_even_without_event_demand(boolean backpressured) {
+        Exchange exchange = new Exchange(backpressured);
         RecordingSubscriber subscriber = exchange.subscribe();
         exchange.respond(401);
         exchange.body.emit("credentials expired");
@@ -324,13 +326,31 @@ class JdkHttpClientBackpressureTest {
         subscriber.subscription.request(1);
 
         exchange.respond(401);
-        assertThat(subscriber.events).isEmpty();
+        assertThat(subscriber.events).singleElement().isInstanceOf(HttpErrorResponseReceived.class);
         exchange.body.emit("credentials expired");
         exchange.body.complete();
 
         assertThat(subscriber.failure).isInstanceOf(HttpException.class).hasMessage("credentials expired");
         assertThat(((HttpException) subscriber.failure).statusCode()).isEqualTo(401);
-        assertThat(subscriber.signals).containsExactly("error");
+        assertThat(subscriber.signals).containsExactly("next", "error");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void should_emit_the_error_response_head_before_reading_the_body(boolean backpressured) {
+        Exchange exchange = new Exchange(backpressured);
+        RecordingSubscriber subscriber = exchange.subscribe();
+        subscriber.cancelOnErrorResponseHead = true;
+        subscriber.subscription.request(1);
+
+        exchange.respond(404);
+
+        HttpErrorResponseReceived head = (HttpErrorResponseReceived) subscriber.events.get(0);
+        assertThat(head.statusCode()).isEqualTo(404);
+        assertThat(head.headers()).containsEntry("Content-Type", List.of("text/event-stream"));
+        assertThat(exchange.body.requests).isEmpty();
+        assertThat(exchange.body.cancelled).isTrue();
+        assertThat(subscriber.signals).containsExactly("next");
     }
 
     @Test
@@ -463,6 +483,7 @@ class JdkHttpClientBackpressureTest {
         private Flow.Subscription subscription;
         private Throwable failure;
         private boolean completed;
+        private boolean cancelOnErrorResponseHead;
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
@@ -473,6 +494,9 @@ class JdkHttpClientBackpressureTest {
         public void onNext(HttpStreamingEvent item) {
             events.add(item);
             signals.add("next");
+            if (cancelOnErrorResponseHead && item instanceof HttpErrorResponseReceived) {
+                subscription.cancel();
+            }
         }
 
         @Override

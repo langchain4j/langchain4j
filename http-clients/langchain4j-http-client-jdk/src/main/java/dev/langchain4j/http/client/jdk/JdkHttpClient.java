@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -338,6 +339,11 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
                                 return;
                             }
                             if (!isSuccessful(jdkResponse)) {
+                                if (tube.outstandingRequests() > 0) {
+                                    tube.send(new HttpErrorResponseReceived(
+                                            jdkResponse.statusCode(),
+                                            jdkResponse.headers().map()));
+                                }
                                 if (!bodySubscribed.compareAndSet(false, true)) {
                                     return;
                                 }

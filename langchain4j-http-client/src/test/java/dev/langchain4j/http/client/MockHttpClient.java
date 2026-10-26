@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -234,6 +235,13 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
                     .statusCode(status)
                     .headers(headers)
                     .build()));
+        }
+
+        /**
+         * Delivers the head of an error response, before its body, like {@link HttpErrorResponseReceived} describes.
+         */
+        public void errorHead(int status) {
+            subscriber.onNext(new HttpErrorResponseReceived(status, Map.of()));
         }
 
         /**
