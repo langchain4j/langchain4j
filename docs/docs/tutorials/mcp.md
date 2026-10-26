@@ -122,9 +122,9 @@ Things to know when you use your own HTTP client:
   builder, call `.streamingBackpressure(true)` on it to get the same behavior. Other clients buffer
   a limited number of events and fail the response when the buffer is full.
 - **Error responses:** when the server answers with an error status, for example `404` for an expired
-  session, the JDK client reports it as soon as the response headers arrive. The transport then fails
-  the request, or starts a new session, right away. OkHttp and Apache report the error only after
-  they have read the whole response body.
+  session, the JDK, OkHttp and Apache clients report it as soon as the response headers arrive. The
+  transport then fails the request, or starts a new session, right away. Other clients may report the
+  error only after they have read the whole response body.
 
 Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
 closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client

@@ -9,6 +9,7 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -163,21 +165,32 @@ public class OkHttpClient implements HttpClient {
                         tube.complete();
                     }
                 }
+            }, (statusCode, headers) -> {
+                if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                    tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                }
             });
             // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
             // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
             // first event - also aborts a cancel that arrives before the first event.
             tube.whenTerminates(call::cancel);
+            // Tube does not replay termination to an action registered after it.
+            if (tube.cancelled()) {
+                call.cancel();
+            }
         });
     }
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        enqueueServerSentEvents(request, parser, listener);
+        enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
     }
 
     private Call enqueueServerSentEvents(
-            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+            HttpRequest request,
+            ServerSentEventParser parser,
+            ServerSentEventListener listener,
+            BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead) {
         Request okRequest = toOkHttpRequest(request);
         Call call = client.newCall(okRequest);
         call.enqueue(new Callback() {
@@ -185,6 +198,8 @@ public class OkHttpClient implements HttpClient {
             public void onResponse(Call call, Response response) {
                 try (response) {
                     if (!response.isSuccessful()) {
+                        ignoringExceptions(() -> onErrorResponseHead.accept(
+                                response.code(), response.headers().toMultimap()));
                         HttpException exception = new HttpException(response.code(), readBody(response));
                         ignoringExceptions(() -> listener.onError(exception));
                         return;

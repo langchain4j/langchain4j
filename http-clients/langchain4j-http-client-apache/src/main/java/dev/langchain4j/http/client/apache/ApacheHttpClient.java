@@ -9,6 +9,7 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
+import java.util.function.BiConsumer;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -244,9 +246,17 @@ public class ApacheHttpClient implements HttpClient {
             };
             java.util.concurrent.Future<Void> future = asyncClient().execute(
                     SimpleRequestProducer.create(toSimpleApacheRequest(request)),
-                    new SseResponseConsumer(parser, listener),
+                    new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
+                        if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                            tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                        }
+                    }),
                     null);
             tube.whenTerminates(() -> future.cancel(true));
+            // Tube does not replay termination to an action registered after it.
+            if (tube.cancelled()) {
+                future.cancel(true);
+            }
         });
     }
 
@@ -260,15 +270,20 @@ public class ApacheHttpClient implements HttpClient {
 
         private final ServerSentEventParser parser;
         private final ServerSentEventListener listener;
+        private final BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead;
 
         private ServerSentEventParser.Incremental incremental;
         private FutureCallback<Void> resultCallback;
         private int errorStatus;
         private ByteArrayOutputStream errorBody;
 
-        SseResponseConsumer(ServerSentEventParser parser, ServerSentEventListener listener) {
+        SseResponseConsumer(
+                ServerSentEventParser parser,
+                ServerSentEventListener listener,
+                BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead) {
             this.parser = parser;
             this.listener = listener;
+            this.onErrorResponseHead = onErrorResponseHead;
         }
 
         @Override
@@ -290,6 +305,7 @@ public class ApacheHttpClient implements HttpClient {
             } else {
                 errorStatus = status;
                 errorBody = new ByteArrayOutputStream();
+                ignoringExceptions(() -> onErrorResponseHead.accept(status, headersFrom(response)));
                 if (entityDetails == null) {
                     finishError();
                 }
@@ -355,15 +371,19 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     private static SuccessfulHttpResponse successfulResponseFrom(HttpResponse response, byte[] body) {
+        return SuccessfulHttpResponse.builder()
+                .statusCode(response.getCode())
+                .headers(headersFrom(response))
+                .body(body)
+                .build();
+    }
+
+    private static Map<String, List<String>> headersFrom(HttpResponse response) {
         Map<String, List<String>> headers = new HashMap<>();
         for (Header header : response.getHeaders()) {
             headers.computeIfAbsent(header.getName(), k -> new ArrayList<>()).add(header.getValue());
         }
-        return SuccessfulHttpResponse.builder()
-                .statusCode(response.getCode())
-                .headers(headers)
-                .body(body)
-                .build();
+        return headers;
     }
 
     @Override

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.apache.ApacheHttpClient;
+import dev.langchain4j.http.client.okhttp.OkHttpClient;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
@@ -13,6 +15,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class StreamableHttpMcpTransportStatusCodeTest {
 
@@ -39,11 +43,25 @@ class StreamableHttpMcpTransportStatusCodeTest {
     private final CountDownLatch errorHeadersSent = new CountDownLatch(1);
     private final CountDownLatch errorBodyReleased = new CountDownLatch(1);
 
-    private void startServer(int toolsListStatus) throws IOException {
-        startServer(toolsListStatus, false);
+    enum Backend {
+        JDK,
+        OKHTTP,
+        APACHE;
+
+        StreamableHttpMcpTransport.Builder configure(StreamableHttpMcpTransport.Builder builder) {
+            return switch (this) {
+                case JDK -> builder.setHttpVersion1_1();
+                case OKHTTP -> builder.httpClientBuilder(OkHttpClient.builder().readTimeout(Duration.ZERO));
+                case APACHE -> builder.httpClientBuilder(ApacheHttpClient.builder());
+            };
+        }
     }
 
-    private void startServer(int toolsListStatus, boolean holdErrorBody) throws IOException {
+    private void startServer(int toolsListStatus) throws IOException {
+        startServer(toolsListStatus, false, Backend.JDK);
+    }
+
+    private void startServer(int toolsListStatus, boolean holdErrorBody, Backend backend) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.setExecutor(serverExecutor);
         server.createContext("/mcp", exchange -> {
@@ -63,9 +81,8 @@ class StreamableHttpMcpTransportStatusCodeTest {
             }
         });
         server.start();
-        transport = StreamableHttpMcpTransport.builder()
-                .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
-                .setHttpVersion1_1()
+        transport = backend.configure(StreamableHttpMcpTransport.builder()
+                        .url("http://localhost:" + server.getAddress().getPort() + "/mcp"))
                 .build();
         transport.start(new McpOperationHandler(
                 new ConcurrentHashMap<>(),
@@ -125,9 +142,9 @@ class StreamableHttpMcpTransportStatusCodeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {401, 503})
-    void error_status_fails_before_the_response_body_is_complete(int status) throws Exception {
-        startServer(status, true);
+    @CsvSource({"401, JDK", "503, JDK", "503, OKHTTP", "503, APACHE"})
+    void error_status_fails_before_the_response_body_is_complete(int status, Backend backend) throws Exception {
+        startServer(status, true, backend);
 
         transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
@@ -137,9 +154,10 @@ class StreamableHttpMcpTransportStatusCodeTest {
         assertThat(errorBodyReleased.getCount()).isEqualTo(1);
     }
 
-    @Test
-    void expired_session_is_reinitialized_before_the_response_body_is_complete() throws Exception {
-        startServer(404, true);
+    @ParameterizedTest
+    @EnumSource(Backend.class)
+    void expired_session_is_reinitialized_before_the_response_body_is_complete(Backend backend) throws Exception {
+        startServer(404, true, backend);
 
         transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
