@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client.transport;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
@@ -24,9 +23,6 @@ import org.slf4j.LoggerFactory;
  * <p>A transport calls {@link #onMessage(String)} for every message it receives, and
  * {@link #expectResponse(Long, java.util.concurrent.CompletableFuture)} before sending a request,
  * to register the id whose response it is waiting for.
- *
- * <p>The {@code handle} and {@code startOperation} methods do the same through Jackson's
- * {@code JsonNode} and are deprecated.
  */
 public class McpOperationHandler {
 
@@ -72,16 +68,6 @@ public class McpOperationHandler {
         this.onServerRootsList = onServerRootsList;
         this.onServerCancelled = onServerCancelled;
         this.onSubscriptionAcknowledged = onSubscriptionAcknowledged;
-    }
-
-    /**
-     * Handles an inbound message from the server.
-     *
-     * @deprecated use {@link #onMessage(String)} instead, which does not expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public void handle(JsonNode message) {
-        onMessage(McpJson.serialize(message));
     }
 
     /**
@@ -291,29 +277,6 @@ public class McpOperationHandler {
     private static Map<String, Object> params(Map<String, Object> message) {
         Object params = message.get("params");
         return params instanceof Map ? (Map<String, Object>) params : null;
-    }
-
-    /**
-     * Registers a client-initiated request whose response is awaited.
-     *
-     * @deprecated use {@link #expectResponse(Long, CompletableFuture)} instead, which does not
-     * expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public void startOperation(Long id, CompletableFuture<JsonNode> future) {
-        CompletableFuture<String> jsonFuture = new CompletableFuture<>();
-        jsonFuture.whenComplete((json, error) -> {
-            if (error != null) {
-                future.completeExceptionally(error);
-                return;
-            }
-            try {
-                future.complete(McpJson.parse(json));
-            } catch (RuntimeException e) {
-                future.completeExceptionally(e);
-            }
-        });
-        expectResponse(id, jsonFuture);
     }
 
     /**
