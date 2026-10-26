@@ -2,15 +2,40 @@ package dev.langchain4j.http.client.jdk;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
-
 import java.time.Duration;
 
 public class JdkHttpClientBuilder implements HttpClientBuilder {
 
+    private java.net.http.HttpClient httpClient;
     private java.net.http.HttpClient.Builder httpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
     private Integer streamingBufferSize;
+
+    /**
+     * @return the caller-supplied JDK HTTP client, or {@code null} if one was not supplied.
+     * @since 1.23.0
+     */
+    public java.net.http.HttpClient httpClient() {
+        return httpClient;
+    }
+
+    /**
+     * Sets an existing JDK {@link java.net.http.HttpClient} to use as the delegate.
+     * <p>
+     * When set, the supplied client is used as-is: {@link #httpClientBuilder()} and
+     * {@link #connectTimeout(Duration)} are ignored, while {@link #readTimeout(Duration)} and
+     * {@link #streamingBufferSize(Integer)} still apply per {@link JdkHttpClient} instance.
+     * The client keeps the HTTP version configured on it, including for plain {@code http://} URLs.
+     *
+     * @param httpClient the JDK HTTP client to use
+     * @return this builder
+     * @since 1.23.0
+     */
+    public JdkHttpClientBuilder httpClient(java.net.http.HttpClient httpClient) {
+        this.httpClient = httpClient;
+        return this;
+    }
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;

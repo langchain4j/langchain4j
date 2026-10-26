@@ -6,15 +6,18 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
@@ -30,8 +33,8 @@ class JdkHttpClientHttpVersionTest {
     @BeforeEach
     void beforeEach() {
         // HTTP/2 over plain HTTP disabled, so the server neither accepts the h2c upgrade nor hides its headers
-        wireMockServer = new WireMockServer(
-                WireMockConfiguration.options().dynamicPort().http2PlainDisabled(true));
+        wireMockServer =
+                new WireMockServer(WireMockConfiguration.options().dynamicPort().http2PlainDisabled(true));
         wireMockServer.start();
         wireMockServer.stubFor(WireMock.post("/endpoint")
                 .willReturn(WireMock.aResponse()
@@ -158,8 +161,8 @@ class JdkHttpClientHttpVersionTest {
 
         // given
         JdkHttpClient client = JdkHttpClient.builder()
-                .httpClientBuilder(java.net.http.HttpClient.newBuilder()
-                        .version(java.net.http.HttpClient.Version.HTTP_2))
+                .httpClientBuilder(
+                        java.net.http.HttpClient.newBuilder().version(java.net.http.HttpClient.Version.HTTP_2))
                 .build();
 
         // when
@@ -167,6 +170,57 @@ class JdkHttpClientHttpVersionTest {
 
         // then
         wireMockServer.verify(postRequestedFor(urlEqualTo("/endpoint")).withHeader("Upgrade", equalTo("h2c")));
+    }
+
+    @Test
+    void should_use_supplied_http_client() {
+
+        // given
+        JdkHttpClient client = JdkHttpClient.builder()
+                .httpClient(java.net.http.HttpClient.newBuilder().build())
+                .build();
+
+        // when
+        client.execute(request());
+
+        // then
+        wireMockServer.verify(postRequestedFor(urlEqualTo("/endpoint")).withHeader("Upgrade", equalTo("h2c")));
+    }
+
+    @Test
+    void should_prefer_supplied_http_client_over_http_client_builder() {
+
+        // given
+        JdkHttpClient client = JdkHttpClient.builder()
+                .httpClientBuilder(
+                        java.net.http.HttpClient.newBuilder().version(java.net.http.HttpClient.Version.HTTP_1_1))
+                .httpClient(java.net.http.HttpClient.newBuilder().build())
+                .build();
+
+        // when
+        client.execute(request());
+
+        // then
+        wireMockServer.verify(postRequestedFor(urlEqualTo("/endpoint")).withHeader("Upgrade", equalTo("h2c")));
+    }
+
+    @Test
+    void should_apply_read_timeout_to_supplied_http_client() {
+
+        // given
+        wireMockServer.stubFor(WireMock.post("/slow")
+                .willReturn(WireMock.aResponse().withStatus(200).withFixedDelay(1_000)));
+        JdkHttpClient client = JdkHttpClient.builder()
+                .httpClient(java.net.http.HttpClient.newBuilder()
+                        .version(java.net.http.HttpClient.Version.HTTP_1_1)
+                        .build())
+                .readTimeout(Duration.ofMillis(100))
+                .build();
+
+        // when
+        // then
+        assertThatThrownBy(() -> client.execute(request("http://localhost:" + wireMockServer.port() + "/slow")))
+                .isInstanceOf(TimeoutException.class);
     }
 
     private HttpRequest request() {
