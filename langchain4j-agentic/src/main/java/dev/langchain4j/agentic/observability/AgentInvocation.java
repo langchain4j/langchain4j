@@ -124,9 +124,11 @@ public class AgentInvocation {
     }
 
     /**
-     * Returns the name of the model that answered the last LLM call of this invocation, as reported by the provider
+     * Returns the name of the model that answered the LLM calls of this invocation, as reported by the provider
      * in the response metadata. It is empty if the agent didn't call any LLM, like a workflow or a non-AI agent,
-     * if it was skipped, or if the provider didn't report the model name.
+     * if it was skipped, if the provider didn't report the model name, or if the LLM calls of this invocation
+     * (for example, the calls of a tool loop) were answered by different models, since {@link #tokenUsage()}
+     * is the total of all those calls.
      */
     public Optional<String> modelName() {
         if (!done()) {

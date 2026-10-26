@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -122,6 +123,52 @@ class AgentTokenUsageTest {
         AgentInvocation invocation = nestedInvocations(monitor).get(0);
         assertThat(invocation.tokenUsage()).contains(new TokenUsage(130, 25));
         assertThat(invocation.totalTokenCount()).isEqualTo(155);
+    }
+
+    private static Assistant assistantWithToolUsingModels(String toolCallingModel, String answeringModel) {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("time")
+                                .arguments("{}")
+                                .build()),
+                        AiMessage.from("It is noon"))
+                .withModelNames(toolCallingModel, answeringModel)
+                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        return AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(model)
+                .tools(new Clock())
+                .build();
+    }
+
+    @Test
+    void agent_whose_model_calls_used_different_models_does_not_attribute_its_total_tokens_to_one_model() {
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistantWithToolUsingModels("tool-calling-model", "answering-model"))
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        AgentInvocation invocation = nestedInvocations(monitor).get(0);
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(130, 25));
+        assertThat(invocation.modelName()).isEmpty();
+    }
+
+    @Test
+    void agent_whose_model_calls_used_the_same_model_reports_that_model_with_its_total_tokens() {
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistantWithToolUsingModels("answering-model", "answering-model"))
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        AgentInvocation invocation = nestedInvocations(monitor).get(0);
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(130, 25));
+        assertThat(invocation.modelName()).contains("answering-model");
     }
 
     @Test
