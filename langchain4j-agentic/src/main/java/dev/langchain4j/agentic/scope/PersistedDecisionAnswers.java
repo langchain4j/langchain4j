@@ -36,14 +36,23 @@ public final class PersistedDecisionAnswers {
      * Whether the given value is an object with fields of the answer types, inherited ones included, like the record
      * a decision agent returns to answer several questions in one call. Its fields cannot be converted in place, so
      * such a value is not persisted, like a {@code DecisionResult}: the records of a recoverable system should have
-     * {@code boolean} and enum fields instead.
+     * {@code boolean} and enum fields instead. The check runs on every agent output and on every state entry read by
+     * an untyped agent or persisted, so its result is computed once per class.
      */
     public static boolean isCompositeAnswer(Object value) {
-        if (value == null) {
-            return false;
+        return value != null && COMPOSITE_ANSWER_TYPES.get(value.getClass());
+    }
+
+    private static final ClassValue<Boolean> COMPOSITE_ANSWER_TYPES = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            return hasAnswerField(type);
         }
+    };
+
+    private static boolean hasAnswerField(Class<?> valueType) {
         // the same fields DecisionMethod fills when it builds the answer
-        for (Class<?> type = value.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
+        for (Class<?> type = valueType; type != null && type != Object.class; type = type.getSuperclass()) {
             for (Field field : type.getDeclaredFields()) {
                 int modifiers = field.getModifiers();
                 if (!Modifier.isStatic(modifiers)
