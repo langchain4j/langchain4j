@@ -27,6 +27,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     static final GoogleGenAiChatModel GOOGLE_GEN_AI_CHAT_MODEL = GoogleGenAiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-3.8-flash")
+            .thinkingBudget(0)
             .build();
 
     @Override
@@ -169,7 +170,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
         assertThat(answer)
                 .contains("Code executed:\n```python\n")
-                .contains("Output:\n```\n1267650600228229401496703205376");
+                .containsPattern("Output:\\n```\\n[^`]*1267650600228229401496703205376");
     }
 
     @Override

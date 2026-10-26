@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -52,6 +53,16 @@ abstract class AbstractAgentInstance implements AgentInstance {
     @Override
     public boolean async() {
         return delegate.async();
+    }
+
+    @Override
+    public boolean optional() {
+        return delegate.optional();
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return delegate.activationCondition();
     }
 
     @Override

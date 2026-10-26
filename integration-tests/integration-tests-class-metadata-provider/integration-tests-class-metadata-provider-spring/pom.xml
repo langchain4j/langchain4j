@@ -30,6 +30,14 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <!-- Imported first so that it wins over the Jackson version managed by the framework BOM below -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>

@@ -5,14 +5,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.DecisionInputType;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -93,7 +100,7 @@ class OpenAiDecisionModelTest {
                             .build())
             .question(
                     "frustration",
-                    ScaleQuestion.of("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
+                    ScaleQuestion.from("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
             .build();
 
     @Test
@@ -184,6 +191,79 @@ class OpenAiDecisionModelTest {
                 .containsEntry("a", "1")
                 .containsEntry("b", "2")
                 .containsEntry("model", "other-model");
+    }
+
+    @Test
+    void should_send_prompt_cache_key_set_on_builder_and_replace_it_per_request() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = OpenAiDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("gpt-6-luna")
+                .promptCacheKey("builder-key")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+        model.decide(REQUEST.toBuilder()
+                .parameters(OpenAiDecisionRequestParameters.builder()
+                        .promptCacheKey("request-key")
+                        .build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .build());
+        model.decideAsync(REQUEST).join();
+
+        // then
+        assertThat(model.defaultRequestParameters().promptCacheKey()).isEqualTo("builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(0).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(1).body(), Map.class))
+                .containsEntry("prompt_cache_key", "request-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(2).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key")
+                .containsEntry("model", "other-model");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(3).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+    }
+
+    @Test
+    void should_not_send_prompt_cache_key_by_default() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+
+        // when
+        model(httpClient).decide(REQUEST);
+
+        // then
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(0).body(), Map.class))
+                .doesNotContainKey("prompt_cache_key");
+    }
+
+    @Test
+    void should_replace_prompt_cache_key_with_custom_parameter_of_the_same_name() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = OpenAiDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("gpt-6-luna")
+                .promptCacheKey("typed-key")
+                .customParameters(Map.of("prompt_cache_key", "custom-key"))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        String body = httpClient.requests().get(0).body();
+        assertThat(OBJECT_MAPPER.readValue(body, Map.class)).containsEntry("prompt_cache_key", "custom-key");
+        assertThat(body).containsOnlyOnce("\"prompt_cache_key\"");
     }
 
     @Test
@@ -299,8 +379,8 @@ class OpenAiDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(Map.of("ticket", "My payouts are failing"))
-                        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                        .inputFields(Map.of("ticket", "My payouts are failing"))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                         .build());
 
         // then
@@ -328,10 +408,10 @@ class OpenAiDecisionModelTest {
         // when
         DecisionResponse response = model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(List.of(
+                        .inputContents(List.of(
                                 TextContent.from("The package arrived like this."),
                                 ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.HIGH)))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -367,8 +447,8 @@ class OpenAiDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(input)
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .inputFields(input)
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -401,8 +481,8 @@ class OpenAiDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(Map.of("photos", List.of(front, back)))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .inputFields(Map.of("photos", List.of(front, back)))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -417,8 +497,8 @@ class OpenAiDecisionModelTest {
                         """));
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
-                                .input(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
-                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                                .inputFields(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
+                                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("PDF");
@@ -437,8 +517,8 @@ class OpenAiDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(List.of(ImageContent.from("https://example.com/package.png")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .inputContents(List.of(ImageContent.from("https://example.com/package.png")))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -447,6 +527,178 @@ class OpenAiDecisionModelTest {
                         """
                         [{"type": "input_image", "image_url": "https://example.com/package.png", "detail": "low"}]
                         """));
+    }
+
+    @Test
+    void should_send_conversation_as_transcript() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "resolved", "probability": 0.9}]}
+                """));
+        ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
+                .id("call_1")
+                .name("getOrder")
+                .arguments("{\"id\":42}")
+                .build();
+        ToolExecutionRequest getCustomer = ToolExecutionRequest.builder()
+                .id("call_2")
+                .name("getCustomer")
+                .build();
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .inputMessages(
+                                SystemMessage.from("You are a billing support agent."),
+                                UserMessage.from("Anna", "Where is my order 42?"),
+                                AiMessage.builder()
+                                        .text("Let me check.")
+                                        .thinking("The user mentions order 42.")
+                                        .toolExecutionRequests(List.of(getOrder, getCustomer))
+                                        .build(),
+                                ToolExecutionResultMessage.from(getOrder, "{\"status\":\"shipped\"}"),
+                                ToolExecutionResultMessage.builder()
+                                        .id("call_2")
+                                        .toolName("getCustomer")
+                                        .text("timeout")
+                                        .isError(true)
+                                        .build(),
+                                AiMessage.from("Your order has shipped."))
+                        .question("resolved", YesNoQuestion.from("Did the assistant answer the question?"))
+                        .build());
+
+        // then
+        JsonNode input = OBJECT_MAPPER.readTree(httpClient.request().body()).get("input");
+        assertThat(input).hasSize(1);
+        assertThat(input.get(0).get("role").asText()).isEqualTo("user");
+        JsonNode content = input.get(0).get("content");
+        assertThat(content).hasSize(1);
+        String text = content.get(0).get("text").asText();
+        assertThat(text).startsWith("messages: ");
+        assertThat(OBJECT_MAPPER.readTree(text.substring("messages: ".length())))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [
+                          {"role": "system", "text": "You are a billing support agent."},
+                          {"role": "user", "name": "Anna", "text": "Where is my order 42?"},
+                          {
+                            "role": "assistant",
+                            "text": "Let me check.",
+                            "tool_calls": [
+                              {"id": "call_1", "name": "getOrder", "arguments": "{\\"id\\":42}"},
+                              {"id": "call_2", "name": "getCustomer"}
+                            ]
+                          },
+                          {"role": "tool", "tool_call_id": "call_1", "name": "getOrder", "text": "{\\"status\\":\\"shipped\\"}"},
+                          {"role": "tool", "tool_call_id": "call_2", "name": "getCustomer", "text": "timeout", "is_error": true},
+                          {"role": "assistant", "text": "Your order has shipped."}
+                        ]
+                        """));
+    }
+
+    @Test
+    void should_send_images_of_conversation_after_transcript() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "resolved", "probability": 0.9}]}
+                """));
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .inputMessages(UserMessage.from(TextContent.from("It arrived like this:"), photo))
+                        .question("resolved", YesNoQuestion.from("Is the item damaged?"))
+                        .build());
+
+        // then
+        JsonNode content = OBJECT_MAPPER.readTree(httpClient.request().body()).get("input").get(0).get("content");
+        assertThat(content).hasSize(3);
+        assertThat(OBJECT_MAPPER.readTree(content.get(0).get("text").asText().substring("messages: ".length())))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{"role": "user", "text": "It arrived like this:\\n[image 1]"}]
+                        """));
+        assertThat(content.get(1)).isEqualTo(OBJECT_MAPPER.readTree(
+                """
+                {"type": "input_text", "text": "[image 1]:"}
+                """));
+        assertThat(content.get(2).get("type").asText()).isEqualTo("input_image");
+        assertThat(content.get(2).get("image_url").asText()).isEqualTo("data:image/png;base64,iVBORw0KGgo=");
+    }
+
+    @Test
+    void should_reject_conversation_with_nothing_to_send_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputMessages(List.of(AiMessage.builder().thinking("The user did not write anything.").build()))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The conversation has nothing to send: AiMessages without text and tool execution "
+                        + "requests are skipped");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_custom_input_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageStartingWith("The OpenAI Decisions API does not support ");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_unsupported_messages_and_contents_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient)
+                        .decide(DecisionRequest.builder()
+                                .inputMessages(List.of(UserMessage.from("Hi"), CustomMessage.from(Map.of("key", "value"))))
+                                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                                .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
+                        + "messages: SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
+        assertThat(model(httpClient)
+                        .decideAsync(DecisionRequest.builder()
+                                .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
+                                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                                .build()))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class)
+                .withMessageContaining("The OpenAI Decisions API supports only text and images in a conversation, but it contains PDF");
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
@@ -543,7 +795,7 @@ class OpenAiDecisionModelTest {
                 ok("{\"model\": \"gpt-6-luna\", \"answers\": [" + answers + "]}"));
         DecisionRequest request = DecisionRequest.builder()
                 .input("Help!")
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -563,7 +815,7 @@ class OpenAiDecisionModelTest {
                 """.formatted(level)));
         DecisionRequest request = DecisionRequest.builder()
                 .input("Help!")
-                .question("frustration", ScaleQuestion.of("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
+                .question("frustration", ScaleQuestion.from("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
                 .build();
 
         // when-then
@@ -581,8 +833,8 @@ class OpenAiDecisionModelTest {
         // when-then
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
-                                .input(List.of(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)))
-                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                                .inputContents(List.of(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)))
+                                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining(detailLevel.name());

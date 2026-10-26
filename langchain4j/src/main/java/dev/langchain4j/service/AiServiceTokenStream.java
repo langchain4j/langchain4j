@@ -8,6 +8,8 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -23,6 +25,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -30,7 +33,9 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -50,6 +55,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final AtomicBoolean startedBefore = new AtomicBoolean();
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -202,22 +208,37 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
-        validateConfiguration();
+        boolean startedAgain = startedBefore.getAndSet(true);
+        InvocationContext runContext = startedAgain ? newRunContext() : invocationContext;
+        try {
+            if (startedAgain) {
+                fireStartedEvent(runContext);
+            }
+            validateConfiguration();
+            start(runContext);
+        } catch (VirtualMachineError e) {
+            throw e;
+        } catch (Throwable t) {
+            TerminalEvents.fireError(context.eventListenerRegistrar, runContext, t);
+            throw t;
+        }
+    }
 
+    private void start(InvocationContext runContext) {
         List<ToolSpecification> effectiveTools =
                 toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
 
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
-                        .parameters(chatRequestParameters(invocationContext.methodArguments(), effectiveTools))
+                        .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
                         .build(),
-                invocationContext.chatMemoryId());
+                runContext.chatMemoryId());
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
-                .invocationContext(invocationContext)
+                .invocationContext(runContext)
                 .eventListenerRegistrar(context.eventListenerRegistrar)
                 .build();
 
@@ -225,7 +246,7 @@ public class AiServiceTokenStream implements TokenStream {
                 chatRequest,
                 chatExecutor,
                 context,
-                invocationContext,
+                runContext,
                 partialResponseHandler,
                 partialResponseWithContextHandler,
                 partialThinkingHandler,
@@ -246,7 +267,7 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 completeResponseProcessingExecutor,
-                commonGuardrailParams,
+                guardrailParams(runContext),
                 methodKey);
 
         if (contentsHandler != null && retrievedContents != null) {
@@ -254,11 +275,41 @@ public class AiServiceTokenStream implements TokenStream {
         }
 
         context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
-                .invocationContext(invocationContext)
+                .invocationContext(runContext)
                 .request(chatRequest)
                 .build());
 
         context.streamingChatModel.chat(chatRequest, handler);
+    }
+
+    private GuardrailRequestParams guardrailParams(InvocationContext runContext) {
+        if (commonGuardrailParams == null || runContext == invocationContext) {
+            return commonGuardrailParams;
+        }
+        return commonGuardrailParams.toBuilder().invocationContext(runContext).build();
+    }
+
+    private InvocationContext newRunContext() {
+        return invocationContext.toBuilder()
+                .invocationId(UUID.randomUUID())
+                .timestampNow()
+                .build();
+    }
+
+    private void fireStartedEvent(InvocationContext runContext) {
+        UserMessage userMessage = invocationContext.originalUserMessage() != null
+                ? invocationContext.originalUserMessage()
+                : UserMessage.findLast(messages).orElse(null);
+        if (userMessage == null) {
+            return;
+        }
+        SystemMessage systemMessage =
+                !messages.isEmpty() && messages.get(0) instanceof SystemMessage message ? message : null;
+        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                .invocationContext(runContext)
+                .systemMessage(systemMessage)
+                .userMessage(userMessage)
+                .build());
     }
 
     private void validateConfiguration() {

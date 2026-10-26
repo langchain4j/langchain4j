@@ -44,7 +44,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);
@@ -87,7 +87,9 @@ In the TypeSafe documentation, yes/no questions are called "noul" questions, sca
 questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
 sent as an object with a `label` and a `description`.
 The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
-without calling the API.
+without calling the API. A conversation (`inputMessages(...)`) is sent as a
+[transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`; images in it throw an
+`UnsupportedFeatureException`.
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not

@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -11,6 +12,10 @@ import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -23,6 +28,7 @@ import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.DecisionInputType;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -77,7 +83,7 @@ class OllamaDecisionModelTest {
             """;
 
     private static final DecisionRequest REQUEST = DecisionRequest.builder()
-            .input(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
+            .inputFields(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
             .question(
                     "team",
                     ChoiceQuestion.builder()
@@ -350,7 +356,7 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(List.of(
+                        .inputContents(List.of(
                                 TextContent.from("The customer sent two photos of the delivered phone."),
                                 ImageContent.from("Zmlyc3Q=", "image/png"),
                                 ImageContent.from("c2Vjb25k", "image/jpeg")))
@@ -376,7 +382,7 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(Map.of(
+                        .inputFields(Map.of(
                                 "comment", "Broken screen on arrival",
                                 "photo", ImageContent.from("cGhvdG8=", "image/webp")))
                         .question(
@@ -415,6 +421,74 @@ class OllamaDecisionModelTest {
     }
 
     @Test
+    void should_reject_custom_input_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageStartingWith("Ollama decision models do not support ");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_unsupported_messages_of_conversation_without_calling_ollama() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient)
+                        .decide(DecisionRequest.builder()
+                                .inputMessages(UserMessage.from("Hi"), CustomMessage.from(Map.of("key", "value")))
+                                .questions(REQUEST.questions())
+                                .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The Ollama decision model does not support CustomMessage in a conversation. Supported messages: "
+                        + "SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_send_conversation_as_transcript_in_state() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png");
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .inputMessages(
+                                SystemMessage.from("You are a support agent."),
+                                UserMessage.from(TextContent.from("It arrived like this:"), photo),
+                                AiMessage.from("I am sorry to hear that."))
+                        .questions(REQUEST.questions())
+                        .build());
+
+        // then
+        Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
+        assertThat(body.get("state"))
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "system", "text", "You are a support agent."),
+                                Map.of("role", "user", "text", "It arrived like this:\n[image 1]"),
+                                Map.of("role", "assistant", "text", "I am sorry to hear that."))));
+        assertThat(body.get("images")).isEqualTo(List.of("iVBORw0KGgo="));
+    }
+
+    @Test
     void should_reject_audio_input_without_calling_ollama() {
 
         // given
@@ -423,7 +497,7 @@ class OllamaDecisionModelTest {
         // when-then
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
-                                .input(List.of(AudioContent.from("YXVkaW8=", "audio/wav")))
+                                .inputContents(List.of(AudioContent.from("YXVkaW8=", "audio/wav")))
                                 .question("spam", YesNoQuestion.builder().text("Is this spam?").build())
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
@@ -511,8 +585,8 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(input)
-                        .question("same", YesNoQuestion.of("Do the photos show the same phone?"))
+                        .inputFields(input)
+                        .question("same", YesNoQuestion.from("Do the photos show the same phone?"))
                         .build());
 
         // then
@@ -541,8 +615,8 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .input(List.of(ImageContent.from(image.toUri())))
-                        .question("damaged", YesNoQuestion.of("Is the phone damaged?"))
+                        .inputContents(List.of(ImageContent.from(image.toUri())))
+                        .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
                         .build());
 
         // then

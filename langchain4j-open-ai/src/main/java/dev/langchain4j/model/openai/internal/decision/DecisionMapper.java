@@ -5,16 +5,24 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -49,43 +57,80 @@ public final class DecisionMapper {
         openAiRequest.input = toInput(request.input());
         openAiRequest.questions = new ArrayList<>();
         request.questions().forEach((name, question) -> openAiRequest.questions.add(toQuestion(name, question)));
-        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters
-                && !isNullOrEmpty(parameters.customParameters())) {
+        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters) {
+            openAiRequest.promptCacheKey = parameters.promptCacheKey();
             Map<String, Object> customParameters = parameters.customParameters();
-            openAiRequest.customParameters = customParameters;
-            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
-            if (customParameters.containsKey("model")) openAiRequest.model = null;
-            if (customParameters.containsKey("input")) openAiRequest.input = null;
-            if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+            if (!isNullOrEmpty(customParameters)) {
+                openAiRequest.customParameters = customParameters;
+                // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+                if (customParameters.containsKey("model")) openAiRequest.model = null;
+                if (customParameters.containsKey("input")) openAiRequest.input = null;
+                if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+                if (customParameters.containsKey("prompt_cache_key")) openAiRequest.promptCacheKey = null;
+            }
         }
         return openAiRequest;
     }
 
-    private static Object toInput(Object input) {
-        if (input instanceof String text) {
-            return text;
+    private static Object toInput(DecisionInput input) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
+            return List.of(message("user", toLabeledParts(fields.fields())));
+        } else if (input instanceof ContentsInput contents) {
+            return List.of(message("user", toInputParts(contents.contents())));
+        } else if (input instanceof MessagesInput messages) {
+            return List.of(message("user", toTranscriptParts(messages.messages())));
         }
+        throw new UnsupportedFeatureException(
+                "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
+    }
+
+    /**
+     * Each field is labeled with its name, contents such as images follow their label.
+     */
+    private static List<DecisionCreateRequest.InputPart> toLabeledParts(Map<String, Object> fields) {
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        fields.forEach((name, value) -> {
+            if (value instanceof Content content) {
+                parts.add(textPart(name + ":"));
+                parts.add(toInputPart(content));
+            } else if (isContents(value)) {
+                parts.add(textPart(name + ":"));
+                ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
+            } else {
+                parts.add(textPart(name + ": " + Json.toJson(value)));
+            }
+        });
+        return parts;
+    }
+
+    /**
+     * The conversation is sent as a JSON transcript, followed by the images it refers to.
+     */
+    private static List<DecisionCreateRequest.InputPart> toTranscriptParts(List<ChatMessage> messages) {
+        Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
+        for (int i = 0; i < transcript.images().size(); i++) {
+            parts.add(textPart("[image " + (i + 1) + "]:"));
+            parts.add(toInputPart(transcript.images().get(i)));
+        }
+        return parts;
+    }
+
+    private static DecisionCreateRequest.InputMessage message(
+            String role, List<DecisionCreateRequest.InputPart> content) {
         DecisionCreateRequest.InputMessage message = new DecisionCreateRequest.InputMessage();
-        message.content = new ArrayList<>();
-        if (input instanceof Map<?, ?> map) {
-            // each value is labeled with its name, contents such as images follow their label
-            map.forEach((name, value) -> {
-                if (value instanceof Content content) {
-                    message.content.add(textPart(name + ":"));
-                    message.content.add(toInputPart(content));
-                } else if (isContents(value)) {
-                    message.content.add(textPart(name + ":"));
-                    ((List<?>) value).forEach(content -> message.content.add(toInputPart((Content) content)));
-                } else {
-                    message.content.add(textPart(name + ": " + Json.toJson(value)));
-                }
-            });
-            return List.of(message);
-        }
-        for (Object content : (List<?>) input) {
-            message.content.add(toInputPart((Content) content));
-        }
-        return List.of(message);
+        message.role = role;
+        message.content = content;
+        return message;
+    }
+
+    private static List<DecisionCreateRequest.InputPart> toInputParts(List<Content> contents) {
+        List<DecisionCreateRequest.InputPart> parts = new ArrayList<>();
+        contents.forEach(content -> parts.add(toInputPart(content)));
+        return parts;
     }
 
     private static boolean isContents(Object value) {
@@ -204,7 +249,7 @@ public final class DecisionMapper {
             throw new InvalidDecisionResponseException("The answer to question '%s' has no type".formatted(name));
         }
         return switch (answer.type) {
-            case "predicate" -> YesNoAnswer.of(probability(name, answer.probability, "probability"));
+            case "predicate" -> YesNoAnswer.from(probability(name, answer.probability, "probability"));
             case "choice" -> toChoiceAnswer(name, answer);
             case "score" -> toScaleAnswer(name, answer, question);
             case "refusal" -> RefusalAnswer.of();

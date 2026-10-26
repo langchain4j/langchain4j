@@ -5,6 +5,11 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.service.tool.search.ToolSearchStrategy",
+          "justification": "The new optional AgentBuilder configuration exposes ToolSearchStrategy from the existing langchain4j dependency. Existing API signatures are unchanged."
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
           "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."
@@ -159,6 +164,40 @@
           "code": "java.method.addedToInterface",
           "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
           "justification": "Add tool actions compensation at agentic system level for supervisor agents"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method T dev.langchain4j.agentic.planner.AgenticService<T, A>::activationCondition(java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a workflow or planner declare the condition under which it runs as a subagent. AgenticService is a builder interface implemented by AbstractServiceBuilder and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method T dev.langchain4j.agentic.planner.AgenticService<T, A>::activationCondition(java.lang.String, java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a workflow or planner declare the condition, with its description, under which it runs as a subagent. AgenticService is a builder interface implemented by AbstractServiceBuilder and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::activationCondition(java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a supervisor declare the condition under which it runs as a subagent. SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::activationCondition(java.lang.String, java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a supervisor declare the condition, with its description, under which it runs as a subagent. SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.removed",
+          "old": {
+            "matcher": "regex",
+            "match": "parameter void dev\\.langchain4j\\.agentic\\.scope\\.AgentInvocation::<init>\\(.*\\)"
+          },
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "justification": "AgentInvocation gained a 'skipReason' record component, so the five-argument constructor is no longer the canonical one and its parameters lost the @JsonProperty annotations, which moved to the new canonical constructor. The five-argument constructor is kept for compatibility, and a persisted invocation without the 'skipReason' property is still read, as not skipped."
         },
         {
           "code": "java.annotation.added",

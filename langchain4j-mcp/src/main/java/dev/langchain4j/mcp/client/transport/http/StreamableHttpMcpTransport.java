@@ -3,7 +3,6 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
@@ -24,7 +23,6 @@ import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
@@ -160,13 +158,13 @@ public class StreamableHttpMcpTransport implements McpTransport {
         try {
             Initialization captured = new Initialization(operation, captureRequestContext());
             initialization = captured;
-            return initialize(captured);
+            return initializeSession(captured);
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
-    private CompletableFuture<String> initialize(Initialization captured) {
+    private CompletableFuture<String> initializeSession(Initialization captured) {
         CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, captured.request()), false, true, captured.context());
         initializeInProgress.set(completableFuture);
@@ -200,20 +198,20 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 builder.addHeader("MCP-Protocol-Version", protocolVersionHeader);
             }
             // Extract method from JSON-RPC message
-            JsonNode bodyNode = McpJson.parse(body);
-            String method = bodyNode.path("method").asText(null);
+            Map<String, Object> bodyMap = McpJson.toMap(body);
+            String method = text(bodyMap, "method");
             if (method != null) {
                 builder.addHeader("Mcp-Method", method);
             }
             // Extract name for tools/call, resources/read, prompts/get
-            JsonNode params = bodyNode.path("params");
+            Map<?, ?> params = bodyMap.get("params") instanceof Map<?, ?> map ? map : Map.of();
             if ("tools/call".equals(method) || "prompts/get".equals(method)) {
-                String name = params.path("name").asText(null);
+                String name = text(params, "name");
                 if (name != null) {
                     builder.addHeader("Mcp-Name", McpHeaderEncoding.encode(name));
                 }
             } else if ("resources/read".equals(method)) {
-                String uri = params.path("uri").asText(null);
+                String uri = text(params, "uri");
                 if (uri != null) {
                     builder.addHeader("Mcp-Name", McpHeaderEncoding.encode(uri));
                 }
@@ -239,19 +237,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 .build();
     }
 
-    @Override
-    public CompletableFuture<String> sendRequest(McpClientMessage operation) {
-        return sendRequest(new McpCallContext(null, operation));
+    private static String text(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value == null ? null : value.toString();
     }
 
     @Override
     public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, false);
-    }
-
-    @Override
-    public void sendMessage(McpClientMessage operation) {
-        sendMessage(new McpCallContext(null, operation));
     }
 
     @Override
@@ -717,7 +710,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                         future.completeExceptionally(new IllegalStateException("No initialization request available"));
                         return;
                     }
-                    initialize(captured).whenComplete((ignored, initializationError) -> {
+                    initializeSession(captured).whenComplete((ignored, initializationError) -> {
                         if (!future.isDone()) {
                             runInContext(() -> {
                                 if (future.isDone()) {
@@ -1040,53 +1033,4 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
     }
 
-    /**
-     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
-     * expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpJson.map(sendRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpJson.map(sendRequest(context), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        sendMessage(request);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
-        sendMessage(context);
-    }
 }

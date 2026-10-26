@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
@@ -302,6 +303,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             detail(html, "Planner", agent.plannerType().getSimpleName());
         }
         appendLoopInfo(html, agent);
+        appendActivationCondition(html, agent);
         html.append("</div>\n"); // node-details
 
         // Data-flow key badges (colored pills showing what this agent reads/writes)
@@ -357,6 +359,17 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<span class=\"loop-tag\">exit: ").append(esc(truncate(loop.exitCondition(), 40))).append("</span>");
         }
         html.append("<span class=\"loop-tag\">").append(loop.testExitAtLoopEnd() ? "test at end" : "test at start").append("</span>");
+        html.append("</div>\n");
+    }
+
+    private void appendActivationCondition(StringBuilder html, AgentInstance agent) {
+        AgentCondition condition = agent.activationCondition();
+        if (condition == null) {
+            return;
+        }
+        html.append("<div class=\"activation-info\">");
+        html.append("<span class=\"activation-tag\" title=\"").append(esc(condition.description())).append("\">");
+        html.append("if: ").append(esc(truncate(condition.description(), 40))).append("</span>");
         html.append("</div>\n");
     }
 
@@ -494,7 +507,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Model</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             int[] rowCounter = {0};
             appendWfRow(html, top, 0, base, totalMs, rowCounter, -1);
@@ -518,7 +531,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         double leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
         double widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
 
-        html.append("<tr data-row-id=\"").append(myRowId).append("\"");
+        html.append("<tr");
+        if (inv.skipped()) {
+            html.append(" class=\"skipped-row\"");
+        }
+        html.append(" data-row-id=\"").append(myRowId).append("\"");
         if (parentRowId >= 0) {
             html.append(" data-parent-row=\"").append(parentRowId).append("\"");
         }
@@ -536,11 +553,23 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (inv.iterationIndex() >= 0) {
             html.append(" <span class=\"iter-tag\">iter ").append(inv.iterationIndex()).append("</span>");
         }
+        if (inv.skipped()) {
+            html.append(" <span class=\"skip-tag\" title=\"").append(esc(inv.skipReason())).append("\">skipped</span>");
+        }
         html.append("</div></td>");
 
         // Duration column
         html.append("<td class=\"wf-dur\">");
-        html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
+        if (!inv.skipped()) {
+            html.append(inv.done() ? fmtDur(inv.duration()) : "<em>...</em>");
+        }
+        html.append("</td>");
+
+        // Model column
+        html.append("<td class=\"wf-dur\">");
+        if (inv.done()) {
+            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
+        }
         html.append("</td>");
 
         // Tokens column
@@ -550,13 +579,16 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Timeline bar column
+        // Timeline bar column, empty for a skipped agent
         html.append("<td><div class=\"wf-bar-track\">");
-        html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
-                .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
-        html.append(" title=\"").append(esc(ag.name())).append(": ")
-                .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
-        html.append("</div></div></td>");
+        if (!inv.skipped()) {
+            html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
+                    .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
+            html.append(" title=\"").append(esc(ag.name())).append(": ")
+                    .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
+            html.append("</div>");
+        }
+        html.append("</div></td>");
 
         // Input column
         html.append("<td class=\"wf-io\">");
@@ -565,9 +597,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Output column
+        // Output column, with the reason of the skip for a skipped agent
         html.append("<td class=\"wf-io\">");
-        if (inv.done() && inv.output() != null) {
+        if (inv.skipped()) {
+            appendTruncatedWithTooltip(html, inv.skipReason(), 80);
+        } else if (inv.done() && inv.output() != null) {
             appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
         }
         html.append("</td>");
@@ -621,6 +655,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append(fmtDur(dur));
         }
         html.append("</td>");
+
+        // Model column (empty for tools)
+        html.append("<td></td>");
 
         // Tokens column (empty for tools)
         html.append("<td></td>");
@@ -1102,6 +1139,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                                margin-bottom:4px; white-space:nowrap; }
 
             .loop-info { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+            .activation-info { display:flex; margin-top:4px; }
+            .activation-tag { font-size:10px; background:#fef3c7; color:#92400e;
+                              padding:0 6px; border-radius:3px; border:1px solid #fcd34d; white-space:nowrap; }
             .loop-tag { font-size:10px; background:#ede9fe; color:#5b21b6;
                         padding:0 6px; border-radius:3px; border:1px solid #c4b5fd; }
 
@@ -1209,6 +1249,10 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .iter-tag { font-size:9px; background:#ede9fe; color:#5b21b6;
                         padding:0 5px; border-radius:3px; border:1px solid #c4b5fd;
                         font-weight:600; white-space:nowrap; }
+            .skip-tag { font-size:9px; background:var(--bg2); color:var(--fg3);
+                        padding:0 5px; border-radius:3px; border:1px solid var(--brd);
+                        font-weight:600; white-space:nowrap; }
+            .skipped-row { opacity:.65; }
 
             /* ---- Tooltip ---- */
             .tt-trigger { position:relative; cursor:help; }

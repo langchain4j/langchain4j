@@ -61,7 +61,7 @@ import java.util.function.Function;
  * The analysis of one decision service method: the questions it asks, how its parameters become the input, and how
  * the answers are mapped back to its return type.
  * <p>
- * All validation happens in {@link #of(Method)}, so frameworks can detect errors at build time. At runtime, they
+ * All validation happens in {@link #from(Method)}, so frameworks can detect errors at build time. At runtime, they
  * can call {@link #invoke} or {@link #invokeAsync} to implement the method without the proxy created by
  * {@link DecisionServices}.
  */
@@ -141,7 +141,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method) {
+    public static DecisionMethod from(Method method) {
         ensureNotNull(method, "method");
         return new DecisionMethod(method, method.getGenericReturnType());
     }
@@ -153,7 +153,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method, Type returnType) {
+    public static DecisionMethod from(Method method, Type returnType) {
         return new DecisionMethod(ensureNotNull(method, "method"), ensureNotNull(returnType, "returnType"));
     }
 
@@ -186,7 +186,7 @@ public final class DecisionMethod {
      * The classes accessed by reflection when mapping the answers, so that frameworks can register them for native
      * images: the returned object types and their superclasses (their declared fields and constructors are used, and
      * for records their components), and the enums whose constants are the options (their constant fields are read
-     * for {@code @Description}). When {@link #of(Method)} itself runs in a native image, the service interface (its
+     * for {@code @Description}). When {@link #from(Method)} itself runs in a native image, the service interface (its
      * methods, with their parameters and annotations) must be registered as well.
      */
     public Set<Class<?>> reflectiveTypes() {
@@ -224,7 +224,7 @@ public final class DecisionMethod {
                             inputParameters.stream().map(InputParameter::name).toList()));
         }
         return DecisionRequest.builder()
-                .input(input)
+                .inputFields(input)
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
@@ -598,7 +598,7 @@ public final class DecisionMethod {
             }
             Question question;
             if (enumType == null) {
-                question = YesNoQuestion.of(questionText);
+                question = YesNoQuestion.from(questionText);
             } else if (kind == Kind.SCALE) {
                 ScaleQuestion.Builder scale = ScaleQuestion.builder().text(questionText);
                 descriptions(name, enumType).forEach((constantName, description) -> {

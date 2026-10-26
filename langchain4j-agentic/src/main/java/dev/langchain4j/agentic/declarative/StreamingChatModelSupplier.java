@@ -14,7 +14,8 @@ import dev.langchain4j.model.chat.StreamingChatModel;
  * When the method has no parameters, it is invoked once at build time to provide a fixed model.
  * When the method has parameters annotated with {@link dev.langchain4j.service.V @V},
  * they are resolved from the current {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope}
- * at each invocation, enabling dynamic model selection based on runtime state.
+ * at each invocation, enabling dynamic model selection based on runtime state. Parameters resolved through a
+ * {@link SupplierParameterResolver} are resolved each time the method is invoked.
  * <p>
  * Example:
  * <pre>

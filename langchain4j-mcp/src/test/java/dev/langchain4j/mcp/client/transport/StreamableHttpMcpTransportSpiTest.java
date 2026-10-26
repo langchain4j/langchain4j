@@ -120,7 +120,7 @@ class StreamableHttpMcpTransportSpiTest {
         String response = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"name\":\"Příliš 🦙\"}}";
         exchange.body(": heartbeat\r\nevent: message\r\ndata: " + response + "\r\n\r\n");
 
-        assertThat(McpJson.parse(result.get(5, TimeUnit.SECONDS))).isEqualTo(McpJson.parse(response));
+        assertThat(McpJson.toValue(result.get(5, TimeUnit.SECONDS))).isEqualTo(McpJson.toValue(response));
         transport.close();
         assertThat(exchange.isCancelled()).isTrue();
     }
@@ -419,8 +419,7 @@ class StreamableHttpMcpTransportSpiTest {
         StreamExchange tools = null;
         for (int i = 0; i < 2; i++) {
             StreamExchange exchange = httpClient.nextExchange();
-            String method =
-                    McpJson.parse(exchange.request().body()).path("method").asText();
+            Object method = McpJson.toMap(exchange.request().body()).get("method");
             if ("tools/list".equals(method)) {
                 tools = exchange;
             } else {
@@ -478,11 +477,11 @@ class StreamableHttpMcpTransportSpiTest {
         for (int i = 0; i < 3; i++) {
             StreamExchange exchange = httpClient.nextExchange();
             assertThat(exchange.request().headers()).containsEntry("Mcp-Session-Id", List.of("new-session"));
-            var message = McpJson.parse(exchange.request().body());
-            if ("notifications/initialized".equals(message.path("method").asText())) {
+            var message = McpJson.toMap(exchange.request().body());
+            if ("notifications/initialized".equals(message.get("method"))) {
                 exchange.open(202, Map.of());
             } else {
-                long id = message.path("id").asLong();
+                long id = ((Number) message.get("id")).longValue();
                 assertThat(id).isIn(1L, 2L);
                 assertThat(exchange.request().headers())
                         .containsEntry("Authorization", List.of(id == 1L ? "Bearer user-a" : "Bearer user-b"));
@@ -493,7 +492,7 @@ class StreamableHttpMcpTransportSpiTest {
         }
         assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
         assertThat(first.get(5, TimeUnit.SECONDS)).isEqualTo(TOOLS_RESULT);
-        assertThat(McpJson.parse(second.get(5, TimeUnit.SECONDS)).path("id").asLong())
+        assertThat(((Number) McpJson.toMap(second.get(5, TimeUnit.SECONDS)).get("id")).longValue())
                 .isEqualTo(2L);
         assertThat(supplierCalls).hasValue(4);
     }
@@ -512,10 +511,7 @@ class StreamableHttpMcpTransportSpiTest {
 
         for (int i = 0; i < 2; i++) {
             StreamExchange exchange = httpClient.nextExchange();
-            if ("notifications/initialized"
-                    .equals(McpJson.parse(exchange.request().body())
-                            .path("method")
-                            .asText())) {
+            if ("notifications/initialized".equals(McpJson.toMap(exchange.request().body()).get("method"))) {
                 exchange.open(202, Map.of());
             } else {
                 assertThat(exchange.request().headers()).containsEntry("Authorization", List.of("Bearer original"));
@@ -541,7 +537,7 @@ class StreamableHttpMcpTransportSpiTest {
         initialization.body(INITIALIZE_RESULT);
         initialization.complete();
         StreamExchange notification = httpClient.nextExchange();
-        assertThat(McpJson.parse(notification.request().body()).path("method").asText())
+        assertThat(McpJson.toMap(notification.request().body()).get("method"))
                 .isEqualTo("notifications/initialized");
         notification.open(202, Map.of());
         notification.complete();

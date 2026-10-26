@@ -50,7 +50,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);
@@ -109,9 +109,17 @@ decision models, works with every model.
 ## Input
 
 The input can be:
-- text;
-- a `Map` of named values, which is sent as a JSON object;
-- a list of `TextContent`s and `ImageContent`s, whose texts are joined with blank lines.
+- text (`input(...)`);
+- named fields (`inputFields(...)`), which are sent as a JSON object;
+- a list of `TextContent`s and `ImageContent`s (`inputContents(...)`), whose texts are joined with blank lines.
+
+A conversation (`inputMessages(...)`) is sent as a [transcript](/tutorials/decision-models#conversations), as
+`{"messages": [...]}`, with its images sent like the other images. The output guardrail sends the last 50 messages of the conversation by default:
+with Ollama, set `maxMessages(...)` and `maxMessageLength(...)` on it, for example `maxMessages(4)` and
+`maxMessageLength(4000)`, to help keep its requests under the 64 KiB limit. The chat model router, the query router
+and tool filtering send up to 10 messages of up to 2,000 characters each. In all of them, the system message is sent
+in full: with a long system message, or with text in scripts that take several bytes per character, lower these
+limits or leave out messages with `messageFilter(...)`.
 
 The whole input must fit in the context window the model is loaded with (it depends on the model and on the Ollama
 server's configuration): Ollama never truncates it. The request body must also be at most 64 KiB, or 32 MiB with
@@ -129,20 +137,20 @@ DecisionModel decisionModel = OllamaDecisionModel.builder()
         .build();
 
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
 Ollama receives the images separately from the rest of the input, so each image is replaced in the input by its
 position among the images: the input above is sent as
 `The customer says the package arrived like this.` followed by `[image 1]`.
-In a `Map`, an image is replaced the same way, so that its name says what it is:
+In named fields, an image is replaced the same way, so that its name says what it is:
 `Map.of("comment", comment, "photo", ImageContent.from(...))` is sent as
 `{"comment": "...", "photo": "[image 1]"}`. Images are numbered from 1 in the order they appear in the input, across
-all values of the `Map`, so questions can refer to them, for example "Does [image 2] show the same item as
+all fields, so questions can refer to them, for example "Does [image 2] show the same item as
 [image 1]?". This `[image N]` convention comes from LangChain4j, not from Ollama.
 
 Images can be given as base64 data, or by an `http`, `https` or `file` URL, in which case they are downloaded or read

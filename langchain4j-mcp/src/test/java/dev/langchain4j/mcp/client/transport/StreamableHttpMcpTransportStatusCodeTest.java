@@ -48,7 +48,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
         server.setExecutor(serverExecutor);
         server.createContext("/mcp", exchange -> {
             String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            String method = McpJson.parse(body).path("method").asText();
+            String method = (String) McpJson.toMap(body).get("method");
             if ("initialize".equals(method)) {
                 exchange.getResponseHeaders().set("Mcp-Session-Id", "session-1");
                 respond(exchange, 200, INITIALIZE_RESULT);

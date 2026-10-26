@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of the request that will be sent to the supervisor.
+ * It can also declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>

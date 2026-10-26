@@ -10,6 +10,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
@@ -70,18 +71,18 @@ public final class DecisionModelToolSelector {
     }
 
     /**
-     * Selects the tools relevant to the given input: a {@link String} or a {@link Map}.
+     * Selects the tools relevant to the given input.
      */
-    public List<String> select(Object input, List<ToolSpecification> tools) {
+    public List<String> select(DecisionInput input, List<ToolSpecification> tools) {
         List<ScoredTool> scoredTools = new ArrayList<>();
         for (int start = 0; start < tools.size(); ) {
             List<ToolSpecification> batch =
                     tools.subList(start, start + Math.min(maxToolsPerDecisionRequest, tools.size() - start));
             start += batch.size();
             DecisionRequest.Builder decisionRequest = DecisionRequest.builder();
-            setInput(decisionRequest, input);
+            decisionRequest.input(input);
             for (int i = 0; i < batch.size(); i++) {
-                decisionRequest.question("tool" + i, YesNoQuestion.of(question(batch.get(i))));
+                decisionRequest.question("tool" + i, YesNoQuestion.from(question(batch.get(i))));
             }
             DecisionResponse response = decisionModel.decide(decisionRequest.build());
             for (int i = 0; i < batch.size(); i++) {
@@ -97,15 +98,6 @@ public final class DecisionModelToolSelector {
                 .limit(maxResults)
                 .map(ScoredTool::name)
                 .toList();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void setInput(DecisionRequest.Builder decisionRequest, Object input) {
-        if (input instanceof String text) {
-            decisionRequest.input(text);
-        } else {
-            decisionRequest.input((Map<String, ?>) input);
-        }
     }
 
     private String question(ToolSpecification tool) {

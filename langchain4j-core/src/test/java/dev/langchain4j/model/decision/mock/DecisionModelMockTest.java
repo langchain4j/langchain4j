@@ -20,14 +20,14 @@ class DecisionModelMockTest {
 
     static final DecisionRequest REQUEST = DecisionRequest.builder()
             .input("Buy now!")
-            .question("spam", YesNoQuestion.of("Is this spam?"))
+            .question("spam", YesNoQuestion.from("Is this spam?"))
             .build();
 
     @Test
     void should_answer_and_record_requests() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.of(0.9)))
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
                 .withTokenUsage(new TokenUsage(10, 1));
 
         // when
@@ -43,7 +43,7 @@ class DecisionModelMockTest {
     void should_answer_asynchronously_with_a_completed_future() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.of(0.9)));
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
 
         // when
         CompletableFuture<DecisionResponse> future = model.decideAsync(REQUEST);
@@ -58,7 +58,7 @@ class DecisionModelMockTest {
     void should_fail_async_calls_without_recording_them_when_async_is_not_supported() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.of(0.9)))
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
                 .withoutAsyncSupport();
 
         // when
@@ -79,7 +79,7 @@ class DecisionModelMockTest {
         DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.3);
         DecisionRequest withChoiceQuestion = DecisionRequest.builder()
                 .input("Buy now!")
-                .question("team", ChoiceQuestion.of("Which team?", Map.of("sales", "Sales", "support", "Support")))
+                .question("team", ChoiceQuestion.from("Which team?", Map.of("sales", "Sales", "support", "Support")))
                 .build();
 
         // when-then
@@ -106,7 +106,7 @@ class DecisionModelMockTest {
     @Test
     void request_should_fail_unless_exactly_one_request_was_received() {
 
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.of(0.9)));
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)

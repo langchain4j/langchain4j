@@ -10,6 +10,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * Marks a method as a supplier of a listener for this agent.
  * The method must be static and return an instance of {@link AgentListener}.
+ * It can only declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>

@@ -1,6 +1,7 @@
 package dev.langchain4j.data.message;
 
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 
 import java.net.URI;
@@ -53,6 +54,7 @@ public class ImageContent implements Content {
 
     private final Image image;
     private final DetailLevel detailLevel;
+    private final transient boolean detailLevelSpecified;
 
     /**
      * Create a new {@link ImageContent} from the given url.
@@ -62,7 +64,7 @@ public class ImageContent implements Content {
      * @param url the url of the image.
      */
     public ImageContent(URI url) {
-        this(url, LOW);
+        this(Image.builder().url(ensureNotNull(url, "url")).build(), LOW, false);
     }
 
     /**
@@ -105,7 +107,13 @@ public class ImageContent implements Content {
      * @param mimeType the mime type of the image.
      */
     public ImageContent(String base64Data, String mimeType) {
-        this(base64Data, mimeType, LOW);
+        this(
+                Image.builder()
+                        .base64Data(ensureNotBlank(base64Data, "base64Data"))
+                        .mimeType(ensureNotBlank(mimeType, "mimeType"))
+                        .build(),
+                LOW,
+                false);
     }
 
     /**
@@ -132,7 +140,7 @@ public class ImageContent implements Content {
      * @param image the image.
      */
     public ImageContent(Image image) {
-        this(image, LOW);
+        this(image, LOW, false);
     }
 
     /**
@@ -142,8 +150,13 @@ public class ImageContent implements Content {
      * @param detailLevel the detail level of the image.
      */
     public ImageContent(Image image, DetailLevel detailLevel) {
+        this(image, detailLevel, true);
+    }
+
+    private ImageContent(Image image, DetailLevel detailLevel, boolean detailLevelSpecified) {
         this.image = ensureNotNull(image, "image");
         this.detailLevel = ensureNotNull(detailLevel, "detailLevel");
+        this.detailLevelSpecified = detailLevelSpecified;
     }
 
     /**
@@ -160,6 +173,25 @@ public class ImageContent implements Content {
      */
     public DetailLevel detailLevel() {
         return detailLevel;
+    }
+
+    /**
+     * Returns whether the detail level was given when this image content was created. When it was not given,
+     * {@link #detailLevel()} returns {@link DetailLevel#LOW}. Code that sends the image elsewhere can use this to
+     * choose its own detail level only when the creator did not choose one.
+     * <p>
+     * An image content read from JSON (for example from a stored chat memory) counts as having its detail level
+     * given, because the JSON contains the detail level.
+     * <p>
+     * This value is not part of {@link #equals(Object)}, {@link #hashCode()} or {@link #toString()}, and it is not
+     * written to JSON.
+     *
+     * @return {@code true} if a detail level was given when this image content was created
+     * @since 1.23.0
+     */
+    @Experimental
+    public boolean detailLevelSpecified() {
+        return detailLevelSpecified;
     }
 
     @Override
