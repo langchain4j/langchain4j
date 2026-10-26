@@ -386,6 +386,15 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * The hooks through which an integration takes part in the creation of a declarative agentic system.
+     * <p>
+     * The {@code configurator} is called for every agent of the system, AI agents and decision agents alike, with
+     * a {@link DeclarativeAgentCreationContext}. For an AI agent its {@code agentBuilder()} is set and its
+     * {@code decisionAgentBuilder()} is {@code null}, for a decision agent it is the other way round, so a
+     * configurator must check which builder it received before using it. The {@code agentInstanceFactory} is
+     * applied to both kinds of agents.
+     */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
