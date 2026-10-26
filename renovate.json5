@@ -36,6 +36,17 @@
             "matchPackageNames": ["com.microsoft.onnxruntime:*"],
             "allowedVersions": "(,1.24)",
             "groupName": "onnxruntime"
+        },
+        {
+            // the Azure SDK is still on Netty 4.1; Netty 4.2 in these modules would mix two Netty lines on the classpath
+            "matchFileNames": [
+                "code-execution-engines/langchain4j-code-execution-engine-azure-acads/pom.xml",
+                "document-loaders/langchain4j-document-loader-azure-storage-blob/pom.xml",
+                "langchain4j-azure-cosmos-nosql/pom.xml",
+                "langchain4j-azure-open-ai/pom.xml"
+            ],
+            "matchPackageNames": ["io.netty:*"],
+            "allowedVersions": "(,4.2)"
         }
     ]
 }
