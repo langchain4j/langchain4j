@@ -178,18 +178,20 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
         Query originalQuery = Query.from(queryText, augmentationRequest.metadata());
 
-        Collection<Query> queries = queryTransformer.transform(originalQuery);
+        return CurrentInvocation.callWith(invocationContextOf(originalQuery), () -> {
+            Collection<Query> queries = queryTransformer.transform(originalQuery);
 
-        Map<Query, Collection<List<Content>>> queryToContents = process(queries);
+            Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
-        List<Content> contents = contentAggregator.aggregate(queryToContents);
+            List<Content> contents = contentAggregator.aggregate(queryToContents);
 
-        ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
+            ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
 
-        return AugmentationResult.builder()
-            .chatMessage(augmentedChatMessage)
-            .contents(contents)
-            .build();
+            return AugmentationResult.builder()
+                .chatMessage(augmentedChatMessage)
+                .contents(contents)
+                .build();
+        });
     }
 
     @Override
@@ -320,8 +322,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Collection<ContentRetriever> retrievers = queryRouter.route(query);
             if (retrievers.size() == 1) {
                 ContentRetriever contentRetriever = retrievers.iterator().next();
-                List<Content> contents =
-                        CurrentInvocation.callWith(invocationContextOf(query), () -> contentRetriever.retrieve(query));
+                List<Content> contents = contentRetriever.retrieve(query);
                 return singletonMap(query, singletonList(contents));
             } else if (retrievers.size() > 1) {
                 Collection<List<Content>> contents = retrieveFromAll(retrievers, query).join();

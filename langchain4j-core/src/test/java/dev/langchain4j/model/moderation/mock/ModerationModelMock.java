@@ -21,7 +21,7 @@ public class ModerationModelMock implements ModerationModel {
         this(request -> moderation);
     }
 
-    public ModerationModelMock(Function<ModerationRequest, Moderation> moderation) {
+    private ModerationModelMock(Function<ModerationRequest, Moderation> moderation) {
         this.moderation = moderation;
     }
 

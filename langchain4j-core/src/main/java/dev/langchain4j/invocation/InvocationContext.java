@@ -52,10 +52,12 @@ public interface InvocationContext {
      * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
      * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands
      * the call to another thread (for example with {@code CompletableFuture.supplyAsync(..., executor)}), it is
-     * {@code null}. So treat it as best effort.
+     * {@code null}. In rare cases, when futures are shared between invocations, it can even name another
+     * invocation. So treat it as best effort.
      * <p>
-     * It is filled by AI Services created with {@code AiServices}. Frameworks that build their own AI Service
-     * implementation must add support for it themselves.
+     * It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that
+     * implementation (for example through {@code AiServicesFactory}) return {@code null} until they add support for
+     * it, also for AI Services they create through {@code AiServices.builder(...)}.
      * <p>
      * It is set when the AI Service method is called: later runs of the same {@code TokenStream} keep it.
      * <p>

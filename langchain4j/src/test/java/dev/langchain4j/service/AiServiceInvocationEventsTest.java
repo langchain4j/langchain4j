@@ -71,6 +71,8 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1673,7 +1675,17 @@ class AiServiceInvocationEventsTest {
         ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
         ToolExecutor askingEveryInner = (request, memoryId) -> {
             asyncInner.chat("inner question").join();
-            start(streamingInner.chat("inner question")).join();
+            TokenStream tokenStream = streamingInner.chat("inner question");
+            AtomicReference<CompletableFuture<ChatResponse>> run = new AtomicReference<>(new CompletableFuture<>());
+            tokenStream
+                    .onPartialResponse(partialResponse -> {})
+                    .onCompleteResponse(response -> run.get().complete(response))
+                    .onError(error -> run.get().completeExceptionally(error));
+            tokenStream.start();
+            run.get().join();
+            run.set(new CompletableFuture<>());
+            tokenStream.start(); // a second run of the same TokenStream keeps the parent
+            run.get().join();
             Flow.Publisher<String> publisher = reactiveInner.chat("inner question");
             consume(publisher).join();
             consume(publisher).join();
@@ -1687,7 +1699,31 @@ class AiServiceInvocationEventsTest {
 
         outer.chat("Hello");
 
-        assertInnerInvocationsHaveOuterAsParent(4);
+        assertInnerInvocationsHaveOuterAsParent(5);
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_tool_on_own_thread() {
+        Assistant inner = innerAssistant();
+        ExecutorService ownExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+            ToolExecutor askingInnerOnOwnThread = (request, memoryId) -> CompletableFuture.supplyAsync(
+                            () -> inner.chat("inner question"), ownExecutor)
+                    .join();
+            Assistant outer = AiServices.builder(Assistant.class)
+                    .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                    .tools(Map.of(askInner, askingInnerOnOwnThread))
+                    .registerListeners(listeners())
+                    .build();
+
+            outer.chat("Hello");
+
+            // documented limitation: the current invocation is not carried to threads of the tool's own code
+            assertNoInvocationHasParent();
+        } finally {
+            ownExecutor.shutdownNow();
+        }
     }
 
     @Test

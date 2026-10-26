@@ -355,7 +355,9 @@ Some things to be aware of:
 - This applies to AI Services created with `AiServices`. A framework that builds its own AI Service implementation
   decides itself how it propagates context.
 
-`InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local.
+`InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local. Its
+`parentInvocationId()` is not carried by the captured context either, see
+[Linking nested invocations](/tutorials/observability#linking-nested-invocations).
 :::
 
 ## Model listeners must not block

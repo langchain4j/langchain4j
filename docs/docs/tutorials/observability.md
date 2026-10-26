@@ -85,9 +85,10 @@ public class MyAiServiceCompletedListener implements AiServiceCompletedListener 
         InvocationContext invocationContext = event.invocationContext();
         Optional<Object> result = event.result();
 
-        // The invocationId will be the same for all events related to the same LLM invocation
+        // The invocationId will be the same for all events related to the same AI Service invocation
         UUID invocationId = invocationContext.invocationId();
-        // The invocationId of the outer AI Service invocation, if this one was started by its own work (for example a tool or a guardrail); otherwise null
+        // If this AI Service was called from inside another AI Service invocation (for example from one of its tools or guardrails):
+        // the invocationId of that outer invocation; otherwise null (see "Linking nested invocations" below)
         UUID parentInvocationId = invocationContext.parentInvocationId();
         String aiServiceInterfaceName = invocationContext.interfaceName();
         String aiServiceMethodName = invocationContext.methodName();
@@ -130,10 +131,78 @@ A few things to keep in mind:
 - If an asynchronous or streaming invocation is canceled, it ends with an `AiServiceCancelledEvent`, and the `AiServiceInvocationSummaryEvent` contains the events fired up until the cancellation, ending with the `AiServiceCancelledEvent`.
 - Events fired for an invocation after it has ended (for example `ToolCompensatedEvent`s fired once a canceled invocation has been rolled back) are not included.
 - An AI Service invoked while another AI Service invocation is in progress (for example, from within a tool) is a separate invocation with its own `invocationId`. It results in its own `AiServiceInvocationSummaryEvent` rather than being nested inside the outer one.
-- To link such an inner invocation to the outer one, use `InvocationContext.parentInvocationId()` (experimental). When the inner AI Service is called from one of these parts of the outer invocation, it returns the `invocationId` of the outer invocation: a tool, a tool error handler or the strategy for hallucinated tool names, a tool provider, a guardrail, a component of the retrieval augmentor (for example a query transformer or a content retriever), the system or user message provider, the system message transformer, the moderation model or the `chatRequestTransformer`. Other parts, such as the chat memory, are not linked. It is `null` when the AI Service is called from your own code, for example from a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`. It is also known when LangChain4j itself runs that part on another thread (for example tools executed concurrently), but it is `null` when your own code in that part calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`, so treat it as best effort. It is filled by AI Services created with `AiServices`; frameworks that build their own AI Service implementation must add support for it themselves. Agents run by an agentic workflow or a supervisor are currently not linked to it; an agent called from a tool of another agent is.
+- To link such an inner invocation to the outer one, use `InvocationContext.parentInvocationId()`, see [Linking nested invocations](#linking-nested-invocations).
 - For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` fails because of a configuration error (for example, a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation.
 - Each subscription to the reactive stream returned by an AI Service method, and each call of `TokenStream.start()`, is a separate invocation with its own `invocationId`, so it results in its own `AiServiceInvocationSummaryEvent`, also when several subscriptions run at the same time. A second `start()` of the same `TokenStream` reuses the retrieved contents, the input guardrails and the messages prepared when the AI Service method was called, so its summary contains no `RetrievalAugmentedEvent` and no input guardrail events: only the model call, the tools and the output guardrails run again.
 - An `AiServiceInvocationSummaryEvent` is fired by the registrar itself. Trying to fire one via `AiServiceListenerRegistrar.fireEvent` results in an `IllegalArgumentException`.
+
+### Linking nested invocations
+
+An AI Service is often called from inside another AI Service, for example from one of its tools.
+Each of the two calls is a separate invocation, with its own `invocationId` and its own events.
+To link them, the `InvocationContext` of the inner invocation has `parentInvocationId()` (experimental):
+the `invocationId` of the outer invocation, or `null` if there is none.
+
+```java
+interface Assistant {
+    String chat(String message);
+}
+
+interface Translator {
+    String translate(String text);
+}
+
+class TranslationTools {
+
+    private final Translator translator;
+
+    TranslationTools(Translator translator) {
+        this.translator = translator;
+    }
+
+    @Tool("Translates a text to English")
+    String translateToEnglish(String text) {
+        return translator.translate(text); // the inner invocation
+    }
+}
+
+// Collects the summaries of inner invocations, grouped by the invocation that called them
+Map<UUID, List<AiServiceInvocationSummaryEvent>> innerByOuter = new ConcurrentHashMap<>();
+AiServiceInvocationSummaryListener listener = summary -> {
+    UUID parentInvocationId = summary.invocationContext().parentInvocationId();
+    if (parentInvocationId != null) {
+        innerByOuter.computeIfAbsent(parentInvocationId, id -> new CopyOnWriteArrayList<>()).add(summary);
+    }
+};
+
+Translator translator = AiServices.builder(Translator.class)
+        .chatModel(chatModel)
+        .registerListener(listener)
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new TranslationTools(translator))
+        .registerListener(listener)
+        .build();
+```
+
+The inner invocation is linked to the outer one when it is called from one of these parts of the outer AI Service:
+- a tool (`tools`, `toolProvider`), a tool error handler (`toolExecutionErrorHandler`, `toolArgumentsErrorHandler`) or the strategy for hallucinated tool names (`hallucinatedToolNameStrategy`)
+- an input or output guardrail (`inputGuardrails`, `outputGuardrails`)
+- a component of the retrieval augmentor (`retrievalAugmentor`, `contentRetriever`), for example a query transformer, a query router or a content retriever
+- the system or user message provider (`systemMessageProvider`, `userMessageProvider`) or the system message transformer (`systemMessageTransformer`)
+- the moderation model (`moderationModel`)
+- the `chatRequestTransformer`
+
+`parentInvocationId()` is `null`:
+- for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
+- for an AI Service called from any other part, for example from the chat memory
+- when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
+
+Limits:
+- It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that implementation (for example through `AiServicesFactory`) return `null` until they add support for it, also for AI Services they create through `AiServices.builder(...)`.
+- Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor are not linked yet. An agent called from a tool of another agent is.
 
 ### Creating your own events and listeners
 
