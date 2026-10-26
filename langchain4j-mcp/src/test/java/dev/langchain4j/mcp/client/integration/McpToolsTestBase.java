@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -91,14 +92,14 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Test
-    public void executeToolThatReturnsImageAsText() {
+    public void executeToolThatReturnsNativeImage() {
         ToolProviderResult toolProviderResult = obtainTools();
         McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("getImage");
         ToolExecutionRequest request =
                 ToolExecutionRequest.builder().name("getImage").arguments("{}").build();
         ToolExecutionResult result =
                 executor.executeWithContext(request, InvocationContext.builder().build());
-        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png"));
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png", AUTO));
         assertThat(result.isError()).isFalse();
     }
 

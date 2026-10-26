@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -49,7 +50,7 @@ class DefaultMcpToolResultConverterTest {
         ToolExecutionResult result = extractor.convert(
                 List.of(Map.of("type", "image", "data", "iVBORw0KGgo=", "mimeType", "image/png")), false);
 
-        assertThat(result.resultContents()).containsExactly(ImageContent.from("iVBORw0KGgo=", "image/png"));
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("iVBORw0KGgo=", "image/png", AUTO));
         assertThatThrownBy(result::resultText).isInstanceOf(IllegalStateException.class);
     }
 
@@ -155,7 +156,7 @@ class DefaultMcpToolResultConverterTest {
         assertThat(result.resultContents())
                 .containsExactly(
                         TextContent.from("first"),
-                        ImageContent.from("iVBORw0KGgo=", "image/png"),
+                        ImageContent.from("iVBORw0KGgo=", "image/png", AUTO),
                         TextContent.from("last"));
     }
 

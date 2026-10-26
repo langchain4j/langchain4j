@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.ImageContent;
@@ -116,7 +117,7 @@ class McpToolResultMetaParsingTest {
 
         ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, extractor);
 
-        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png"));
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png", AUTO));
         assertThat(result.isError()).isTrue();
         assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "blob-123"));
     }

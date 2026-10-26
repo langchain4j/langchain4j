@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
+
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -48,7 +50,7 @@ public class DefaultMcpToolResultConverter implements McpToolResultConverter {
             if (!(data instanceof String base64) || !(mimeType instanceof String mime)) {
                 throw new IllegalArgumentException("Image content requires string data and mimeType");
             }
-            return ImageContent.from(base64, mime);
+            return ImageContent.from(base64, mime, AUTO);
         } else if ("resource".equals(type)) {
             Object resource = contentItem.get("resource");
             if (resource instanceof Map<?, ?> resourceContents) {
