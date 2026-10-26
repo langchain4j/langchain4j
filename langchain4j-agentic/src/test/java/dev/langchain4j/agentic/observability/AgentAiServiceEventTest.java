@@ -21,6 +21,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -34,6 +35,7 @@ import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
@@ -49,8 +51,10 @@ import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class AgentAiServiceEventTest {
@@ -110,6 +114,19 @@ class AgentAiServiceEventTest {
                     .isEqualTo(
                             events.get(0).aiServiceEvent().invocationContext().invocationId());
         });
+    }
+
+    @Test
+    void agentic_scope_is_null_when_the_event_has_no_managed_parameters() {
+        AiServiceCompletedEvent event = AiServiceCompletedEvent.builder()
+                .invocationContext(InvocationContext.builder()
+                        .invocationId(UUID.randomUUID())
+                        .interfaceName("Assistant")
+                        .methodName("answer")
+                        .build())
+                .build();
+
+        assertThat(new AgentAiServiceEvent(null, event).agenticScope()).isNull();
     }
 
     @Test
@@ -503,6 +520,75 @@ class AgentAiServiceEventTest {
     }
 
     @Test
+    void every_event_fired_through_the_ai_service_of_the_agent_reaches_its_listener() {
+        AtomicReference<AiServiceContext> context = new AtomicReference<>();
+        List<AgentAiServiceEvent> events = new CopyOnWriteArrayList<>();
+        assistantKeepingItsContext(context, eventRecorder(events, false));
+        AiServiceCompletedEvent event = AiServiceCompletedEvent.builder()
+                .invocationContext(InvocationContext.builder()
+                        .invocationId(UUID.randomUUID())
+                        .interfaceName("Assistant")
+                        .methodName("answer")
+                        .build())
+                .build();
+
+        context.get().eventListenerRegistrar.fireEvent(event);
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).aiServiceEvent()).isSameAs(event);
+        assertThat(events.get(0).agentName()).isEqualTo("assistant");
+    }
+
+    @Test
+    void agent_listener_is_notified_also_when_the_ai_service_registrar_throws_on_listener_errors() {
+        List<String> calls = new CopyOnWriteArrayList<>();
+        AgentBuilder<Assistant, ?> builder = new AgentBuilder<Assistant, AgentBuilder<Assistant, ?>>(Assistant.class) {
+            @Override
+            protected void build(
+                    DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<Assistant> aiServices) {
+                context.eventListenerRegistrar.shouldThrowExceptionOnEventError(true);
+                context.eventListenerRegistrar.register((AiServiceStartedListener) event -> {
+                    throw new IllegalStateException("listener failure");
+                });
+            }
+        };
+        Assistant assistant = builder.chatModel(thatAlwaysResponds("hello"))
+                .listener(recorder(calls, false))
+                .build();
+
+        assertThatThrownBy(() -> assistant.answer("hi")).hasRootCauseMessage("listener failure");
+
+        assertThat(calls).contains("assistant AiServiceStartedEvent");
+    }
+
+    @Test
+    void listener_unregistered_through_the_ai_service_of_the_agent_is_no_longer_notified() {
+        AtomicReference<AiServiceContext> context = new AtomicReference<>();
+        List<AiServiceCompletedEvent> events = new CopyOnWriteArrayList<>();
+        Assistant assistant = assistantKeepingItsContext(context, new AgentListener() {});
+        AiServiceCompletedListener listener = events::add;
+
+        context.get().eventListenerRegistrar.register(listener);
+        context.get().eventListenerRegistrar.unregister(listener);
+        assistant.answer("hi");
+
+        assertThat(events).isEmpty();
+    }
+
+    @Test
+    void error_policy_set_through_the_ai_service_of_the_agent_applies_to_its_listeners() {
+        AtomicReference<AiServiceContext> context = new AtomicReference<>();
+        Assistant assistant = assistantKeepingItsContext(context, new AgentListener() {});
+
+        context.get().eventListenerRegistrar.shouldThrowExceptionOnEventError(true);
+        context.get().eventListenerRegistrar.register((AiServiceStartedListener) event -> {
+            throw new IllegalStateException("listener failure");
+        });
+
+        assertThatThrownBy(() -> assistant.answer("hi")).hasRootCauseMessage("listener failure");
+    }
+
+    @Test
     void failing_listener_does_not_interrupt_the_agent_invocation() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
@@ -592,6 +678,20 @@ class AgentAiServiceEventTest {
                 return inheritedBySubagents;
             }
         };
+    }
+
+    private static Assistant assistantKeepingItsContext(
+            AtomicReference<AiServiceContext> context, AgentListener listener) {
+        AgentBuilder<Assistant, ?> builder = new AgentBuilder<Assistant, AgentBuilder<Assistant, ?>>(Assistant.class) {
+            @Override
+            protected void build(
+                    DefaultAgenticScope agenticScope,
+                    AiServiceContext aiServiceContext,
+                    AiServices<Assistant> aiServices) {
+                context.set(aiServiceContext);
+            }
+        };
+        return builder.chatModel(thatAlwaysResponds("hello")).listener(listener).build();
     }
 
     private static AgentListener eventRecorder(List<AgentAiServiceEvent> events, boolean inheritedBySubagents) {

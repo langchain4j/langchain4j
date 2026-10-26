@@ -2,7 +2,9 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -32,8 +34,9 @@ public final class AgentAiServiceEvent {
     }
 
     public AgenticScope agenticScope() {
-        return (AgenticScope)
-                aiServiceEvent.invocationContext().managedParameters().get(AgenticScope.class);
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters =
+                aiServiceEvent.invocationContext().managedParameters();
+        return managedParameters == null ? null : (AgenticScope) managedParameters.get(AgenticScope.class);
     }
 
     public String agentName() {

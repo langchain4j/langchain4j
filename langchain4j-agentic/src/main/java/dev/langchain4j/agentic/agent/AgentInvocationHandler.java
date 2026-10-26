@@ -31,18 +31,9 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
-import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
-import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
-import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
-import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
-import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
@@ -67,19 +58,6 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AgentInvocationHandler.class);
 
-    private static final List<Class<? extends AiServiceEvent>> AI_SERVICE_EVENT_TYPES = List.of(
-            AiServiceStartedEvent.class,
-            InputGuardrailExecutedEvent.class,
-            RetrievalAugmentedEvent.class,
-            AiServiceRequestIssuedEvent.class,
-            AiServiceResponseReceivedEvent.class,
-            ToolExecutedEvent.class,
-            ToolCompensatedEvent.class,
-            OutputGuardrailExecutedEvent.class,
-            AiServiceCompletedEvent.class,
-            AiServiceErrorEvent.class,
-            AiServiceCancelledEvent.class);
-
     private final AiServiceContext context;
     private final AgentBuilder<?, ?> builder;
     private final Object agent;
@@ -90,10 +68,6 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private InternalAgent parent;
     private AgentListener agentListener;
     private boolean crossAgentCompensationEnabled;
-    private boolean aiServiceEventsForwarded;
-    private final InvokingAgent invokingAgent = new InvokingAgent(this);
-
-    private record InvokingAgent(AgentInvocationHandler agent) implements LangChain4jManaged {}
 
     private final Map<Object, LastResponse> lastResponses = new ConcurrentHashMap<>();
 
@@ -135,7 +109,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.agentListener = builder.agentListener;
         this.chatModelProvider = builder.chatModelProvider;
         this.streamingChatModelProvider = builder.streamingChatModelProvider;
-        forwardAiServiceEvents();
+        context.eventListenerRegistrar = new ForwardingRegistrar(context.eventListenerRegistrar);
     }
 
     @Override
@@ -245,28 +219,13 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 context.streamingChatModel = streamingChatModelProvider.apply(agenticScope);
             }
             try {
-                return invokeAiService(method, args);
+                return method.invoke(agent, args);
             } catch (Exception e) {
                 lastResponses.remove(agenticScope.memoryId());
                 throw e;
             }
         }
         return invokeStandaloneAgent(method, args);
-    }
-
-    private Object invokeAiService(Method method, Object[] args) throws Exception {
-        if (!aiServiceEventsForwarded) {
-            return method.invoke(agent, args);
-        }
-        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> current = LangChain4jManaged.current();
-        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> withInvokingAgent = new HashMap<>(current);
-        withInvokingAgent.put(InvokingAgent.class, invokingAgent);
-        LangChain4jManaged.setCurrent(withInvokingAgent);
-        try {
-            return method.invoke(agent, args);
-        } finally {
-            LangChain4jManaged.setCurrent(current);
-        }
     }
 
     private Object invokeStandaloneAgent(Method method, Object[] args) {
@@ -281,7 +240,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
         Object result = null;
         try {
-            result = invokeAiService(method, args);
+            result = method.invoke(agent, args);
         } catch (Exception e) {
             AgentInvocationException invocationException =
                     new AgentInvocationException("Failed to invoke agent method: " + method, e);
@@ -388,35 +347,40 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
             context.toolService.afterToolExecution(toolExecution ->
                     agentListener.afterAgentToolExecution(new AfterAgentToolExecution(this, toolExecution)));
-            forwardAiServiceEvents();
         }
     }
 
-    private void forwardAiServiceEvents() {
-        if (agentListener == null || aiServiceEventsForwarded) {
-            return;
+    private class ForwardingRegistrar implements AiServiceListenerRegistrar {
+
+        private final AiServiceListenerRegistrar delegate;
+
+        private ForwardingRegistrar(AiServiceListenerRegistrar delegate) {
+            this.delegate = delegate;
         }
-        aiServiceEventsForwarded = true;
-        AI_SERVICE_EVENT_TYPES.forEach(
-                eventType -> context.eventListenerRegistrar.register(aiServiceEventForwarder(eventType)));
-    }
 
-    private <E extends AiServiceEvent> AiServiceListener<E> aiServiceEventForwarder(Class<E> eventType) {
-        return new AiServiceListener<>() {
-            @Override
-            public Class<E> getEventClass() {
-                return eventType;
-            }
+        @Override
+        public <T extends AiServiceEvent> void register(AiServiceListener<T> listener) {
+            delegate.register(listener);
+        }
 
-            @Override
-            public void onEvent(E event) {
-                Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed =
-                        event.invocationContext().managedParameters();
-                if (managed != null && managed.get(InvokingAgent.class) == invokingAgent) {
-                    onAgentAiServiceEvent(agentListener, AgentInvocationHandler.this, event);
-                }
+        @Override
+        public <T extends AiServiceEvent> void unregister(AiServiceListener<T> listener) {
+            delegate.unregister(listener);
+        }
+
+        @Override
+        public <T extends AiServiceEvent> void fireEvent(T event) {
+            try {
+                delegate.fireEvent(event);
+            } finally {
+                onAgentAiServiceEvent(agentListener, AgentInvocationHandler.this, event);
             }
-        };
+        }
+
+        @Override
+        public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
+            delegate.shouldThrowExceptionOnEventError(shouldThrowExceptionOnEventError);
+        }
     }
 
     private static boolean isNewListener(AgentListener currentListener, AgentListener newListener) {
