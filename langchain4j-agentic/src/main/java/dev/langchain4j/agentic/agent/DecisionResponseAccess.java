@@ -9,7 +9,8 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
  * Gives access to the last response of the decision model of a decision agent, so that it can be reported to the
  * {@link AgentListener AgentListener}s together with the agent's output. It
  * is the counterpart of {@link ChatMessagesAccess} for the agents built with
- * {@link AgenticServices#decisionAgentBuilder(Class)}.
+ * {@link AgenticServices#decisionAgentBuilder(Class)}. A class wrapping a decision agent must implement this
+ * interface and not {@link ChatMessagesAccess} or {@code ChatMemoryAccess}, whose methods a decision agent rejects.
  *
  * @since 1.23.0
  */

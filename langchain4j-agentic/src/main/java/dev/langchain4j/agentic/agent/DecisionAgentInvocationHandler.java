@@ -28,6 +28,7 @@ import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.ThresholdProvider;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
 import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -109,6 +110,13 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
             return InvocationHandler.invokeDefault(proxy, method, args);
         }
 
+        if (declaringClass == ChatMemoryAccess.class || declaringClass == ChatMessagesAccess.class) {
+            // the wrapper of an AI agent, which forwards the methods of these interfaces to the handler
+            throw new UnsupportedOperationException("The decision agent '" + name()
+                    + "' has no chat memory or chat messages, so it cannot implement "
+                    + declaringClass.getSimpleName()
+                    + ": a class wrapping it must implement DecisionResponseAccess instead");
+        }
         if (!method.equals(builder.agenticMethod)) {
             throw new UnsupportedOperationException("Method '" + method.getName()
                     + "' is not the @Agent method of the decision agent '" + name() + "'");
