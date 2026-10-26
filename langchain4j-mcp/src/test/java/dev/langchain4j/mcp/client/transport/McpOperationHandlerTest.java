@@ -43,7 +43,7 @@ class McpOperationHandlerTest {
                 },
                 (id, message) -> {});
 
-        JsonNode notification = McpJson.parse("""
+        String notification = """
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",
@@ -52,9 +52,9 @@ class McpOperationHandlerTest {
                     "reason": "user aborted"
                   }
                 }
-                """);
+                """;
 
-        handler.handle(notification);
+        handler.onMessage(notification);
 
         assertThat(future).isCompletedExceptionally();
         // Inspect the throwable stored on the future via handle() rather than calling
@@ -94,7 +94,7 @@ class McpOperationHandlerTest {
                 },
                 (id, message) -> {});
 
-        JsonNode notification = McpJson.parse("""
+        String notification = """
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",
@@ -102,9 +102,9 @@ class McpOperationHandlerTest {
                     "requestId": 7
                   }
                 }
-                """);
+                """;
 
-        handler.handle(notification);
+        handler.onMessage(notification);
 
         assertThat(cancelledId.get()).isEqualTo(7L);
         assertThat(cancelledReason.get()).isNull();
@@ -132,15 +132,15 @@ class McpOperationHandlerTest {
                 (id, reason) -> cancelledId.set(id),
                 (id, message) -> {});
 
-        JsonNode notification = McpJson.parse("""
+        String notification = """
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",
                   "params": {}
                 }
-                """);
+                """;
 
-        handler.handle(notification);
+        handler.onMessage(notification);
 
         assertThat(future).isNotCompleted();
         assertThat(pending).containsKey(99L);
