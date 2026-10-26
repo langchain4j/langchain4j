@@ -611,6 +611,7 @@ class ActivationConditionTest {
         AgentExecutor executor =
                 (AgentExecutor) ((AgentInstance) parent).subagents().get(0);
 
-        assertCondition(new MapperAgentInvoker(executor.agentInvoker(), "item", 0).activationCondition(), "mapped");
+        assertCondition(
+                new MapperAgentInvoker(executor.agentInvoker(), "item", 0, "mapper").activationCondition(), "mapped");
     }
 }

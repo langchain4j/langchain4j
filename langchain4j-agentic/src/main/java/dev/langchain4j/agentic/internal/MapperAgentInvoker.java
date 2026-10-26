@@ -15,8 +15,9 @@ public class MapperAgentInvoker extends AbstractAgentInvoker {
     private final String injectionKey;
     private final String instanceName;
     private final String instanceAgentId;
+    private final String instanceOutputKey;
 
-    public MapperAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex) {
+    public MapperAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex, String outputKeyPrefix) {
         super(delegate.method(), delegate);
         this.item = item;
         this.injectionKey = delegate.arguments().isEmpty()
@@ -24,6 +25,7 @@ public class MapperAgentInvoker extends AbstractAgentInvoker {
                 : delegate.arguments().get(0).name();
         this.instanceName = delegate.name() + "_" + instanceIndex;
         this.instanceAgentId = delegate.agentId() + "_" + instanceIndex;
+        this.instanceOutputKey = outputKeyPrefix + "_" + instanceIndex;
     }
 
     @Override
@@ -38,7 +40,7 @@ public class MapperAgentInvoker extends AbstractAgentInvoker {
 
     @Override
     public String outputKey() {
-        return instanceAgentId;
+        return instanceOutputKey;
     }
 
     @Override

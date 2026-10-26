@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A parallel mapper returns the result of each item, also when its subagent has no output key and when several
- * mappers whose subagents share an output key run in parallel.
+ * mappers whose subagents share an output key, or the same subagent, run in parallel.
  */
 class ParallelMapperResultsTest {
 
@@ -171,6 +171,44 @@ class ParallelMapperResultsTest {
                                 .build(),
                         AgenticServices.parallelMapperBuilder()
                                 .subAgents(keyedEchoAgent())
+                                .itemsProvider("digits")
+                                .outputKey("echoedDigits")
+                                .build())
+                .output(agenticScope ->
+                        List.of(agenticScope.readState("echoedLetters"), agenticScope.readState("echoedDigits")))
+                .listener(new AgentListener() {
+                    @Override
+                    public void beforeAgentInvocation(AgentRequest agentRequest) {
+                        if (agentRequest.agentName().startsWith("echo")) {
+                            instanceOutputKeys.add(agentRequest.agent().outputKey());
+                        }
+                    }
+
+                    @Override
+                    public boolean inheritedBySubagents() {
+                        return true;
+                    }
+                })
+                .build();
+
+        assertThat(parallel.invoke(Map.of("letters", List.of("a", "b"), "digits", List.of("1", "2"))))
+                .isEqualTo(List.of(List.of("echo a", "echo b"), List.of("echo 1", "echo 2")));
+        assertThat(instanceOutputKeys).hasSize(4).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void parallel_mappers_sharing_the_same_subagent_do_not_mix_their_results() {
+        EchoAgent echo = echoAgent(false);
+        List<String> instanceOutputKeys = new CopyOnWriteArrayList<>();
+        UntypedAgent parallel = AgenticServices.parallelBuilder()
+                .subAgents(
+                        AgenticServices.parallelMapperBuilder()
+                                .subAgents(echo)
+                                .itemsProvider("letters")
+                                .outputKey("echoedLetters")
+                                .build(),
+                        AgenticServices.parallelMapperBuilder()
+                                .subAgents(echo)
                                 .itemsProvider("digits")
                                 .outputKey("echoedDigits")
                                 .build())

@@ -22,6 +22,7 @@ public class ParallelMapperPlanner implements Planner {
     private final Class<? extends Object[]> arrayclass;
 
     private AgentExecutor subagent;
+    private String mapperAgentId;
     private String outputKey;
     private List<String> instanceOutputKeys;
     private int itemCount;
@@ -36,6 +37,7 @@ public class ParallelMapperPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.subagent = (AgentExecutor) initPlanningContext.subagents().get(0);
+        this.mapperAgentId = initPlanningContext.plannerAgent().agentId();
         this.outputKey = initPlanningContext.plannerAgent().outputKey();
     }
 
@@ -57,7 +59,8 @@ public class ParallelMapperPlanner implements Planner {
         List<AgentInstance> instances = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            MapperAgentInvoker instanceInvoker = new MapperAgentInvoker(subagent.agentInvoker(), item, i);
+            MapperAgentInvoker instanceInvoker =
+                    new MapperAgentInvoker(subagent.agentInvoker(), item, i, mapperAgentId);
             instances.add(new AgentExecutor(instanceInvoker, subagent.agent()));
         }
         this.instanceOutputKeys =
