@@ -32,9 +32,35 @@ public interface InvocationContext {
     UUID invocationId();
 
     /**
-     * The {@link #invocationId()} of the AI Service invocation whose own work started this invocation, for example
-     * when a tool, guardrail or content retriever of one AI Service calls another AI Service. It is not set when the
-     * caller's code calls an AI Service, for example from a handler of a {@code TokenStream}.
+     * The {@link #invocationId()} of the parent invocation: the AI Service invocation whose own work started this
+     * invocation. This is the case when one of these parts of an AI Service calls another AI Service:
+     * <ul>
+     * <li>a tool, a tool error handler or the strategy for hallucinated tool names</li>
+     * <li>a tool provider</li>
+     * <li>an input or output guardrail</li>
+     * <li>a component of the retrieval augmentor (for example a query transformer or a content retriever)</li>
+     * <li>the system or user message provider, or the system message transformer</li>
+     * <li>the moderation model</li>
+     * <li>the {@code chatRequestTransformer}</li>
+     * </ul>
+     * <p>
+     * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
+     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), from any
+     * other part of an AI Service (for example its chat memory), when there is no parent, or when this
+     * {@code InvocationContext} implementation does not track it.
+     * <p>
+     * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
+     * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands
+     * the call to another thread (for example with {@code CompletableFuture.supplyAsync(..., executor)}), it is
+     * {@code null}. So treat it as best effort.
+     * <p>
+     * It is filled by AI Services created with {@code AiServices}. Frameworks that build their own AI Service
+     * implementation must add support for it themselves.
+     * <p>
+     * It is set when the AI Service method is called: later runs of the same {@code TokenStream} keep it.
+     * <p>
+     * Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor currently have no
+     * parent. An agent called from a tool of another agent has one.
      *
      * @return the id of the parent invocation, or {@code null} if there is none or it is not known
      * @since 1.23.0

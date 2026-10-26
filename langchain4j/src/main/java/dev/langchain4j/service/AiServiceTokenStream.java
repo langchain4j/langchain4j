@@ -209,6 +209,13 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
+        CurrentInvocation.callWithout(() -> {
+            startRun();
+            return null;
+        });
+    }
+
+    private void startRun() {
         boolean startedAgain = startedBefore.getAndSet(true);
         InvocationContext runContext = startedAgain ? newRunContext() : invocationContext;
         try {

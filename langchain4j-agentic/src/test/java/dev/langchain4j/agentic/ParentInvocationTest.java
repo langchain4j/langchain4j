@@ -63,7 +63,7 @@ class ParentInvocationTest {
     }
 
     @Test
-    void agent_used_as_tool_has_the_calling_invocation_as_parent() {
+    void should_link_agent_called_from_tool_to_calling_agent() {
         Recorder innerRecorder = new Recorder();
         SecondAgent inner = AgenticServices.agentBuilder(SecondAgent.class)
                 .chatModel(callingToolThenAnswering("record"))
@@ -86,7 +86,9 @@ class ParentInvocationTest {
     }
 
     @Test
-    void sub_agents_of_a_sequence_have_no_parent() {
+    void should_not_link_sub_agents_of_sequence_to_parent_yet() {
+        // no parent is the current limitation for sub-agents run by the agentic framework (to be revisited), not the
+        // target behaviour
         Recorder firstRecorder = new Recorder();
         Recorder secondRecorder = new Recorder();
         FirstAgent first = AgenticServices.agentBuilder(FirstAgent.class)
@@ -113,7 +115,9 @@ class ParentInvocationTest {
     }
 
     @Test
-    void sub_agent_of_a_supervisor_has_no_parent() {
+    void should_not_link_sub_agent_of_supervisor_to_parent_yet() {
+        // no parent is the current limitation for sub-agents run by the agentic framework (to be revisited), not the
+        // target behaviour
         ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from("""
                 {"agentName": "answer", "arguments": {"text": "Hello"}}

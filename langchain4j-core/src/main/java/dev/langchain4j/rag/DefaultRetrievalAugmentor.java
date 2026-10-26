@@ -218,7 +218,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                         () -> contentAggregator.aggregateAsync(queryToContents),
                         () -> contentAggregator.aggregate(queryToContents))))
                 .thenApply(contents -> AugmentationResult.builder()
-                    .chatMessage(contentInjector.inject(contents, chatMessage))
+                    .chatMessage(CurrentInvocation.callWith(
+                        invocationContextOf(originalQuery), () -> contentInjector.inject(contents, chatMessage)))
                     .contents(contents)
                     .build())
                 .whenComplete((augmentationResult, error) -> {

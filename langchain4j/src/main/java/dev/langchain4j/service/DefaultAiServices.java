@@ -223,7 +223,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
-                                .parentInvocationId(parentInvocationId())
+                                .parentInvocationId(CurrentInvocation.invocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
@@ -237,11 +237,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         try {
                             InvocationContext withCapturedContext =
                                     CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
-                            return invoke(method, args, withCapturedContext);
+                            return CurrentInvocation.callWithout(() -> invoke(method, args, withCapturedContext));
                         } catch (VirtualMachineError e) {
                             throw e;
                         } catch (Throwable t) {
-                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
+                            CurrentInvocation.callWithout(() -> {
+                                TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
+                                return null;
+                            });
                             if (t instanceof Exception) {
                                 Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, t);
                                 if (asyncFailure.isPresent()) {
@@ -331,15 +334,22 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(invocationContext, method, args);
+                        InvocationContext prologueContext = invocationContext;
+                        Optional<SystemMessage> systemMessage = CurrentInvocation.callWith(
+                                prologueContext, () -> prepareSystemMessage(prologueContext, method, args));
                         if (context.systemMessageTransformer != null) {
-                            String transformedSystemMessage = context.systemMessageTransformer.apply(
-                                    systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
+                            String untransformedSystemMessage =
+                                    systemMessage.map(SystemMessage::text).orElse(null);
+                            String transformedSystemMessage = CurrentInvocation.callWith(
+                                    prologueContext,
+                                    () -> context.systemMessageTransformer.apply(
+                                            untransformedSystemMessage, prologueContext));
                             systemMessage = transformedSystemMessage != null
                                     ? Optional.of(SystemMessage.from(transformedSystemMessage))
                                     : Optional.empty();
                         }
-                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
+                        var userMessageTemplate = CurrentInvocation.callWith(
+                                prologueContext, () -> getUserMessageTemplate(memoryId, method, args));
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage originalUserMessage =
@@ -523,7 +533,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
                             final AtomicBoolean reactiveSubscribedBefore = new AtomicBoolean(false);
 
-                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
+                            Flow.Publisher<AiServiceStreamingEvent> eventsOfSubscription = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
                                     subscriber.onError(new IllegalStateException(
@@ -720,6 +730,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             });
                                 });
                             };
+                            Flow.Publisher<AiServiceStreamingEvent> events =
+                                    subscriber -> CurrentInvocation.callWithout(() -> {
+                                        eventsOfSubscription.subscribe(subscriber);
+                                        return null;
+                                    });
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events
@@ -1555,9 +1570,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return CompletableFuture.supplyAsync(
                                     () -> {
                                         List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                        return context.moderationModel
-                                                .moderate(messagesToModerate)
-                                                .content();
+                                        return CurrentInvocation.callWith(
+                                                invocationContext,
+                                                () -> context.moderationModel
+                                                        .moderate(messagesToModerate)
+                                                        .content());
                                     },
                                     executor);
                         }
@@ -1977,11 +1994,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                 Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
-    }
-
-    private static UUID parentInvocationId() {
-        InvocationContext current = CurrentInvocation.get();
-        return current != null ? current.invocationId() : null;
     }
 
     private static Optional<Object> findMemoryId(Method method, Object[] args) {

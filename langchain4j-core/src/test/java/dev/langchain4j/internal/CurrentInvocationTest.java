@@ -13,10 +13,10 @@ class CurrentInvocationTest {
     void should_set_the_current_invocation_only_during_the_action() {
         InvocationContext invocationContext = invocationContext();
 
-        InvocationContext seen = CurrentInvocation.callWith(invocationContext, CurrentInvocation::get);
+        UUID seen = CurrentInvocation.callWith(invocationContext, CurrentInvocation::invocationId);
 
-        assertThat(seen).isSameAs(invocationContext);
-        assertThat(CurrentInvocation.get()).isNull();
+        assertThat(seen).isEqualTo(invocationContext.invocationId());
+        assertThat(CurrentInvocation.invocationId()).isNull();
     }
 
     @Test
@@ -24,13 +24,13 @@ class CurrentInvocationTest {
         InvocationContext outer = invocationContext();
         InvocationContext inner = invocationContext();
 
-        InvocationContext seenAfterInner = CurrentInvocation.callWith(outer, () -> {
-            assertThat(CurrentInvocation.callWith(inner, CurrentInvocation::get)).isSameAs(inner);
-            return CurrentInvocation.get();
+        UUID seenAfterInner = CurrentInvocation.callWith(outer, () -> {
+            assertThat(CurrentInvocation.callWith(inner, CurrentInvocation::invocationId)).isEqualTo(inner.invocationId());
+            return CurrentInvocation.invocationId();
         });
 
-        assertThat(seenAfterInner).isSameAs(outer);
-        assertThat(CurrentInvocation.get()).isNull();
+        assertThat(seenAfterInner).isEqualTo(outer.invocationId());
+        assertThat(CurrentInvocation.invocationId()).isNull();
     }
 
     @Test
@@ -42,21 +42,49 @@ class CurrentInvocationTest {
                         throw new IllegalStateException("failed");
                     }))
                     .hasMessage("failed");
-            assertThat(CurrentInvocation.get()).isSameAs(outer);
+            assertThat(CurrentInvocation.invocationId()).isEqualTo(outer.invocationId());
             return null;
         });
 
-        assertThat(CurrentInvocation.get()).isNull();
+        assertThat(CurrentInvocation.invocationId()).isNull();
     }
 
     @Test
     void should_keep_the_current_invocation_when_called_without_one() {
         InvocationContext outer = invocationContext();
 
-        InvocationContext seen = CurrentInvocation.callWith(
-                outer, () -> CurrentInvocation.callWith(null, CurrentInvocation::get));
+        UUID seen = CurrentInvocation.callWith(
+                outer, () -> CurrentInvocation.callWith(null, CurrentInvocation::invocationId));
 
-        assertThat(seen).isSameAs(outer);
+        assertThat(seen).isEqualTo(outer.invocationId());
+    }
+
+    @Test
+    void should_clear_the_current_invocation_during_the_action_and_restore_it_after() {
+        InvocationContext outer = invocationContext();
+
+        UUID[] seen = CurrentInvocation.callWith(outer, () -> new UUID[] {
+            CurrentInvocation.callWithout(CurrentInvocation::invocationId), CurrentInvocation.invocationId()
+        });
+
+        assertThat(seen[0]).isNull();
+        assertThat(seen[1]).isEqualTo(outer.invocationId());
+        assertThat(CurrentInvocation.invocationId()).isNull();
+    }
+
+    @Test
+    void should_restore_the_current_invocation_when_the_action_without_it_fails() {
+        InvocationContext outer = invocationContext();
+
+        UUID seenAfterFailure = CurrentInvocation.callWith(outer, () -> {
+            assertThatThrownBy(() -> CurrentInvocation.callWithout(() -> {
+                        throw new IllegalStateException("failed");
+                    }))
+                    .hasMessage("failed");
+            return CurrentInvocation.invocationId();
+        });
+
+        assertThat(seenAfterFailure).isEqualTo(outer.invocationId());
     }
 
     private static InvocationContext invocationContext() {

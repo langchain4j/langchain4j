@@ -29,6 +29,8 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.mock.ModerationModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -42,18 +44,26 @@ import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1823,6 +1833,128 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
+    void should_record_direct_parent_invocation_of_ai_services_nested_twice() {
+        Assistant inner = innerAssistant();
+        Assistant middle = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .tools(new InnerTool(inner))
+                .registerListeners(listeners())
+                .build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .tools(new InnerTool(middle))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        List<AiServiceStartedEvent> started = events(AiServiceStartedEvent.class);
+        assertThat(started).hasSize(3);
+        InvocationContext outerContext = started.get(0).invocationContext();
+        InvocationContext middleContext = started.get(1).invocationContext();
+        InvocationContext innerContext = started.get(2).invocationContext();
+        assertThat(outerContext.parentInvocationId()).isNull();
+        assertThat(middleContext.parentInvocationId()).isEqualTo(outerContext.invocationId());
+        assertThat(innerContext.parentInvocationId()).isEqualTo(middleContext.invocationId());
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_query_router_of_expanded_queries() {
+        Assistant inner = innerAssistant();
+        ContentRetriever retriever = query -> List.of(Content.from("source"));
+        QueryRouter routingWithInner = query -> {
+            inner.chat("route the query");
+            return List.of(retriever);
+        };
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        // two queries, so that they are routed on the executor of the retrieval augmentor
+                        .queryTransformer(query -> List.of(query, Query.from("second query", query.metadata())))
+                        .queryRouter(routingWithInner)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationsHaveOuterAsParent(2);
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_async_content_retriever() throws Exception {
+        Assistant inner = innerAssistant();
+        ContentRetriever asyncRetriever = new ContentRetriever() {
+
+            @Override
+            public List<Content> retrieve(Query query) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                return CompletableFuture.completedFuture(List.of(Content.from(inner.chat("rewrite the query"))));
+            }
+        };
+        QueryTransformer completingOnAnotherThread = new QueryTransformer() {
+
+            @Override
+            public Collection<Query> transform(Query query) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<Collection<Query>> transformAsync(Query query) {
+                // completes on another thread, so that the retrieval runs there, outside of the AI Service's own scope
+                return CompletableFuture.supplyAsync(
+                        () -> List.of(query), CompletableFuture.delayedExecutor(50, MILLISECONDS));
+            }
+        };
+        AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(completingOnAnotherThread)
+                        .contentRetriever(asyncRetriever)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello").get(5, SECONDS);
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_custom_async_retrieval_augmentor() throws Exception {
+        Assistant inner = innerAssistant();
+        RetrievalAugmentor augmentor = new RetrievalAugmentor() {
+
+            @Override
+            public AugmentationResult augment(AugmentationRequest augmentationRequest) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
+                inner.chat("rewrite the query");
+                return CompletableFuture.completedFuture(AugmentationResult.builder()
+                        .chatMessage(augmentationRequest.chatMessage())
+                        .contents(List.of())
+                        .build());
+            }
+        };
+        AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .retrievalAugmentor(augmentor)
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello").get(5, SECONDS);
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
     void should_record_parent_invocation_of_ai_service_called_by_chat_request_transformer() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
@@ -1922,6 +2054,353 @@ class AiServiceInvocationEventsTest {
         outer.chat("Hello");
 
         assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_tool_execution_error_handler() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .tools(new Tools())
+                .toolExecutionErrorHandler(
+                        (error, errorContext) -> ToolErrorHandlerResult.text(inner.chat("explain the error")))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_tool_execution_error_handler_of_async_invocation()
+            throws Exception {
+        Assistant inner = innerAssistant();
+        AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .tools(new Tools())
+                .toolExecutionErrorHandler(
+                        (error, errorContext) -> ToolErrorHandlerResult.text(inner.chat("explain the error")))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello").get(5, SECONDS);
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_hallucinated_tool_name_strategy() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknownTool")))
+                .tools(new Tools())
+                .hallucinatedToolNameStrategy(
+                        request -> ToolExecutionResultMessage.from(request, inner.chat("which tool was meant?")))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_hallucinated_tool_name_strategy_of_async_invocation()
+            throws Exception {
+        Assistant inner = innerAssistant();
+        AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknownTool")))
+                .tools(new Tools())
+                .hallucinatedToolNameStrategy(
+                        request -> ToolExecutionResultMessage.from(request, inner.chat("which tool was meant?")))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello").get(5, SECONDS);
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_tool_provider() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .toolProvider(request -> {
+                    inner.chat("which tools are needed?");
+                    return ToolProviderResult.builder().build();
+                })
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_dynamic_tool_provider_after_tool_round() {
+        Assistant inner = innerAssistant();
+        AtomicInteger provided = new AtomicInteger();
+        ToolProvider dynamicToolProvider = new ToolProvider() {
+
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                if (provided.incrementAndGet() > 1) {
+                    inner.chat("which tools are needed now?");
+                }
+                return ToolProviderResult.builder().build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        };
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .tools(new Tools())
+                .toolProvider(dynamicToolProvider)
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertThat(provided).hasValueGreaterThan(1);
+        assertInnerInvocationsHaveOuterAsParent(provided.get() - 1);
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_system_message_provider() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .systemMessageProvider(memoryId -> inner.chat("write a system message"))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_moderation_model() {
+        Assistant inner = innerAssistant();
+        ModeratedAssistant outer = AiServices.builder(ModeratedAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .moderationModel(ModerationModelMock.thatModerates(request -> {
+                    inner.chat("is this harmful?");
+                    return Moderation.notFlagged();
+                }))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_system_message_transformer() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .systemMessageTransformer(systemMessage -> inner.chat("rewrite the system message"))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_user_message_provider() {
+        Assistant inner = innerAssistant();
+        AssistantWithoutArguments outer = AiServices.builder(AssistantWithoutArguments.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .userMessageProvider(memoryId -> inner.chat("write a user message"))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat();
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_listener_of_ai_service_called_by_tool() {
+        Assistant calledByListener = innerAssistant();
+        AiServiceListener<AiServiceCompletedEvent> callingInner = new AiServiceListener<>() {
+
+            @Override
+            public Class<AiServiceCompletedEvent> getEventClass() {
+                return AiServiceCompletedEvent.class;
+            }
+
+            @Override
+            public void onEvent(AiServiceCompletedEvent event) {
+                calledByListener.chat("about the completed invocation");
+            }
+        };
+        Assistant calledByTool = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .registerListeners(listeners())
+                .registerListener(callingInner)
+                .build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .tools(new InnerTool(calledByTool))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        List<AiServiceStartedEvent> started = events(AiServiceStartedEvent.class);
+        assertThat(started).hasSize(3);
+        UUID outerId = started.get(0).invocationContext().invocationId();
+        assertThat(started)
+                .extracting(event -> event.invocationContext().parentInvocationId())
+                .containsExactly(null, outerId, null);
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_error_listener_of_ai_service_called_by_tool() {
+        Assistant calledByListener = innerAssistant();
+        AiServiceListener<AiServiceErrorEvent> callingInner = new AiServiceListener<>() {
+
+            @Override
+            public Class<AiServiceErrorEvent> getEventClass() {
+                return AiServiceErrorEvent.class;
+            }
+
+            @Override
+            public void onEvent(AiServiceErrorEvent event) {
+                calledByListener.chat("about the failed invocation");
+            }
+        };
+        Assistant failingBeforeModelCall = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .systemMessageProvider(memoryId -> {
+                    throw new IllegalStateException("no system message");
+                })
+                .registerListeners(listeners())
+                .registerListener(callingInner)
+                .build();
+        ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .tools(Map.of(askInner, (ToolExecutor) (request, memoryId) -> {
+                    try {
+                        return failingBeforeModelCall.chat("inner question");
+                    } catch (IllegalStateException e) {
+                        return e.getMessage();
+                    }
+                }))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        List<AiServiceStartedEvent> started = events(AiServiceStartedEvent.class);
+        assertThat(started).hasSize(2);
+        assertThat(started)
+                .extracting(event -> event.invocationContext().parentInvocationId())
+                .containsExactly(null, null);
+        assertThat(events(AiServiceErrorEvent.class)).hasSize(1);
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_error_handler_of_token_stream_started_by_tool() {
+        Assistant calledByHandler = innerAssistant();
+        StreamingAssistant calledByTool = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("model failed"))
+                .registerListeners(listeners())
+                .build();
+        List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
+        ToolSpecification askStreaming =
+                ToolSpecification.builder().name("askStreaming").build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askStreaming")))
+                .tools(Map.of(askStreaming, (ToolExecutor) (request, memoryId) -> {
+                    AtomicReference<String> answer = new AtomicReference<>();
+                    calledByTool
+                            .chat("inner question")
+                            .onPartialResponse(token -> {})
+                            .onError(error -> {
+                                recordIfInsideInvocation("onError", handlersInsideInvocation);
+                                answer.set(calledByHandler.chat("about " + error.getMessage()));
+                            })
+                            .start();
+                    return answer.get();
+                }))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        List<AiServiceStartedEvent> started = events(AiServiceStartedEvent.class);
+        assertThat(started).hasSize(3);
+        UUID outerId = started.get(0).invocationContext().invocationId();
+        assertThat(started)
+                .extracting(event -> event.invocationContext().parentInvocationId())
+                .containsExactly(null, outerId, null);
+        assertThat(handlersInsideInvocation).isEmpty();
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_subscriber_of_reactive_invocation_started_by_tool() {
+        Assistant calledBySubscriber = innerAssistant();
+        ReactiveAssistant calledByTool = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("inner answer"))
+                .registerListeners(listeners())
+                .build();
+        List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
+        ToolSpecification askReactive =
+                ToolSpecification.builder().name("askReactive").build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askReactive")))
+                .tools(Map.of(askReactive, (ToolExecutor) (request, memoryId) -> {
+                    CompletableFuture<String> done = new CompletableFuture<>();
+                    calledByTool.chat("inner question").subscribe(new Flow.Subscriber<>() {
+
+                        @Override
+                        public void onSubscribe(Flow.Subscription subscription) {
+                            subscription.request(Long.MAX_VALUE);
+                        }
+
+                        @Override
+                        public void onNext(String item) {
+                            recordIfInsideInvocation("onNext", handlersInsideInvocation);
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            done.completeExceptionally(throwable);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            recordIfInsideInvocation("onComplete", handlersInsideInvocation);
+                            done.complete(calledBySubscriber.chat("follow-up"));
+                        }
+                    });
+                    return done.join();
+                }))
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        List<AiServiceStartedEvent> started = events(AiServiceStartedEvent.class);
+        assertThat(started).hasSize(3);
+        UUID outerId = started.get(0).invocationContext().invocationId();
+        assertThat(started)
+                .extracting(event -> event.invocationContext().parentInvocationId())
+                .containsExactly(null, outerId, null);
+        assertThat(handlersInsideInvocation).isEmpty();
     }
 
     @Test
@@ -2060,13 +2539,19 @@ class AiServiceInvocationEventsTest {
 
     @Test
     void should_complete_a_returned_future_outside_of_the_invocation() throws Exception {
+        CountDownLatch chained = new CountDownLatch(1);
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
-                .tools(new Tools())
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .retrievalAugmentor(offloading(query -> {
+                    await(chained);
+                    return List.of(Content.from("source"));
+                }))
                 .build();
 
-        CompletableFuture<Object> currentInContinuation =
-                assistant.chat("Hello").thenApply(answer -> String.valueOf(CurrentInvocation.get()));
+        // chained before the invocation completes, so that it runs on the thread that completes it
+        CompletableFuture<String> currentInContinuation =
+                assistant.chat("Hello").thenApply(answer -> String.valueOf(CurrentInvocation.invocationId()));
+        chained.countDown();
 
         assertThat(currentInContinuation.get(5, SECONDS)).isEqualTo("null");
     }
@@ -2126,7 +2611,7 @@ class AiServiceInvocationEventsTest {
 
         assistant.chat("Hello");
 
-        assertThat(CurrentInvocation.get()).isNull();
+        assertThat(CurrentInvocation.invocationId()).isNull();
     }
 
     private Assistant innerAssistant() {
@@ -2162,9 +2647,20 @@ class AiServiceInvocationEventsTest {
     }
 
     private static void recordIfInsideInvocation(String handler, List<String> handlersInsideInvocation) {
-        if (CurrentInvocation.get() != null) {
+        if (CurrentInvocation.invocationId() != null) {
             handlersInsideInvocation.add(handler);
         }
+    }
+
+    interface AssistantWithoutArguments {
+
+        String chat();
+    }
+
+    interface ModeratedAssistant {
+
+        @Moderate
+        String chat(String message);
     }
 
     static class InnerTool {
