@@ -53,7 +53,7 @@ EmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
     .outputDimensionality(768)      // reduce the embedding size (for models that support it)
     .titleMetadataKey("title")      // metadata key used as the document title for RETRIEVAL_DOCUMENT
     .maxRetries(3)
-    .timeout(Duration.ofSeconds(30))
+    .timeout(Duration.ofSeconds(30)) // limits each HTTP request as a whole; default: 20 minutes
     .build();
 ```
 
