@@ -238,7 +238,10 @@ jobs:
           ## reference the latest code (e.g., langchain4j-core and langchain4j)
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install 2>&1 | tee maven-output.log
 
+          ## kill a module's integration test JVM after 2 h, so that a hung test does not block the job for 6 h
+          ## (the slowest module takes ~80 min)
           mvn -B -U verify \
+            -Dfailsafe.timeout=7200 \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
