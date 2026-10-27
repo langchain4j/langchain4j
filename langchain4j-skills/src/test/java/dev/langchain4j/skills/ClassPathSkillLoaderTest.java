@@ -203,8 +203,8 @@ class ClassPathSkillLoaderTest {
 
     @Test
     @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
-    void should_fail_when_resource_is_relative_symbolic_link_pointing_outside_of_skill_directory(
-            @TempDir Path tempDir) throws IOException {
+    void should_fail_when_resource_is_relative_symbolic_link_pointing_outside_of_skill_directory(@TempDir Path tempDir)
+            throws IOException {
         writeFile(tempDir.resolve("outside.md"), "outside");
         Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
         Files.createSymbolicLink(skillDirectory.resolve("notes.md"), Path.of("../../outside.md"));
@@ -218,8 +218,8 @@ class ClassPathSkillLoaderTest {
 
     @Test
     @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
-    void should_fail_when_resource_is_absolute_symbolic_link_pointing_outside_of_skill_directory(
-            @TempDir Path tempDir) throws IOException {
+    void should_fail_when_resource_is_absolute_symbolic_link_pointing_outside_of_skill_directory(@TempDir Path tempDir)
+            throws IOException {
         Path outside = writeFile(tempDir.resolve("outside.md"), "outside");
         Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
         Files.createDirectories(skillDirectory.resolve("references"));
@@ -236,7 +236,8 @@ class ClassPathSkillLoaderTest {
     @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
     void should_fail_when_SKILL_md_is_symbolic_link_pointing_outside_of_skill_directory(@TempDir Path tempDir)
             throws IOException {
-        writeSkill(tempDir.resolve("skills/my-skill2")); // shares the "my-skill" name prefix, but is a different directory
+        writeSkill(
+                tempDir.resolve("skills/my-skill2")); // shares the "my-skill" name prefix, but is a different directory
         Path skillDirectory = Files.createDirectories(tempDir.resolve("skills/my-skill"));
         Files.createSymbolicLink(skillDirectory.resolve("SKILL.md"), Path.of("../my-skill2/SKILL.md"));
 
@@ -256,7 +257,8 @@ class ClassPathSkillLoaderTest {
         Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
         Files.createSymbolicLink(skillDirectory.resolve("notes.md"), Path.of("../../outside.md"));
 
-        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
+        try (URLClassLoader classLoader =
+                new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
 
             assertThatThrownBy(() -> ClassPathSkillLoader.loadSkills("skills", classLoader))
                     .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -287,7 +289,8 @@ class ClassPathSkillLoaderTest {
         Path skillDirectory =
                 Files.createSymbolicLink(skillsDirectory.resolve("my-skill"), Path.of("../shared/my-skill"));
 
-        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
+        try (URLClassLoader classLoader =
+                new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
 
             List<Skill> skills = ClassPathSkillLoader.loadSkills("skills", classLoader);
 
@@ -301,7 +304,8 @@ class ClassPathSkillLoaderTest {
     }
 
     private static Skill loadSkill(Path classpathRoot, String skillDirectoryOnClasspath) throws IOException {
-        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {classpathRoot.toUri().toURL()}, null)) {
+        try (URLClassLoader classLoader =
+                new URLClassLoader(new URL[] {classpathRoot.toUri().toURL()}, null)) {
             return ClassPathSkillLoader.loadSkill(skillDirectoryOnClasspath, classLoader);
         }
     }
