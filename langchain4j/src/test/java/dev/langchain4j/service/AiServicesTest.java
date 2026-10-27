@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -183,12 +184,11 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel)
-                .chat(ChatRequest.builder()
-                        .messages(
-                                systemMessage("You are a professional chef. Keep your answer to one sentence."),
-                                userMessage("How long should I grill chicken?"))
-                        .build());
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a professional chef. Keep your answer to one sentence."),
+                        userMessage("How long should I grill chicken?"))
+                .build());
     }
 
     @Test
@@ -206,12 +206,11 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel)
-                .chat(ChatRequest.builder()
-                        .messages(
-                                systemMessage("You are a professional chef. Method: answer."),
-                                userMessage("How long should I grill chicken?"))
-                        .build());
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a professional chef. Method: answer."),
+                        userMessage("How long should I grill chicken?"))
+                .build());
     }
 
     @Test
@@ -229,10 +228,11 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel)
-                .chat(ChatRequest.builder()
-                        .messages(systemMessage("You are a helpful assistant."), userMessage("What is 2 + 2?"))
-                        .build());
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a helpful assistant."),
+                        userMessage("What is 2 + 2?"))
+                .build());
     }
 
     @Test
@@ -251,12 +251,11 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel)
-                .chat(ChatRequest.builder()
-                        .messages(
-                                systemMessage("You are a helpful assistant. Always be concise."),
-                                userMessage("What is 2 + 2?"))
-                        .build());
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a helpful assistant. Always be concise."),
+                        userMessage("What is 2 + 2?"))
+                .build());
     }
 
     interface ChatResponseAssistant {
@@ -279,7 +278,25 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+    }
+
+    @Test
+    void should_not_send_json_schema_when_return_type_is_ChatResponse() {
+
+        // given
+        ChatModel chatModel =
+                spy(ChatModelMock.thatAlwaysResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
+
+        ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        ChatResponse chatResponse = assistant.chat("Hello");
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
+        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 }

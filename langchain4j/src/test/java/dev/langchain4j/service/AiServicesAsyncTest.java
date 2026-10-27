@@ -435,6 +435,47 @@ class AiServicesAsyncTest {
         assertThat(result.toolExecutions()).isEmpty();
     }
 
+    interface AssistantReturningChatResponse {
+
+        CompletableFuture<ChatResponse> chat(String userMessage);
+    }
+
+    @Test
+    void should_not_append_output_format_instructions_when_returning_chat_response() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+
+        AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
+                .chatModel(chatModel)
+                .build();
+
+        ChatResponse chatResponse = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Berlin");
+        assertThat(chatModel.requests()).hasSize(1);
+        assertThat(chatModel.requests().get(0).messages())
+                .containsExactly(UserMessage.from("What is the capital of Germany?"));
+    }
+
+    @Test
+    void should_not_send_json_schema_when_returning_chat_response() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin")
+                .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+
+        AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
+                .chatModel(chatModel)
+                .build();
+
+        ChatResponse chatResponse = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Berlin");
+        assertThat(chatModel.requests()).hasSize(1);
+        assertThat(chatModel.requests().get(0).responseFormat()).isNull();
+        assertThat(chatModel.requests().get(0).messages())
+                .containsExactly(UserMessage.from("What is the capital of Germany?"));
+    }
+
     static class Person {
 
         String name;
