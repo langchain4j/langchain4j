@@ -34,7 +34,6 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
             <version>1.23.0-SNAPSHOT</version>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- test dependencies -->
@@ -70,7 +69,54 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client</artifactId>
+            <version>1.23.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client-okhttp</artifactId>
+            <version>${langchain4j.beta.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client-apache</artifactId>
+            <version>${langchain4j.beta.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- OkHttp and Apache are only on the test classpath for their MCP ITs; everything else keeps using the JDK client -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration combine.children="append">
+                    <systemPropertyVariables>
+                        <langchain4j.http.clientBuilderFactory>dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory</langchain4j.http.clientBuilderFactory>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration combine.children="append">
+                    <systemPropertyVariables>
+                        <langchain4j.http.clientBuilderFactory>dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory</langchain4j.http.clientBuilderFactory>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <profiles>
         <!--
