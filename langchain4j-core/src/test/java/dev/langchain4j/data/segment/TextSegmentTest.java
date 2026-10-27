@@ -4,6 +4,9 @@ import dev.langchain4j.data.document.Metadata;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 class TextSegmentTest implements WithAssertions {
     @Test
     void blank() {
@@ -42,7 +45,8 @@ class TextSegmentTest implements WithAssertions {
                 .isEqualTo(ts2)
                 .hasSameHashCodeAs(ts2)
                 .isNotEqualTo(ts3)
-                .doesNotHaveSameHashCodeAs(ts3);
+                // metadata is excluded from hashCode because it is mutable
+                .hasSameHashCodeAs(ts3);
 
         assertThat(ts3)
                 .isEqualTo(ts3)
@@ -51,6 +55,27 @@ class TextSegmentTest implements WithAssertions {
                 .hasSameHashCodeAs(ts4)
                 .isEqualTo(ts5)
                 .hasSameHashCodeAs(ts5);
+    }
+
+    @Test
+    void hashCode_should_not_change_when_metadata_is_mutated() {
+        TextSegment segment = TextSegment.from("text");
+        int hashCodeBefore = segment.hashCode();
+
+        segment.metadata().put("key", "value");
+
+        assertThat(segment.hashCode()).isEqualTo(hashCodeBefore);
+    }
+
+    @Test
+    void should_remain_findable_in_hash_map_after_metadata_is_mutated() {
+        TextSegment segment = TextSegment.from("text");
+        Map<TextSegment, String> map = new HashMap<>();
+        map.put(segment, "value");
+
+        segment.metadata().put("key", "value");
+
+        assertThat(map.get(segment)).isEqualTo("value");
     }
 
     @Test

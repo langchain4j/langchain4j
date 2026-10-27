@@ -1,12 +1,17 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.ContentMetadata;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.rag.content.aggregator.ReciprocalRankFuser.fuse;
@@ -88,6 +93,34 @@ class ReciprocalRankFuserTest {
                         asList(A, C, B, D)))
 
                 .build();
+    }
+
+    @Test
+    void should_deduplicate_contents_with_same_text_but_different_metadata() {
+        Content fromVectorStore = Content.from(
+                TextSegment.from("same text", Metadata.from("source", "vector")),
+                Map.of(ContentMetadata.EMBEDDING_ID, "embedding-1", ContentMetadata.SCORE, 0.9));
+        Content fromWebSearch = Content.from(
+                TextSegment.from("same text", Metadata.from("source", "web")),
+                Map.of(ContentMetadata.SCORE, 0.8));
+
+        List<Content> fused = fuse(List.of(List.of(fromVectorStore), List.of(fromWebSearch)));
+
+        assertThat(fused).containsExactly(fromVectorStore);
+    }
+
+    @Test
+    void should_accumulate_scores_for_same_text_from_different_retrievers() {
+        Content sharedFromVectorStore = Content.from("shared");
+        Content other = Content.from("other");
+        Content sharedFromWebSearch = Content.from(
+                TextSegment.from("shared", Metadata.from("source", "web")),
+                Map.of(ContentMetadata.SCORE, 0.5));
+
+        List<Content> fused = fuse(List.of(
+                List.of(sharedFromVectorStore, other), List.of(sharedFromWebSearch, other)));
+
+        assertThat(fused).containsExactly(sharedFromVectorStore, other);
     }
 
     private static List<Content> list(Content... contents) {
