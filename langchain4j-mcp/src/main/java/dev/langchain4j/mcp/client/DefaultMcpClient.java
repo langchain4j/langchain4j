@@ -183,13 +183,7 @@ public class DefaultMcpClient implements McpClient {
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
-            if (builder.toolResultConverter != null && builder.toolResultExtractor != null) {
-                throw new IllegalArgumentException(
-                        "Set either toolResultConverter or the deprecated " + "toolResultExtractor, not both");
-            }
-            toolResultConverter = builder.toolResultExtractor != null
-                    ? new LegacyToolResultConverterAdapter(builder.toolResultExtractor)
-                    : getOrDefault(builder.toolResultConverter, DefaultMcpToolResultConverter::new);
+            toolResultConverter = getOrDefault(builder.toolResultConverter, DefaultMcpToolResultConverter::new);
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
@@ -1791,9 +1785,6 @@ public class DefaultMcpClient implements McpClient {
         private BiConsumer<McpClient, String> onResourceUpdated;
         private McpToolResultConverter toolResultConverter;
 
-        @Deprecated(since = "1.20.0", forRemoval = true)
-        private McpToolResultExtractor toolResultExtractor;
-
         private Integer multiRoundTripMaxRetries;
         private Boolean subscribeToToolListChanges;
         private Boolean subscribeToPromptListChanges;
@@ -2076,25 +2067,12 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
-         * Sets the extractor used for MCP tool responses backed by {@code content[]}.
-         * Takes precedence over {@link #toolResultExtractor(McpToolResultExtractor)}.
+         * Sets the converter that turns the {@code content[]} items of an MCP tool response into a
+         * {@link ToolExecutionResult}. Responses with {@code structuredContent} are handled
+         * separately and are not affected by this setting.
          */
         public Builder toolResultConverter(McpToolResultConverter toolResultConverter) {
             this.toolResultConverter = ensureNotNull(toolResultConverter, "toolResultConverter");
-            return this;
-        }
-
-        /**
-         * Sets the extractor used for MCP tool responses that return ordinary
-         * {@code CallToolResult.result.content[]} items. Responses with
-         * {@code structuredContent} are handled separately and are not affected by this setting.
-         *
-         * @deprecated use {@link #toolResultConverter(McpToolResultConverter)}, which does not expose
-         * Jackson types. Setting both is rejected with an {@link IllegalArgumentException}.
-         */
-        @Deprecated(since = "1.20.0", forRemoval = true)
-        public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
-            this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
             return this;
         }
 

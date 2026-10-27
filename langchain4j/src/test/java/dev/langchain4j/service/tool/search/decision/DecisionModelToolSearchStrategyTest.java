@@ -70,12 +70,12 @@ class DecisionModelToolSearchStrategyTest {
             assertThat(request.questions())
                     .containsEntry(
                             "tool1",
-                            YesNoQuestion.of("Would this tool help to handle the request?\n"
+                            YesNoQuestion.from("Would this tool help to handle the request?\n"
                                     + "Tool: get_weather\n"
                                     + "Description: Returns the current weather"))
                     .containsEntry(
                             "tool3",
-                            YesNoQuestion.of(
+                            YesNoQuestion.from(
                                     "Would this tool help to handle the request?\nTool: get_forecast\nDescription:"));
         });
     }
@@ -108,7 +108,7 @@ class DecisionModelToolSearchStrategyTest {
         strategy.search(searchRequest("{\"query\": \"weather\"}"));
 
         assertThat(decisionModel.request().questions())
-                .containsEntry("tool0", YesNoQuestion.of("Is send_email (Sends an email) useful here?"));
+                .containsEntry("tool0", YesNoQuestion.from("Is send_email (Sends an email) useful here?"));
     }
 
     @Test

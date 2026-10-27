@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -121,9 +122,19 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
-        if (parentListener != null && parentListener.inheritedBySubagents()) {
+        if (parentListener != null && parentListener.inheritedBySubagents() && isNewListener(listener, parentListener)) {
             listener = composeWithInherited(listener(), parentListener);
         }
+    }
+
+    private static boolean isNewListener(AgentListener currentListener, AgentListener newListener) {
+        if (newListener == currentListener) {
+            return false;
+        }
+        if (currentListener instanceof ComposedAgentListener composed) {
+            return !composed.contains(newListener);
+        }
+        return true;
     }
 
     @Override
@@ -164,6 +175,9 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
     }
 
     @Override

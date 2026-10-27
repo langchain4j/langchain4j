@@ -89,10 +89,35 @@
             <!-- But we can't depend on the module directly because it would introduce a circular dependency -->
             <!-- The langchain4j-test module depends on this module -->
             <!-- So instead we will just add the source of that module to the test source of this module -->
+            <!-- Core tests only need the guardrail assertions, so only that package is copied (keeping its folders) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-langchain4j-test-guardrail-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/generated-test-sources/langchain4j-test</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../langchain4j-test/src/main/java</directory>
+                                    <includes>
+                                        <include>dev/langchain4j/test/guardrail/**</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <goals>
@@ -101,7 +126,7 @@
                         <phase>generate-test-sources</phase>
                         <configuration>
                             <sources>
-                                <source>${project.basedir}/../langchain4j-test/src/main/java</source>
+                                <source>${project.build.directory}/generated-test-sources/langchain4j-test</source>
                             </sources>
                         </configuration>
                     </execution>

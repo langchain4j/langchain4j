@@ -236,6 +236,10 @@ public interface TokenStream {
      * Completes the current token stream building and starts processing.
      * <p>
      * Will send a request to LLM and start response streaming.
+     * <p>
+     * Each call is a separate AI Service invocation with its own invocation id. A second call reuses the retrieved
+     * contents, the result of the input guardrails and the messages prepared when the AI Service method was called:
+     * only the model call, the tools and the output guardrails run again.
      */
     void start();
 }

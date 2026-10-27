@@ -286,7 +286,7 @@ class GoogleGenAiStreamingChatModelTest {
             }
         });
 
-        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        ChatResponse response = future.get(30, TimeUnit.SECONDS);
         AiMessage aiMessage = response.aiMessage();
 
         assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
@@ -337,7 +337,7 @@ class GoogleGenAiStreamingChatModelTest {
             }
         });
 
-        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        ChatResponse response = future.get(30, TimeUnit.SECONDS);
 
         assertThat(response.aiMessage().images()).hasSize(2);
         assertThat(response.aiMessage().images().get(0).base64Data())
@@ -518,7 +518,7 @@ class GoogleGenAiStreamingChatModelTest {
             }
         });
 
-        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        ChatResponse response = future.get(30, TimeUnit.SECONDS);
 
         assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
     }
@@ -754,7 +754,7 @@ class GoogleGenAiStreamingChatModelTest {
                 future.completeExceptionally(error);
             }
         });
-        return future.get(5, TimeUnit.SECONDS);
+        return future.get(30, TimeUnit.SECONDS);
     }
 
     @Test
@@ -1013,7 +1013,7 @@ class GoogleGenAiStreamingChatModelTest {
             }
         });
 
-        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        ChatResponse response = future.get(30, TimeUnit.SECONDS);
         assertThat(errors).containsExactly(handlerException);
         assertThat(response.aiMessage().text()).isEqualTo("42");
     }

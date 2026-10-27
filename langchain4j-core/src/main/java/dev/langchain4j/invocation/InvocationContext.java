@@ -4,11 +4,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -22,7 +24,9 @@ import org.jspecify.annotations.NonNull;
 public interface InvocationContext {
 
     /**
-     * Unique identifier for an entire AI Service invocation
+     * Unique identifier for an entire AI Service invocation. AI Services created with
+     * {@code AiServices} treat each subscription to a publisher returned by an AI Service
+     * method as a separate invocation, with its own identifier.
      */
     UUID invocationId();
 
@@ -112,6 +116,9 @@ public interface InvocationContext {
     /**
      * Converts the current instance of {@link DefaultInvocationContext} into a {@link Builder},
      * pre-populated with the current values of the instance.
+     * <p>
+     * When this is a {@link DefaultInvocationContext}, a copy built with the same {@link #invocationId()} shares
+     * whether the invocation has already reported its end (see {@link InvocationEnd}).
      */
     default Builder toBuilder() {
         return new Builder(this);
@@ -142,7 +149,9 @@ public interface InvocationContext {
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
-        dev.langchain4j.spi.CapturedContext capturedContext;
+        CapturedContext capturedContext;
+        AtomicBoolean ended;
+        UUID endedInvocationId;
 
         protected Builder() {}
 
@@ -161,6 +170,8 @@ public interface InvocationContext {
             timestamp(invocationContext.timestamp());
             if (invocationContext instanceof DefaultInvocationContext defaultInvocationContext) {
                 this.capturedContext = defaultInvocationContext.capturedContext();
+                this.ended = defaultInvocationContext.ended();
+                this.endedInvocationId = defaultInvocationContext.invocationId();
             }
         }
 

@@ -8,5 +8,6 @@ public enum AgenticSystemTopology {
     PARALLEL,
     LOOP,
     ROUTER,
-    STAR
+    STAR,
+    DECISION_AGENT
 }

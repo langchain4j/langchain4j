@@ -70,6 +70,13 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>opensearch</artifactId>
+            <exclusions>
+                <!-- brings httpclient5 5.6+, which breaks opensearch-java; the AWS path uses apache-client below -->
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache5-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>

@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -91,6 +91,14 @@ class DecisionRouterPlannerTest {
         ResultWithAgenticScope<Map<String, Object>> ask(@V("request") String request);
     }
 
+    public record Patient(String name, String symptoms) {}
+
+    public interface PatientRouter {
+
+        @Agent
+        String ask(@V("patient") Patient patient);
+    }
+
     // ── Agents and workflows composing the router into a sequence ──
 
     public static class Summarizer {
@@ -129,7 +137,7 @@ class DecisionRouterPlannerTest {
 
     private static DecisionModelMock modelAnsweringRelevance(Map<String, Double> probabilities) {
         Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
-        probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.of(probability)));
+        probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.from(probability)));
         return DecisionModelMock.thatAlwaysAnswers(answers);
     }
 
@@ -504,6 +512,20 @@ class DecisionRouterPlannerTest {
         assertThatThrownBy(() -> router.invoke(Map.of("request", REQUEST)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("typed agent interface");
+    }
+
+    @Test
+    void shouldRejectAnArgumentThatTheDecisionModelDoesNotAccept() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        PatientRouter router = router(PatientRouter.class, new DecisionRouterPlanner(model));
+
+        // the record is sent as it is, and the decision model rejects it
+        assertThatThrownBy(() -> router.ask(new Patient("Alice", "broken leg")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strings, numbers, booleans")
+                .hasMessageContaining(Patient.class.getName());
+        assertThat(model.requests()).isEmpty();
+        assertThat(medicalExpert.calls).hasValue(0);
     }
 
     @Test

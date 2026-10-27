@@ -31,6 +31,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -147,10 +148,24 @@ public class AgentUtil {
             return AgentInvoker.fromSpec(spec, agenticMethod, name);
         }
         // a class with a static agent method is wrapped in an AgenticScopeFunction, its conditions are on the class
-        Class<?> agentClass =
-                agent instanceof AgenticScopeFunction<?> ? agenticMethod.getDeclaringClass() : agent.getClass();
+        if (agent instanceof AgenticScopeFunction<?>) {
+            Class<?> agentClass = agenticMethod.getDeclaringClass();
+            return nonAiAgentInvoker(
+                    ResolvedParameters.of(agentClass, agenticMethod),
+                    name,
+                    description,
+                    outputKey,
+                    async,
+                    DeclarativeUtil.activationCondition(agentClass));
+        }
+        // the parameters of an agent passed as an instance are not provided by a SupplierParameterResolver
         return nonAiAgentInvoker(
-                agenticMethod, name, description, outputKey, async, DeclarativeUtil.activationCondition(agentClass));
+                agenticMethod,
+                name,
+                description,
+                outputKey,
+                async,
+                DeclarativeUtil.activationCondition(agent.getClass()));
     }
 
     public static AgentInvoker nonAiAgentInvoker(
@@ -177,6 +192,34 @@ public class AgentUtil {
                         null,
                         activationCondition),
                 agenticMethod);
+    }
+
+    /**
+     * Creates the invoker of a non-AI agent method: its parameters provided by a
+     * {@link dev.langchain4j.agentic.declarative.SupplierParameterResolver} are not agent arguments, and are resolved
+     * at each invocation.
+     */
+    public static AgentInvoker nonAiAgentInvoker(
+            ResolvedParameters parameters,
+            String name,
+            String description,
+            String outputKey,
+            boolean async,
+            AgentCondition activationCondition) {
+        Method agenticMethod = parameters.method();
+        NonAiAgentInstance agentInstance = new NonAiAgentInstance(
+                agenticMethod.getDeclaringClass(),
+                name,
+                description,
+                agenticMethod.getGenericReturnType(),
+                outputKey,
+                async,
+                parameters.frameworkArguments(),
+                null,
+                activationCondition);
+        return parameters.frameworkParameterCount() == agenticMethod.getParameterCount()
+                ? AgentInvoker.fromMethod(agentInstance, agenticMethod)
+                : new ResolvedParametersAgentInvoker(agentInstance, parameters);
     }
 
     public static AgentExecutor agentToExecutor(InternalAgent agent) {
@@ -483,6 +526,10 @@ public class AgentUtil {
         Class<?> keyClass = rawType(type);
         if (TokenStream.class.isAssignableFrom(keyClass)) {
             keyClass = String.class;
+        }
+        if (keyClass.isPrimitive()) {
+            // the values of the scope are boxed, so a boolean output is compatible with a Boolean or Object key
+            keyClass = MethodType.methodType(keyClass).wrap().returnType();
         }
         if (!dataTypes.containsKey(name)) {
             dataTypes.put(name, keyClass);

@@ -74,6 +74,7 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
         }
         this.defaultRequestParameters = OpenAiOfficialDecisionRequestParameters.builder()
                 .modelName(builder.modelName)
+                .promptCacheKey(builder.promptCacheKey)
                 .customParameters(builder.customParameters)
                 .build();
         this.listeners = copy(builder.listeners);
@@ -136,6 +137,7 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
         private Integer maxRetries;
         private Proxy proxy;
         private Map<String, String> customHeaders;
+        private String promptCacheKey;
         private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
 
@@ -196,6 +198,21 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * A key that separates prompt caching between groups of requests, sent as {@code prompt_cache_key}. OpenAI
+         * caches the shared input of requests automatically, also without a key. With a key, only requests with the
+         * same key reuse each other's cached input, for example to keep cache reuse and the cached token counts
+         * separate per customer or user. Not set by default.
+         * <p>
+         * It can be replaced for a single request with
+         * {@link OpenAiOfficialDecisionRequestParameters.Builder#promptCacheKey(String)}.
+         * See the <a href="https://developers.openai.com/api/docs/guides/prompt-caching">prompt caching guide</a>.
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 
