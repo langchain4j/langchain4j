@@ -24,6 +24,9 @@ Typical uses are:
   (see the [decision router agentic pattern](/tutorials/agents#decision-router-agentic-pattern))
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
+  (see the [confidence cascade agentic pattern](/tutorials/agents#confidence-cascade-agentic-pattern))
+- **Decisions inside an agentic system**: a classifier, a grader or a check whose typed answer other agents consume
+  (see [decision agents](/tutorials/agents#decision-agents))
 
 Decision models are built for these tasks: they return typed answers with probabilities,
 so there is no text to parse, and all questions of a request are answered against the same input in a single call.
@@ -65,7 +68,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .question("frustration", ScaleQuestion.builder()
                 .text("How frustrated is the customer?")
                 .level("Calm")
@@ -78,7 +81,7 @@ DecisionResponse response = decisionModel.decide(request);
 ```
 
 Each question type has a builder, and a shorter factory method for the common case:
-`YesNoQuestion.of(text)`, `ChoiceQuestion.of(text, options)` and `ScaleQuestion.of(text, levels)`.
+`YesNoQuestion.from(text)`, `ChoiceQuestion.from(text, options)` and `ScaleQuestion.from(text, levels)`.
 
 The response contains one answer per question, under the same name:
 
@@ -127,7 +130,7 @@ A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 opt
 For options whose name says it all, the name is also used as the description:
 
 ```java
-ChoiceQuestion sentiment = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"));
+ChoiceQuestion sentiment = ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral"));
 ```
 
 It is answered with a `ChoiceAnswer`:
@@ -196,7 +199,7 @@ DecisionRequest request = DecisionRequest.builder()
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 ```
 
@@ -215,7 +218,7 @@ DecisionRequest request = DecisionRequest.builder()
         .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
@@ -226,7 +229,7 @@ DecisionRequest request = DecisionRequest.builder()
         .inputFields(Map.of(
                 "comment", "The package arrived like this.",
                 "photo", ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
@@ -253,7 +256,7 @@ DecisionRequest request = DecisionRequest.builder()
                 AiMessage.from(getOrder),
                 ToolExecutionResultMessage.from(getOrder, "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"),
                 AiMessage.from("You were charged twice. I have refunded one of the charges.")))
-        .question("backed_by_tools", YesNoQuestion.of(
+        .question("backed_by_tools", YesNoQuestion.from(
                 "Did the assistant call a tool for every action it says it has taken?"))
         .build();
 ```
@@ -384,9 +387,13 @@ needed. They work with any `DecisionModel` implementation.
 | `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
 | `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
+| `AgenticServices.decisionAgentBuilder` | `langchain4j-agentic` |
+| `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic-patterns` |
 
 Each of these components makes an additional call to the decision model. Its token usage is not included in the token
 usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
+to the agent listeners and counted by the `AgentMonitor`.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
@@ -533,6 +540,17 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
 
 `DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
 See [Model Routing](/tutorials/model-routing).
+
+### Decision agents
+
+A [decision agent](/tutorials/agents#decision-agents) is an agent of an agentic system built on a
+[Decision Service](/tutorials/decision-services) interface: its arguments are read from the `AgenticScope` and sent
+as the input of the decision, and its typed answer, with its probabilities, is written to the scope for the
+predicates, the exit conditions and the agents that follow. It is created with
+`AgenticServices.decisionAgentBuilder(...)` of the `langchain4j-agentic` module, or declaratively with
+`@DecisionModelSupplier`. The [decision router](/tutorials/agents#decision-router-agentic-pattern) and the
+[confidence cascade](/tutorials/agents#confidence-cascade-agentic-pattern) patterns use a decision model inside
+their orchestration instead, to choose which agents run and when to stop escalating.
 
 ### What the components send to the decision model
 

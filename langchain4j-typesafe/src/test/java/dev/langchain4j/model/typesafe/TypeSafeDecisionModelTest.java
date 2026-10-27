@@ -278,7 +278,7 @@ class TypeSafeDecisionModelTest {
         // when
         model.decide(DecisionRequest.builder()
                 .input("I love it!")
-                .question("sentiment", ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative")))
+                .question("sentiment", ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative")))
                 .build());
 
         // then
@@ -298,7 +298,7 @@ class TypeSafeDecisionModelTest {
         // when
         model.decide(DecisionRequest.builder()
                 .inputContents(List.of(TextContent.from("Hi,"), TextContent.from("are we still meeting tomorrow?")))
-                .question("spam", YesNoQuestion.of("Is this spam?"))
+                .question("spam", YesNoQuestion.from("Is this spam?"))
                 .build());
 
         // then
@@ -313,7 +313,7 @@ class TypeSafeDecisionModelTest {
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
                 .input(() -> DecisionInputType.TEXT)
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -377,7 +377,7 @@ class TypeSafeDecisionModelTest {
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
                 .inputMessages(UserMessage.from(ImageContent.from("iVBORw0KGgo=", "image/png")))
-                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                 .build();
 
         // when-then
@@ -398,7 +398,7 @@ class TypeSafeDecisionModelTest {
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
                         .inputContents(List.of(
                                 TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
@@ -447,13 +447,13 @@ class TypeSafeDecisionModelTest {
                                 "Arrived like this",
                                 "photo",
                                 ImageContent.from("iVBORw0KGgo=", "image/png")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
         assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
                         .inputFields(Map.of("photos", List.of(ImageContent.from("iVBORw0KGgo=", "image/png"))))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class);
         assertThat(httpClient.requests()).isEmpty();
@@ -471,7 +471,7 @@ class TypeSafeDecisionModelTest {
         // when
         model.decide(DecisionRequest.builder()
                 .inputFields(Map.of("message", TextContent.from("Hi, are we still meeting tomorrow?")))
-                .question("spam", YesNoQuestion.of("Is this spam?"))
+                .question("spam", YesNoQuestion.from("Is this spam?"))
                 .build());
 
         // then

@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  * {@code org.a2aproject.sdk.client.ClientBuilder}, and return {@code void}.
  * It is invoked once at build time, allowing transport, interceptors, streaming,
  * and other low-level configuration to be specified declaratively.
+ * Besides the {@code ClientBuilder}, it can declare parameters resolved through a
+ * {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>{@code

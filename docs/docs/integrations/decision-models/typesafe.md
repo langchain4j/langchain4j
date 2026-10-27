@@ -44,7 +44,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);

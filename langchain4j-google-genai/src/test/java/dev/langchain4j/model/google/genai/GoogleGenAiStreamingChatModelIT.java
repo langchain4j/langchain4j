@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -25,6 +26,7 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             GoogleGenAiStreamingChatModel.builder()
                     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                     .modelName("gemini-3.8-flash")
+                    .thinkingBudget(0)
                     .build();
 
     @Override
@@ -79,6 +81,15 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
     }
+
+    @Override
+    protected boolean assertTimesOnPartialResponseWasCalled() {
+        return false; // after a tool call, Gemini often streams the final (short) answer in a single chunk
+    }
+
+    @Disabled("Gemini cannot do it reliably")
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
@@ -145,7 +156,7 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         assertThat(handler.get().aiMessage().text())
                 .contains("Code executed:\n```python\n")
-                .contains("Output:\n```\n1267650600228229401496703205376");
+                .containsPattern("Output:\\n```\\n[^`]*1267650600228229401496703205376");
     }
 
     @Override

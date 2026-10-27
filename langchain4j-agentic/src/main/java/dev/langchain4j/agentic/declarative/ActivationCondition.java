@@ -14,7 +14,8 @@ import java.lang.annotation.Target;
  * any kind of agent: AI agents, workflows, planners, non-AI agents, human-in-the-loop, A2A and MCP client agents.
  * The condition is ignored when the agent is invoked directly, as the root of an agentic system. It can be evaluated
  * more than once for a single invocation, so it must be cheap and free of side effects; its arguments are read from the
- * {@code AgenticScope} without writing back the values converted to their declared types.
+ * {@code AgenticScope} without writing back the values converted to their declared types. It can also declare
+ * parameters resolved through a {@link SupplierParameterResolver}.
  * <pre>
  * {@code
  *     public interface ContextGatherer {

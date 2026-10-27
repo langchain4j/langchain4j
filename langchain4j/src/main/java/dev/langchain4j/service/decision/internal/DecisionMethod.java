@@ -61,7 +61,7 @@ import java.util.function.Function;
  * The analysis of one decision service method: the questions it asks, how its parameters become the input, and how
  * the answers are mapped back to its return type.
  * <p>
- * All validation happens in {@link #of(Method)}, so frameworks can detect errors at build time. At runtime, they
+ * All validation happens in {@link #from(Method)}, so frameworks can detect errors at build time. At runtime, they
  * can call {@link #invoke} or {@link #invokeAsync} to implement the method without the proxy created by
  * {@link DecisionServices}.
  */
@@ -141,7 +141,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method) {
+    public static DecisionMethod from(Method method) {
         ensureNotNull(method, "method");
         return new DecisionMethod(method, method.getGenericReturnType());
     }
@@ -153,7 +153,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method, Type returnType) {
+    public static DecisionMethod from(Method method, Type returnType) {
         return new DecisionMethod(ensureNotNull(method, "method"), ensureNotNull(returnType, "returnType"));
     }
 
@@ -166,6 +166,13 @@ public final class DecisionMethod {
      */
     public Map<String, Question> questions() {
         return questions;
+    }
+
+    /**
+     * Whether any question is answered as a {@code boolean}, the only kind of answer a threshold applies to.
+     */
+    public boolean hasBooleanAnswer() {
+        return mappings.values().stream().anyMatch(mapping -> mapping.kind() == Kind.BOOLEAN);
     }
 
     /**
@@ -186,7 +193,7 @@ public final class DecisionMethod {
      * The classes accessed by reflection when mapping the answers, so that frameworks can register them for native
      * images: the returned object types and their superclasses (their declared fields and constructors are used, and
      * for records their components), and the enums whose constants are the options (their constant fields are read
-     * for {@code @Description}). When {@link #of(Method)} itself runs in a native image, the service interface (its
+     * for {@code @Description}). When {@link #from(Method)} itself runs in a native image, the service interface (its
      * methods, with their parameters and annotations) must be registered as well.
      */
     public Set<Class<?>> reflectiveTypes() {
@@ -319,9 +326,21 @@ public final class DecisionMethod {
         if (async) {
             return invokeAsync(config, args);
         }
-        DecisionRequest request = toRequest(args);
+        return invokeWithResponse(config, toRequest(args)).content();
+    }
+
+    /**
+     * Invokes this method synchronously with the given request, typically created with {@link #toRequest(Object[])},
+     * and returns both its result and the response of the decision model, for frameworks that need the raw answers
+     * (for example their probabilities or the token usage) whatever the declared return type of the method.
+     *
+     * @return the result of the method as {@link DecisionResult#content() content} (itself a {@link DecisionResult}
+     * when the method declares one) and the response of the model as {@link DecisionResult#response() response}.
+     */
+    public DecisionResult<Object> invokeWithResponse(DecisionServiceConfig config, DecisionRequest request) {
         DecisionResponse response = config.decisionModel().decide(request);
-        return toResult(response, thresholds(config, request, response));
+        Object result = toResult(response, thresholds(config, request, response));
+        return DecisionResult.builder().content(result).response(response).build();
     }
 
     /**
@@ -598,7 +617,7 @@ public final class DecisionMethod {
             }
             Question question;
             if (enumType == null) {
-                question = YesNoQuestion.of(questionText);
+                question = YesNoQuestion.from(questionText);
             } else if (kind == Kind.SCALE) {
                 ScaleQuestion.Builder scale = ScaleQuestion.builder().text(questionText);
                 descriptions(name, enumType).forEach((constantName, description) -> {
