@@ -14,9 +14,12 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -277,5 +280,28 @@ class ToolServiceTest {
 
         assertThat(refreshed).isSameAs(context);
         assertThat(refreshed.toolExecutors()).doesNotContainKey("dynamic_tool");
+    }
+
+    @Test
+    void should_attach_a_failing_listener_exception_to_the_tool_error_of_a_failed_round() {
+        AiServiceListenerRegistrar registrar = AiServiceListenerRegistrar.newInstance(true);
+        RuntimeException listenerError = new RuntimeException("listener failed");
+        registrar.register((ToolExecutedEventListener) event -> {
+            throw listenerError;
+        });
+        ToolExecutionRequest succeeded =
+                ToolExecutionRequest.builder().id("1").name("succeed").arguments("{}").build();
+        ToolExecutionRequest failed =
+                ToolExecutionRequest.builder().id("2").name("fail").arguments("{}").build();
+        RuntimeException toolError = new RuntimeException("tool failed");
+
+        ToolService.fireToolExecutedEventsOfFailedRound(
+                InvocationContext.builder().build(),
+                List.of(succeeded, failed),
+                Map.of(succeeded, ToolExecutionResult.builder().resultText("ok").build()),
+                Map.of(failed, toolError),
+                registrar);
+
+        assertThat(toolError.getSuppressed()).containsExactly(listenerError);
     }
 }

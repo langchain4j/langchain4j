@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -10,6 +11,7 @@ import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("OpenAI shut down its last model for the completions API (gpt-3.5-turbo-instruct, davinci-002, babbage-002) on 2026-09-28")
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiLanguageModelIT {
 

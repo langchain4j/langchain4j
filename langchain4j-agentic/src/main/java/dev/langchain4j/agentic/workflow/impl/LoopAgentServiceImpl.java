@@ -5,18 +5,15 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutpu
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
-import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -100,17 +97,20 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
                     return method;
                 })
                 .ifPresent(method -> this.exitCondition(
-                        method.getAnnotation(ExitCondition.class).description(), loopExitConditionPredicate(method)));
+                        method.getAnnotation(ExitCondition.class).description(),
+                        loopExitConditionPredicate(agentServiceClass, method)));
     }
 
-    private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(Method predicateMethod) {
-        List<AgentArgument> agentArguments = argumentsFromMethod(predicateMethod);
+    private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(
+            Class<?> agentServiceClass, Method predicateMethod) {
+        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, predicateMethod);
         return (agenticScope, loopCounter) -> {
             try {
-                Object[] args = agentInvocationArguments(
+                Object[] args = parameters
+                        .invocationArguments(
                                 agenticScope,
-                                agentArguments,
-                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter))
+                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter),
+                                true)
                         .positionalArgs();
                 return (boolean) predicateMethod.invoke(null, args);
             } catch (Exception e) {

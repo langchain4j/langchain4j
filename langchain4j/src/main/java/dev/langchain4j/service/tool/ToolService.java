@@ -674,7 +674,11 @@ public class ToolService {
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
+                    execute(
+                            toolExecutionRequests,
+                            toolServiceContext.toolExecutors(),
+                            invocationContext,
+                            context.eventListenerRegistrar);
 
             ToolResultsOutcome outcome = processToolResults(
                     context,
@@ -1755,6 +1759,21 @@ public class ToolService {
                 .build();
     }
 
+    private static void fireFailedToolExecutedEvent(
+            InvocationContext invocationContext,
+            ToolExecutionRequest request,
+            Throwable error,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        if (listenerRegistrar != null) {
+            listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                    .invocationContext(invocationContext)
+                    .request(request)
+                    .resultText(errorText(error))
+                    .isError(true)
+                    .build());
+        }
+    }
+
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,
             ToolExecutionRequest request,
@@ -1764,6 +1783,7 @@ public class ToolService {
                 .invocationContext(invocationContext)
                 .request(request)
                 .resultContents(toolExecution.resultContents())
+                .isError(toolExecution.hasFailed())
                 .build());
     }
 
@@ -1793,12 +1813,13 @@ public class ToolService {
     private Map<ToolExecutionRequest, ToolExecutionResult> execute(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
         if (executor != null && toolRequests.size() > 1) {
-            return executeConcurrently(toolRequests, toolExecutors, invocationContext);
+            return executeConcurrently(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
         } else {
             // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolRequests, toolExecutors, invocationContext);
+            return executeSequentially(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
         }
     }
 
@@ -2046,7 +2067,8 @@ public class ToolService {
     private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
@@ -2057,19 +2079,28 @@ public class ToolService {
         }
 
         Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
+        Map<ToolExecutionRequest, Throwable> errors = new LinkedHashMap<>();
         for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry : futures.entrySet()) {
             try {
                 results.put(entry.getKey(), entry.getValue().get());
             } catch (ExecutionException e) {
-                if (e.getCause() instanceof RuntimeException re) {
-                    throw re;
-                } else {
-                    throw new RuntimeException(e.getCause());
+                if (e.getCause() instanceof VirtualMachineError vmError) {
+                    throw vmError;
                 }
+                errors.put(entry.getKey(), e.getCause());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             }
+        }
+
+        if (!errors.isEmpty()) {
+            fireToolExecutedEventsOfFailedRound(invocationContext, toolRequests, results, errors, listenerRegistrar);
+            Throwable error = errors.values().iterator().next();
+            if (error instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(error);
         }
 
         return results;
@@ -2078,12 +2109,61 @@ public class ToolService {
     private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
         Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
+            try {
+                toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
+            } catch (VirtualMachineError e) {
+                throw e;
+            } catch (RuntimeException | Error e) {
+                fireToolExecutedEventsOfFailedRound(
+                        invocationContext, toolRequests, toolResults, Map.of(toolRequest, e), listenerRegistrar);
+                throw e;
+            }
         }
         return toolResults;
+    }
+
+    /**
+     * Fires a {@link ToolExecutedEvent} for each tool of a round that has terminated, in the order the tools were
+     * requested, before a tool error that fails the invocation is rethrown: the tools that returned a result, and the
+     * tools whose error is rethrown (with {@link ToolExecutedEvent#isError()} {@code true}). If a listener throws, the
+     * remaining events are not fired and the listener's exception is added as suppressed to the first tool error, which
+     * is the one the caller rethrows.
+     */
+    @Internal
+    public static void fireToolExecutedEventsOfFailedRound(
+            InvocationContext invocationContext,
+            List<ToolExecutionRequest> toolRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> results,
+            Map<ToolExecutionRequest, Throwable> errors,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        if (listenerRegistrar == null) {
+            return;
+        }
+        try {
+            for (ToolExecutionRequest toolRequest : toolRequests) {
+                ToolExecutionResult result = results.get(toolRequest);
+                if (result != null) {
+                    listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                            .invocationContext(invocationContext)
+                            .request(toolRequest)
+                            .resultContents(result.resultContents())
+                            .isError(result.isError())
+                            .build());
+                } else if (errors.containsKey(toolRequest)) {
+                    fireFailedToolExecutedEvent(
+                            invocationContext, toolRequest, errors.get(toolRequest), listenerRegistrar);
+                }
+            }
+        } catch (RuntimeException listenerError) {
+            Throwable toolError = errors.values().iterator().next();
+            if (toolError != listenerError) {
+                toolError.addSuppressed(listenerError);
+            }
+        }
     }
 
     private ToolExecutionResult executeTool(
@@ -2207,6 +2287,7 @@ public class ToolService {
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
         ToolExecutionResultMessage toolResultMessage = toolHallucinationStrategy.apply(toolRequest);
         return ToolExecutionResult.builder()
+                .isError(Boolean.TRUE.equals(toolResultMessage.isError()))
                 .resultText(toolResultMessage.text())
                 .build();
     }
