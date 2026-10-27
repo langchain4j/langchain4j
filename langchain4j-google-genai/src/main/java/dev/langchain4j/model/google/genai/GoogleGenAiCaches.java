@@ -1,8 +1,10 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.genai.Client;
 import com.google.genai.types.CachedContent;
@@ -44,7 +46,7 @@ public final class GoogleGenAiCaches {
                         null,
                         null,
                         null,
-                        null,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
                         builder.apiEndpoint,
                         builder.apiVersion);
@@ -119,6 +121,7 @@ public final class GoogleGenAiCaches {
         private String apiEndpoint;
         private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
+        private Duration timeout;
         private Client client;
 
         public Builder apiKey(String apiKey) {
@@ -144,6 +147,20 @@ public final class GoogleGenAiCaches {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, waiting for the server and receiving the response.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
             return this;
         }
 
