@@ -29,6 +29,19 @@ class TextToSpeechRequestTest {
     }
 
     @Test
+    void should_be_equal_when_text_and_voice_are_equal() {
+        TextToSpeechRequest request =
+                TextToSpeechRequest.builder().text("test speech").voice("ash").build();
+        TextToSpeechRequest same =
+                TextToSpeechRequest.builder().text("test speech").voice("ash").build();
+        TextToSpeechRequest otherVoice =
+                TextToSpeechRequest.builder().text("test speech").voice("coral").build();
+
+        assertThat(request).isEqualTo(same).hasSameHashCodeAs(same).isNotEqualTo(otherVoice);
+        assertThat(request).hasToString("TextToSpeechRequest { text = \"test speech\", voice = \"ash\" }");
+    }
+
+    @Test
     void should_not_enforce_provider_specific_length_limit() {
         // Length limits are provider-specific and enforced by the provider, not by the core request.
         String longText = "a".repeat(10_000);
