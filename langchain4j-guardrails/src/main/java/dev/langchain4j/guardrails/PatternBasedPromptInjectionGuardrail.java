@@ -40,13 +40,20 @@ import org.slf4j.LoggerFactory;
  * </p>
  * <p>
  * <b>Limitations.</b> Pattern-based detection cannot catch novel or semantically obfuscated
- * attacks. For deeper analysis, chain this guardrail with an LLM-based classifier that runs
+ * attacks. For example, instruction-override phrases are only recognized when the words between
+ * the verb and its target come from a fixed list ("ignore all your previous instructions"); other
+ * wordings pass. For deeper analysis, chain this guardrail with an LLM-based classifier that runs
  * afterwards.
  * </p>
  */
 public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PatternBasedPromptInjectionGuardrail.class);
+
+    // The only words allowed between an instruction-override verb and what it targets. Anything else
+    // (for example "ignore the formatting rules for this draft, I will fix them later") is not an override.
+    private static final String OVERRIDE_FILLER = "(?:(?:all|any|and|each|every|one|of|your|my|the|these|those"
+            + "|previous|prior|above|earlier|absolutely|initial|original|system)\\s+)*";
 
     private static final List<Pattern> DEFAULT_PATTERNS = List.of(
             // Instruction override
@@ -58,11 +65,11 @@ public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
                     "disregard\\s+(all\\s+|your\\s+)?(previous\\s+|prior\\s+)?(instructions?|rules?|context)",
                     CASE_INSENSITIVE),
             Pattern.compile("override\\s+(your\\s+|the\\s+)?(instructions?|rules?|system\\s+prompt)", CASE_INSENSITIVE),
-            // Instruction override with intervening words within the same clause,
+            // Instruction override with filler words in between,
             // e.g. "ignore all your previous instructions", "disregard any and all prior rules"
             Pattern.compile(
-                    "\\b(ignore|disregard|forget|override|bypass)\\b[^.;!?\\n]*?"
-                            + "\\b(instructions?|rules?|directives?|context|prompts?|everything)\\b",
+                    "\\b(ignore|disregard|forget|override|bypass)\\s+" + OVERRIDE_FILLER
+                            + "(instructions?|rules?|directives?|prompts?)\\b",
                     CASE_INSENSITIVE),
 
             // Role hijacking
