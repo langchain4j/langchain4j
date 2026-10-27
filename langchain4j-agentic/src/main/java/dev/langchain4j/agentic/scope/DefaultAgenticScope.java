@@ -19,6 +19,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
@@ -354,7 +355,7 @@ public class DefaultAgenticScope implements AgenticScope {
             }
             ChatMessage message = agentMessage.message();
             if (message instanceof UserMessage userMessage) {
-                sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
+                sb.append("User: \"").append(text(userMessage)).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
                 sb.append(agentMessage.agentName())
                         .append(" agent: \"")
@@ -366,6 +367,17 @@ public class DefaultAgenticScope implements AgenticScope {
         String contextAsConversation = sb.toString();
         LOG.trace("AgenticScope context as conversation: '{}'", contextAsConversation);
         return contextAsConversation;
+    }
+
+    /**
+     * The text contents of the given user message, joined by new lines: the message can also have other contents,
+     * like the image sent to a multimodal agent, which are not part of the conversation.
+     */
+    private static String text(UserMessage userMessage) {
+        return userMessage.contents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(content -> ((TextContent) content).text())
+                .collect(Collectors.joining("\n"));
     }
 
     @Override
