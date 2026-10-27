@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -10,7 +9,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,9 +18,9 @@ import java.util.Objects;
  * of the agent finds it in the invocation context of the AI service events it receives, on whatever thread they
  * arrive, and the invoker reads it once the agent method has returned.
  * <p>
- * All reads happen on the thread invoking the agent after the agent method has returned, so no synchronization is
- * needed: the only write from another thread, the completion of a streaming agent, lands after the invoker has
- * reported the invocation and is never read.
+ * The model call of an agent returning a {@code TokenStream} or a future completes on another thread, usually after
+ * the invoker has already reported the invocation, so such a response is not reported; the state of this class is
+ * guarded by its lock, so that a model call completing while the invoker reads it is never seen half-written.
  */
 @Internal
 public final class AgentModelResponse implements LangChain4jManaged {
@@ -38,13 +36,13 @@ public final class AgentModelResponse implements LangChain4jManaged {
      * from inside another agent on the same thread, for instance by one of its tools, finds the response of the
      * enclosing invocation already owned, so its model calls are ignored instead of being summed into it.
      */
-    public void claim(Object handler) {
+    public synchronized void claim(Object handler) {
         if (owner == null) {
             owner = handler;
         }
     }
 
-    public boolean isOwnedBy(Object handler) {
+    public synchronized boolean isOwnedBy(Object handler) {
         return owner == handler;
     }
 
@@ -52,7 +50,7 @@ public final class AgentModelResponse implements LangChain4jManaged {
      * Records one model call of the invocation: an agent calling tools makes several, and its reported response is
      * the last one with the token usage of all of them, and the model name only when all the calls agree on it.
      */
-    public void onChatResponse(AiServiceResponseReceivedEvent event) {
+    public synchronized void onChatResponse(AiServiceResponseReceivedEvent event) {
         ChatResponseMetadata metadata = event.response().metadata();
         if (this.event == null) {
             tokenUsage = metadata.tokenUsage();
@@ -64,15 +62,15 @@ public final class AgentModelResponse implements LangChain4jManaged {
         this.event = event;
     }
 
-    public void onDecisionResponse(DecisionResponse decisionResponse) {
+    public synchronized void onDecisionResponse(DecisionResponse decisionResponse) {
         this.decisionResponse = decisionResponse;
     }
 
-    public ChatRequest chatRequest() {
+    public synchronized ChatRequest chatRequest() {
         return event == null ? null : event.request();
     }
 
-    public ChatResponse chatResponse() {
+    public synchronized ChatResponse chatResponse() {
         if (event == null) {
             return null;
         }
@@ -86,20 +84,11 @@ public final class AgentModelResponse implements LangChain4jManaged {
                 .build();
     }
 
-    public UserMessage lastUserMessage() {
-        if (event == null) {
-            return null;
-        }
-        List<ChatMessage> messages = event.request().messages();
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage userMessage) {
-                return userMessage;
-            }
-        }
-        return null;
+    public synchronized UserMessage lastUserMessage() {
+        return event == null ? null : UserMessage.findLast(event.request().messages()).orElse(null);
     }
 
-    public DecisionResponse decisionResponse() {
+    public synchronized DecisionResponse decisionResponse() {
         return decisionResponse;
     }
 }

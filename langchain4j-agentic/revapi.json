@@ -230,7 +230,7 @@
         {
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.decision.response.DecisionResponse",
-          "justification": "Decision agents report the response of their decision model (answers with probabilities, model name, token usage) through AgentResponse.decisionResponse(), AgentInvocation.decisionResponse() and DecisionResponseAccess, like AI agents expose the ChatResponse of their chat model. The type is the public, experimental decision API of langchain4j-core."
+          "justification": "Decision agents report the response of their decision model (answers with probabilities, model name, token usage) through AgentResponse.decisionResponse() and AgentInvocation.decisionResponse(), like AI agents expose the ChatResponse of their chat model. The type is the public, experimental decision API of langchain4j-core."
         },
         {
           "code": "java.class.externalClassExposedInAPI",

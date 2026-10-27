@@ -99,8 +99,7 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
         if (declaringClass == ChatMemoryAccess.class) {
             // the wrapper of an AI agent, which forwards the methods of this interface to the handler
             throw new UnsupportedOperationException("The decision agent '" + name()
-                    + "' has no chat memory, so it cannot implement ChatMemoryAccess: a class wrapping it must not"
-                    + " implement it");
+                    + "' has no chat memory: a class wrapping it must not implement ChatMemoryAccess");
         }
         if (!method.equals(builder.agenticMethod)) {
             throw new UnsupportedOperationException("Method '" + method.getName()

@@ -83,7 +83,6 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 case "getEventClass" -> AiServiceResponseReceivedEvent.class;
                 case "onEvent" -> {
                     AiServiceResponseReceivedEvent event = (AiServiceResponseReceivedEvent) args[0];
-                    // null for a standalone streaming agent, whose stream is started outside of its invocation
                     Map<?, ?> managedParameters = event.invocationContext().managedParameters();
                     if (managedParameters != null
                             && managedParameters.get(AgentModelResponse.class)

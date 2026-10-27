@@ -263,15 +263,18 @@ public class DefaultAgenticScope implements AgenticScope {
                 registerContextFromChatMemory(agent.name(), agent.agentId(), chatMemory);
             } else if (output != null) {
                 Object outputText = isSerializable(output) ? output : "<unknown>";
-                AgentMessage aiMessage =
-                        new AgentMessage(agent.name(), agent.agentId(), AiMessage.aiMessage(outputText.toString()));
-                // added together, so that the messages of concurrent invocations do not interleave in the context
-                context.addAll(
-                        userMessage == null
-                                ? List.of(aiMessage)
-                                : List.of(new AgentMessage(agent.name(), agent.agentId(), userMessage), aiMessage));
+                addToContext(agent.name(), agent.agentId(), userMessage, AiMessage.aiMessage(outputText.toString()));
             }
         });
+    }
+
+    private void addToContext(String agentName, String agentId, UserMessage userMessage, AiMessage aiMessage) {
+        AgentMessage agentAiMessage = new AgentMessage(agentName, agentId, aiMessage);
+        // added together, so that the messages of concurrent invocations do not interleave in the context
+        context.addAll(
+                userMessage == null
+                        ? List.of(agentAiMessage)
+                        : List.of(new AgentMessage(agentName, agentId, userMessage), agentAiMessage));
     }
 
     public void rootCallStarted(AgenticScopeRegistry registry) {}
@@ -317,11 +320,8 @@ public class DefaultAgenticScope implements AgenticScope {
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
             if (agentMessages.get(i) instanceof UserMessage userMessage) {
                 // Only add to the agenticScope's context the last UserMessage and the last AiMessage response, all
-                // other messages are local to the invoked agent internals; added together, so that the messages of
-                // concurrent invocations do not interleave in the context
-                context.addAll(List.of(
-                        new AgentMessage(agentName, agentId, userMessage),
-                        new AgentMessage(agentName, agentId, aiMessage)));
+                // other messages are local to the invoked agent internals
+                addToContext(agentName, agentId, userMessage, aiMessage);
                 return;
             }
         }

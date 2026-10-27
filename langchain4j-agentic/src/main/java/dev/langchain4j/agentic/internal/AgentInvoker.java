@@ -39,7 +39,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         AgentModelResponse modelResponse = new AgentModelResponse();
         Object result = internalInvoke(agenticScope, listener, agent, args, modelResponse);
-        afterAgentInvocation(listener, this, new AgentResponse(agenticScope, this, args.namedArgs(), result,
+        afterAgentInvocation(listener, new AgentResponse(agenticScope, this, args.namedArgs(), result,
                 modelResponse.chatRequest(), modelResponse.chatResponse(), modelResponse.decisionResponse()));
         agenticScope.registerContext(this, agent, modelResponse.lastUserMessage(), result);
         return result;

@@ -11,6 +11,7 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -58,6 +59,20 @@ class AgentTokenUsageTest {
         @Tool
         public String time() {
             return "noon";
+        }
+    }
+
+    public static class ClockAgentTool {
+
+        private final Assistant clock;
+
+        ClockAgentTool(Assistant clock) {
+            this.clock = clock;
+        }
+
+        @Tool
+        public String time() {
+            return clock.answer("what time is it?");
         }
     }
 
@@ -282,6 +297,43 @@ class AgentTokenUsageTest {
 
         assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().totalTokenCount())
                 .isEqualTo(155);
+    }
+
+    @Test
+    void agent_called_from_a_tool_does_not_add_its_model_calls_to_the_calling_agent() {
+        Assistant clock = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("It is noon").withTokenUsage(new TokenUsage(7, 1)))
+                .build();
+        List<AgentResponse> responses = new CopyOnWriteArrayList<>();
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(chatRequest -> chatRequest.messages().stream()
+                                        .anyMatch(ToolExecutionResultMessage.class::isInstance)
+                                ? AiMessage.from("The clock says it is noon")
+                                : AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("1")
+                                        .name("time")
+                                        .arguments("{}")
+                                        .build()))
+                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
+                .tools(new ClockAgentTool(clock))
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(AgentResponse agentResponse) {
+                        responses.add(agentResponse);
+                    }
+                })
+                .build();
+
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .build()
+                .run("what time is it?");
+
+        assertThat(responses).hasSize(1);
+        ChatResponse chatResponse = responses.get(0).chatResponse();
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("The clock says it is noon");
+        assertThat(chatResponse.tokenUsage()).isEqualTo(new TokenUsage(130, 25));
     }
 
     @Test

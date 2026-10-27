@@ -44,8 +44,7 @@ public class ListenerNotifierUtil {
             Object output,
             ChatRequest chatRequest,
             ChatResponse chatResponse) {
-        afterAgentInvocation(
-                listener, agent, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+        afterAgentInvocation(listener, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
     }
 
     public static void afterAgentInvocation(
@@ -55,15 +54,18 @@ public class ListenerNotifierUtil {
             Map<String, Object> inputs,
             Object output,
             DecisionResponse decisionResponse) {
-        afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
+        afterAgentInvocation(listener, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
     }
 
-    public static void afterAgentInvocation(AgentListener listener, AgentInstance agent, AgentResponse agentResponse) {
+    public static void afterAgentInvocation(AgentListener listener, AgentResponse agentResponse) {
         if (listener != null) {
             try {
                 listener.afterAgentInvocation(agentResponse);
             } catch (Exception e) {
-                LOG.error("afterAgentInvocation listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+                LOG.error(
+                        "afterAgentInvocation listener for agent " + agentResponse.agentName() + " failed: "
+                                + e.getMessage(),
+                        e);
             }
         }
     }

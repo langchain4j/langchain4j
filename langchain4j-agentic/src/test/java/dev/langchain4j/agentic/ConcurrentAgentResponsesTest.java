@@ -11,10 +11,8 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -29,9 +27,11 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -56,24 +56,22 @@ class ConcurrentAgentResponsesTest {
         TokenStream answer(@V("question") String question);
     }
 
+    private static final List<TokenUsage> TOKEN_USAGES =
+            IntStream.rangeClosed(1, QUESTIONS.size()).mapToObj(i -> new TokenUsage(10 * i, i)).toList();
+
     /** Waits until all the model calls of the items are in flight, so that the invocations really overlap. */
-    private static ChatModel modelAnsweringAllAtOnce(int parties) {
+    private static ChatModelMock modelAnsweringAllAtOnce(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
-        return new ChatModel() {
-            @Override
-            public ChatResponse doChat(ChatRequest chatRequest) {
-                String question = ((dev.langchain4j.data.message.UserMessage) chatRequest
-                                .messages()
-                                .get(chatRequest.messages().size() - 1))
-                        .singleText()
-                        .substring("Answer ".length());
-                await(allCallsInFlight);
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("Answer to " + question))
-                        .tokenUsage(tokensOf(question))
-                        .build();
-            }
-        };
+        return ChatModelMock.thatResponds(chatRequest -> {
+                    String question = ((dev.langchain4j.data.message.UserMessage) chatRequest
+                                    .messages()
+                                    .get(chatRequest.messages().size() - 1))
+                            .singleText()
+                            .substring("Answer ".length());
+                    await(allCallsInFlight);
+                    return AiMessage.from("Answer to " + question);
+                })
+                .withTokenUsages(TOKEN_USAGES.subList(0, parties).toArray(TokenUsage[]::new));
     }
 
     private static DecisionModelMock modelDecidingAllAtOnce(int parties) {
@@ -103,25 +101,15 @@ class ConcurrentAgentResponsesTest {
     }
 
     /** Numbers its answers, so that two overlapping invocations with the same input get different responses. */
-    private static ChatModel modelNumberingItsAnswers(int parties) {
+    private static ChatModelMock modelNumberingItsAnswers(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
         AtomicInteger calls = new AtomicInteger();
-        return new ChatModel() {
-            @Override
-            public ChatResponse doChat(ChatRequest chatRequest) {
-                int call = calls.incrementAndGet();
-                await(allCallsInFlight);
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("Answer #" + call))
-                        .tokenUsage(new TokenUsage(10 * call, call))
-                        .build();
-            }
-        };
-    }
-
-    private static TokenUsage tokensOf(String question) {
-        int index = Integer.parseInt(question.substring("question ".length()));
-        return new TokenUsage(10 * index, index);
+        return ChatModelMock.thatResponds(chatRequest -> {
+                    int call = calls.incrementAndGet();
+                    await(allCallsInFlight);
+                    return AiMessage.from("Answer #" + call);
+                })
+                .withTokenUsages(TOKEN_USAGES.subList(0, parties).toArray(TokenUsage[]::new));
     }
 
     private static double probabilityOf(String question) {
@@ -138,6 +126,9 @@ class ConcurrentAgentResponsesTest {
     private static void await(CyclicBarrier barrier) {
         try {
             barrier.await(10, SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for the model calls of the items", e);
         } catch (Exception e) {
             throw new IllegalStateException("The model calls of the items did not overlap", e);
         }
@@ -159,6 +150,13 @@ class ConcurrentAgentResponsesTest {
         };
     }
 
+    private final ExecutorService executor = Executors.newFixedThreadPool(QUESTIONS.size());
+
+    @AfterEach
+    void shutDownExecutor() {
+        executor.shutdownNow();
+    }
+
     @Test
     void items_of_a_parallel_mapper_report_each_their_own_chat_request_and_response() {
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
@@ -170,7 +168,7 @@ class ConcurrentAgentResponsesTest {
                 .subAgents(assistant)
                 .itemsProvider("questions")
                 .outputKey("answers")
-                .executor(Executors.newFixedThreadPool(QUESTIONS.size()))
+                .executor(executor)
                 .build();
 
         mapper.invoke(Map.of("questions", QUESTIONS));
@@ -182,12 +180,14 @@ class ConcurrentAgentResponsesTest {
                     .last()
                     .isEqualTo(dev.langchain4j.data.message.UserMessage.from("Answer " + question));
             assertThat(response.chatResponse().aiMessage().text()).isEqualTo("Answer to " + question);
-            assertThat(response.chatResponse().tokenUsage()).isEqualTo(tokensOf(question));
             assertThat(response.output()).isEqualTo("Answer to " + question);
         }
         assertThat(responses)
                 .extracting(ConcurrentAgentResponsesTest::itemOf)
                 .containsExactlyInAnyOrderElementsOf(QUESTIONS);
+        assertThat(responses)
+                .extracting(response -> response.chatResponse().tokenUsage())
+                .containsExactlyInAnyOrderElementsOf(TOKEN_USAGES);
     }
 
     @Test
@@ -199,7 +199,7 @@ class ConcurrentAgentResponsesTest {
                 .subAgents(assistant)
                 .itemsProvider("questions")
                 .outputKey("answers")
-                .executor(Executors.newFixedThreadPool(QUESTIONS.size()))
+                .executor(executor)
                 .build();
 
         ResultWithAgenticScope<String> result = mapper.invokeWithAgenticScope(Map.of("questions", QUESTIONS));
@@ -232,7 +232,7 @@ class ConcurrentAgentResponsesTest {
                 .subAgents(router)
                 .itemsProvider("requests")
                 .outputKey("categories")
-                .executor(Executors.newFixedThreadPool(QUESTIONS.size()))
+                .executor(executor)
                 .build();
 
         mapper.invoke(Map.of("requests", QUESTIONS));
@@ -270,10 +270,10 @@ class ConcurrentAgentResponsesTest {
         assertThat(responses)
                 .extracting(response -> response.chatResponse().aiMessage().text())
                 .containsExactlyInAnyOrder("Answer #1", "Answer #2");
+        assertThat(responses)
+                .extracting(response -> response.chatResponse().tokenUsage())
+                .containsExactlyInAnyOrder(TOKEN_USAGES.get(0), TOKEN_USAGES.get(1));
         for (AgentResponse response : responses) {
-            int call =
-                    Integer.parseInt(response.chatResponse().aiMessage().text().substring("Answer #".length()));
-            assertThat(response.chatResponse().tokenUsage()).isEqualTo(new TokenUsage(10 * call, call));
             assertThat(response.chatRequest().messages())
                     .last()
                     .isEqualTo(dev.langchain4j.data.message.UserMessage.from("Answer question 1"));
