@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -245,10 +244,33 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentInvocation(AgentInvocation agentInvocation, Object agent) {
+    public void registerAgentInvocation(AgentInvocation agentInvocation) {
+        withReadLock(() -> agentInvocations.add(agentInvocation));
+    }
+
+    /**
+     * Adds to the context of this scope the messages exchanged by an AI agent in the invocation that just
+     * completed: the last user message and the last answer of its chat memory when it has one, otherwise the user
+     * message of its last model call, when known, and its output. Other kinds of agents have no messages to add.
+     */
+    public void registerContext(AgentInstance agent, Object agentObject, UserMessage userMessage, Object output) {
+        if (!(agentObject instanceof ChatMemoryAccess agentWithMemory)) {
+            return;
+        }
         withReadLock(() -> {
-            agentInvocations.add(agentInvocation);
-            registerContext(agentInvocation, agent);
+            ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                registerContextFromChatMemory(agent.name(), agent.agentId(), chatMemory);
+            } else if (output != null) {
+                Object outputText = isSerializable(output) ? output : "<unknown>";
+                AgentMessage aiMessage =
+                        new AgentMessage(agent.name(), agent.agentId(), AiMessage.aiMessage(outputText.toString()));
+                // added together, so that the messages of concurrent invocations do not interleave in the context
+                context.addAll(
+                        userMessage == null
+                                ? List.of(aiMessage)
+                                : List.of(new AgentMessage(agent.name(), agent.agentId(), userMessage), aiMessage));
+            }
         });
     }
 
@@ -281,27 +303,7 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
-    private void registerContext(AgentInvocation agentInvocation, Object agent) {
-        ChatMemory chatMemory =
-                agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
-        if (chatMemory != null) {
-            registerContextFromChatMemory(agentInvocation, chatMemory);
-        } else if (agentInvocation.output() != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    chatMessagesAccess.lastUserMessage(memoryId())));
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    AiMessage.aiMessage(agentInvocation.output().toString())));
-        }
-        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            chatMessagesAccess.removeLastResponseEvent(memoryId());
-        }
-    }
-
-    private void registerContextFromChatMemory(AgentInvocation agentInvocation, ChatMemory chatMemory) {
+    private void registerContextFromChatMemory(String agentName, String agentId, ChatMemory chatMemory) {
         List<ChatMessage> agentMessages = chatMemory.messages();
         if (Utils.isNullOrEmpty(agentMessages)) {
             return;
@@ -314,10 +316,12 @@ public class DefaultAgenticScope implements AgenticScope {
 
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
             if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                // Only add to the agenticScope's context the last UserMessage ...
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), userMessage));
-                // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), aiMessage));
+                // Only add to the agenticScope's context the last UserMessage and the last AiMessage response, all
+                // other messages are local to the invoked agent internals; added together, so that the messages of
+                // concurrent invocations do not interleave in the context
+                context.addAll(List.of(
+                        new AgentMessage(agentName, agentId, userMessage),
+                        new AgentMessage(agentName, agentId, aiMessage)));
                 return;
             }
         }

@@ -1,10 +1,9 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
-import dev.langchain4j.agentic.agent.DecisionResponseAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -12,7 +11,6 @@ import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.service.ParameterNameResolver;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -31,26 +29,26 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
+    /**
+     * Invokes the agent, reports the invocation to its listeners with the response of the model it called, and
+     * registers the messages it exchanged in the context of the scope. Everything happens on the calling thread,
+     * which for an asynchronous agent is the thread of its executor.
+     */
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
-        Object result = internalInvoke(agenticScope, listener, agent, args);
-        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
-                    chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
-                    chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
-        } else if (agent instanceof DecisionResponseAccess decisionResponseAccess) {
-            DecisionResponse decisionResponse = decisionResponseAccess.lastDecisionResponse(agenticScope.memoryId());
-            decisionResponseAccess.removeLastDecisionResponse(agenticScope.memoryId());
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result, decisionResponse);
-        } else {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
-        }
+        AgentModelResponse modelResponse = new AgentModelResponse();
+        Object result = internalInvoke(agenticScope, listener, agent, args, modelResponse);
+        afterAgentInvocation(listener, this, new AgentResponse(agenticScope, this, args.namedArgs(), result,
+                modelResponse.chatRequest(), modelResponse.chatResponse(), modelResponse.decisionResponse()));
+        agenticScope.registerContext(this, agent, modelResponse.lastUserMessage(), result);
         return result;
     }
 
-    private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args) {
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+    private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args,
+                                  AgentModelResponse modelResponse) {
+        LangChain4jManaged.setCurrent(
+                Map.of(AgenticScope.class, agenticScope, AgentModelResponse.class, modelResponse));
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {

@@ -246,6 +246,11 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.decision.request.DecisionRequestParameters",
           "justification": "DecisionAgentBuilder.requestParameters(...) sets the parameters of the decision requests of a decision agent, the same type the decision model and Decision Services use. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.agent.ChatMessagesAccess",
+          "justification": "Plumbing between the invocation handler of an AI agent and its invoker, never documented for users: the handler kept the last chat request and response per agentic scope id, so concurrent invocations of one agent in one scope overwrote each other (issue #6857). The response of each invocation is now handed to the invoker with the invocation itself, and nothing reads this interface any more."
         }
       ]
     }

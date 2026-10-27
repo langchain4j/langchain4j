@@ -58,7 +58,7 @@ public class ListenerNotifierUtil {
         afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
     }
 
-    private static void afterAgentInvocation(AgentListener listener, AgentInstance agent, AgentResponse agentResponse) {
+    public static void afterAgentInvocation(AgentListener listener, AgentInstance agent, AgentResponse agentResponse) {
         if (listener != null) {
             try {
                 listener.afterAgentInvocation(agentResponse);

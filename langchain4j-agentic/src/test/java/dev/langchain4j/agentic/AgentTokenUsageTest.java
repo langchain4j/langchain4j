@@ -1,12 +1,9 @@
 package dev.langchain4j.agentic;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentInvocation;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -288,83 +285,7 @@ class AgentTokenUsageTest {
     }
 
     @Test
-    void standalone_agent_does_not_keep_its_last_response() {
-        AgentMonitor monitor = new AgentMonitor();
-        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(modelAnsweringDirectly())
-                .listener(monitor)
-                .build();
-
-        assistant.answer("what time is it?");
-
-        Object memoryId = monitor.successfulExecutions().get(0).memoryId();
-        assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
-    }
-
-    @Test
-    void failed_agent_does_not_keep_the_response_of_its_last_successful_model_call() {
-        AtomicInteger calls = new AtomicInteger();
-        ChatModel modelFailingAfterToolCall = new ChatModel() {
-            @Override
-            public ChatResponse doChat(ChatRequest chatRequest) {
-                if (calls.getAndIncrement() == 0) {
-                    return ChatResponse.builder()
-                            .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
-                                    .id("1")
-                                    .name("time")
-                                    .arguments("{}")
-                                    .build()))
-                            .tokenUsage(new TokenUsage(100, 20))
-                            .build();
-                }
-                throw new RuntimeException("model unavailable");
-            }
-        };
-        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(modelFailingAfterToolCall)
-                .tools(new Clock())
-                .build();
-        AgentMonitor monitor = new AgentMonitor();
-        Workflow workflow = AgenticServices.sequenceBuilder(Workflow.class)
-                .subAgents(assistant)
-                .outputKey("answer")
-                .listener(monitor)
-                .build();
-
-        assertThatThrownBy(() -> workflow.run("what time is it?")).isInstanceOf(AgentInvocationException.class);
-
-        Object memoryId = monitor.failedExecutions().get(0).memoryId();
-        assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
-    }
-
-    @Test
-    void agent_without_output_does_not_keep_its_last_response() {
-        ChatModel modelReturningNoText = new ChatModel() {
-            @Override
-            public ChatResponse doChat(ChatRequest chatRequest) {
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.builder().build())
-                        .tokenUsage(new TokenUsage(30, 5))
-                        .build();
-            }
-        };
-        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(modelReturningNoText)
-                .build();
-        AgentMonitor monitor = new AgentMonitor();
-        AgenticServices.sequenceBuilder(Workflow.class)
-                .subAgents(assistant)
-                .outputKey("answer")
-                .listener(monitor)
-                .build()
-                .run("what time is it?");
-
-        Object memoryId = monitor.successfulExecutions().get(0).memoryId();
-        assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
-    }
-
-    @Test
-    void response_cleanup_does_not_clear_the_underlying_chat_memory_messages() {
+    void agent_with_chat_memory_keeps_its_messages_after_reporting_its_response() {
         AgentMonitor monitor = new AgentMonitor();
         Map<Object, MessageWindowChatMemory> suppliedMemories = new ConcurrentHashMap<>();
         MemoryAssistant assistant = AgenticServices.agentBuilder(MemoryAssistant.class)
@@ -388,12 +309,10 @@ class AgentTokenUsageTest {
         Object memoryId = monitor.successfulExecutions().get(0).memoryId();
         assertThat(nestedInvocations(monitor).get(0).totalTokenCount()).isEqualTo(35);
         assertThat(suppliedMemories.get(memoryId).messages()).hasSize(2).last().isEqualTo(AiMessage.from("It is noon"));
-        assertThat(((ChatMessagesAccess) assistant).lastChatRequest(memoryId)).isNull();
-        assertThat(((ChatMessagesAccess) assistant).lastChatResponse(memoryId)).isNull();
     }
 
     @Test
-    void standalone_listener_receives_the_request_after_the_cached_entry_is_released() {
+    void standalone_invocations_report_each_their_own_request_and_response() {
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(modelAnsweringDirectly())
@@ -420,17 +339,11 @@ class AgentTokenUsageTest {
                     .contains(dev.langchain4j.data.message.UserMessage.from("Answer question " + i));
             assertThat(response.chatResponse().aiMessage()).isEqualTo(AiMessage.from("It is noon"));
             assertThat(response.chatResponse().tokenUsage()).isEqualTo(new TokenUsage(30, 5));
-            assertThat(((ChatMessagesAccess) assistant)
-                            .lastChatRequest(response.agenticScope().memoryId()))
-                    .isNull();
-            assertThat(((ChatMessagesAccess) assistant)
-                            .lastChatResponse(response.agenticScope().memoryId()))
-                    .isNull();
         }
     }
 
     @Test
-    void concurrent_standalone_calls_keep_their_responses_separate_and_release_them() throws Exception {
+    void concurrent_standalone_calls_keep_their_responses_separate() throws Exception {
         CyclicBarrier bothInModel = new CyclicBarrier(2);
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         ChatModel model = new ChatModel() {
@@ -486,9 +399,6 @@ class AgentTokenUsageTest {
             assertThat(response.chatResponse().aiMessage().text()).isEqualTo(first ? "Answer first" : "Answer second");
             assertThat(response.chatResponse().tokenUsage())
                     .isEqualTo(first ? new TokenUsage(11, 2) : new TokenUsage(20, 3));
-            assertThat(((ChatMessagesAccess) assistant)
-                            .lastChatResponse(response.agenticScope().memoryId()))
-                    .isNull();
         }
     }
 }
