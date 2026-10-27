@@ -36,7 +36,7 @@ class PersistedDecisionAnswersTest {
         scope.writeState("scale", scale);
         scope.writeState("yesNo", yesNo);
         scope.registerAgentInvocation(
-                new AgentInvocation(String.class, "scorer", "scorer$0", Map.of("choice", choice), scale), null);
+                new AgentInvocation(String.class, "scorer", "scorer$0", Map.of("choice", choice), scale));
 
         String json = AgenticScopeSerializer.toJson(scope);
         DefaultAgenticScope restored = AgenticScopeSerializer.fromJson(json);
@@ -111,7 +111,7 @@ class PersistedDecisionAnswersTest {
         scope.writeState("story", "Once upon a time");
         AgentInvocation invocation = new AgentInvocation(
                 String.class, "writer", "writer$0", new HashMap<>(Map.of("topic", "dragons")), "story");
-        scope.registerAgentInvocation(invocation, null);
+        scope.registerAgentInvocation(invocation);
 
         String json = AgenticScopeSerializer.toJson(scope);
 

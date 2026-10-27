@@ -580,7 +580,7 @@ public class DefaultMcpClientTest {
     private static List<String> verifyTimeoutCancellationOrder(
             java.util.function.Consumer<DefaultMcpClient> operation) {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+        when(transport.sendRequest(any(McpCallContext.class)))
                 .thenAnswer(invocation -> new CompletableFuture<>());
         List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
         AtomicReference<Long> toolCallId = new AtomicReference<>();
@@ -1331,9 +1331,9 @@ public class DefaultMcpClientTest {
     public void mrtr_max_retries_exceeded_should_be_reported_to_listeners() {
         final McpTransport transport = getModernMcpTransportMock();
         ObjectNode inputRequired = buildInputRequiredResponse(true, false);
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
-                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
-                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString()));
         McpClientListener listener = mock(McpClientListener.class);
         DefaultMcpClient client = createMcpClient(transport, listener);
 
@@ -1352,9 +1352,9 @@ public class DefaultMcpClientTest {
     public void mrtr_max_retries_exceeded_for_resource_should_be_reported_to_listeners() {
         final McpTransport transport = getModernMcpTransportMock();
         ObjectNode inputRequired = buildInputRequiredResponse(true, false);
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
-                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
-                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired.toString()));
         McpClientListener listener = mock(McpClientListener.class);
         DefaultMcpClient client = createMcpClient(transport, listener);
 
@@ -1368,7 +1368,7 @@ public class DefaultMcpClientTest {
     @Test
     public void interrupted_tool_execution_should_be_reported_to_listeners() {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+        when(transport.sendRequest(any(McpCallContext.class)))
                 .thenAnswer(invocation -> new CompletableFuture<>());
         McpClientListener listener = mock(McpClientListener.class);
         DefaultMcpClient client = new DefaultMcpClient.Builder()
@@ -1414,7 +1414,7 @@ public class DefaultMcpClientTest {
 
     private static DefaultMcpClient createClientWithPendingOperations(McpClientListener listener) {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+        when(transport.sendRequest(any(McpCallContext.class)))
                 .thenAnswer(invocation -> new CompletableFuture<>());
         return new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -1436,7 +1436,7 @@ public class DefaultMcpClientTest {
     @Test
     public void tool_timeout_cancellation_is_supplied_with_the_invocation_context_of_the_tool_call() {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+        when(transport.sendRequest(any(McpCallContext.class)))
                 .thenAnswer(invocation -> new CompletableFuture<>());
         InvocationContext invocationContext = InvocationContext.builder().build();
         AtomicReference<McpCallContext> cancellationContext = new AtomicReference<>();
@@ -1463,7 +1463,7 @@ public class DefaultMcpClientTest {
     public void async_tool_execution_failing_to_send_should_be_reported_to_listeners() {
         final McpTransport transport = getMinimalMcpTransportMock();
         IllegalStateException failure = new IllegalStateException("transport is closed");
-        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenThrow(failure);
+        when(transport.sendRequest(any(McpCallContext.class))).thenThrow(failure);
         McpClientListener listener = mock(McpClientListener.class);
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
