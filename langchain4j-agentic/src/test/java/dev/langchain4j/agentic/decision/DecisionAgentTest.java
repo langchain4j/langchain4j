@@ -11,8 +11,6 @@ import static org.assertj.core.api.Assertions.offset;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
-import dev.langchain4j.agentic.agent.DecisionResponseAccess;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.decision.DecisionAgents.AuditedCategoryRouter;
@@ -48,7 +46,6 @@ import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.FieldsInput;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
@@ -61,6 +58,9 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -624,56 +624,45 @@ class DecisionAgentTest {
     }
 
     @Test
-    void should_expose_the_decision_response_once_per_invocation() {
-        CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(choosing("LEGAL", 0.9))
-                .build();
-        UntypedAgent sequence = sequenceOf(router, "category");
-        ResultWithAgenticScope<String> result = sequence.invokeWithAgenticScope(Map.of("request", LEGAL_REQUEST));
-
-        DecisionResponse afterInvocation = ((DecisionResponseAccess) router)
-                .lastDecisionResponse(result.agenticScope().memoryId());
-
-        // the scope forgets the response once it has registered the invocation
-        assertThat(afterInvocation).isNull();
-    }
-
-    @Test
-    void should_not_keep_the_decision_response_of_an_asynchronous_invocation() {
+    void should_report_the_decision_response_of_an_asynchronous_invocation() throws Exception {
+        List<AgentResponse> responses = new CopyOnWriteArrayList<>();
+        CountDownLatch reported = new CountDownLatch(1);
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(choosing("LEGAL", 0.9))
                 .async(true)
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(AgentResponse agentResponse) {
+                        responses.add(agentResponse);
+                        reported.countDown();
+                    }
+                })
                 .build();
         UntypedAgent sequence = sequenceOf(router, "category");
 
         ResultWithAgenticScope<String> result = sequence.invokeWithAgenticScope(Map.of("request", LEGAL_REQUEST));
 
         assertThat(result.agenticScope().readState("category")).isEqualTo(RequestCategory.LEGAL);
-        assertThat(((DecisionResponseAccess) router)
-                        .lastDecisionResponse(result.agenticScope().memoryId()))
-                .isNull();
+        assertThat(reported.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).decisionResponse().choice("classify").probabilityOf("LEGAL"))
+                .isEqualTo(0.9);
     }
 
     @Test
-    void should_reject_the_chat_interfaces_of_a_wrapper_made_for_an_ai_agent() {
-        // the class an integration generates for an AI agent forwards the chat interfaces to the handler
+    void should_reject_the_chat_memory_interface_of_a_wrapper_made_for_an_ai_agent() {
+        // the class an integration generates for an AI agent forwards the chat memory interface to the handler
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(choosing("LEGAL", 0.9))
                 .agentInstanceFactory(handler -> Proxy.newProxyInstance(
                         CategoryRouter.class.getClassLoader(),
-                        new Class<?>[] {
-                            CategoryRouter.class, InternalAgent.class, ChatMessagesAccess.class, ChatMemoryAccess.class
-                        },
+                        new Class<?>[] {CategoryRouter.class, InternalAgent.class, ChatMemoryAccess.class},
                         (InvocationHandler) handler))
                 .build();
 
-        assertThatThrownBy(() -> ((ChatMessagesAccess) router).lastChatRequest("scope"))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("has no chat memory or chat messages")
-                .hasMessageContaining("ChatMessagesAccess")
-                .hasMessageContaining("must implement DecisionResponseAccess");
         assertThatThrownBy(() -> ((ChatMemoryAccess) router).getChatMemory("scope"))
                 .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("has no chat memory")
                 .hasMessageContaining("ChatMemoryAccess");
     }
 }
