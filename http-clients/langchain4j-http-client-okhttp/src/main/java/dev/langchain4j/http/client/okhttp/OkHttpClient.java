@@ -1,7 +1,9 @@
 package dev.langchain4j.http.client.okhttp;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.terminateOnce;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -15,6 +17,15 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -25,18 +36,6 @@ import okhttp3.MultipartBody;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
 
@@ -177,9 +176,10 @@ public class OkHttpClient implements HttpClient {
     }
 
     private Call enqueueServerSentEvents(
-            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener rawListener) {
         Request okRequest = toOkHttpRequest(request);
         Call call = client.newCall(okRequest);
+        ServerSentEventListener listener = terminateOnce(rawListener);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
