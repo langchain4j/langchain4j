@@ -912,8 +912,12 @@ public interface AgentListener {
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 
-    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
-    default void afterToolExecution(ToolExecution toolExecution) { }
+    default void onAgenticSystemSuspended(AgenticScope agenticScope) { }
+
+    default void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) { }
+    default void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) { }
+
+    default void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) { }
 
     default boolean inheritedBySubagents() {
         return false;
@@ -946,6 +950,42 @@ CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.clas
 These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
 
 When an agent is skipped, because its [activation condition](#activation-conditions) is false or because it is [optional](#optional-agents) and one of its arguments is missing, none of these methods is invoked for it, and the `onAgentSkipped` method receives instead an `AgentSkipped` with the skipped agent and the reason of the skip.
+
+The `onAgentAiServiceEvent` method receives the [AI Service events](/tutorials/observability#ai-service-observability) of an LLM-based agent, like each request sent to the model, the response received from it, the tool executions and the final completion or error, wrapped in an `AgentAiServiceEvent` that also provides the agent that produced the event, from which its parent agents can be reached, and its `AgenticScope`. For instance, the following listener, registered on the root of an agentic system and inherited by all its subagents, logs the token usage of every model call together with the name of the agent that made it:
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .listener(new AgentListener() {
+            @Override
+            public void onAgentAiServiceEvent(AgentAiServiceEvent event) {
+                if (event.aiServiceEvent() instanceof AiServiceResponseReceivedEvent response) {
+                    System.out.println(event.agentName() + " used " + response.response().tokenUsage());
+                }
+            }
+
+            @Override
+            public boolean inheritedBySubagents() {
+                return true;
+            }
+        })
+        .build();
+```
+
+These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates the events they already receive.
+
+Listeners already written for AI Services can be reused for agents through `AgentListener.forAiServiceListeners`, which creates an `AgentListener` notifying each of them of the events of its own event class, as an AI Service does. Its first argument tells whether the listener is also inherited by the subagents:
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .listener(AgentListener.forAiServiceListeners(true, tokenUsageListener, toolExecutionListener))
+        .build();
+```
+
+These listeners receive the AI Service events themselves; implement `onAgentAiServiceEvent` when you also need the agent that produced them.
 
 `AgentListener`s have 2 important properties, they are:
 - **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 

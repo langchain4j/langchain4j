@@ -10,6 +10,16 @@
           "justification": "The new optional AgentBuilder configuration exposes ToolSearchStrategy from the existing langchain4j dependency. Existing API signatures are unchanged."
         },
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.observability.api.event.AiServiceEvent",
+          "justification": "The new AgentAiServiceEvent, passed to the new default AgentListener.onAgentAiServiceEvent method, exposes AiServiceEvent from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.observability.api.listener.AiServiceListener",
+          "justification": "The new static AgentListener.forAiServiceListeners method takes AiServiceListener from the existing langchain4j-core dependency, so that listeners written for AI Services can be reused for agents. Existing API signatures are unchanged."
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
           "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."

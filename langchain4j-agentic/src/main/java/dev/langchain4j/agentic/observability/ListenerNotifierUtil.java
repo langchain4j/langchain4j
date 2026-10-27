@@ -5,17 +5,19 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Map;
 
 public class ListenerNotifierUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ListenerNotifierUtil.class);
 
-    private ListenerNotifierUtil() { }
+    private ListenerNotifierUtil() {}
 
-    public static void beforeAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs) {
+    public static void beforeAgentInvocation(
+            AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs) {
         if (listener != null) {
             try {
                 listener.beforeAgentInvocation(new AgentRequest(agenticScope, agent, inputs));
@@ -25,19 +27,34 @@ public class ListenerNotifierUtil {
         }
     }
 
-    public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent,
-                                            Map<String, Object> inputs, Object output) {
+    public static void afterAgentInvocation(
+            AgentListener listener,
+            AgenticScope agenticScope,
+            AgentInstance agent,
+            Map<String, Object> inputs,
+            Object output) {
         afterAgentInvocation(listener, agenticScope, agent, inputs, output, null, null);
     }
 
-    public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent,
-                                            Map<String, Object> inputs, Object output,
-                                            ChatRequest chatRequest, ChatResponse chatResponse) {
-        afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+    public static void afterAgentInvocation(
+            AgentListener listener,
+            AgenticScope agenticScope,
+            AgentInstance agent,
+            Map<String, Object> inputs,
+            Object output,
+            ChatRequest chatRequest,
+            ChatResponse chatResponse) {
+        afterAgentInvocation(
+                listener, agent, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
     }
 
-    public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent,
-                                            Map<String, Object> inputs, Object output, DecisionResponse decisionResponse) {
+    public static void afterAgentInvocation(
+            AgentListener listener,
+            AgenticScope agenticScope,
+            AgentInstance agent,
+            Map<String, Object> inputs,
+            Object output,
+            DecisionResponse decisionResponse) {
         afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
     }
 
@@ -51,7 +68,12 @@ public class ListenerNotifierUtil {
         }
     }
 
-    public static void agentError(AgentListener listener, AgenticScope agenticScope, AgentInstance agent, Map<String, Object> inputs, Throwable error) {
+    public static void agentError(
+            AgentListener listener,
+            AgenticScope agenticScope,
+            AgentInstance agent,
+            Map<String, Object> inputs,
+            Throwable error) {
         if (listener != null) {
             try {
                 listener.onAgentInvocationError(new AgentInvocationError(agenticScope, agent, inputs, error));
@@ -68,6 +90,17 @@ public class ListenerNotifierUtil {
                 listener.onAgentSkipped(new AgentSkipped(agenticScope, agent, reason));
             } catch (Exception e) {
                 LOG.error("agentSkipped listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public static void onAgentAiServiceEvent(
+            AgentListener listener, AgentInstance agent, AiServiceEvent aiServiceEvent) {
+        if (listener != null) {
+            try {
+                listener.onAgentAiServiceEvent(new AgentAiServiceEvent(agent, aiServiceEvent));
+            } catch (Exception e) {
+                LOG.error("onAgentAiServiceEvent listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
             }
         }
     }

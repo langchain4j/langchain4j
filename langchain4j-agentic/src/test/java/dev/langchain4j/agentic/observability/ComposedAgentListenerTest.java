@@ -50,6 +50,28 @@ class ComposedAgentListenerTest {
         assertThat(secondSkips).containsExactly(skip);
     }
 
+    @Test
+    void ai_service_events_are_forwarded_to_all_the_composed_listeners() {
+        List<AgentAiServiceEvent> firstEvents = new ArrayList<>();
+        List<AgentAiServiceEvent> secondEvents = new ArrayList<>();
+        AgentListener composed = ComposedAgentListener.compose(eventRecorder(firstEvents), eventRecorder(secondEvents));
+        AgentAiServiceEvent event = new AgentAiServiceEvent(null, null);
+
+        composed.onAgentAiServiceEvent(event);
+
+        assertThat(firstEvents).containsExactly(event);
+        assertThat(secondEvents).containsExactly(event);
+    }
+
+    private static AgentListener eventRecorder(List<AgentAiServiceEvent> events) {
+        return new AgentListener() {
+            @Override
+            public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
+                events.add(agentAiServiceEvent);
+            }
+        };
+    }
+
     private static AgentListener skipRecorder(List<AgentSkipped> skips) {
         return new AgentListener() {
             @Override
