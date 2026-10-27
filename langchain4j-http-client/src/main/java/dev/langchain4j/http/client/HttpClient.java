@@ -1,13 +1,13 @@
 package dev.langchain4j.http.client;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-
+import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 
@@ -96,6 +96,11 @@ public interface HttpClient {
      * <p>
      * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
      * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
+     * <p>
+     * If the server answers with an error status (not 2xx), the publisher fails with an {@link HttpException}
+     * that contains the status code and the response body. Some implementations first emit an
+     * {@link HttpErrorResponseReceived} as soon as the response headers arrive, so that the subscriber can
+     * react to the status code without waiting for the body.
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *

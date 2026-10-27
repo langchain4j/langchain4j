@@ -236,9 +236,8 @@ public class McpOperationHandler {
     private void handleSubscriptionAcknowledgedNotification(Map<String, Object> message) {
         Map<String, Object> params = params(message);
         Object meta = params == null ? null : params.get("_meta");
-        Long subscriptionId = meta instanceof Map
-                ? toLong(((Map<?, ?>) meta).get("io.modelcontextprotocol/subscriptionId"))
-                : null;
+        Long subscriptionId =
+                meta instanceof Map ? toLong(((Map<?, ?>) meta).get("io.modelcontextprotocol/subscriptionId")) : null;
         if (subscriptionId == null) {
             log.warn("Received subscriptions acknowledged notification without a subscription ID: {}", message);
             return;
@@ -281,10 +280,16 @@ public class McpOperationHandler {
 
     /**
      * Registers a client-initiated request whose response is awaited; the future is completed with
-     * the response as unparsed JSON text.
+     * the response as unparsed JSON text. Cancelling the future removes its registration.
      */
     public void expectResponse(Long id, CompletableFuture<String> future) {
         pendingOperations.put(id, future);
+        future.whenComplete((response, error) -> {
+            if (future.isCancelled()) {
+                // A retry may already have registered another future with the same id.
+                pendingOperations.remove(id, future);
+            }
+        });
     }
 
     public synchronized void cancelAllPendingOperations(String reason) {
