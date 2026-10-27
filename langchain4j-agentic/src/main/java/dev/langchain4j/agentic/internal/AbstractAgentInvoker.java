@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.planner.AgentCondition;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -76,6 +77,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     @Override
     public boolean optional() {
         return agent.optional();
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return agent.activationCondition();
     }
 
     @Override

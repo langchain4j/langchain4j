@@ -3,14 +3,12 @@ package dev.langchain4j.mcp.client.transport.websocket;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
@@ -160,18 +158,8 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> sendRequest(McpClientMessage request) {
-        return sendRequest(new McpCallContext(null, request));
-    }
-
-    @Override
     public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
-    }
-
-    @Override
-    public void sendMessage(McpClientMessage request) {
-        sendMessage(new McpCallContext(null, request));
     }
 
     @Override
@@ -348,53 +336,4 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    /**
-     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
-     * expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpJson.map(sendRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpJson.map(sendRequest(context), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        sendMessage(request);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
-        sendMessage(context);
-    }
 }

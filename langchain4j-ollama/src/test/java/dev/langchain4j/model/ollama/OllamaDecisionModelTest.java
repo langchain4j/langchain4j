@@ -427,7 +427,7 @@ class OllamaDecisionModelTest {
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
                 .input(() -> DecisionInputType.TEXT)
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -586,7 +586,7 @@ class OllamaDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputFields(input)
-                        .question("same", YesNoQuestion.of("Do the photos show the same phone?"))
+                        .question("same", YesNoQuestion.from("Do the photos show the same phone?"))
                         .build());
 
         // then
@@ -616,7 +616,7 @@ class OllamaDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputContents(List.of(ImageContent.from(image.toUri())))
-                        .question("damaged", YesNoQuestion.of("Is the phone damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
                         .build());
 
         // then

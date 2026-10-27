@@ -100,7 +100,7 @@ class OpenAiDecisionModelTest {
                             .build())
             .question(
                     "frustration",
-                    ScaleQuestion.of("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
+                    ScaleQuestion.from("How frustrated is the customer?", List.of("Calm", "Frustrated", "Angry")))
             .build();
 
     @Test
@@ -191,6 +191,79 @@ class OpenAiDecisionModelTest {
                 .containsEntry("a", "1")
                 .containsEntry("b", "2")
                 .containsEntry("model", "other-model");
+    }
+
+    @Test
+    void should_send_prompt_cache_key_set_on_builder_and_replace_it_per_request() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = OpenAiDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("gpt-6-luna")
+                .promptCacheKey("builder-key")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+        model.decide(REQUEST.toBuilder()
+                .parameters(OpenAiDecisionRequestParameters.builder()
+                        .promptCacheKey("request-key")
+                        .build())
+                .build());
+        model.decide(REQUEST.toBuilder()
+                .parameters(DecisionRequestParameters.builder().modelName("other-model").build())
+                .build());
+        model.decideAsync(REQUEST).join();
+
+        // then
+        assertThat(model.defaultRequestParameters().promptCacheKey()).isEqualTo("builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(0).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(1).body(), Map.class))
+                .containsEntry("prompt_cache_key", "request-key");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(2).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key")
+                .containsEntry("model", "other-model");
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(3).body(), Map.class))
+                .containsEntry("prompt_cache_key", "builder-key");
+    }
+
+    @Test
+    void should_not_send_prompt_cache_key_by_default() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+
+        // when
+        model(httpClient).decide(REQUEST);
+
+        // then
+        assertThat(OBJECT_MAPPER.readValue(httpClient.requests().get(0).body(), Map.class))
+                .doesNotContainKey("prompt_cache_key");
+    }
+
+    @Test
+    void should_replace_prompt_cache_key_with_custom_parameter_of_the_same_name() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = OpenAiDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("gpt-6-luna")
+                .promptCacheKey("typed-key")
+                .customParameters(Map.of("prompt_cache_key", "custom-key"))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        String body = httpClient.requests().get(0).body();
+        assertThat(OBJECT_MAPPER.readValue(body, Map.class)).containsEntry("prompt_cache_key", "custom-key");
+        assertThat(body).containsOnlyOnce("\"prompt_cache_key\"");
     }
 
     @Test
@@ -307,7 +380,7 @@ class OpenAiDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputFields(Map.of("ticket", "My payouts are failing"))
-                        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                         .build());
 
         // then
@@ -338,7 +411,7 @@ class OpenAiDecisionModelTest {
                         .inputContents(List.of(
                                 TextContent.from("The package arrived like this."),
                                 ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.HIGH)))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -375,7 +448,7 @@ class OpenAiDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputFields(input)
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -409,7 +482,7 @@ class OpenAiDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputFields(Map.of("photos", List.of(front, back)))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -425,7 +498,7 @@ class OpenAiDecisionModelTest {
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
                                 .inputFields(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
-                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("PDF");
@@ -445,7 +518,7 @@ class OpenAiDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputContents(List.of(ImageContent.from("https://example.com/package.png")))
-                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -493,7 +566,7 @@ class OpenAiDecisionModelTest {
                                         .isError(true)
                                         .build(),
                                 AiMessage.from("Your order has shipped."))
-                        .question("resolved", YesNoQuestion.of("Did the assistant answer the question?"))
+                        .question("resolved", YesNoQuestion.from("Did the assistant answer the question?"))
                         .build());
 
         // then
@@ -539,7 +612,7 @@ class OpenAiDecisionModelTest {
         model(httpClient)
                 .decide(DecisionRequest.builder()
                         .inputMessages(UserMessage.from(TextContent.from("It arrived like this:"), photo))
-                        .question("resolved", YesNoQuestion.of("Is the item damaged?"))
+                        .question("resolved", YesNoQuestion.from("Is the item damaged?"))
                         .build());
 
         // then
@@ -565,7 +638,7 @@ class OpenAiDecisionModelTest {
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
                 .inputMessages(List.of(AiMessage.builder().thinking("The user did not write anything.").build()))
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -587,7 +660,7 @@ class OpenAiDecisionModelTest {
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = DecisionRequest.builder()
                 .input(() -> DecisionInputType.TEXT)
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -611,7 +684,7 @@ class OpenAiDecisionModelTest {
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
                                 .inputMessages(List.of(UserMessage.from("Hi"), CustomMessage.from(Map.of("key", "value"))))
-                                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
@@ -619,7 +692,7 @@ class OpenAiDecisionModelTest {
         assertThat(model(httpClient)
                         .decideAsync(DecisionRequest.builder()
                                 .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
-                                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                                 .build()))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableOfType(ExecutionException.class)
@@ -722,7 +795,7 @@ class OpenAiDecisionModelTest {
                 ok("{\"model\": \"gpt-6-luna\", \"answers\": [" + answers + "]}"));
         DecisionRequest request = DecisionRequest.builder()
                 .input("Help!")
-                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
                 .build();
 
         // when-then
@@ -742,7 +815,7 @@ class OpenAiDecisionModelTest {
                 """.formatted(level)));
         DecisionRequest request = DecisionRequest.builder()
                 .input("Help!")
-                .question("frustration", ScaleQuestion.of("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
+                .question("frustration", ScaleQuestion.from("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
                 .build();
 
         // when-then
@@ -761,7 +834,7 @@ class OpenAiDecisionModelTest {
         assertThatThrownBy(() -> model(httpClient)
                         .decide(DecisionRequest.builder()
                                 .inputContents(List.of(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)))
-                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
                                 .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining(detailLevel.name());

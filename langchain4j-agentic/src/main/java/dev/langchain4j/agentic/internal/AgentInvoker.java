@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
+import dev.langchain4j.agentic.agent.DecisionResponseAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -11,6 +12,7 @@ import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.service.ParameterNameResolver;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -37,6 +39,10 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
             afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
                     chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
                     chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
+        } else if (agent instanceof DecisionResponseAccess decisionResponseAccess) {
+            DecisionResponse decisionResponse = decisionResponseAccess.lastDecisionResponse(agenticScope.memoryId());
+            decisionResponseAccess.removeLastDecisionResponse(agenticScope.memoryId());
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result, decisionResponse);
         } else {
             afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
         }
@@ -66,7 +72,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
                 : List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
-                spec.listener());
+                spec.listener(), spec.activationCondition());
         return new SpecAgentInvoker(agenticMethod, agentInstance);
     }
 

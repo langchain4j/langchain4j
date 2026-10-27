@@ -16,7 +16,7 @@ import java.util.Objects;
  * <p>
  * Each option has a name and a description of when it applies. For options whose name says it all, such as
  * sentiments, the name is used as the description
- * ({@code ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"))}):
+ * ({@code ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral"))}):
  * <pre>{@code
  * ChoiceQuestion team = ChoiceQuestion.builder()
  *         .text("Which team should handle this ticket?")
@@ -54,21 +54,46 @@ public final class ChoiceQuestion implements Question {
 
     /**
      * Creates a choice question with the given text and the descriptions of the options, keyed by option name.
+     *
+     * @since 1.23.0
      */
-    public static ChoiceQuestion of(String text, Map<String, String> options) {
+    public static ChoiceQuestion from(String text, Map<String, String> options) {
         return builder().text(text).options(options).build();
     }
 
     /**
      * Creates a choice question with the given text and options whose names say it all: each name is also used as
      * the description.
+     *
+     * @since 1.23.0
      */
-    public static ChoiceQuestion of(String text, List<String> options) {
+    public static ChoiceQuestion from(String text, List<String> options) {
         Builder builder = builder().text(text);
         if (options != null) {
             options.forEach(builder::option);
         }
         return builder.build();
+    }
+
+    /**
+     * Creates a choice question with the given text and the descriptions of the options, keyed by option name.
+     *
+     * @deprecated use {@link #from(String, Map)} instead
+     */
+    @Deprecated(since = "1.23.0", forRemoval = true)
+    public static ChoiceQuestion of(String text, Map<String, String> options) {
+        return from(text, options);
+    }
+
+    /**
+     * Creates a choice question with the given text and options whose names say it all: each name is also used as
+     * the description.
+     *
+     * @deprecated use {@link #from(String, List)} instead
+     */
+    @Deprecated(since = "1.23.0", forRemoval = true)
+    public static ChoiceQuestion of(String text, List<String> options) {
+        return from(text, options);
     }
 
     public static Builder builder() {

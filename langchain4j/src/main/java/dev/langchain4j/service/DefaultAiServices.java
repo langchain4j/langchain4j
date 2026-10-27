@@ -55,11 +55,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -236,16 +236,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                             InvocationContext withCapturedContext =
                                     CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
                             return invoke(method, args, withCapturedContext);
-                        } catch (Exception ex) {
-                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                    .invocationContext(invocationContext)
-                                    .error(ex)
-                                    .build());
-                            Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, ex);
-                            if (asyncFailure.isPresent()) {
-                                return asyncFailure.get();
+                        } catch (VirtualMachineError e) {
+                            throw e;
+                        } catch (Throwable t) {
+                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
+                            if (t instanceof Exception) {
+                                Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, t);
+                                if (asyncFailure.isPresent()) {
+                                    return asyncFailure.get();
+                                }
                             }
-                            throw ex;
+                            throw t;
                         }
                     }
 
@@ -418,12 +419,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type asyncReturnType2 = returnType;
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
+                            result.whenComplete((value, error) -> {
+                                if (result.isCancelled()) {
+                                    fireCancelledEvent(baseInvocationContext);
+                                }
+                            });
                             CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
                                     chatMemory, asyncSystemMessage, originalUserMessage, baseInvocationContext);
                             propagateCancellation(result, augmentation);
                             augmentation.whenComplete((augmentationResult, augmentationError) -> {
                                 if (augmentationError != null) {
-                                    completeExceptionallyAsFailure(result, augmentationError);
+                                    failAsync(result, baseInvocationContext, augmentationError);
                                     return;
                                 }
                                 try {
@@ -453,7 +459,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     asyncAppendOutputFormat))
                                             .whenComplete((guardedInput, guardrailError) -> {
                                                 if (guardrailError != null) {
-                                                    completeExceptionallyAsFailure(result, guardrailError);
+                                                    failAsync(result, baseInvocationContext, guardrailError);
                                                     return;
                                                 }
                                                 assembleMessagesAsync(
@@ -463,7 +469,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 originalUserMessage)
                                                         .whenComplete((assembledMessages, assemblyError) -> {
                                                             if (assemblyError != null) {
-                                                                completeExceptionallyAsFailure(result, assemblyError);
+                                                                failAsync(result, baseInvocationContext, assemblyError);
                                                                 return;
                                                             }
                                                             try {
@@ -483,12 +489,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         returnsImage,
                                                                         isReturnTypeResult);
                                                             } catch (Throwable t) {
-                                                                completeExceptionallyAsFailure(result, t);
+                                                                failAsync(result, baseInvocationContext, t);
                                                             }
                                                         });
                                             });
                                 } catch (Throwable t) {
-                                    completeExceptionallyAsFailure(result, t);
+                                    failAsync(result, baseInvocationContext, t);
                                 }
                             });
                             return completableFutureAdapter != null
@@ -513,6 +519,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             final boolean reactiveSingleSubscription = reactiveChatMemory != null;
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
+                            final AtomicBoolean reactiveSubscribedBefore = new AtomicBoolean(false);
 
                             Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
@@ -526,17 +533,41 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     return;
                                 }
 
-                                DeferredSubscription subscription = new DeferredSubscription();
-                                subscriber.onSubscribe(subscription);
+                                InvocationContext subscriptionContext = reactiveSubscribedBefore.getAndSet(true)
+                                        ? baseInvocationContext.toBuilder()
+                                                .invocationId(UUID.randomUUID())
+                                                .timestampNow()
+                                                .build()
+                                        : baseInvocationContext;
 
+                                // Fired before onSubscribe so that a subscriber canceling from within onSubscribe
+                                // ends an invocation that has already started
                                 context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
-                                        .invocationContext(baseInvocationContext)
+                                        .invocationContext(subscriptionContext)
                                         .systemMessage(reactiveSystemMessage)
                                         .userMessage(originalUserMessage)
                                         .build());
 
+                                DeferredSubscription subscription = new DeferredSubscription();
+                                AtomicBoolean terminated = new AtomicBoolean();
+                                subscriber.onSubscribe(new Flow.Subscription() {
+
+                                    @Override
+                                    public void request(long n) {
+                                        subscription.request(n);
+                                    }
+
+                                    @Override
+                                    public void cancel() {
+                                        subscription.cancel();
+                                        if (terminated.compareAndSet(false, true)) {
+                                            fireCancelledEvent(subscriptionContext);
+                                        }
+                                    }
+                                });
+
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
-                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, baseInvocationContext);
+                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, subscriptionContext);
                                 subscription.setCancelAction(() -> augmentation.cancel(true));
 
                                 augmentation.whenComplete((augmentationResult, augmentationError) -> {
@@ -544,7 +575,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         return;
                                     }
                                     if (augmentationError != null) {
-                                        subscriber.onError(unwrapCompletionException(augmentationError));
+                                        failReactive(
+                                                subscriber,
+                                                terminated,
+                                                subscriptionContext,
+                                                unwrapCompletionException(augmentationError));
                                         return;
                                     }
                                     final UserMessage reactiveInputUserMessage;
@@ -560,12 +595,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .chatMemory(reactiveChatMemory)
                                                 .augmentationResult(augmentationResult)
                                                 .userMessageTemplate(userMessageTemplate)
-                                                .invocationContext(baseInvocationContext)
+                                                .invocationContext(subscriptionContext)
                                                 .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                                 .variables(variables)
                                                 .build();
                                     } catch (Throwable t) {
-                                        subscriber.onError(unwrapCompletionException(t));
+                                        failReactive(
+                                                subscriber,
+                                                terminated,
+                                                subscriptionContext,
+                                                unwrapCompletionException(t));
                                         return;
                                     }
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
@@ -574,7 +613,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
                                                     guardedUserMessage,
-                                                    baseInvocationContext,
+                                                    subscriptionContext,
                                                     reactiveReturnType,
                                                     reactiveAppendOutputFormat))
                                             .whenComplete((guardedInput, guardrailError) -> {
@@ -582,7 +621,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     return;
                                                 }
                                                 if (guardrailError != null) {
-                                                    subscriber.onError(unwrapCompletionException(guardrailError));
+                                                    failReactive(
+                                                            subscriber,
+                                                            terminated,
+                                                            subscriptionContext,
+                                                            unwrapCompletionException(guardrailError));
                                                     return;
                                                 }
                                                 assembleMessagesAsync(
@@ -595,7 +638,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 return;
                                                             }
                                                             if (assemblyError != null) {
-                                                                subscriber.onError(unwrapCompletionException(assemblyError));
+                                                                failReactive(
+                                                                        subscriber,
+                                                                        terminated,
+                                                                        subscriptionContext,
+                                                                        unwrapCompletionException(assemblyError));
                                                                 return;
                                                             }
                                                             AiServiceStreamingEventPublisher publisher;
@@ -627,7 +674,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         streamingEventStreamParameters,
                                                                         context.streamingBufferSize);
                                                             } catch (Throwable t) {
-                                                                subscriber.onError(unwrapCompletionException(t));
+                                                                failReactive(
+                                                                        subscriber,
+                                                                        terminated,
+                                                                        subscriptionContext,
+                                                                        unwrapCompletionException(t));
                                                                 return;
                                                             }
                                                             if (subscription.isCancelled()) {
@@ -641,16 +692,25 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onNext(AiServiceStreamingEvent item) {
+                                                                    if (item instanceof AiServiceStreamingEvent.FinalResponseEvent) {
+                                                                        terminated.set(true);
+                                                                    }
                                                                     subscriber.onNext(item);
                                                                 }
 
                                                                 @Override
                                                                 public void onError(Throwable error) {
+                                                                    fireErrorIfNotEnded(terminated, subscriptionContext, error);
                                                                     subscriber.onError(error);
                                                                 }
 
                                                                 @Override
                                                                 public void onComplete() {
+                                                                    fireErrorIfNotEnded(
+                                                                            terminated,
+                                                                            subscriptionContext,
+                                                                            new IllegalStateException(
+                                                                                    "The stream completed without a final response"));
                                                                     subscriber.onComplete();
                                                                 }
                                                             });
@@ -686,6 +746,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             AugmentationRequest augmentationRequest =
                                     new AugmentationRequest(userMessageForAugmentation, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            fireRetrievalAugmentedEvent(
+                                    invocationContext, userMessageForAugmentation, augmentationResult);
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
@@ -862,13 +924,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
                                         Throwable cause = unwrapCompletionException(error);
-                                        if (!result.isCancelled() && !(cause instanceof CancellationException)) {
-                                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                                    .invocationContext(invocationContext)
-                                                    .error(cause instanceof Exception exception
+                                        if (!result.isCancelled()) {
+                                            TerminalEvents.fireError(
+                                                    context.eventListenerRegistrar,
+                                                    invocationContext,
+                                                    cause instanceof Exception exception
                                                             ? exception
-                                                            : new RuntimeException(cause))
-                                                    .build());
+                                                            : new RuntimeException(cause));
                                         }
                                         completeExceptionallyAsFailure(result, error);
                                     } else {
@@ -974,6 +1036,58 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     /**
+                     * Fails an asynchronous invocation before its model call (RAG augmentation, input guardrails or
+                     * message assembly failed), firing the {@link AiServiceErrorEvent} that the model call would
+                     * otherwise fire.
+                     */
+                    private void failAsync(
+                            CompletableFuture<Object> result, InvocationContext invocationContext, Throwable error) {
+                        if (!result.isDone()) {
+                            TerminalEvents.fireError(
+                                    context.eventListenerRegistrar,
+                                    invocationContext,
+                                    unwrapCompletionException(error));
+                        }
+                        completeExceptionallyAsFailure(result, error);
+                    }
+
+                    /**
+                     * Fails a reactive invocation before its model call (RAG augmentation, input guardrails or
+                     * message assembly failed), firing the {@link AiServiceErrorEvent} that the model call would
+                     * otherwise fire.
+                     */
+                    private void failReactive(
+                            Flow.Subscriber<?> subscriber,
+                            AtomicBoolean terminated,
+                            InvocationContext invocationContext,
+                            Throwable error) {
+                        fireErrorIfNotEnded(terminated, invocationContext, error);
+                        subscriber.onError(error);
+                    }
+
+                    private void fireErrorIfNotEnded(
+                            AtomicBoolean terminated, InvocationContext invocationContext, Throwable error) {
+                        if (terminated.compareAndSet(false, true)) {
+                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
+                        }
+                    }
+
+                    private void fireCancelledEvent(InvocationContext invocationContext) {
+                        TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
+                    }
+
+                    private void fireRetrievalAugmentedEvent(
+                            InvocationContext invocationContext,
+                            UserMessage userMessage,
+                            AugmentationResult augmentationResult) {
+                        context.eventListenerRegistrar.fireEvent(RetrievalAugmentedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .chatMessage(userMessage)
+                                .contents(augmentationResult.contents())
+                                .build());
+                    }
+
+                    /**
                      * Runs RAG augmentation off the calling thread for the asynchronous and reactive return-type
                      * modes: reads the chat memory via the asynchronous {@code messagesAsync} and delegates to
                      * {@code RetrievalAugmentor.augmentAsync}. Completes with {@code null} when no
@@ -993,9 +1107,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                             CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
                                     ? chatMemory.messagesAsync()
                                     : CompletableFuture.completedFuture(null);
-                            async = chatMemoryMessages.thenCompose(memoryMessages -> augmentor.augmentAsync(
-                                    augmentationRequest(
-                                            originalUserMessage, systemMessage, memoryMessages, invocationContext)));
+                            async = chatMemoryMessages
+                                    .thenCompose(memoryMessages -> augmentor.augmentAsync(augmentationRequest(
+                                            originalUserMessage, systemMessage, memoryMessages, invocationContext)))
+                                    .thenApply(augmentationResult -> {
+                                        fireRetrievalAugmentedEvent(
+                                                invocationContext, originalUserMessage, augmentationResult);
+                                        return augmentationResult;
+                                    });
                         } catch (Throwable t) {
                             async = CompletableFuture.failedFuture(t);
                         }
@@ -1301,10 +1420,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     }
 
                     private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {
-                        context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                                .invocationContext(invocationContext)
-                                .result(result)
-                                .build());
+                        TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, result);
                         return result;
                     }
 

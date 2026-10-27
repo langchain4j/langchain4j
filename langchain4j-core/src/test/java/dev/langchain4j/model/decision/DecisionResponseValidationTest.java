@@ -31,12 +31,12 @@ class DecisionResponseValidationTest {
 
     static final DecisionRequest REQUEST = DecisionRequest.builder()
             .input("I was charged twice this month")
-            .question("urgent", YesNoQuestion.of("Does this need attention today?"))
-            .question("team", ChoiceQuestion.of("Which team?", Map.of("billing", "Payments", "support", "Bugs")))
-            .question("frustration", ScaleQuestion.of("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
+            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+            .question("team", ChoiceQuestion.from("Which team?", Map.of("billing", "Payments", "support", "Bugs")))
+            .question("frustration", ScaleQuestion.from("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
             .build();
 
-    static final YesNoAnswer URGENT = YesNoAnswer.of(0.9);
+    static final YesNoAnswer URGENT = YesNoAnswer.from(0.9);
     static final ChoiceAnswer TEAM = ChoiceAnswer.builder().value("billing").build();
     static final ScaleAnswer FRUSTRATION = ScaleAnswer.builder().mean(1.2).build();
 

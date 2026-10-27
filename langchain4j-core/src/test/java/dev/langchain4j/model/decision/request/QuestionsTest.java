@@ -100,7 +100,7 @@ class QuestionsTest {
     @Test
     void should_use_names_as_descriptions_of_options_without_descriptions() {
 
-        ChoiceQuestion question = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative"));
+        ChoiceQuestion question = ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative"));
 
         assertThat(question.options())
                 .containsExactly(Map.entry("positive", "positive"), Map.entry("negative", "negative"));
@@ -110,7 +110,7 @@ class QuestionsTest {
                         .option("positive")
                         .option("negative")
                         .build());
-        assertThatThrownBy(() -> ChoiceQuestion.of("What is the sentiment?", List.of("positive", "positive")))
+        assertThatThrownBy(() -> ChoiceQuestion.from("What is the sentiment?", List.of("positive", "positive")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Option 'positive' is already defined");
     }
@@ -166,7 +166,7 @@ class QuestionsTest {
 
         assertThat(question.levels()).containsExactly("Minor", "Critical");
         assertThat(question.levelDescriptions()).containsExactly(null, "All customers are affected");
-        assertThat(ScaleQuestion.of("How urgent?", List.of("Later", "Now")).levelDescriptions())
+        assertThat(ScaleQuestion.from("How urgent?", List.of("Later", "Now")).levelDescriptions())
                 .containsExactly(null, null);
         assertThatThrownBy(() -> ScaleQuestion.builder().level("Critical", " "))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -210,14 +210,14 @@ class QuestionsTest {
     @Test
     void should_create_questions_with_factory_methods() {
 
-        assertThat(YesNoQuestion.of("Is this spam?"))
+        assertThat(YesNoQuestion.from("Is this spam?"))
                 .isEqualTo(YesNoQuestion.builder().text("Is this spam?").build());
-        assertThat(ChoiceQuestion.of("Which team?", Map.of("billing", "Payments", "sales", "Pricing")))
+        assertThat(ChoiceQuestion.from("Which team?", Map.of("billing", "Payments", "sales", "Pricing")))
                 .isEqualTo(ChoiceQuestion.builder()
                         .text("Which team?")
                         .options(Map.of("billing", "Payments", "sales", "Pricing"))
                         .build());
-        assertThat(ScaleQuestion.of("How frustrated?", List.of("Calm", "Angry")))
+        assertThat(ScaleQuestion.from("How frustrated?", List.of("Calm", "Angry")))
                 .isEqualTo(ScaleQuestion.builder()
                         .text("How frustrated?")
                         .levels(List.of("Calm", "Angry"))
@@ -284,5 +284,18 @@ class QuestionsTest {
                         .level("High")
                         .level("Low")
                         .build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void deprecated_of_factories_should_create_the_same_questions_as_from() {
+
+        assertThat(YesNoQuestion.of("Is this spam?")).isEqualTo(YesNoQuestion.from("Is this spam?"));
+        Map<String, String> teams = Map.of("billing", "Payments", "support", "Product problems");
+        assertThat(ChoiceQuestion.of("Which team?", teams)).isEqualTo(ChoiceQuestion.from("Which team?", teams));
+        assertThat(ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative")))
+                .isEqualTo(ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative")));
+        assertThat(ScaleQuestion.of("How urgent?", List.of("Low", "High")))
+                .isEqualTo(ScaleQuestion.from("How urgent?", List.of("Low", "High")));
     }
 }

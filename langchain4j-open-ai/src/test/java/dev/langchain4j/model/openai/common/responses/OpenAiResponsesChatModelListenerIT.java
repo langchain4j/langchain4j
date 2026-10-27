@@ -7,7 +7,6 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static java.util.Collections.singletonList;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -20,6 +19,7 @@ class OpenAiResponsesChatModelListenerIT extends AbstractChatModelListenerIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(modelName())
+                .reasoningEffort("none") // gpt-5.6-luna accepts a temperature only without reasoning
                 .temperature(temperature())
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
@@ -29,7 +29,7 @@ class OpenAiResponsesChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return GPT_4_1_NANO.toString();
+        return "gpt-5.6-luna";
     }
 
     @Override

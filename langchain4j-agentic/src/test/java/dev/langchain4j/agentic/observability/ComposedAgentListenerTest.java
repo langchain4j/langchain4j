@@ -2,6 +2,8 @@ package dev.langchain4j.agentic.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ComposedAgentListenerTest {
@@ -33,5 +35,27 @@ class ComposedAgentListenerTest {
 
         assertThat(ComposedAgentListener.compose(composed, third)).isSameAs(composed);
         assertThat(((ComposedAgentListener) composed).listeners()).containsExactlyInAnyOrder(first, second, third);
+    }
+
+    @Test
+    void skips_are_forwarded_to_all_the_composed_listeners() {
+        List<AgentSkipped> firstSkips = new ArrayList<>();
+        List<AgentSkipped> secondSkips = new ArrayList<>();
+        AgentListener composed = ComposedAgentListener.compose(skipRecorder(firstSkips), skipRecorder(secondSkips));
+        AgentSkipped skip = new AgentSkipped(null, null, "activation condition is false: never");
+
+        composed.onAgentSkipped(skip);
+
+        assertThat(firstSkips).containsExactly(skip);
+        assertThat(secondSkips).containsExactly(skip);
+    }
+
+    private static AgentListener skipRecorder(List<AgentSkipped> skips) {
+        return new AgentListener() {
+            @Override
+            public void onAgentSkipped(AgentSkipped agentSkipped) {
+                skips.add(agentSkipped);
+            }
+        };
     }
 }

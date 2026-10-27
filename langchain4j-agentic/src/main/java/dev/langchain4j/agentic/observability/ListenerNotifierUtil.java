@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Map;
@@ -32,9 +33,18 @@ public class ListenerNotifierUtil {
     public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent,
                                             Map<String, Object> inputs, Object output,
                                             ChatRequest chatRequest, ChatResponse chatResponse) {
+        afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+    }
+
+    public static void afterAgentInvocation(AgentListener listener, AgenticScope agenticScope, AgentInstance agent,
+                                            Map<String, Object> inputs, Object output, DecisionResponse decisionResponse) {
+        afterAgentInvocation(listener, agent, new AgentResponse(agenticScope, agent, inputs, output, decisionResponse));
+    }
+
+    private static void afterAgentInvocation(AgentListener listener, AgentInstance agent, AgentResponse agentResponse) {
         if (listener != null) {
             try {
-                listener.afterAgentInvocation(new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+                listener.afterAgentInvocation(agentResponse);
             } catch (Exception e) {
                 LOG.error("afterAgentInvocation listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
             }
@@ -47,6 +57,17 @@ public class ListenerNotifierUtil {
                 listener.onAgentInvocationError(new AgentInvocationError(agenticScope, agent, inputs, error));
             } catch (Exception e) {
                 LOG.error("agentError listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public static void agentSkipped(
+            AgentListener listener, AgenticScope agenticScope, AgentInstance agent, String reason) {
+        if (listener != null) {
+            try {
+                listener.onAgentSkipped(new AgentSkipped(agenticScope, agent, reason));
+            } catch (Exception e) {
+                LOG.error("agentSkipped listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
             }
         }
     }

@@ -41,8 +41,13 @@ public class GoalOrientedSearchGraph {
     }
 
     public List<AgentInstance> search(Collection<String> preconditions, String goal) {
+        Node goalNode = nodes.get(goal);
+        if (goalNode == null) {
+            // no agent produces the goal
+            return List.of();
+        }
         List<Node> nodesPath = DependencyGraphSearch.search(
-                nodes.get(goal),
+                goalNode,
                 preconditions.stream().map(nodes::get).filter(Objects::nonNull).toList());
 
         if (nodesPath == null) {

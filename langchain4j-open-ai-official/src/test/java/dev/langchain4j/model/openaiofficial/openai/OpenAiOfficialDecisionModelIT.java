@@ -71,8 +71,8 @@ class OpenAiOfficialDecisionModelIT extends AbstractDecisionModelIT {
                 .inputContents(List.of(
                         TextContent.from("A photo sent by the customer."),
                         ImageContent.from(RED_SQUARE_PNG, "image/png", ImageContent.DetailLevel.LOW)))
-                .question("red", YesNoQuestion.of("Is the image mostly red?"))
-                .question("blue", YesNoQuestion.of("Is the image mostly blue?"))
+                .question("red", YesNoQuestion.from("Is the image mostly red?"))
+                .question("blue", YesNoQuestion.from("Is the image mostly blue?"))
                 .build();
 
         // when
@@ -103,12 +103,12 @@ class OpenAiOfficialDecisionModelIT extends AbstractDecisionModelIT {
                         ToolExecutionResultMessage.from(
                                 toolCall, "{\"orderId\": 42, \"charges\": [19.99, 19.99], \"status\": \"delivered\"}"),
                         AiMessage.from("You were charged twice. I have refunded one of the charges.")))
-                .question("tool", YesNoQuestion.of("Did the assistant look up the order with a tool?"))
-                .question("charged_twice", YesNoQuestion.of("According to the order data, was the customer charged twice?"))
-                .question("refused", YesNoQuestion.of("Did the assistant refuse to help?"))
+                .question("tool", YesNoQuestion.from("Did the assistant look up the order with a tool?"))
+                .question("charged_twice", YesNoQuestion.from("According to the order data, was the customer charged twice?"))
+                .question("refused", YesNoQuestion.from("Did the assistant refuse to help?"))
                 .question(
                         "backed_by_tools",
-                        YesNoQuestion.of("Did the assistant call a tool for every action it says it has taken?"))
+                        YesNoQuestion.from("Did the assistant call a tool for every action it says it has taken?"))
                 .build();
 
         // when
@@ -132,7 +132,7 @@ class OpenAiOfficialDecisionModelIT extends AbstractDecisionModelIT {
                 .build();
         DecisionRequest request = DecisionRequest.builder()
                 .inputMessages(List.of(UserMessage.from("Can you check the status of my order 42?"), AiMessage.from(toolCall)))
-                .question("requested", YesNoQuestion.of("Did the user ask for the action of the last tool call?"))
+                .question("requested", YesNoQuestion.from("Did the user ask for the action of the last tool call?"))
                 .build();
 
         // when

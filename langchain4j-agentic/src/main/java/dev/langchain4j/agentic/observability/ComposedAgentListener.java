@@ -72,6 +72,13 @@ public class ComposedAgentListener implements AgentListener {
     }
 
     @Override
+    public void onAgentSkipped(final AgentSkipped agentSkipped) {
+        for (AgentListener listener : listeners) {
+            listener.onAgentSkipped(agentSkipped);
+        }
+    }
+
+    @Override
     public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
         for (AgentListener listener : listeners) {
             listener.afterAgentToolExecution(afterAgentToolExecution);
