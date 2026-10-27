@@ -10,12 +10,8 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
-import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -45,15 +41,6 @@ class ToolErrorHandlingNoticeTest {
 
         CompletableFuture<String> chat(String userMessage);
     }
-
-    /**
-     * What {@code DefaultAiServices} passes in, without the third-party adapters that are not on the
-     * test classpath.
-     */
-    private static final Predicate<Type> ASYNCHRONOUS = returnType ->
-            TypeUtils.typeHasRawClass(returnType, CompletableFuture.class)
-                    || TypeUtils.typeHasRawClass(returnType, CompletionStage.class)
-                    || TypeUtils.typeHasRawClass(returnType, Flow.Publisher.class);
 
     static class Tools {
 
@@ -105,7 +92,7 @@ class ToolErrorHandlingNoticeTest {
         context.toolService.argumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm());
         context.toolService.executionErrorHandler(ToolExecutionErrorHandler.failInvocation());
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context, ASYNCHRONOUS)).isEmpty();
+        assertThat(unconfirmedDefaults(context)).isEmpty();
     }
 
     @Test
@@ -114,7 +101,7 @@ class ToolErrorHandlingNoticeTest {
         AiServiceContext context = withTools(Assistant.class);
         context.toolService.executionErrorHandler(ToolExecutionErrorHandler.failInvocation());
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context, ASYNCHRONOUS)).containsExactly(TOOL_ARGUMENTS_ERROR);
+        assertThat(unconfirmedDefaults(context)).containsExactly(TOOL_ARGUMENTS_ERROR);
     }
 
     @Test
@@ -122,7 +109,7 @@ class ToolErrorHandlingNoticeTest {
 
         AiServiceContext context = AiServiceContext.create(Assistant.class);
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context, ASYNCHRONOUS)).isEmpty();
+        assertThat(unconfirmedDefaults(context)).isEmpty();
     }
 
     @Test
@@ -132,7 +119,7 @@ class ToolErrorHandlingNoticeTest {
         context.toolService.toolProvider(
                 request -> ToolProviderResult.builder().build());
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context, ASYNCHRONOUS))
+        assertThat(unconfirmedDefaults(context))
                 .as("tools supplied by a ToolProvider are only known at invocation time, but the defaults still apply")
                 .containsExactly(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR);
     }
@@ -140,7 +127,7 @@ class ToolErrorHandlingNoticeTest {
     @Test
     void should_not_warn_when_all_methods_are_asynchronous() {
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(withTools(AsyncAssistant.class), ASYNCHRONOUS))
+        assertThat(unconfirmedDefaults(withTools(AsyncAssistant.class)))
                 .as("asynchronous and reactive modes already behave the way the defaults are planned to behave")
                 .isEmpty();
     }
@@ -148,8 +135,12 @@ class ToolErrorHandlingNoticeTest {
     @Test
     void should_warn_when_at_least_one_method_is_blocking() {
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(withTools(PartiallyAsyncAssistant.class), ASYNCHRONOUS))
+        assertThat(unconfirmedDefaults(withTools(PartiallyAsyncAssistant.class)))
                 .containsExactly(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR);
+    }
+
+    private static List<ToolErrorHandlingNotice.Default> unconfirmedDefaults(AiServiceContext context) {
+        return ToolErrorHandlingNotice.unconfirmedDefaults(context, new DefaultAiServices<>(context)::hasBlockingMethod);
     }
 
     private static AiServiceContext withTools(Class<?> aiServiceClass) {
@@ -161,8 +152,7 @@ class ToolErrorHandlingNoticeTest {
     @Test
     void should_not_warn_for_an_asynchronous_service_that_also_exposes_chat_memory_access() {
 
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(
-                        withTools(AsyncAssistantWithMemoryAccess.class), ASYNCHRONOUS))
+        assertThat(unconfirmedDefaults(withTools(AsyncAssistantWithMemoryAccess.class)))
                 .as("the methods of ChatMemoryAccess are not AI Service methods")
                 .isEmpty();
     }

@@ -10,7 +10,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
+import com.google.genai.types.CodeExecutionResult;
 import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
 import com.google.genai.types.FinishReason;
 import com.google.genai.types.FinishReason.Known;
 import com.google.genai.types.FunctionCall;
@@ -20,8 +22,10 @@ import com.google.genai.types.Part;
 import com.google.genai.types.Transcription;
 import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
@@ -29,11 +33,13 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1148,6 +1154,392 @@ class GoogleGenAiContentMapperTest {
                 responseWithParts(Part.builder().inlineData(blob).build()), "gemini-2.5-flash-image");
 
         assertThat(result.aiMessage().images()).isEmpty();
+        assertThat(result.aiMessage().audios()).isEmpty();
+    }
+
+    @Test
+    void should_collect_generated_audio_from_inline_data() {
+        byte[] wavBytes = "fake-wav-bytes".getBytes(StandardCharsets.UTF_8);
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(imagePart(wavBytes, "audio/wav")), "gemini-3.8-flash-tts");
+
+        assertThat(result.aiMessage().images()).isEmpty();
+        List<Audio> generatedAudio = result.aiMessage().audios();
+        assertThat(generatedAudio).hasSize(1);
+        assertThat(generatedAudio.get(0).mimeType()).isEqualTo("audio/wav");
+        assertThat(generatedAudio.get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString(wavBytes));
+    }
+
+    @Test
+    void should_map_initial_prompt_token_count_for_multi_hop_continuation() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("Continued answer").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(30)
+                        .firstHopPromptTokenCount(12)
+                        .candidatesTokenCount(15)
+                        .totalTokenCount(45)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(30);
+        assertThat(tokenUsage.initialPromptTokenCount()).isEqualTo(12);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(15);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(45);
+    }
+
+    @Test
+    void should_preserve_audio_transcription_segment_start_and_end_offsets() {
+        Transcription firstSegment = Transcription.builder()
+                .text("First segment.")
+                .speakerLabel("spk_1")
+                .startOffset(Duration.ofMillis(100))
+                .endOffset(Duration.ofMillis(1500))
+                .build();
+        Transcription secondSegment = Transcription.builder()
+                .text("Second segment.")
+                .speakerLabel("spk_2")
+                .startOffset(Duration.ofMillis(1600))
+                .endOffset(Duration.ofMillis(3200))
+                .build();
+
+        GenerateContentResponse response =
+                responseWithParts(transcriptionPart(firstSegment), transcriptionPart(secondSegment));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("First segment. Second segment.");
+        GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) result.metadata();
+        List<Part> rawParts = metadata.rawResponse()
+                .candidates()
+                .orElseThrow()
+                .get(0)
+                .content()
+                .orElseThrow()
+                .parts()
+                .orElseThrow();
+        assertThat(rawParts.get(0).audioTranscription().orElseThrow().startOffset())
+                .hasValue(Duration.ofMillis(100));
+        assertThat(rawParts.get(0).audioTranscription().orElseThrow().endOffset())
+                .hasValue(Duration.ofMillis(1500));
+        assertThat(rawParts.get(1).audioTranscription().orElseThrow().startOffset())
+                .hasValue(Duration.ofMillis(1600));
+        assertThat(rawParts.get(1).audioTranscription().orElseThrow().endOffset())
+                .hasValue(Duration.ofMillis(3200));
+    }
+
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_text_and_image() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-42")
+                .toolName("take_screenshot")
+                .contents(List.of(TextContent.from("Screenshot captured"), ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        Content content = contents.get(0);
+        assertThat(content.role()).hasValue("user");
+        List<Part> parts = content.parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse()).isPresent();
+        assertThat(parts.get(0).functionResponse().get().id()).hasValue("call-42");
+        assertThat(parts.get(0).functionResponse().get().name()).hasValue("take_screenshot");
+        assertThat(parts.get(0).functionResponse().get().response()).hasValue(Map.of("result", "Screenshot captured"));
+        assertThat(parts.get(1).inlineData()).isPresent();
+        assertThat(parts.get(1).inlineData().get().mimeType()).hasValue("image/png");
+    }
+
+    @Test
+    void should_convert_multimodal_tool_execution_result_message_with_image_only() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-43")
+                .toolName("take_screenshot")
+                .contents(List.of(ImageContent.from(base64Png, "image/png")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        assertThat(contents).hasSize(1);
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response()).hasValue(Map.of("result", ""));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_join_all_texts_of_multimodal_tool_execution_result_message() {
+        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-45")
+                .toolName("take_screenshot")
+                .contents(List.of(
+                        TextContent.from("Screenshot captured"),
+                        ImageContent.from(base64Png, "image/png"),
+                        TextContent.from("Resolution: 1920x1080")))
+                .build();
+
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
+
+        List<Part> parts = contents.get(0).parts().orElseThrow();
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).functionResponse().orElseThrow().response())
+                .hasValue(Map.of("result", "Screenshot captured\nResolution: 1920x1080"));
+        assertThat(parts.get(1).inlineData()).isPresent();
+    }
+
+    @Test
+    void should_reject_unsupported_content_in_tool_execution_result_message() {
+        String base64Wav = Base64.getEncoder().encodeToString("wav-bytes".getBytes(StandardCharsets.UTF_8));
+        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
+                .id("call-44")
+                .toolName("record_audio")
+                .contents(List.of(AudioContent.from(base64Wav, "audio/wav")))
+                .build();
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolMessage), false))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("does not support non-text content type 'AUDIO'");
+    }
+
+    @Test
+    void should_add_executed_code_and_its_output_to_text_when_requested() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "print(2**100)\n"),
+                resultPart("OUTCOME_OK", "1267650600228229401496703205376\n"),
+                Part.fromText("2**100 is 1267650600228229401496703205376."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code executed:\n```python\nprint(2**100)\n```\n\n"
+                        + "Output:\n```\n1267650600228229401496703205376\n```\n\n"
+                        + "2**100 is 1267650600228229401496703205376.");
+    }
+
+    @Test
+    void should_leave_executed_code_out_of_text_by_default() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "print(2**100)\n"),
+                resultPart("OUTCOME_OK", "1267650600228229401496703205376\n"),
+                Part.fromText("2**100 is 1267650600228229401496703205376."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false);
+
+        assertThat(result.aiMessage().text()).isEqualTo("2**100 is 1267650600228229401496703205376.");
+    }
+
+    @Test
+    void should_add_outcome_and_error_output_of_failed_code() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "print(1/0)"),
+                resultPart("OUTCOME_FAILED", "ZeroDivisionError: division by zero\n"),
+                Part.fromText("The code divides by zero."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code executed:\n```python\nprint(1/0)\n```\n\n"
+                        + "Code execution failed: **OUTCOME_FAILED**\n```\nZeroDivisionError: division by zero\n```\n\n"
+                        + "The code divides by zero.");
+    }
+
+    @Test
+    void should_add_outcome_of_timed_out_code_without_output() {
+        GenerateContentResponse response =
+                responseWithParts(resultPart("OUTCOME_DEADLINE_EXCEEDED", null), Part.fromText("It took too long."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code execution failed: **OUTCOME_DEADLINE_EXCEEDED**\n\nIt took too long.");
+    }
+
+    @Test
+    void should_close_code_block_when_output_has_no_trailing_new_line() {
+        GenerateContentResponse response = responseWithParts(resultPart("OUTCOME_OK", "42"));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text()).isEqualTo("Output:\n```\n42\n```\n\n");
+    }
+
+    @Test
+    void should_use_a_longer_fence_when_output_contains_backticks() {
+        GenerateContentResponse response = responseWithParts(resultPart("OUTCOME_OK", "```\nx = 1\n```\n"));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text()).isEqualTo("Output:\n````\n```\nx = 1\n```\n````\n\n");
+    }
+
+    @Test
+    void should_omit_empty_output_of_successful_code_and_keep_the_chart() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "plt.show()"),
+                resultPart("OUTCOME_OK", ""),
+                imagePart(new byte[] {1, 2, 3}, "image/png"),
+                Part.fromText("Here is the chart."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code executed:\n```python\nplt.show()\n```\n\nHere is the chart.");
+        assertThat(result.aiMessage().images()).hasSize(1);
+    }
+
+    @Test
+    void should_use_python_when_language_is_missing_or_unspecified() {
+        GenerateContentResponse unspecified = responseWithParts(codePart("LANGUAGE_UNSPECIFIED", "x = 1"));
+        GenerateContentResponse missing = responseWithParts(Part.builder()
+                .executableCode(ExecutableCode.builder().code("x = 1"))
+                .build());
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(unspecified, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(missing, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    @Test
+    void should_keep_the_language_reported_for_the_code() {
+        GenerateContentResponse response = responseWithParts(codePart("JAVASCRIPT", "console.log(1)"));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text()).isEqualTo("Code executed:\n```javascript\nconsole.log(1)\n```\n\n");
+    }
+
+    @Test
+    void should_keep_thought_signature_of_last_part_when_code_part_has_one() {
+        GenerateContentResponse response = responseWithParts(
+                Part.builder()
+                        .executableCode(
+                                ExecutableCode.builder().language("PYTHON").code("x = 1"))
+                        .thoughtSignature("code-signature".getBytes())
+                        .build(),
+                resultPart("OUTCOME_OK", "1\n"),
+                Part.builder()
+                        .text("x is 1.")
+                        .thoughtSignature("answer-signature".getBytes())
+                        .build());
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().attribute("thought_signature", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString("answer-signature".getBytes()));
+    }
+
+    @Test
+    void should_separate_executed_code_from_preceding_text() {
+        GenerateContentResponse response = responseWithParts(
+                Part.fromText("Let me calculate that with Python:"),
+                codePart("PYTHON", "print(6 * 7)"),
+                resultPart("OUTCOME_OK", "42\n"),
+                Part.fromText("6 times 7 is 42."));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Let me calculate that with Python:\n\n"
+                        + "Code executed:\n```python\nprint(6 * 7)\n```\n\n"
+                        + "Output:\n```\n42\n```\n\n"
+                        + "6 times 7 is 42.");
+    }
+
+    @Test
+    void should_complete_the_blank_line_before_executed_code() {
+        GenerateContentResponse oneNewLine = responseWithParts(Part.fromText("First:\n"), codePart("PYTHON", "x = 1"));
+        GenerateContentResponse blankLine = responseWithParts(Part.fromText("First:\n\n"), codePart("PYTHON", "x = 1"));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(oneNewLine, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("First:\n\nCode executed:\n```python\nx = 1\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(blankLine, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("First:\n\nCode executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    @Test
+    void should_separate_each_round_of_code_execution_from_text_in_between() {
+        GenerateContentResponse response = responseWithParts(
+                codePart("PYTHON", "print(6 * 7)"),
+                resultPart("OUTCOME_OK", "42\n"),
+                Part.fromText("Now the square:"),
+                codePart("PYTHON", "print(42 ** 2)"),
+                resultPart("OUTCOME_OK", "1764\n"));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true);
+
+        assertThat(result.aiMessage().text())
+                .isEqualTo("Code executed:\n```python\nprint(6 * 7)\n```\n\n"
+                        + "Output:\n```\n42\n```\n\n"
+                        + "Now the square:\n\n"
+                        + "Code executed:\n```python\nprint(42 ** 2)\n```\n\n"
+                        + "Output:\n```\n1764\n```\n\n");
+    }
+
+    @Test
+    void should_separate_code_output_from_preceding_text() {
+        GenerateContentResponse succeeded =
+                responseWithParts(Part.fromText("It printed:"), resultPart("OUTCOME_OK", "42\n"));
+        GenerateContentResponse failed =
+                responseWithParts(Part.fromText("It failed:"), resultPart("OUTCOME_FAILED", null));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(succeeded, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("It printed:\n\nOutput:\n```\n42\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(failed, "test-model", false, true)
+                        .aiMessage()
+                        .text())
+                .isEqualTo("It failed:\n\nCode execution failed: **OUTCOME_FAILED**\n\n");
+    }
+
+    @Test
+    void should_separate_executed_code_from_text_streamed_before_it() {
+        GenerateContentResponse response = responseWithParts(codePart("PYTHON", "x = 1"));
+
+        assertThat(GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true, "Let me check:")
+                        .aiMessage()
+                        .text())
+                .isEqualTo("\n\nCode executed:\n```python\nx = 1\n```\n\n");
+        assertThat(GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true, "Let me check:\n\n")
+                        .aiMessage()
+                        .text())
+                .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    private static Part codePart(String language, String code) {
+        return Part.builder()
+                .executableCode(ExecutableCode.builder().language(language).code(code))
+                .build();
+    }
+
+    private static Part resultPart(String outcome, String output) {
+        CodeExecutionResult.Builder result = CodeExecutionResult.builder().outcome(outcome);
+        if (output != null) {
+            result.output(output);
+        }
+        return Part.builder().codeExecutionResult(result).build();
     }
 
     private static GenerateContentResponse responseWithParts(Part... parts) {

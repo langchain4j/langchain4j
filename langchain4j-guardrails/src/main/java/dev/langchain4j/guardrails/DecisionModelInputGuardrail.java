@@ -28,7 +28,8 @@ import java.util.Map;
  * to the chat model: in an AI Service, after the prompt template and retrieved content were added to it. The decision model cannot tell these apart from
  * what the user wrote, so phrase the checks to apply to the whole message. Content other than text is represented by
  * a marker, such as {@code [attached image]}: the decision model does not see what an image contains, but a check can
- * reject messages with attachments. If the decision model fails, the exception is propagated, so the request fails.
+ * reject messages with attachments. If the decision model fails, the exception is propagated, so the request fails. A check that the decision model
+ * refuses to answer fails, so the message is rejected.
  *
  * @since 1.21.0
  */

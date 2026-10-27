@@ -12,6 +12,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,19 +42,23 @@ import org.slf4j.LoggerFactory;
  * }</pre>
  * A route without a description is described by its name.
  * <p>
- * The decision model receives the last messages of the request (3 by default, see
- * {@link Builder#maxMessages(Integer)}), up to and including the last user message, as sent to the chat model, so that
- * short follow-ups such as "yes, go ahead" are understood. In an AI Service, the last user message is the one after
- * the prompt template and retrieved content were added to it. Content other than text is represented by a marker,
- * such as {@code [attached image]}, so that a route whose description mentions images can be chosen for it.
+ * The decision model receives the conversation of the request, as sent to the chat model: its system messages and its
+ * last messages (10 by default, see {@link Builder#maxMessages(Integer)}), plus the last user message if it is older,
+ * with tool calls and tool results, so that short follow-ups such as "yes, go ahead" are understood. Long messages are
+ * shortened (see {@link Builder#maxMessageLength(Integer)}), and which messages are sent can be changed with
+ * {@link Builder#messageFilter(Predicate)}. A request that ends with tool results usually stays on the route of the
+ * request that called the tools, without asking the router.
+ * In an AI Service, the last user message is the one after the prompt template and retrieved content were added to
+ * it. Content other than text is represented by a marker, such as {@code [attached image]}, so that a route whose
+ * description mentions images can be chosen for it.
  * <p>
  * The router selects the default route of the routing chat model ({@link ChatModelRoutingResult#defaultRoute()}) when
  * the request contains
  * no user message, and when the probability of the chosen route is below {@link Builder#minProbability(Double)}.
  * A minimum probability requires a decision model that reports probabilities: otherwise the call fails with an
- * {@link IllegalStateException}, whatever the {@link FallbackStrategy}. When the decision model fails, the
- * {@link FallbackStrategy} applies: by default, the default route is used and a warning is logged. When only one
- * route can handle the request (for example, the only route supporting a JSON schema response format), that route is
+ * {@link IllegalStateException}, whatever the {@link FallbackStrategy}. When the decision model fails or refuses to
+ * choose a route, the {@link FallbackStrategy} applies: by default, the default route is used and a warning is
+ * logged. When only one route can handle the request (for example, the only route supporting a JSON schema response format), that route is
  * selected without calling the decision model.
  * <p>
  * {@link #routeAsync(ChatModelRoutingRequest)} uses {@link DecisionModel#decideAsync(DecisionRequest)}, so it fails
@@ -70,7 +76,8 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
      * The default question asked to choose between the routes.
      */
     public static final String DEFAULT_QUESTION = "Which model should handle this request?";
-    private static final int DEFAULT_MAX_MESSAGES = 3;
+    private static final int DEFAULT_MAX_MESSAGES = 10;
+    private static final int DEFAULT_MAX_MESSAGE_LENGTH = 2000;
     private static final String QUESTION_NAME = "route";
 
     /**
@@ -94,6 +101,8 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     private final Double minProbability;
     private final FallbackStrategy fallbackStrategy;
     private final int maxMessages;
+    private final int maxMessageLength;
+    private final Predicate<? super ChatMessage> messageFilter;
 
     public DecisionModelChatModelRouter(DecisionModel decisionModel) {
         this(builder().decisionModel(decisionModel));
@@ -107,6 +116,9 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
                 : ensureBetween(builder.minProbability, 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DEFAULT_ROUTE);
         this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
+        this.maxMessageLength = ensureGreaterThanZero(
+                getOrDefault(builder.maxMessageLength, DEFAULT_MAX_MESSAGE_LENGTH), "maxMessageLength");
+        this.messageFilter = getOrDefault(builder.messageFilter, message -> true);
     }
 
     @Override
@@ -128,6 +140,13 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
             response = decisionModel.decide(decisionRequest);
         } catch (RuntimeException e) {
             return fallback(e);
+        }
+        return selectOrFallBack(response, request);
+    }
+
+    private ChatModelRoutingResult selectOrFallBack(DecisionResponse response, ChatModelRoutingRequest request) {
+        if (response.isRefused(QUESTION_NAME)) {
+            return fallback(new ContentFilteredException("The decision model refused to choose a route"));
         }
         return select(response.choice(QUESTION_NAME), request.routes());
     }
@@ -154,7 +173,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         }
         CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
             if (error == null) {
-                return select(response.choice(QUESTION_NAME), request.routes());
+                return selectOrFallBack(response, request);
             }
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof CancellationException
@@ -182,14 +201,14 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         if (lastUserMessage < 0 || DecisionModelInputUtils.text(messages.get(lastUserMessage)).isBlank()) {
             return null;
         }
-        DecisionRequest.Builder decisionRequest =
-                DecisionRequest.builder().question(QUESTION_NAME, toQuestion(request.routes()));
-        if (maxMessages == 1) {
-            decisionRequest.input(DecisionModelInputUtils.text(messages.get(lastUserMessage)));
-        } else {
-            decisionRequest.input(Map.of("messages", conversation(messages, lastUserMessage)));
+        List<ChatMessage> conversation = DecisionModelInputUtils.window(messages, messageFilter, maxMessages, maxMessageLength);
+        if (conversation.isEmpty()) {
+            return null;
         }
-        return decisionRequest.build();
+        return DecisionRequest.builder()
+                .question(QUESTION_NAME, toQuestion(request.routes()))
+                .inputMessages(conversation)
+                .build();
     }
 
     private record RouteOption(ChatModelRoute route, String description) {}
@@ -266,15 +285,6 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return -1;
     }
 
-    /**
-     * The last {@code maxMessages} messages of the conversation with text, up to and including the last user message.
-     */
-    private List<Map<String, String>> conversation(List<ChatMessage> messages, int lastUserMessage) {
-        List<Map<String, String>> conversation =
-                DecisionModelInputUtils.messages(messages.subList(0, lastUserMessage + 1));
-        return conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size());
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -286,6 +296,8 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         private Double minProbability;
         private FallbackStrategy fallbackStrategy;
         private Integer maxMessages;
+        private Integer maxMessageLength;
+        private Predicate<? super ChatMessage> messageFilter;
 
         /**
          * Sets the decision model that selects the route. Required.
@@ -330,16 +342,49 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         }
 
         /**
-         * Sets the maximum number of messages of the conversation (user messages and text responses of the AI, up to
-         * and including the last user message) that the decision model receives. System messages, tool calls and
-         * tool results are never sent, and do not count. Previous messages help with
-         * follow-ups whose meaning depends on them; too many can make an older topic outweigh the last message.
+         * Sets the maximum number of messages of the conversation that the decision model receives: the last messages
+         * of the request, plus the last user message if it is older. An AI message with tool calls and each tool result
+         * count as one message each. Tool results whose AI message does not fit are left out. With parallel tool calls,
+         * set it higher than the number of tool calls in one round. With 1, system messages are still sent; leave them
+         * out with {@link #messageFilter(Predicate)}. System messages are sent in addition and do not count. Previous
+         * messages help with follow-ups whose meaning depends on them; too many can make an older topic outweigh the
+         * last message.
          * <p>
-         * Default value is {@value DecisionModelChatModelRouter#DEFAULT_MAX_MESSAGES}. With 1, only the text of the
-         * last user message is sent.
+         * Default value is {@value DecisionModelChatModelRouter#DEFAULT_MAX_MESSAGES}.
          */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;
+            return this;
+        }
+
+        /**
+         * Sets the maximum length, in characters, of the text of each message the decision model receives, other than
+         * system messages, and of the arguments of each tool call. A longer text is shortened in the middle:
+         * its beginning and its end are kept, with a note of about 90 characters saying how many characters were left
+         * out. Long tool results and user messages with retrieved content are
+         * the usual cases. As a rough guide, 4 characters make one token in English text.
+         * <p>
+         * Default value is {@value DecisionModelChatModelRouter#DEFAULT_MAX_MESSAGE_LENGTH}.
+         * @since 1.23.0
+         */
+        public Builder maxMessageLength(Integer maxMessageLength) {
+            this.maxMessageLength = maxMessageLength;
+            return this;
+        }
+
+        /**
+         * Sets which messages of the conversation the decision model receives; it also applies to the last user
+         * message. For example,
+         * {@code message -> !(message instanceof SystemMessage)} leaves out the system message, and
+         * {@code message -> !(message instanceof ToolExecutionResultMessage)} leaves out tool results, which can be
+         * large.
+         * <p>
+         * By default, all messages are sent: system messages, user messages, AI messages with their tool calls, and
+         * tool results.
+         * @since 1.23.0
+         */
+        public Builder messageFilter(Predicate<? super ChatMessage> messageFilter) {
+            this.messageFilter = messageFilter;
             return this;
         }
 

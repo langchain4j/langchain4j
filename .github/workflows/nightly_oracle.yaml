@@ -24,14 +24,15 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: 17.0.20+101
+          java-version: 17.0.21+9
           distribution: 'temurin'
           cache: 'maven'
 
       - name: Build with JDK 17
         run: |
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
-          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
+          ## retried once, as a transient Maven Central failure would otherwise skip all tests of this job
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
           mvn -B -U verify \
             -pl langchain4j-oracle \

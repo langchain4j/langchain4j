@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.22.0-beta32-SNAPSHOT</version>
+        <version>1.23.0-beta33-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,6 @@
 
     <properties>
         <ai.djl.version>0.36.0</ai.djl.version>
-        <onnxruntime.version>1.22.0</onnxruntime.version>
     </properties>
 
     <dependencies>
@@ -21,13 +20,12 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.22.0-SNAPSHOT</version>
+            <version>1.23.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.microsoft.onnxruntime</groupId>
             <artifactId>onnxruntime</artifactId>
-            <version>${onnxruntime.version}</version>
         </dependency>
 
         <dependency>

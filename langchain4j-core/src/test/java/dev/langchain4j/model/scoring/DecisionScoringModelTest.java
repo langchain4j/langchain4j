@@ -3,6 +3,9 @@ package dev.langchain4j.model.scoring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -41,14 +44,24 @@ class DecisionScoringModelTest {
                 List.of(TextSegment.from("a relevant document"), TextSegment.from("something else")), "the query");
 
         assertThat(response.content()).containsExactly(0.9, 0.1);
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "the query"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "the query")));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "document1",
-                        YesNoQuestion.of("Does the document help answer the query?\nDocument: a relevant document"))
+                        YesNoQuestion.from("Does the document help answer the query?\nDocument: a relevant document"))
                 .containsEntry(
                         "document2",
-                        YesNoQuestion.of("Does the document help answer the query?\nDocument: something else"));
+                        YesNoQuestion.from("Does the document help answer the query?\nDocument: something else"));
+    }
+
+    @Test
+    void should_fail_when_decision_model_refuses_to_score_a_segment() {
+
+        ScoringModel scoringModel =
+                new DecisionScoringModel(DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of()));
+
+        assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("a document")), "the query"))
+                .isInstanceOf(ContentFilteredException.class);
     }
 
     @Test
@@ -71,7 +84,7 @@ class DecisionScoringModelTest {
         assertThat(decisionModel.requests()).hasSize(2);
         assertThat(decisionModel.requests().get(1).questions())
                 .containsOnlyKeys("document1")
-                .containsEntry("document1", YesNoQuestion.of("Is this document useful? relevant 2"));
+                .containsEntry("document1", YesNoQuestion.from("Is this document useful? relevant 2"));
     }
 
     @Test
@@ -155,7 +168,7 @@ class DecisionScoringModelTest {
     void should_fail_async_scoring_when_response_has_no_answer() {
 
         DecisionModel withoutAnswers =
-                DecisionModelMock.thatAlwaysAnswers(Map.of("unknown", YesNoAnswer.of(0.9)));
+                DecisionModelMock.thatAlwaysAnswers(Map.of("unknown", YesNoAnswer.from(0.9)));
 
         assertThat(new DecisionScoringModel(withoutAnswers)
                         .scoreAsync(ScoringRequest.builder()

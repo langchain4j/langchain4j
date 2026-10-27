@@ -2,14 +2,26 @@ package dev.langchain4j.model.typesafe.internal;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -17,6 +29,7 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.typesafe.TypeSafeDecisionRequestParameters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,10 +54,66 @@ public final class TypeSafeMapper {
         }
         TypeSafeRequest typeSafeRequest = new TypeSafeRequest();
         typeSafeRequest.model = request.modelName();
-        typeSafeRequest.state = request.input();
+        typeSafeRequest.state = state(request.input());
         typeSafeRequest.questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> typeSafeRequest.questions.put(name, toQuestion(question)));
+        if (request.parameters() instanceof TypeSafeDecisionRequestParameters parameters
+                && !isNullOrEmpty(parameters.customParameters())) {
+            Map<String, Object> customParameters = parameters.customParameters();
+            typeSafeRequest.customParameters = customParameters;
+            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+            if (customParameters.containsKey("model")) typeSafeRequest.model = null;
+            if (customParameters.containsKey("state")) typeSafeRequest.state = null;
+            if (customParameters.containsKey("questions")) typeSafeRequest.questions = null;
+        }
         return typeSafeRequest;
+    }
+
+    private static Object state(DecisionInput input) {
+        if (input instanceof TextInput text) {
+            return text.text();
+        } else if (input instanceof FieldsInput fields) {
+            // text contents are sent as their text, other contents (such as images) are not supported
+            Map<String, Object> state = new LinkedHashMap<>();
+            fields.fields().forEach((name, value) -> state.put(
+                    name,
+                    value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
+                            ? text(value instanceof Content ? List.of(value) : (List<?>) value)
+                            : value));
+            return state;
+        } else if (input instanceof ContentsInput contents) {
+            return text(contents.contents());
+        } else if (input instanceof MessagesInput messages) {
+            for (ChatMessage message : messages.messages()) {
+                List<Content> contents = message instanceof UserMessage userMessage
+                        ? userMessage.contents()
+                        : message instanceof ToolExecutionResultMessage result ? result.contents() : List.of();
+                for (Content content : contents) {
+                    if (!(content instanceof TextContent)) {
+                        throw new UnsupportedFeatureException(
+                                "TypeSafe supports only text input, but the input contains " + content.type());
+                    }
+                }
+            }
+            // a conversation is sent as a transcript
+            return Map.of("messages", DecisionModelInputUtils.transcript(messages.messages(), "TypeSafe").messages());
+        }
+        throw new UnsupportedFeatureException("TypeSafe does not support " + input.getClass().getName() + " as input");
+    }
+
+    private static String text(List<?> contents) {
+        StringBuilder text = new StringBuilder();
+        for (Object content : contents) {
+            if (!(content instanceof TextContent textContent)) {
+                throw new UnsupportedFeatureException("TypeSafe supports only text input, but the input contains "
+                        + ((Content) content).type());
+            }
+            if (!text.isEmpty()) {
+                text.append("\n\n");
+            }
+            text.append(textContent.text());
+        }
+        return text.toString();
     }
 
     private static TypeSafeQuestion toQuestion(Question question) {
@@ -64,12 +133,28 @@ public final class TypeSafeMapper {
             result.criteria = choice.options();
         } else if (question instanceof ScaleQuestion scale) {
             result.type = "score";
-            result.criteria = scale.levels();
+            result.criteria = levels(scale);
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
         }
         return result;
+    }
+
+    private static List<Object> levels(ScaleQuestion scale) {
+        List<Object> levels = new ArrayList<>();
+        for (int i = 0; i < scale.levels().size(); i++) {
+            String description = scale.levelDescriptions().get(i);
+            if (description == null) {
+                levels.add(scale.levels().get(i));
+            } else {
+                Map<String, String> level = new LinkedHashMap<>();
+                level.put("label", scale.levels().get(i));
+                level.put("description", description);
+                levels.add(level);
+            }
+        }
+        return levels;
     }
 
     public static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {

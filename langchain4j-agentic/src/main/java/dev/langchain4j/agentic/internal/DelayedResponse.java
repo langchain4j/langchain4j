@@ -5,12 +5,14 @@ import java.util.concurrent.CompletionException;
 
 public interface DelayedResponse<T> {
 
+    String PENDING = "<pending>";
+
     boolean isDone();
 
     T blockingGet();
 
     default Object result() {
-        return isDone() ? blockingGet() : "<pending>";
+        return isDone() ? blockingGet() : PENDING;
     }
 
     /**

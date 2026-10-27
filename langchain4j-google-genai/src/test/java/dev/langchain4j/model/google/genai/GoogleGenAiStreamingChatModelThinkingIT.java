@@ -19,7 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleGenAiStreamingChatModelThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    private static final String MODEL_NAME = "gemini-2.5-flash";
+    private static final String MODEL_NAME = "gemini-3.8-flash";
 
     private static GoogleGenAiStreamingChatModel.Builder modelBuilder() {
         return GoogleGenAiStreamingChatModel.builder()
@@ -33,7 +33,9 @@ class GoogleGenAiStreamingChatModelThinkingIT {
             StreamingChatModel model, List<String> partialResponses, List<String> partialThinking) throws Exception {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         model.chat(
-                List.of(UserMessage.from("What are the best tourist spots in San Francisco?")),
+                List.of(
+                        UserMessage.from(
+                                "Plan a 3-stop San Francisco itinerary starting at the Golden Gate Bridge that minimizes travel time between stops. Think it through carefully.")),
                 new StreamingChatResponseHandler() {
                     @Override
                     public void onPartialResponse(String partialResponse) {

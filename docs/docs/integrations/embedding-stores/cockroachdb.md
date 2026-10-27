@@ -36,14 +36,14 @@ SET CLUSTER SETTING feature.vector_index.enabled = true;
 
 :::note
 Since CockroachDB support is part of `langchain4j-community`, it will be
-available starting from version `1.21.0-beta31` or later.
+available starting from version `1.22.0-beta32` or later.
 :::
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-cockroachdb</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

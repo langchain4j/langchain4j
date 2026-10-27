@@ -29,14 +29,19 @@ The following types of events are currently available:
 | Event Name                                                                                                                                                                                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`AiServiceStartedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceStartedEvent.java)                   | Invoked when an LLM invocation has started.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| [`AiServiceRequestIssuedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceRequestIssuedEvent.java)       | Invoked just before a request to an LLM is sent. Contains the details of the request being made. It is important to note that this can be invoked multiple times during a single AiService invocation when tools or guardrails exist.<br/><br/> Contains information such as the system message and the user message.                                                                                                                                                                                                                                                                                                           |
-| [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) | Invoked when a response from an LLM is received. Contains the LLM response along with the corresponding request. It is important to note that this can be invoked multiple times during a single AiService invocation when tools or guardrails exist.<br/><br/> Contains information such as the system message and the user message.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead. |
+| [`AiServiceRequestIssuedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceRequestIssuedEvent.java)       | Invoked just before a request to an LLM is sent. Contains the details of the request being made. It is important to note that this can be invoked multiple times during a single AiService invocation when tools exist or an output guardrail reprompts the LLM.<br/><br/> Contains information such as the system message and the user message.                                                                                                                                                                                                                                                                                                           |
+| [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) | Invoked when a response from an LLM is received. Contains the LLM response along with the corresponding request. It is important to note that this can be invoked multiple times during a single AiService invocation when tools exist or an output guardrail reprompts the LLM.<br/><br/> Contains information such as the system message and the user message.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead, and if it is cancelled, an [`AiServiceCancelledEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCancelledEvent.java). |
 | [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       | Fired when an invocation with an LLM fails. The failure could be because of network failure, AiService unavailable, input/output guardrails blocking the request, or many other reasons.<br/><br/>Contains information about the failure that occurred.                                                                                                                                                                                                                                                                                                                                                                       |
-| [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               | Invoked when an LLM invocation has completed successfully.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead.<br/><br/>Contains information about the result of the invocation.                                                                                                                                                                                                          |
-| [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           | Invoked when a tool invocation has completed. It is important to note that this can be invoked multiple times within a single LLM invocation.<br/><br/>Contains information about the tool request and result.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               | Invoked when an LLM invocation has completed successfully.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead, and if it is cancelled, an [`AiServiceCancelledEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCancelledEvent.java).<br/><br/>Contains information about the result of the invocation.                                                                                                                                                                                                          |
+| [`AiServiceCancelledEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCancelledEvent.java) | Invoked when an invocation is cancelled before it completes: the returned `CompletableFuture` or `Flow.Publisher` subscription is cancelled, or `StreamingHandle.cancel()` is called from a `TokenStream` callback that receives a context, such as `onPartialResponseWithContext` (see [Streaming Cancellation](/tutorials/ai-services#streaming-cancellation)). It means that cancellation was requested: the model provider or a tool may still finish work that was already running. A cancelled invocation receives neither an `AiServiceCompletedEvent` nor an `AiServiceErrorEvent`. No token usage is reported for a request that was cancelled, although the provider may still bill for it. Experimental. |
+| [`AiServiceInvocationSummaryEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceInvocationSummaryEvent.java) | Invoked once per AiService invocation, after its [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java), [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) or [`AiServiceCancelledEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCancelledEvent.java).<br/><br/>Contains every event fired during that invocation, in the order they were fired, so the whole invocation can be inspected in one place. See [Listening for the whole invocation](#listening-for-the-whole-invocation) for details.                                                                                   |
+| [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           | Invoked when a tool invocation has completed. It is important to note that this can be invoked multiple times within a single LLM invocation.<br/><br/>Contains information about the tool request and result, and whether the tool execution failed (`isError()`, which throws an `UnsupportedOperationException` if the integration that created the event does not report it; AI Services created with `AiServices` always report it, but code that reads events reflectively, such as a JSON serializer, fails on events from an integration that does not).<br/><br/>Also fired, with `isError()` returning `true`, when a tool error fails the AI Service invocation (for example with `ToolExecutionErrorHandler.failInvocation()`). The result is then the error text, which is not sent to the LLM, and an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) follows.                                                                                                                                                                                                                                                                                                                                                                                                                |
 | [`ToolCompensatedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolCompensatedEvent.java)                           | Invoked when a tool that had already completed is compensated, because the interaction was later cancelled or failed. Experimental; emitted by the non-blocking AI Service modes.<br/><br/>Contains the tool request, its result and the reason for compensation.                           |
+| [`RetrievalAugmentedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/RetrievalAugmentedEvent.java) | Invoked once per invocation of an AI Service that uses [RAG](/tutorials/rag) (configured with `contentRetriever(...)` or `retrievalAugmentor(...)`), after the contents to add to the user message were retrieved, also when nothing was retrieved. Experimental.<br/><br/>Contains the user message that was used for the retrieval and the retrieved contents (the same contents that a method returning `Result<...>` gives as its sources). To observe each content retriever call with the query it received, use a [`ContentRetrieverListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/rag/content/retriever/listener/ContentRetrieverListener.java). |
 | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       | Invoked when an [input guardrail](https://docs.langchain4j.dev/tutorials/guardrails#input-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual input guardrail, its output (i.e. was it successful or a failure?), and the execution duration.                                                                                                                                                                                                                                                      |
 | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     | Invoked when an [output guardrail](https://docs.langchain4j.dev/tutorials/guardrails#output-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual output guardrail, its output (i.e. was it successful? failure? a retry? reprompt?), and the execution duration.                                                                                                                                                                                                                                    |
+
+Every AI Service invocation that runs ends with exactly one of `AiServiceCompletedEvent`, `AiServiceErrorEvent` or `AiServiceCancelledEvent`. Cancelling an invocation that has already completed fires no event. (A `TokenStream` invocation runs, and ends, only once `start()` is called.) Events of work that was already running when the invocation was cancelled (for example a `ToolExecutedEvent`) can still arrive after the `AiServiceCancelledEvent`.
 
 ### Listening for an event
 
@@ -50,9 +55,12 @@ To listen for an event, create your own class implementing the listener interfac
 | [`AiServiceRequestIssuedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceRequestIssuedListener.java)       | [`AiServiceRequestIssuedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceRequestIssuedEvent.java)       |
 | [`AiServiceResponseReceivedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceResponseReceivedListener.java) | [`AiServiceResponseReceivedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceResponseReceivedEvent.java) |
 | [`AiServiceErrorListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceErrorListener.java)                       | [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       |
+| [`AiServiceInvocationSummaryListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceInvocationSummaryListener.java) | [`AiServiceInvocationSummaryEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceInvocationSummaryEvent.java)                |
 | [`AiServiceCompletedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceCompletedListener.java)               | [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               |
+| [`AiServiceCancelledListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceCancelledListener.java) | [`AiServiceCancelledEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCancelledEvent.java) |
 | [`ToolExecutedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolExecutedEventListener.java)                 | [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           |
 | [`ToolCompensatedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolCompensatedEventListener.java)                 | [`ToolCompensatedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolCompensatedEvent.java)                           |
+| [`RetrievalAugmentedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/RetrievalAugmentedListener.java) | [`RetrievalAugmentedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/RetrievalAugmentedEvent.java) |
 | [`InputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/InputGuardrailExecutedListener.java)       | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       |
 | [`OutputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/OutputGuardrailExecutedListener.java)     | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     |
 
@@ -97,6 +105,32 @@ var myService = AiServices.builder(MyAiService.class)
         .registerListener(myListener)
         .build();
 ```
+
+### Listening for the whole invocation
+
+Rather than listening for each individual event, you can register an [`AiServiceInvocationSummaryListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceInvocationSummaryListener.java) to receive a single [`AiServiceInvocationSummaryEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceInvocationSummaryEvent.java) once an invocation is over. Its `events()` method returns every event fired for the invocation (i.e. every event with the same `invocationId`), in the order they were fired, starting with the `AiServiceStartedEvent` and ending with the `AiServiceCompletedEvent`, `AiServiceErrorEvent` or `AiServiceCancelledEvent`. It also contains the other events of the invocation, such as `RetrievalAugmentedEvent`s and `ToolExecutedEvent`s.
+
+```java
+var myService = AiServices.builder(MyAiService.class)
+        .chatModel(chatModel)
+        .registerListener((AiServiceInvocationSummaryListener) summary -> {
+            UUID invocationId = summary.invocationContext().invocationId();
+            List<AiServiceEvent> events = summary.events();
+
+            // Do something with the data
+        })
+        .build();
+```
+
+A few things to keep in mind:
+
+- Events are only collected for an invocation if an `AiServiceInvocationSummaryListener` is registered when the invocation starts, so there is no overhead if you don't use one.
+- If an asynchronous or streaming invocation is canceled, it ends with an `AiServiceCancelledEvent`, and the `AiServiceInvocationSummaryEvent` contains the events fired up until the cancellation, ending with the `AiServiceCancelledEvent`.
+- Events fired for an invocation after it has ended (for example `ToolCompensatedEvent`s fired once a canceled invocation has been rolled back) are not included.
+- An AI Service invoked while another AI Service invocation is in progress (for example, from within a tool) is a separate invocation with its own `invocationId`. It results in its own `AiServiceInvocationSummaryEvent` rather than being nested inside the outer one.
+- For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` fails because of a configuration error (for example, a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation.
+- Each subscription to the reactive stream returned by an AI Service method, and each call of `TokenStream.start()`, is a separate invocation with its own `invocationId`, so it results in its own `AiServiceInvocationSummaryEvent`, also when several subscriptions run at the same time. A second `start()` of the same `TokenStream` reuses the retrieved contents, the input guardrails and the messages prepared when the AI Service method was called, so its summary contains no `RetrievalAugmentedEvent` and no input guardrail events: only the model call, the tools and the output guardrails run again.
+- An `AiServiceInvocationSummaryEvent` is fired by the registrar itself. Trying to fire one via `AiServiceListenerRegistrar.fireEvent` results in an `IllegalArgumentException`.
 
 ### Creating your own events and listeners
 
@@ -534,6 +568,8 @@ ContentRetriever observedRetriever = contentRetriever.addListener(new MyContentR
 observedRetriever.retrieve(Query.from("my query"));
 ```
 
+A `ContentRetrieverListener` observes each call of one content retriever. To receive the final contents that an AI Service adds to the user message, once per invocation, use a `RetrievalAugmentedListener` (see [Listening for an event](#listening-for-an-event)).
+
 ### How listeners work
 
 - Listeners are specified as a `List` and are called in the order of iteration.
@@ -550,7 +586,8 @@ observedRetriever.retrieve(Query.from("my query"));
 
 The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the LangChain4j library.
 Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions
-using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+using a `ChatModelListener` implementation, and for `EmbeddingModel` interactions
+using an `EmbeddingModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
 
 The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
 
@@ -564,17 +601,29 @@ The following metrics are currently collected:
 
 | Metric Name | Type | Description                                                     |
 |-------------|------|-----------------------------------------------------------------|
-| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request |
+| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request, and the number of input tokens per **embedding** model request |
+| `gen_ai.client.operation.duration` | Timer | How long every **chat** and **embedding** model request took, successful or failed |
 
 #### Tags on `gen_ai.client.token.usage`
 
 | Tag                     | Description | Example Values                              |
 |-------------------------|-------------|---------------------------------------------|
-| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.operation.name` | The operation being performed | `chat`, `embeddings`                        |
 | `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
-| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
 | `gen_ai.response.model` | The model name from the response | `gpt-4-0613`                                |
-| `gen_ai.token.type`     | The type of token counted | `input`, `output`                           |
+| `gen_ai.token.type`     | The type of token counted | `input`, `output` (embeddings record `input` only) |
+
+#### Tags on `gen_ai.client.operation.duration`
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `chat`, `embeddings`                        |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
+| `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `gpt-4-0613`, `unknown`       |
+| `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
+| `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.util.concurrent.TimeoutException` |
 
 #### Creating the `MicrometerMetricsChatModelListener`
 
@@ -610,6 +659,54 @@ AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
 ChatResponse response = chatModel.chat(ChatRequest.builder()
         .messages(UserMessage.from("Hello!"))
         .build());
+```
+
+#### Tags on `gen_ai.client.operation.duration` (embeddings)
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `embeddings`                                |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `ollama`                          |
+| `gen_ai.request.model`  | The model name from the request | `text-embedding-3-small`                    |
+| `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `text-embedding-3-small`, `unknown`         |
+| `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
+| `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.net.SocketTimeoutException` |
+
+#### Creating the `MicrometerMetricsEmbeddingModelListener`
+
+The `MicrometerMetricsEmbeddingModelListener` collects metrics for `EmbeddingModel` interactions.
+It records `gen_ai.client.token.usage` with `gen_ai.token.type = input` only, since an embedding
+call has no output tokens, and `gen_ai.client.operation.duration` for every call, success or
+failure.
+It requires a Micrometer's `MeterRegistry` to be instantiated.
+
+```java
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsEmbeddingModelListener;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
+import java.util.List;
+
+// Get the MeterRegistry
+MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+// 1. Create the listener with the MeterRegistry
+MicrometerMetricsEmbeddingModelListener listener =
+    new MicrometerMetricsEmbeddingModelListener(meterRegistry);
+
+// 2. Add the listener to your EmbeddingModel
+OpenAiEmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("text-embedding-3-small")
+        .listeners(List.of(listener))
+        .build();
+
+// 3. Use the embedding model as usual - metrics are collected automatically
+Response<List<Embedding>> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("Hello!")));
 ```
 
 ## Micrometer Observation API

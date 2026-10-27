@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -35,12 +36,25 @@ final class DecisionModelChecks {
             Map<String, String> questions,
             Map<String, Double> checkThresholds,
             Double threshold) {
+        this(decisionModel, questions, checkThresholds, threshold, "");
+    }
+
+    /**
+     * @param questionPrefix added before the question of every check, for example to say which part of the input the
+     *                       checks are about.
+     */
+    DecisionModelChecks(
+            DecisionModel decisionModel,
+            Map<String, String> questions,
+            Map<String, Double> checkThresholds,
+            Double threshold,
+            String questionPrefix) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         Map<String, YesNoQuestion> yesNoQuestions = new LinkedHashMap<>();
         ensureNotEmpty(questions, "checks")
                 .forEach((name, text) -> yesNoQuestions.put(
                         ensureNotBlank(name, "check name"),
-                        YesNoQuestion.of(ensureNotBlank(text, "question of check '%s'".formatted(name)))));
+                        YesNoQuestion.from(questionPrefix + ensureNotBlank(text, "question of check '%s'".formatted(name)))));
         this.questions = yesNoQuestions;
         double defaultThreshold = ensureBetween(getOrDefault(threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
         Map<String, Double> thresholds = new LinkedHashMap<>();
@@ -60,18 +74,24 @@ final class DecisionModelChecks {
         return failedChecks(DecisionRequest.builder().input(input));
     }
 
-    List<String> failedChecks(Map<String, ?> input) {
-        return failedChecks(DecisionRequest.builder().input(input));
+    List<String> failedChecks(List<ChatMessage> conversation) {
+        return failedChecks(DecisionRequest.builder().inputMessages(conversation));
     }
 
     private List<String> failedChecks(DecisionRequest.Builder request) {
         DecisionResponse response = decisionModel.decide(request.questions(questions).build());
+        // a check that the decision model refused to answer fails, so that the guardrail fails closed
         List<String> failedChecks = questions.keySet().stream()
-                .filter(name -> response.yesNo(name).isYes(thresholds.get(name)))
+                .filter(name -> response.isRefused(name) || response.yesNo(name).isYes(thresholds.get(name)))
                 .toList();
         if (log.isDebugEnabled()) {
-            failedChecks.forEach(name -> log.debug(
-                    "Check '{}' failed with a probability of {}", name, response.yesNo(name).probability()));
+            failedChecks.forEach(name -> {
+                if (response.isRefused(name)) {
+                    log.debug("Check '{}' failed because the decision model refused to answer it", name);
+                } else {
+                    log.debug("Check '{}' failed with a probability of {}", name, response.yesNo(name).probability());
+                }
+            });
         }
         return failedChecks;
     }

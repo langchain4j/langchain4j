@@ -61,6 +61,50 @@ The other main difference with an AI service is the presence of the `outputKey` 
 
 The `AgenticServices` class provides a set of static factory methods to create and define all kinds of agents made available by the `langchain4j-agentic` framework.
 
+### Tool search
+
+An agent with many tools can use [tool search](/tutorials/tools#tool-search) so that the LLM discovers the tools
+it needs instead of receiving every tool specification upfront. Set the same `ToolSearchStrategy` that AI Services
+use on the agent builder:
+
+```java
+Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new BookingTools(), new WeatherTools())
+        .toolSearchStrategy(new SimpleToolSearchStrategy())
+        .build();
+```
+
+The LLM initially sees only the tool search tool and the tools marked with `SearchBehavior.ALWAYS_VISIBLE`. The tools
+it finds stay available for the rest of the invocation and, if the agent has a chat memory, until the search result
+is evicted from it. This works with `.tools(...)` and `.toolProvider(...)`, for blocking and streaming agents, and
+with any `ToolSearchStrategy`, such as `SimpleToolSearchStrategy`, `VectorToolSearchStrategy` or
+`DecisionModelToolSearchStrategy`.
+
+A declarative agent can supply its strategy with `@ToolSearchStrategySupplier`, next to `@ToolsSupplier` or
+`@ToolProviderSupplier`:
+
+```java
+public interface Assistant {
+    @UserMessage("{{request}}")
+    @Agent(outputKey = "answer")
+    String answer(@V("request") String request);
+
+    @ToolsSupplier
+    static Object[] tools() {
+        return new Object[] { new BookingTools(), new WeatherTools() };
+    }
+
+    @ToolSearchStrategySupplier
+    static ToolSearchStrategy toolSearchStrategy() {
+        return new SimpleToolSearchStrategy();
+    }
+}
+```
+
+A strategy set with `.toolSearchStrategy(...)` on the builder takes precedence over the annotated one. The strategy
+applies only to the agent it is set on; like tools, it is not passed from a workflow to its subagents.
+
 ## Introducing the AgenticScope
 
 The langchain4j-agentic module introduces the concept of an `AgenticScope`, which is a collection of data shared among the agents participating in an agentic system. The `AgenticScope` is used to store shared variables, which can be written by an agent to communicate the results it produced and read by another agent to put together the information that it needs to perform its task. This allows agents to collaborate effectively, sharing information and results as needed.
@@ -512,9 +556,11 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+A conditional workflow is the right tool to choose among alternatives, like in this example. When instead its only purpose would be to decide whether to invoke a single agent, it is simpler to give that agent an [activation condition](#activation-conditions).
+
 ## Optional agents
 
-In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
+In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is skipped when any of its arguments is missing, instead of making the whole workflow fail.
 
 This can be done by using the `optional` method of the agent builder. For example, considering the sequential workflow defined above, it is possible to make the `AudienceEditor` agent optional, so that the story is still generated and style-edited even when no audience is provided in the input.
 
@@ -554,6 +600,67 @@ String story = (String) novelCreator.invoke(input);
 ```
 
 Here the `audienceEditor` agent is configured as optional. Since the input map does not contain the "audience" key required by the `AudienceEditor`, its invocation is skipped and the workflow proceeds directly with the `StyleEditor`. The same agent can also be marked as optional declaratively using the `@Agent` annotation attribute `@Agent(optional = true)`.
+
+## Activation conditions
+
+An optional agent is skipped only when one of its arguments is missing. More generally, any agent can declare an activation condition, a predicate on the `AgenticScope` deciding whether it runs: when the agent is invoked as a subagent of an agentic system and its condition is false, it is skipped. This avoids wrapping an agent into a [conditional workflow](#conditional-workflow) only to decide whether to invoke it.
+
+For instance, considering again the sequential workflow defined above, the `AudienceEditor` can be configured to edit the story only when it is meant for a specific audience.
+
+```java
+AudienceEditor audienceEditor = AgenticServices
+        .agentBuilder(AudienceEditor.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .activationCondition("the story targets a specific audience",
+                agenticScope -> !agenticScope.readState("audience", "everyone").equals("everyone"))
+        .build();
+```
+
+The description of the condition is optional, defaults to `<unknown>`, and is shown in the logs, by the `AgentMonitor` and in the HTML reports discussed in the [monitoring](#monitoring) section. When a subagent of a [supervisor](#supervisor-design-and-customization) is skipped, the description is also sent to the supervisor's model, as the reason of the skip, so it shouldn't contain anything that mustn't reach the model. The `activationCondition` method is available on the builders of all kinds of agents: AI agents, all the workflows and planners, including the supervisor, non-AI agents created with `nonAiAgentBuilder`, human-in-the-loop agents, and A2A and MCP client agents.
+
+The same condition can also be declared on the agent interface, with a static method returning a `boolean` and annotated with `@ActivationCondition` without any value.
+
+```java
+public interface AudienceEditor {
+
+    @UserMessage("""
+        You are a professional editor.
+        Analyze and rewrite the following story to better align
+        with the target audience of {{audience}}.
+        Return only the story and nothing else.
+        The story is "{{story}}".
+        """)
+    @Agent("Edits a story to better fit a given audience")
+    String editStory(@V("story") String story, @V("audience") String audience);
+
+    @ActivationCondition(description = "the story targets a specific audience")
+    static boolean hasSpecificAudience(AgenticScope agenticScope) {
+        return !agenticScope.readState("audience", "everyone").equals("everyone");
+    }
+}
+```
+
+Here the method receives the `AgenticScope` itself, which is preferable when a key may be absent. As for the other annotated static methods, it can instead declare arguments read from the `AgenticScope`, like `@V("audience") String audience`, but then a missing argument makes the condition fail, and with it the invocation of the agent. A condition can be declared in this way on any kind of agent: AI agents, classes with a static `@Agent` method, workflows and planners defined through the [declarative API](#declarative-api), and agents annotated with `@HumanInTheLoop`, `@A2AClientAgent` or `@McpClientAgent`. It is not supported on a `@RegistryAgent`, whose agent is taken already built from the [agents registry](#agents-registry). An `@ActivationCondition` with a value is instead only allowed on a `@ConditionalAgent`, where it selects the subagents to activate, and using it on any other class is a configuration error.
+
+When an agent is skipped:
+
+- it isn't invoked and writes nothing to the `AgenticScope`, and its result, as seen by the planner of its parent, is the current value of its output key, or `null` when that key is absent or the agent has no output key;
+- its condition is evaluated before its arguments are read, so a skipped agent never fails because of a missing argument;
+- an asynchronous agent is skipped synchronously, without being started;
+- `AgentListener`s are notified through their `onAgentSkipped` method, and the planner of its parent receives an `AgentInvocation` whose `skipped()` method returns `true`, while its invocation is not registered in the `AgenticScope`.
+
+The condition is evaluated each time the agent is about to be invoked as a subagent, so inside a loop it is evaluated at every iteration, and in a parallel mapper the condition of the mapped agent is evaluated once per item, with a skipped item producing a `null` at its position in the result. Conversely, it is ignored when the agent is invoked directly, as the root of an agentic system, so that the same agent can be used in both ways.
+
+A condition can also be evaluated more than once for a single invocation: some planners, like the [supervisor](#pure-agentic-ai) and the [peer-to-peer](#peer-to-peer-agentic-pattern), [blackboard](#blackboard-agentic-pattern), [goal oriented](#goal-oriented-agentic-pattern), [decision router](#decision-router-agentic-pattern) and [confidence cascade](#confidence-cascade-agentic-pattern) ones, evaluate it while selecting their next agents, and it is evaluated again when the agent is invoked. For this reason a condition must be cheap and free of side effects. In particular the arguments of a condition declared with `@ActivationCondition` are only read from the `AgenticScope`: unlike what happens for the arguments of an agent, the values converted to their declared types are not written back to the scope.
+
+A condition throwing an exception is handled as a failure of the agent: the exception is wrapped in an `AgentInvocationException` and passed to the [error handler](#error-handling) of the parent, so that, for instance, retrying the agent evaluates the condition again.
+
+The condition of a workflow or of a planner gates all its subagents together: when it is false, none of them is invoked. Once its condition holds, a composite agent is considered activated until it completes, so that, when it is resumed after a suspension, for instance waiting for a human, or recovered after a crash, it continues where it stopped even if its own subagents made the condition false in the meantime.
+
+Activation conditions and optional agents can be combined: the condition is evaluated first, and an activated optional agent is still skipped if one of its arguments is missing. In both cases listeners and planners are notified in the same way.
+
+Finally, an activation condition gates a single agent, while a conditional workflow remains the way to choose among alternatives, like routing a request to the right expert. When a subagent of a conditional workflow has its own activation condition, it runs only if both the condition of its branch and its own condition hold.
 
 ## Asynchronous agents
 
@@ -800,12 +907,17 @@ public interface AgentListener {
     default void beforeAgentInvocation(AgentRequest agentRequest) { }
     default void afterAgentInvocation(AgentResponse agentResponse) { }
     default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
+    default void onAgentSkipped(AgentSkipped agentSkipped) { }
 
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 
-    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
-    default void afterToolExecution(ToolExecution toolExecution) { }
+    default void onAgenticSystemSuspended(AgenticScope agenticScope) { }
+
+    default void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) { }
+    default void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) { }
+
+    default void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) { }
 
     default boolean inheritedBySubagents() {
         return false;
@@ -836,6 +948,46 @@ CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.clas
 ```
 
 These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+
+For an AI agent, the `chatRequest()` and `chatResponse()` methods of the `AgentResponse` also return the last request that the agent sent to its chat model during that invocation and the response it received, with the token usage of all the model calls of the invocation, for instance when the agent called some tools. For a decision agent, the `decisionResponse()` method returns the response of its decision model. These methods return `null` for the other kinds of agents, and `chatRequest()` and `chatResponse()` also return `null` for an agent returning a `TokenStream`, whose model call completes only after its invocation has been reported.
+
+When an agent is skipped, because its [activation condition](#activation-conditions) is false or because it is [optional](#optional-agents) and one of its arguments is missing, none of these methods is invoked for it, and the `onAgentSkipped` method receives instead an `AgentSkipped` with the skipped agent and the reason of the skip.
+
+The `onAgentAiServiceEvent` method receives the [AI Service events](/tutorials/observability#ai-service-observability) of an LLM-based agent, like each request sent to the model, the response received from it, the tool executions and the final completion or error, wrapped in an `AgentAiServiceEvent` that also provides the agent that produced the event, from which its parent agents can be reached, and its `AgenticScope`. For instance, the following listener, registered on the root of an agentic system and inherited by all its subagents, logs the token usage of every model call together with the name of the agent that made it:
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .listener(new AgentListener() {
+            @Override
+            public void onAgentAiServiceEvent(AgentAiServiceEvent event) {
+                if (event.aiServiceEvent() instanceof AiServiceResponseReceivedEvent response) {
+                    System.out.println(event.agentName() + " used " + response.response().tokenUsage());
+                }
+            }
+
+            @Override
+            public boolean inheritedBySubagents() {
+                return true;
+            }
+        })
+        .build();
+```
+
+These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates the events they already receive.
+
+Listeners already written for AI Services can be reused for agents through `AgentListener.forAiServiceListeners`, which creates an `AgentListener` notifying each of them of the events of its own event class, as an AI Service does. Its first argument tells whether the listener is also inherited by the subagents:
+
+```java
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .listener(AgentListener.forAiServiceListeners(true, tokenUsageListener, toolExecutionListener))
+        .build();
+```
+
+These listeners receive the AI Service events themselves; implement `onAgentAiServiceEvent` when you also need the agent that produced them.
 
 `AgentListener`s have 2 important properties, they are:
 - **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
@@ -906,7 +1058,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. For an AI agent, the `modelName()` method of its `AgentInvocation` also returns the name of the model that answered its last LLM call, as reported by the provider in the response metadata, so it is empty for workflow and non-AI agents, and for providers not reporting it. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
 
 ```java
 MonitoredExecution execution = monitor.successfulExecutions().get(0);
@@ -917,7 +1069,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.21.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.22.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -947,6 +1099,8 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 ```
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
+
+An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
 
 By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
 
@@ -1037,7 +1191,7 @@ Similarly to what demonstrated for the `@Output` annotation, annotating other `s
 | Annotation Name          | Description                                                                                                                       |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
-| `@ActivationCondition`   | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean` |
+| `@ActivationCondition`   | Without a value, the [activation condition](#activation-conditions) of this agentic pattern, not allowed on the `ConditionalAgent`. With a value, only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents. It must return a `boolean` |
 | `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
 | `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
 | `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
@@ -1075,6 +1229,8 @@ In a very similar way, annotating other `static` methods in the agent interface,
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
 | `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
+| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`. |
+| `@DecisionThresholdSupplier`  | Returns the threshold of the `boolean` answers of a [decision agent](#decision-agents), as a `double`. It takes the `ThresholdContext` describing the question and is invoked at every invocation. |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
@@ -1082,6 +1238,7 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`          | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@ToolSearchStrategySupplier`    | Returns the `ToolSearchStrategy` used by this agent to discover its tools.                                                                                    |
 | `@SystemMessageProviderSupplier` | Provides a dynamic system message. The method receives the memoryId as an `Object` and returns a `String`.                                                    |
 | `@UserMessageProviderSupplier`   | Provides a dynamic user message. The method receives the memoryId as an `Object` and returns a `String`.                                                      |
 
@@ -1111,7 +1268,7 @@ public interface ExpertsAgent {
 }
 ```
 
-In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`.
+In this case the value of the `@ActivationCondition` annotation refers to the set of agents classes that are activated when the method annotated with it returns `true`. On a conditional agent every `@ActivationCondition` must have a value: one without value, which on any other agent would be its own [activation condition](#activation-conditions), is rejected with an `AgenticSystemConfigurationException` when the agentic system is created.
 
 Note that it is also possible to mix the programmatic and declarative styles of defining agents and agentic systems, so that an agent can be configured partially using annotations and partially using the agent builders. It is also allowed to completely define an agent declaratively and then programmatically implement an agentic system using the agent's class as a subagent. For instance, it would be possible to declaratively define the `CreativeWriter` and `AudienceEditor` agents as follows:
 
@@ -1418,7 +1575,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.21.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.22.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -1476,6 +1633,8 @@ AgenticServices.supervisorBuilder()
         .contextGenerationStrategy(SupervisorContextStrategy.SUMMARIZATION)
         .build();
 ```
+
+The agents offered to the supervisor's planner are only those whose [activation condition](#activation-conditions) holds when it is asked to choose the next one. When the supervisor nevertheless invokes an agent that is skipped, because its activation condition no longer holds or because it is optional and an argument is missing, the supervisor's planner receives, as the last response, a message saying that the agent was skipped and why, instead of a stale output, so that it can decide what to do next.
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
@@ -1617,7 +1776,9 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 The `plannerBuilder()` method is similar to all other agent builders, with the only difference that it requires to provide a `Supplier<Planner>` returning a new instance of the specific planner to be used by this agentic system. Of course an agentic system implementing a custom planner can be seamlessly combined with any other of the agentic pattern offered out-of-the-box by the `langchain4j-agentic` module.
 
-Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the two examples of custom patterns, provided in the `langchain4j-agentic-patterns` module, that can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
+A planner doesn't need to care about the [activation conditions](#activation-conditions) of its subagents, since they are enforced when the agents are invoked: an inactive agent is skipped, and the `AgentInvocation` that the planner then receives as `previousAgentInvocation()` has a `skipped()` method returning `true` and a `skipReason()` telling why. Its output is the current value of the output key of the agent, so a planner that interprets the outputs of its subagents, for instance by counting votes, should leave the skipped ones out. A planner selecting its candidates from the state of the `AgenticScope` can also call `isActive(agent)` on the `PlanningContext` to avoid selecting inactive agents, as the supervisor and the peer-to-peer, blackboard, goal oriented, decision router and confidence cascade patterns discussed below do. This check takes care of composite agents already activated before a suspension or a crash, which must be resumed even if their condition no longer holds, but it is advisory: the condition is evaluated again when the agent is invoked, and the state may have changed in between, so the planner must handle skipped invocations anyway.
+
+Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 
 ### Goal oriented agentic pattern
 
@@ -1762,6 +1923,8 @@ the `GoalOrientedPlanner` will analyze the initial state of the `AgenticScope`, 
 Agents path sequence: [extractPerson, extractSign, horoscope, findStory, write]
 ```
 
+The agents whose [activation condition](#activation-conditions) is false when the path is calculated are left out of the dependency graph, so that the path goes around them, while a goal that can only be reached through an inactive agent fails as unreachable.
+
 Note that, as anticipated, this goal-oriented agentic pattern can be mixed and combined with any other of the existing agentic patterns. For instance this possibility can be used to overcome an evident limitation of this approach that, being optimized to reach a specific goal following the shortest possible path, structurally doesn't allow loops, so in some cases it could be useful to have a loop agentic pattern as a subagent of this goal-oriented one.
 
 ### Peer-to-peer agentic pattern
@@ -1823,7 +1986,7 @@ public class P2PPlanner implements Planner {
 }
 ```
 
-Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action.
+Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action. An agent whose [activation condition](#activation-conditions) is false is never activated, even when all its inputs are available, and an agent skipped anyway when invoked, because its condition changed in the meantime, doesn't count as a change of its output that could activate other agents.
 
 To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
 
@@ -2027,7 +2190,7 @@ public class BlackboardPlanner implements Planner {
 }
 ```
 
-The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated.
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated. An agent whose [activation condition](#activation-conditions) is false is never a candidate, even when all its inputs are available, and an agent skipped anyway when invoked doesn't count as a change of its output that could activate other agents.
 
 ```java
 @FunctionalInterface
@@ -2285,6 +2448,8 @@ or provide a completely custom strategy:
 
 This custom strategy normalizes all votes to uppercase before counting, handling minor formatting differences between agents (e.g. "Positive" vs "POSITIVE").
 
+A voter skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, doesn't vote, and when all the voters are skipped the `VotingPlanner` returns no result instead of aggregating.
+
 ### Debate agentic pattern
 
 The patterns discussed so far either dispatch agents once (voting), activate them based on data availability (blackboard, P2P), or sequence them toward a goal (GOAP). None of them supports adversarial refinement — a process where agents see each other's reasoning and iteratively revise their positions. The debate pattern fills this gap: agents generate independent answers in parallel, then enter critique rounds where they can read the full debate history and refine their arguments. Rounds continue until the agents converge on the same answer or a maximum number of rounds is reached, at which point a judge agent renders a final verdict.
@@ -2398,7 +2563,7 @@ String result = panel.debate(
         "Is it ethical to use AI-generated art in commercial products without crediting the AI tool?");
 ```
 
-The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context.
+The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context. A debater skipped because of its [activation condition](#activation-conditions) doesn't contribute to a round, keeping its position of the previous round if any, while a skipped judge ends the debate with the current value of its output key.
 
 To customize the convergence check or the number of rounds:
 
@@ -2663,7 +2828,109 @@ public interface DeclarativeExpertRouter {
 
 where the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
 
-Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks.
+Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks, for instance through an [activation condition](#activation-conditions). Only the subagents whose activation condition holds are offered to the decision model, which isn't asked at all when none does, and in that case the router returns no result, or an empty map with an activation threshold. Without an activation threshold, when only one subagent is active, it is invoked without asking the decision model. A subagent skipped anyway when invoked, because its condition changed after the decision, is left out of the map returned with an activation threshold, while without a threshold the router returns no result.
+
+### Confidence cascade agentic pattern
+
+:::note
+The confidence cascade is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The confidence cascade is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
+In many agentic systems most requests are easy and could be answered by a small, cheap model, while a few of them need a large model or even a human. Sending every request to the most capable agent pays the highest price for all of them, while sending them to the cheapest one gives poor answers to the hard ones. When the difficulty of a request can be told from the request alone, the [decision router](#decision-router-agentic-pattern) can send it straight to a cheap or to a capable agent. Often, however, it is only possible to tell whether a cheap agent was good enough after seeing its answer.
+
+The confidence cascade pattern addresses this trade-off. Its subagents are declared from the cheapest to the most capable, for instance an agent on a small model, the same agent on a large model, and finally a human: these are the tiers of the cascade. The first tier answers the request, then a [decision model](/tutorials/decision-models) grades its answer against the request. If the probability that the answer is good enough reaches an acceptance threshold the answer is returned, otherwise the next, more expensive tier is tried. A decision model fits this grade well: it returns a probability instead of a text to parse, and grading an answer is far cheaper than producing it.
+
+The `ConfidenceCascadePlanner` implementing this pattern is created with a `DecisionModel`, an acceptance threshold strictly between 0 and 1 and, optionally, an acceptance criterion describing when an answer should be accepted. When it is initialized, the planner takes its subagents, in declaration order, as the tiers, and the arguments of the cascade agent itself as the request, so the cascade has to be defined through a typed agent interface, and must have at least two subagents. Its `firstAction` method calls the first tier, and its `nextAction` method grades the answer of the tier that just completed: it asks the decision model the `YesNoQuestion` "Does the answer fully and correctly address the request?", with an input made of the arguments of the cascade agent plus the answer under the `candidateAnswer` field, and with the acceptance criterion, if any, as the `yesWhen` description of the question. Internally, once the answer of a tier is available, the planner does roughly the following:
+
+```java
+double probability = acceptance(planningContext.agenticScope(), answer);
+if (probability >= acceptanceThreshold) {
+    return done(answer);
+}
+return call(tiers.get(++tier));
+```
+
+The last tier is never graded: its answer is returned anyway. More precisely, the answer of a tier is returned without grading it whenever no later tier is active according to the [activation conditions](#activation-conditions) of the subagents, which saves a decision call, and a tier that is skipped when invoked is passed over without a grade. When all the remaining tiers are skipped, the cascade returns the latest answer it obtained.
+
+The planner saves the tier it is trying as its execution state, so that after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because a tier is waiting for a human, or after a crash, the cascade resumes from that tier without paying again for the cheaper ones. A human can also be a tier in the middle of the cascade: its answer is then graded like any other when the cascade is resumed. For this reason the tiers whose answer can be delayed, that is human-in-the-loop and asynchronous agents, must declare an output key, from which the planner reads their answer.
+
+To give a practical example, consider a support assistant for a coffee machine. The first tier is a cheap FAQ agent, running on a small model and limited to the questions about the product:
+
+```java
+public interface FaqAgent {
+
+    @UserMessage("""
+        You are the FAQ assistant of the Brewmaster 3000 coffee machine.
+        Answer the following user request in no more than 3 sentences, using only your knowledge of the
+        Brewmaster 3000 coffee machine: how to set it up, brew coffee, clean and descale it, and fix its common issues.
+        If the request is not about the Brewmaster 3000 coffee machine, answer exactly:
+        "I can only help with the Brewmaster 3000 coffee machine."
+        The user request is {{request}}.
+        """)
+    @Agent(description = "Answers frequently asked questions about the Brewmaster 3000 coffee machine",
+            outputKey = "faqAnswer")
+    String faq(@V("request") String request);
+}
+```
+
+while the second tier is an `ExpertAgent` running on a large model and able to answer any request:
+
+```java
+public interface ExpertAgent {
+
+    @UserMessage("""
+        You are an expert assistant able to answer any question.
+        Provide the best possible answer to the following user request in no more than 3 sentences.
+        The user request is {{request}}.
+        """)
+    @Agent(description = "An expert assistant answering any question", outputKey = "expertAnswer")
+    String expert(@V("request") String request);
+}
+```
+
+The `SupportCascade` interface is directly implemented by a `ConfidenceCascadePlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+public interface SupportCascade {
+
+    @Agent
+    String ask(@V("request") String request);
+}
+
+FaqAgent faqAgent = AgenticServices.agentBuilder(FaqAgent.class)
+        .chatModel(SMALL_MODEL)
+        .build();
+ExpertAgent expertAgent = AgenticServices.agentBuilder(ExpertAgent.class)
+        .chatModel(LARGE_MODEL)
+        .build();
+
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+SupportCascade supportCascade = AgenticServices.plannerBuilder(SupportCascade.class)
+        .subAgents(faqAgent, expertAgent)
+        .outputKey("answer")
+        .planner(() -> new ConfidenceCascadePlanner(decisionModel, 0.5))
+        .build();
+
+String answer = supportCascade.ask("How do I descale my Brewmaster 3000 coffee machine?");
+```
+
+Here the `FaqAgent` answers the request, then the decision model receives the input `{"request": "How do I descale my Brewmaster 3000 coffee machine?", "candidateAnswer": "..."}` and the question "Does the answer fully and correctly address the request?". The probability of "yes" is high, so the answer of the FAQ agent is returned and the `ExpertAgent` is never invoked. For a request like "How do I set up a home network with two routers?", instead, the FAQ agent answers that it can only help with the coffee machine, the probability is low, and the request escalates to the `ExpertAgent`, whose answer is returned without being graded, since it is the last tier.
+
+An acceptance criterion makes the grade stricter, or more specific to the application, than the default question alone:
+
+```java
+new ConfidenceCascadePlanner(decisionModel, 0.5,
+        "The answer gives concrete instructions that solve the user's problem, " +
+        "instead of saying that it cannot help or redirecting the user elsewhere")
+```
+
+A few things to keep in mind. The cascade saves money and time only when most requests are accepted at a cheap tier: an escalated request pays for every tier it went through, plus one decision call for each graded answer, and these calls run one after the other. The grade is a relevance and completeness signal, not a proof of correctness: the decision model can judge whether an answer addresses the request, but it cannot verify facts, so the cascade suits the cases where a cheap check can tell a good answer from a bad one. For the same reason, a cheap tier should be grounded, for instance through [RAG](/tutorials/rag), rather than answer from what its model happens to know. The decision model only sees the arguments of the cascade agent and the answer of the tier, and not the chat memory or the instructions of the tiers, so the arguments must carry everything needed to judge the answer. Both the request and the answers are untrusted input, so a crafted request or answer can influence the grade: the cascade trades cost against quality, it is not a security or review boundary, and a step that must always reach a more capable tier or a human has to enforce it on its own, for instance through an [activation condition](#activation-conditions). Probabilities are not calibrated in the same way by different decision models, so the acceptance threshold should be tuned on your own requests, and tuned again when you change the decision model or its version. As for the decision router, the arguments of the cascade agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them, or `Content`s such as images, and an argument of any other type is rejected by the decision model with an error explaining which types are supported: this leaves to you the choice of what is sent to the provider of the decision model, which can differ from the provider of the chat models of the tiers. The answer of a tier is sent as it is when it is such a value, and converted to maps and lists through a JSON round trip otherwise, so a tier can return a typed value. A failure of the decision model fails the invocation of the cascade. Finally, the execution state is saved only after the grade, so a crash during the grading call itself makes the tier being graded run again when the cascade is resumed, and since the execution state refers to the tiers by their position, a cascade whose subagents changed after a suspension cannot be resumed and fails with an `IllegalStateException`.
 
 ## Non-AI agents
 
@@ -2812,6 +3079,177 @@ waiting for the user to provide the answer, which will be then used to invoke th
 
 Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
 
+## Decision agents
+
+:::note
+Decision agents are based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+In some cases what an agentic system asks a model could be not to generate text but to make a small decision: which category does this request belong to, is this answer good enough, does this transaction look suspicious, is this customer eligible. The agents discussed so far make these decisions with an LLM, like the `CategoryRouter` of the [conditional workflow](#conditional-workflow), which has to be instructed to reply with exactly one word, or the `StyleScorer` of the [loop workflow](#loop-workflow), which generates a number as text. A [decision model](/tutorials/decision-models) is built for exactly these questions: it answers typed questions about an input, together with the probability of each possible answer, and it costs a fraction of an LLM call.
+
+A decision agent is an agent of an agentic system whose implementation is a single call to a decision model. It is defined by a [Decision Service](/tutorials/decision-services) interface whose method also carries the `@Agent` annotation: the question is the one of `@Decide`, the parameters of the method are the input of the decision, and its return type determines the kind of answer.
+
+```java
+public enum RequestCategory {
+    @Description("Questions about laws, contracts, liabilities and legal rights") LEGAL,
+    @Description("Questions about symptoms, diseases, treatments and drugs") MEDICAL,
+    @Description("Questions about software, hardware, networks and devices") TECHNICAL,
+    @Description("Requests that belong to none of the other categories") UNKNOWN
+}
+
+public interface CategoryRouter {
+
+    @Decide("Which kind of expert should handle this request?")
+    @Agent(value = "Categorizes a user request", outputKey = "category")
+    RequestCategory classify(@V("request") String request);
+}
+```
+
+Compared with the LLM-based `CategoryRouter` of the conditional workflow, there is no prompt to engineer and no text to parse: the options are the constants of the enum, described by their `@Description`, and the decision model returns one of them. The agent is built with the `decisionAgentBuilder` method of `AgenticServices`, providing a decision model instead of a chat model:
+
+```java
+CategoryRouter routerAgent = AgenticServices
+        .decisionAgentBuilder(CategoryRouter.class)
+        .decisionModel(decisionModel)
+        .build();
+```
+
+and it can replace the LLM-based router of the conditional workflow without any other change, since it writes its answer to the same `category` key. The `decisionModelProvider` method of the builder takes instead a function of the `AgenticScope` resolving the decision model before each invocation, like `chatModel(Function)` does for AI agents, while `name`, `description`, `outputKey`, `async`, `optional`, `activationCondition` and `listener` have the same meaning as on the builders of the other agents.
+
+The two [decision-based patterns](#decision-router-agentic-pattern) also use a decision model, but inside their orchestration: the decision router selects which subagents run, and the confidence cascade decides when to stop escalating. Use one of them when the decision drives the orchestration of a pattern, and a decision agent when the decision is a value that your code or other agents consume: a category that predicates route on, a grade that an exit condition compares, a flag that gates a side effect, an answer that a supervisor needs before its next step.
+
+### Return types and thresholds
+
+The return types are the ones of Decision Services: a `boolean` or a `YesNoAnswer` for a yes/no question, an enum or a `Choice<enum>` for a choice among the constants of the enum, a `Scale<enum>` for a position on the ordered scale made of its constants, an object or a record whose fields are of these types for several questions answered in a single call, each of them optionally wrapped in a `DecisionResult` to also get the raw response of the model. `CompletableFuture` return types are not supported: an agent that must not block the workflow is made asynchronous with `async(true)`, like any other agent, and its decision call then runs on the executor used by every asynchronous agent. The method must not be annotated with `@UserMessage` or `@SystemMessage`, since a decision agent has no prompt, and its parameters cannot be a `@MemoryId`, an `AgenticScope` or `DecisionRequestParameters`: the parameters of the decision requests, such as the model name, are set with the `requestParameters` method of the builder, or as the default parameters of the decision model. All these rules are checked when the agent is built.
+
+A `boolean` answer is `true` when the probability of "yes" is at least a threshold, 0.5 by default. The threshold is fixed with `threshold(double)`, or provided at every invocation by a `ThresholdProvider` set with `thresholdProvider(...)`, for instance to read it from a configuration that changes at runtime. As discussed for the [decision-based patterns](#confidence-cascade-agentic-pattern), probabilities are not calibrated in the same way by different decision models, so a threshold should be tuned on your own inputs, and tuned again when the decision model or its version changes. A threshold only applies to `boolean` answers, so setting one, or a provider, on an agent without a `boolean` answer fails when the agent is built: a `YesNoAnswer`, a `Choice` or a `Scale` carries the probabilities to apply a threshold to.
+
+### Inputs
+
+The arguments of a decision agent are read from the `AgenticScope` by name and converted to the declared types of its parameters, like for every agent, so an amount produced as text by a previous agent, or by a supervisor, is safely read as a `Double`. They are then sent to the decision model as Decision Services send them: strings, numbers and booleans as they are, enums as their names, maps and lists element by element, `Content`s such as an `ImageContent` as contents, so that a decision agent can also judge an image produced by a previous step, and any other object converted to a map through the JSON codec, so that a typed value produced by another agent can be an argument. Keep in mind that everything reaching the decision model is sent to its provider, which can differ from the provider of the chat models of the other agents.
+
+### Reading the answer
+
+The answer is written as it is to the output key, so a `Choice`, a `Scale` or a `YesNoAnswer` keeps its probabilities, and the predicates of a conditional workflow, the exit condition of a loop and the agents that follow can read them. For instance, a router returning a `Choice<RequestCategory>` lets the conditional workflow send to a human the requests the decision model is not sure about:
+
+```java
+public interface ConfidentCategoryRouter {
+
+    @Decide("Which kind of expert should handle this request?")
+    @Agent(value = "Categorizes a user request", outputKey = "category")
+    Choice<RequestCategory> classify(@V("request") String request);
+}
+
+private static boolean confident(AgenticScope scope, RequestCategory category) {
+    Choice<RequestCategory> choice = (Choice<RequestCategory>) scope.readState("category");
+    return choice.value() == category && choice.probabilities().getOrDefault(category, 0.0) >= 0.6;
+}
+
+UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+        .subAgents(scope -> confident(scope, RequestCategory.MEDICAL), medicalExpert)
+        .subAgents(scope -> confident(scope, RequestCategory.LEGAL), legalExpert)
+        .subAgents(scope -> !confident(scope, RequestCategory.MEDICAL) && !confident(scope, RequestCategory.LEGAL), humanInTheLoop)
+        .build();
+```
+
+In the same way, the `StyleScorer` of the loop workflow can be a decision agent returning a `Scale`, whose `mean()` is the probability-weighted mean of the indexes of its levels, from 0 for the first constant of the enum to 3 for the last one of `Quality`, so that a mean of at least 2 means that the story is, on average, at least `GOOD`: a grade that comes from the probabilities of the decision model, instead of a number generated as text.
+
+```java
+public enum Quality {
+    @Description("The story ignores the required style") POOR,
+    @Description("The story follows the required style only in places") FAIR,
+    @Description("The story mostly follows the required style") GOOD,
+    @Description("The story is a perfect example of the required style") EXCELLENT
+}
+
+public interface StyleScorer {
+
+    @Decide("How well does the story match the required style?")
+    @Agent(value = "Scores a story against a style", outputKey = "styleScore")
+    Scale<Quality> scoreStyle(@V("story") String story, @V("style") String style);
+}
+
+UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .exitCondition(scope -> ((Scale<Quality>) scope.readState("styleScore")).mean() >= 2)
+        .build();
+```
+
+A third typical use is a gate before a side effect. Here a yes/no decision agent checks the transfer that an LLM decided to make, a human approves the suspicious ones through a `HumanInTheLoop` agent activated only when the gate says so, and a non-AI agent executes it, so that the LLM decides, the decision model checks, and deterministic code acts:
+
+```java
+public interface TransactionGate {
+
+    @Decide("""
+            Does this money transfer look suspicious?
+            Yes: an unusually large amount, an unknown or foreign beneficiary, an urgent or unusual justification.
+            No: a routine payment to a known beneficiary.""")
+    @Agent(value = "Checks whether a money transfer looks suspicious", outputKey = "suspicious")
+    boolean check(@V("transfer") String transfer);
+}
+
+TransactionGate gate = AgenticServices.decisionAgentBuilder(TransactionGate.class)
+        .decisionModel(decisionModel)
+        .threshold(0.5)
+        .build();
+
+HumanInTheLoop complianceApproval = AgenticServices.humanInTheLoopBuilder()
+        .description("Compliance approval of a suspicious transfer")
+        .outputKey("approval")
+        .responseProvider(scope -> new SuspendedResponse<>("compliance-approval"))
+        .activationCondition("the transfer looks suspicious", scope -> scope.readState("suspicious", true))
+        .build();
+
+UntypedAgent transfers = AgenticServices.sequenceBuilder()
+        .subAgents(gate, complianceApproval, moneyMover)
+        .outputKey("receipt")
+        .build();
+```
+
+A record answer is a single value under the output key: a record with several `@Decide` fields answers several questions in one call, and when its fields are needed under separate keys, a `beforeCall` on the agent that follows, or an `agentAction`, spreads them, as shown for the [conditional workflow](#conditional-workflow). A decision agent can also be one of the subagents of a [supervisor](#pure-agentic-ai), which generates its arguments like for any other subagent and reads its typed answer: its description should then say which question the agent answers.
+
+### Errors, observability and persistence
+
+A failure of the decision model, an invalid response and a refusal fail the invocation of the agent, like a failure of a chat model fails an AI agent: nothing is written to the output key, and the [error handler](#error-handling) of the agentic system decides whether to retry, to return a substitute result or to fail. A refusal is reported as a `ContentFilteredException`, as in Decision Services.
+
+Every invocation of a decision agent makes one blocking call to the decision model. Its response, with the answers and their probabilities, the name of the model and its token usage, is reported to the listeners through the `decisionResponse()` method of the `AgentResponse`, next to the chat request and response reported by AI agents, and recorded by the `AgentMonitor`: the `decisionResponse()`, `tokenUsage()` and `modelName()` methods of the `AgentInvocation` return it, so the tokens of decision agents are counted in the [monitoring](#monitoring) reports like the ones of LLM calls, and the HTML report shows decision agents with a "Decision" badge and their answers, with their probabilities, in the tooltip of their output. A decision agent has no chat memory, tools, retrieval, guardrails or streaming: it answers a question, it does not converse.
+
+The answers of decision agents survive the JSON serialization of the `AgenticScope` discussed in the [recoverability](#agenticscope-and-agentic-systems-recoverability) section: `YesNoAnswer`, `Choice` and `Scale` values are converted to a persistable form when the scope is saved and restored when it is loaded, while a `DecisionResult` is not persisted, like a `TokenStream`, and neither is a record, or object, answering several questions with fields of these three types, whose fields cannot be converted in place. A recoverable system should therefore not return a `DecisionResult`, and its records answering several questions should have `boolean` and enum fields.
+
+### Declarative decision agents
+
+With the [declarative API](#declarative-api), the decision model is provided by a static method annotated with `@DecisionModelSupplier`: without parameters, the method is invoked once when the agent is built, while with parameters annotated with `@V` it is invoked before each invocation with the values read from the `AgenticScope`, so that the model can depend on the state, like `@ChatModelSupplier` does for AI agents. The threshold of a `boolean` answer is declared with `@DecisionThresholdSupplier` on a static method that takes the `ThresholdContext` describing the question and returns a `double`: like a `ThresholdProvider`, it is invoked at every invocation, so the threshold can come from configuration that changes at runtime. `@ActivationCondition` and `@AgentListenerSupplier` work as for every other agent. With these annotations, the `TransactionGate` of the gate shown above is declared as follows:
+
+```java
+public interface TransactionGate {
+
+    @Decide("""
+            Does this money transfer look suspicious?
+            Yes: an unusually large amount, an unknown or foreign beneficiary, an urgent or unusual justification.
+            No: a routine payment to a known beneficiary.""")
+    @Agent(value = "Checks whether a money transfer looks suspicious", outputKey = "suspicious")
+    boolean check(@V("transfer") String transfer);
+
+    @DecisionModelSupplier
+    static DecisionModel decisionModel() {
+        return TypeSafeDecisionModel.builder()
+                .apiKey(System.getenv("TYPESAFE_API_KEY"))
+                .modelName("jev-1.13.0")
+                .build();
+    }
+
+    @DecisionThresholdSupplier
+    static double threshold(ThresholdContext context) {
+        // thresholds are specific to a model, so the one tuned for the model that answered is read,
+        // at every invocation, from a system property like suspicious.threshold.jev-1.13.0
+        return Double.parseDouble(System.getProperty("suspicious.threshold." + context.modelName(), "0.5"));
+    }
+}
+```
+
+An interface is recognized as a decision agent when its `@Agent` method is annotated with `@Decide`, or when it declares a `@DecisionModelSupplier`, so an agent returning a record, whose questions are on the fields of the record, needs the supplier to be recognized. Such an interface can be listed among the `subAgents` of any declarative workflow, planner or supervisor, passed as a class to the `subAgents` of a programmatic builder, or given directly to `createAgenticSystem`. The `ChatModel` passed to `createAgenticSystem` does not apply to decision agents, so a decision agent without a `@DecisionModelSupplier` fails at build time with a message saying so, as does one that also declares a `@ChatModelSupplier`, and any other kind of agent, like an AI agent, a workflow or a non-AI agent, declaring a `@DecisionModelSupplier` or a `@DecisionThresholdSupplier`. An `AgentConfigurator` callback receives the `DecisionAgentBuilder` of a decision agent through the `decisionAgentBuilder()` method of its creation context, whose `agentBuilder()` is then `null`.
+
 ## Memory and context engineering
 
 All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations.
@@ -2914,7 +3352,7 @@ LegalExpertWithMemory legalExpert = AgenticServices
         .build();
 ```
 
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+By doing so it internally sends a summarization prompt, similar to the one of the `ContextSummarizer` agent discussed before, to the same model of the agent where it has been defined. This also works for an agent configured with a `StreamingChatModel`: the summary is then generated with that streaming model, but it is fully collected before the agent sends its own request. In both cases the summarization is an additional, blocking LLM call that happens before the agent starts answering. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
 
 ### AgenticScope registry and persistence
 

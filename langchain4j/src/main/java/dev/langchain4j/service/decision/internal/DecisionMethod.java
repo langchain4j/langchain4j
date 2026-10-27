@@ -15,6 +15,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -30,6 +33,8 @@ import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.internal.Json;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.WildcardType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -39,6 +44,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Objects;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -54,7 +61,7 @@ import java.util.function.Function;
  * The analysis of one decision service method: the questions it asks, how its parameters become the input, and how
  * the answers are mapped back to its return type.
  * <p>
- * All validation happens in {@link #of(Method)}, so frameworks can detect errors at build time. At runtime, they
+ * All validation happens in {@link #from(Method)}, so frameworks can detect errors at build time. At runtime, they
  * can call {@link #invoke} or {@link #invokeAsync} to implement the method without the proxy created by
  * {@link DecisionServices}.
  */
@@ -124,6 +131,7 @@ public final class DecisionMethod {
         this.questions = Collections.unmodifiableMap(analysis.questions);
         this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
         this.inputTypes = analysis.inputParameters.stream()
+                .filter(parameter -> !parameter.contents())
                 .map(parameter -> method.getGenericParameterTypes()[parameter.index()])
                 .toList();
     }
@@ -133,7 +141,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method) {
+    public static DecisionMethod from(Method method) {
         ensureNotNull(method, "method");
         return new DecisionMethod(method, method.getGenericReturnType());
     }
@@ -145,7 +153,7 @@ public final class DecisionMethod {
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
-    public static DecisionMethod of(Method method, Type returnType) {
+    public static DecisionMethod from(Method method, Type returnType) {
         return new DecisionMethod(ensureNotNull(method, "method"), ensureNotNull(returnType, "returnType"));
     }
 
@@ -158,6 +166,13 @@ public final class DecisionMethod {
      */
     public Map<String, Question> questions() {
         return questions;
+    }
+
+    /**
+     * Whether any question is answered as a {@code boolean}, the only kind of answer a threshold applies to.
+     */
+    public boolean hasBooleanAnswer() {
+        return mappings.values().stream().anyMatch(mapping -> mapping.kind() == Kind.BOOLEAN);
     }
 
     /**
@@ -178,7 +193,7 @@ public final class DecisionMethod {
      * The classes accessed by reflection when mapping the answers, so that frameworks can register them for native
      * images: the returned object types and their superclasses (their declared fields and constructors are used, and
      * for records their components), and the enums whose constants are the options (their constant fields are read
-     * for {@code @Description}). When {@link #of(Method)} itself runs in a native image, the service interface (its
+     * for {@code @Description}). When {@link #from(Method)} itself runs in a native image, the service interface (its
      * methods, with their parameters and annotations) must be registered as well.
      */
     public Set<Class<?>> reflectiveTypes() {
@@ -186,8 +201,10 @@ public final class DecisionMethod {
     }
 
     /**
-     * The types of the parameters that are sent to the model. Objects among them are converted to maps with the JSON
-     * codec, so frameworks may need to register them, and the types they contain, for native images.
+     * The types of the parameters that are sent to the model as structured values. Objects among them are converted to
+     * maps with the JSON codec, so frameworks may need to register them, and the types they contain, for native images.
+     * Parameters of {@link Content} types (such as {@link ImageContent}) and {@link Image}, which are sent as contents,
+     * are left out.
      */
     public List<Type> inputTypes() {
         return inputTypes;
@@ -200,8 +217,11 @@ public final class DecisionMethod {
         Map<String, Object> input = new LinkedHashMap<>();
         for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
-            if (value != null) {
-                input.put(parameter.name(), toInputValue(value));
+            Object inputValue = value == null
+                    ? null
+                    : parameter.contents() || isContents(value) ? toContents(value) : toInputValue(value);
+            if (inputValue != null) {
+                input.put(parameter.name(), inputValue);
             }
         }
         if (input.isEmpty()) {
@@ -211,10 +231,53 @@ public final class DecisionMethod {
                             inputParameters.stream().map(InputParameter::name).toList()));
         }
         return DecisionRequest.builder()
-                .input(input)
+                .inputFields(input)
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
+    }
+
+    /**
+     * Whether the argument is a {@link Content} or an {@link Image}, or a collection or array of them, also when the
+     * declared type of the parameter does not say so (for example {@code Object}).
+     */
+    private static boolean isContents(Object value) {
+        List<?> items = items(value);
+        if (items == null) {
+            return value instanceof Content || value instanceof Image;
+        }
+        List<?> nonNull = items.stream().filter(Objects::nonNull).toList();
+        return !nonNull.isEmpty() && nonNull.stream().allMatch(item -> item instanceof Content || item instanceof Image);
+    }
+
+    /**
+     * Converts a content argument into a {@link Content}, or a list of them for a collection or an array, with
+     * {@link Image}s converted to {@link ImageContent}s with the {@link ImageContent.DetailLevel#AUTO} detail level,
+     * so that the model provider chooses the detail, and {@code null}s left out. Returns {@code null} if there is
+     * no content, so that the parameter is left out like a {@code null} argument.
+     */
+    private static Object toContents(Object value) {
+        List<?> items = items(value);
+        if (items == null) {
+            return value instanceof Image image ? ImageContent.from(image, ImageContent.DetailLevel.AUTO) : value;
+        }
+        List<Object> contents = new ArrayList<>();
+        items.forEach(item -> {
+            if (item != null) {
+                contents.add(toContents(item));
+            }
+        });
+        return contents.isEmpty() ? null : contents;
+    }
+
+    private static List<?> items(Object value) {
+        if (value instanceof Collection<?> collection) {
+            return new ArrayList<>(collection);
+        }
+        if (value instanceof Object[] array) {
+            return Arrays.asList(array);
+        }
+        return null;
     }
 
     /**
@@ -263,9 +326,21 @@ public final class DecisionMethod {
         if (async) {
             return invokeAsync(config, args);
         }
-        DecisionRequest request = toRequest(args);
+        return invokeWithResponse(config, toRequest(args)).content();
+    }
+
+    /**
+     * Invokes this method synchronously with the given request, typically created with {@link #toRequest(Object[])},
+     * and returns both its result and the response of the decision model, for frameworks that need the raw answers
+     * (for example their probabilities or the token usage) whatever the declared return type of the method.
+     *
+     * @return the result of the method as {@link DecisionResult#content() content} (itself a {@link DecisionResult}
+     * when the method declares one) and the response of the model as {@link DecisionResult#response() response}.
+     */
+    public DecisionResult<Object> invokeWithResponse(DecisionServiceConfig config, DecisionRequest request) {
         DecisionResponse response = config.decisionModel().decide(request);
-        return toResult(response, thresholds(config, request, response));
+        Object result = toResult(response, thresholds(config, request, response));
+        return DecisionResult.builder().content(result).response(response).build();
     }
 
     /**
@@ -413,7 +488,7 @@ public final class DecisionMethod {
                     throw illegalConfiguration(
                             "Method '%s' has several parameters named '%s'", method.getName(), name);
                 }
-                inputParameters.add(new InputParameter(name, i));
+                inputParameters.add(new InputParameter(name, i, isContentType(parameter.getParameterizedType())));
             }
             if (inputParameters.isEmpty()) {
                 throw illegalConfiguration(
@@ -542,12 +617,17 @@ public final class DecisionMethod {
             }
             Question question;
             if (enumType == null) {
-                question = YesNoQuestion.of(questionText);
+                question = YesNoQuestion.from(questionText);
             } else if (kind == Kind.SCALE) {
-                List<String> levels = new ArrayList<>();
-                descriptions(name, enumType).forEach((constantName, description) ->
-                        levels.add(description == null ? constantName : constantName + ": " + description));
-                question = ScaleQuestion.of(questionText, levels);
+                ScaleQuestion.Builder scale = ScaleQuestion.builder().text(questionText);
+                descriptions(name, enumType).forEach((constantName, description) -> {
+                    if (description == null) {
+                        scale.level(constantName);
+                    } else {
+                        scale.level(constantName, description);
+                    }
+                });
+                question = scale.build();
             } else {
                 ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(questionText);
                 descriptions(name, enumType).forEach((constantName, description) -> {
@@ -602,7 +682,28 @@ public final class DecisionMethod {
         SCALE
     }
 
-    private record InputParameter(String name, int index) {}
+    /**
+     * Whether the type is a {@link Content} type (such as {@link ImageContent}) or {@link Image}, or a collection or
+     * array of them.
+     */
+    private static boolean isContentType(Type type) {
+        if (type instanceof Class<?> c) {
+            return Content.class.isAssignableFrom(c)
+                    || Image.class.isAssignableFrom(c)
+                    || (c.isArray() && isContentType(c.getComponentType()));
+        }
+        if (type instanceof ParameterizedType parameterized) {
+            return parameterized.getRawType() instanceof Class<?> raw
+                    && Collection.class.isAssignableFrom(raw)
+                    && isContentType(parameterized.getActualTypeArguments()[0]);
+        }
+        if (type instanceof WildcardType wildcard) {
+            return isContentType(wildcard.getUpperBounds()[0]);
+        }
+        return type instanceof GenericArrayType array && isContentType(array.getGenericComponentType());
+    }
+
+    private record InputParameter(String name, int index, boolean contents) {}
 
     private record QuestionMapping(String name, Question question, Kind kind, Class<?> enumType) {
 

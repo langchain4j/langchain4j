@@ -50,7 +50,14 @@ import org.bson.conversions.Bson;
  * <p>
  * More <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search">info</a>
  * to set up MongoDb as vectorDatabase.
+ *
+ * @deprecated Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
+ * <a href="https://learn.microsoft.com/en-us/azure/documentdb/">Azure DocumentDB</a>.
+ * Use {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbEmbeddingStore}
+ * from the {@code langchain4j-azure-documentdb} module instead. This class is kept
+ * for backwards compatibility and will be removed in a future release.
  */
+@Deprecated(forRemoval = true)
 public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;

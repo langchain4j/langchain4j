@@ -1,15 +1,10 @@
 package dev.langchain4j.skills;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.StreamSupport.stream;
-
 import dev.langchain4j.Experimental;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.MalformedInputException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystems;
@@ -17,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +28,14 @@ import org.slf4j.LoggerFactory;
  * Any additional files in the skill directory are loaded as {@link SkillResource}s,
  * except {@code SKILL.md} itself and any files under a {@code scripts/} subdirectory.
  * Empty files are silently skipped.
+ * <p>
+ * When skills are loaded from a plain directory on the classpath (not from a JAR),
+ * symbolic links inside a skill directory are followed only when they point to a file inside
+ * the same skill directory. Symbolic links to directories inside a skill are not followed.
+ * If {@code SKILL.md} or a resource is a symbolic link to a file outside of the skill directory,
+ * loading fails with an {@link IllegalArgumentException}.
+ * The skill directory itself may be a symbolic link; in that case, the files of the directory
+ * it points to are loaded.
  */
 @Experimental
 public class ClassPathSkillLoader {
@@ -48,6 +50,9 @@ public class ClassPathSkillLoader {
      *
      * @param directoryOnClasspath the classpath directory whose immediate subdirectories are scanned for skills
      * @return the list of loaded skills
+     * @throws IllegalArgumentException if the directory is not found on the classpath,
+     *                                  or if a skill's {@code SKILL.md} or resource is a symbolic link to a file
+     *                                  outside of its skill directory
      */
     public static List<Skill> loadSkills(String directoryOnClasspath) {
         return loadSkills(directoryOnClasspath, getDefaultClassLoader());
@@ -59,6 +64,9 @@ public class ClassPathSkillLoader {
      * @param directoryOnClasspath the classpath directory whose immediate subdirectories are scanned for skills
      * @param classLoader          the class loader to use
      * @return the list of loaded skills
+     * @throws IllegalArgumentException if the directory is not found on the classpath,
+     *                                  or if a skill's {@code SKILL.md} or resource is a symbolic link to a file
+     *                                  outside of its skill directory
      */
     public static List<Skill> loadSkills(String directoryOnClasspath, ClassLoader classLoader) {
         ResolvedDirectory resolved = resolveClasspathDirectory(directoryOnClasspath, classLoader);
@@ -82,6 +90,9 @@ public class ClassPathSkillLoader {
      *
      * @param skillDirectoryOnClasspath the classpath path to the skill directory
      * @return the loaded skill
+     * @throws IllegalArgumentException if the skill directory or its {@code SKILL.md} is not found,
+     *                                  or if {@code SKILL.md} or a resource is a symbolic link to a file
+     *                                  outside of the skill directory
      */
     public static Skill loadSkill(String skillDirectoryOnClasspath) {
         return loadSkill(skillDirectoryOnClasspath, getDefaultClassLoader());
@@ -93,6 +104,9 @@ public class ClassPathSkillLoader {
      * @param skillDirectoryOnClasspath the classpath path to the skill directory
      * @param classLoader               the class loader to use
      * @return the loaded skill
+     * @throws IllegalArgumentException if the skill directory or its {@code SKILL.md} is not found,
+     *                                  or if {@code SKILL.md} or a resource is a symbolic link to a file
+     *                                  outside of the skill directory
      */
     public static Skill loadSkill(String skillDirectoryOnClasspath, ClassLoader classLoader) {
         ResolvedDirectory resolved = resolveClasspathDirectory(skillDirectoryOnClasspath, classLoader);
@@ -111,7 +125,8 @@ public class ClassPathSkillLoader {
         }
 
         try {
-            String markdown = Files.readString(skillFile);
+            Path realSkillDirectory = skillDirectory.path.toRealPath();
+            String markdown = SkillLoaderCommon.readSkillMarkdown(realSkillDirectory);
 
             Map<String, List<String>> frontMatter = SkillLoaderCommon.parseFrontMatter(markdown);
             String content = SkillLoaderCommon.extractContent(markdown);
@@ -119,7 +134,7 @@ public class ClassPathSkillLoader {
             String name = SkillLoaderCommon.getSingle(frontMatter, "name");
             String description = SkillLoaderCommon.getSingle(frontMatter, "description");
 
-            List<DefaultSkillResource> resources = loadResources(skillDirectory.path);
+            List<DefaultSkillResource> resources = SkillLoaderCommon.loadResources(realSkillDirectory, log);
 
             if (skillDirectory.jarFileSystem != null) {
                 // skill loaded from a JAR
@@ -142,39 +157,6 @@ public class ClassPathSkillLoader {
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to load skill from " + skillDirectory, e);
-        }
-    }
-
-    private static List<DefaultSkillResource> loadResources(Path skillDirectory) {
-        try (Stream<Path> files = Files.walk(skillDirectory)) {
-            return files.filter(Files::isRegularFile)
-                    .filter(path -> !path.getFileName().toString().equals("SKILL.md"))
-                    .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
-                    .map(path -> {
-                        try {
-                            String content = Files.readString(path);
-                            if (isNullOrBlank(content)) {
-                                return null;
-                            }
-                            String relativePath = stream(
-                                            skillDirectory.relativize(path).spliterator(), false)
-                                    .map(Path::toString)
-                                    .collect(joining("/"));
-                            return SkillResource.builder()
-                                    .relativePath(relativePath)
-                                    .content(content)
-                                    .build();
-                        } catch (MalformedInputException e) {
-                            log.warn("Skipping binary file that cannot be read as UTF-8 text: {}", path);
-                            return null;
-                        } catch (IOException e) {
-                            throw new RuntimeException("Failed to load skill resource from " + path, e);
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .toList();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load skill resources from " + skillDirectory, e);
         }
     }
 

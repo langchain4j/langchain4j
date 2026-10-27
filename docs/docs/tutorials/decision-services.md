@@ -41,6 +41,10 @@ Any `DecisionModel` can be used, for example [TypeSafe](/integrations/decision-m
 Decision Services are not related to the decision services of DMN (Decision Model and Notation), as found in Drools,
 Kogito or Camunda: they answer questions with a decision model, and can be called like any other Java service.
 
+A decision service interface can also be an agent of an agentic system: annotated with `@Agent` as well, its method
+reads its arguments from the `AgenticScope` and writes its typed answer back to it, where the other agents can read
+it together with its probabilities. See [decision agents](/tutorials/agents#decision-agents).
+
 ## Maven dependency
 
 Decision Services are part of the `langchain4j` module; add it next to the module of your `DecisionModel`:
@@ -49,7 +53,7 @@ Decision Services are part of the `langchain4j` module; add it next to the modul
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -151,8 +155,7 @@ if (choice.margin() < 0.2) {
 
 When the options are ordered (severity, urgency, frustration, quality), return `Scale<E>`.
 The levels are the enum constants, from the first declared (lowest) to the last (highest).
-The model sees each level as the name of the constant followed by its `@Description`, for example
-`CRITICAL: Outage or data loss`:
+Each level is labeled with the name of the constant, and described with its `@Description`, if any:
 
 ```java
 enum Severity {
@@ -241,7 +244,7 @@ Triage triage(String ticket, Customer customer);
 ```
 
 The names help the model understand what each value means, so choose them well.
-Objects are converted to maps using their Java field names.
+Objects are converted to maps using their Java field names, except contents such as images (see [Images](#images)).
 All fields are sent, so to control exactly what the model sees (and to avoid sending personal data it does not
 need), pass a small record containing only the relevant fields, rather than, for example, a JPA entity.
 If all parameters sent to the model are `null`, the call fails with an `IllegalArgumentException`.
@@ -254,6 +257,27 @@ Triage triage(@V("ticket") String ticket, @V("plan") String plan);
 ```
 
 If a name is not available, `build()` fails and explains both options.
+
+### Images
+
+Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
+sent as contents, for example images, if the decision model supports them
+(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
+a vision model such as Clef):
+
+```java
+interface DamageInspector {
+
+    @Decide("Is the item visibly damaged?")
+    boolean isDamaged(ImageContent photo, String comment);
+}
+```
+
+Like the other parameters, contents are sent under the names of their parameters (see
+[Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
+`Image`s are sent as `ImageContent`s with the `AUTO` detail level, so that the model provider chooses it; to choose
+another detail level, pass an `ImageContent`.
+A decision model that does not support images throws an `UnsupportedFeatureException` without calling the model.
 
 ### Model name and other parameters
 
@@ -567,8 +591,8 @@ Use the `DecisionModel` API directly: all checks of a test case are answered in 
 
 ```java
 DecisionRequest.Builder request = DecisionRequest.builder()
-        .input(Map.of("question", testCase.question(), "answer", answer));
-testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.of(check.text())));
+        .inputFields(Map.of("question", testCase.question(), "answer", answer));
+testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.from(check.text())));
 
 DecisionResponse response = decisionModel.decide(request.build());
 testCase.checks().forEach(check ->
@@ -626,13 +650,13 @@ interface SpamCheck {
     YesNoAnswer isSpam(String message);
 }
 
-SpamCheck spamCheck = message -> YesNoAnswer.of(0.97);
+SpamCheck spamCheck = message -> YesNoAnswer.from(0.97);
 
 CommentService commentService = new CommentService(spamCheck);
 assertThat(commentService.accept("Buy now!")).isFalse();
 ```
 
-Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()`, `Scale.builder(Severity.class)` and `DecisionResult.builder()`.
+Results are easy to create in tests: `YesNoAnswer.from(0.97)`, `Choice.builder()`, `Scale.builder(Severity.class)` and `DecisionResult.builder()`.
 
 ## Errors
 

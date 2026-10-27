@@ -7,7 +7,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -15,12 +19,21 @@ import java.util.Objects;
  * A request to a {@link dev.langchain4j.model.decision.DecisionModel}: the {@link #input()} to evaluate and the
  * named {@link #questions()} to answer about it.
  * <p>
- * The input is either plain text or a {@link java.util.Map} of named values (strings, numbers, booleans, maps and
- * lists), for example a support ticket together with the customer's plan.
+ * The input is one of:
+ * <ul>
+ *     <li>plain text: {@link Builder#input(String)};</li>
+ *     <li>named fields, for example a support ticket together with the customer's plan:
+ *     {@link Builder#inputFields(Map)};</li>
+ *     <li>a list of contents, for example text and images: {@link Builder#inputContents(List)};</li>
+ *     <li>a conversation, for example a chat between a user and an AI assistant:
+ *     {@link Builder#inputMessages(List)}.</li>
+ * </ul>
+ * Not every decision model supports every kind of input: a model that does not support it throws an
+ * {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  * Every question is answered against the same input, and each answer is returned under the name of its question:
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
- *         .input(Map.of("ticket", "My payouts have been failing for 3 days", "plan", "enterprise"))
+ *         .inputFields(Map.of("ticket", "My payouts have been failing for 3 days", "plan", "enterprise"))
  *         .question("team", ChoiceQuestion.builder()
  *                 .text("Which team should handle this ticket?")
  *                 .option("billing", "Payments, invoices, refunds")
@@ -37,20 +50,24 @@ import java.util.Objects;
 @Experimental
 public final class DecisionRequest {
 
-    private final Object input;
+    private final DecisionInput input;
     private final Map<String, Question> questions;
     private final DecisionRequestParameters parameters;
 
     private DecisionRequest(Builder builder) {
-        this.input = FreeFormValue.ensureValid(builder.input, "input");
+        this.input = ensureNotNull(
+                builder.input,
+                "%s must be set with input(String), inputFields(Map), inputContents(List), inputMessages(List) "
+                        + "or input(DecisionInput)",
+                "input");
         this.questions = copy(ensureNotEmpty(builder.questions, "questions"));
         this.parameters = getOrDefault(builder.parameters, DecisionRequestParameters.EMPTY);
     }
 
     /**
-     * The input to evaluate: a {@link String}, or an unmodifiable {@link java.util.Map} with {@link String} keys.
+     * The input to evaluate. Its {@link DecisionInput#type() type} tells which implementation it is.
      */
-    public Object input() {
+    public DecisionInput input() {
         return input;
     }
 
@@ -105,23 +122,79 @@ public final class DecisionRequest {
 
     public static final class Builder {
 
-        private Object input;
+        private DecisionInput input;
         private final Map<String, Question> questions = new LinkedHashMap<>();
         private DecisionRequestParameters parameters;
 
         /**
-         * Sets the input to evaluate as text.
+         * Sets the input to evaluate as text. Replaces any input set before.
          */
-        public Builder input(String input) {
-            this.input = input;
-            return this;
+        public Builder input(String text) {
+            return input(TextInput.from(text));
         }
 
         /**
-         * Sets the input to evaluate as named values: strings, numbers, booleans, {@code null}s, maps and lists.
-         * Other objects are rejected: convert them to a {@link java.util.Map} that holds only what the decision needs.
+         * Sets the input to evaluate as named fields, for example
+         * {@code Map.of("ticket", ticket, "plan", "enterprise")}. See {@link FieldsInput} for the supported values.
+         * Replaces any input set before.
+         *
+         * @since 1.23.0
          */
-        public Builder input(Map<String, ?> input) {
+        public Builder inputFields(Map<String, ?> fields) {
+            return input(FieldsInput.from(fields));
+        }
+
+        /**
+         * Sets the input to evaluate as a list of contents, for example a
+         * {@link dev.langchain4j.data.message.TextContent} and an {@link dev.langchain4j.data.message.ImageContent}.
+         * Which kinds of contents are supported depends on the decision model. Replaces any input set before.
+         *
+         * @since 1.23.0
+         */
+        public Builder inputContents(List<? extends Content> contents) {
+            return input(ContentsInput.from(contents));
+        }
+
+        /**
+         * Sets the input to evaluate as contents, see {@link #inputContents(List)}.
+         *
+         * @since 1.23.0
+         */
+        public Builder inputContents(Content... contents) {
+            return inputContents(contents == null ? null : Arrays.asList(contents));
+        }
+
+        /**
+         * Sets the input to evaluate as a conversation: messages in the order they were exchanged, for example a chat
+         * between a user and an AI assistant, including the tools the assistant called
+         * ({@link dev.langchain4j.data.message.AiMessage#toolExecutionRequests()}) and their results
+         * ({@link dev.langchain4j.data.message.ToolExecutionResultMessage}). This lets you ask questions about the
+         * whole conversation, for example whether the assistant answered the user's question, or whether a tool call
+         * is safe to execute. Messages and tool results can contain text written to influence the decision (prompt
+         * injection): do not rely on a decision alone to allow a dangerous action. Which kinds of messages and contents
+         * are supported depends on the decision model. Replaces any input set before.
+         *
+         * @since 1.23.0
+         */
+        public Builder inputMessages(List<? extends ChatMessage> messages) {
+            return input(MessagesInput.from(messages));
+        }
+
+        /**
+         * Sets the input to evaluate as a conversation, see {@link #inputMessages(List)}.
+         *
+         * @since 1.23.0
+         */
+        public Builder inputMessages(ChatMessage... messages) {
+            return inputMessages(messages == null ? null : Arrays.asList(messages));
+        }
+
+        /**
+         * Sets the input to evaluate. Replaces any input set before.
+         *
+         * @since 1.23.0
+         */
+        public Builder input(DecisionInput input) {
             this.input = input;
             return this;
         }

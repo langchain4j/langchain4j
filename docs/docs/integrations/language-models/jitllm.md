@@ -15,12 +15,12 @@ No separate inference server is needed.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jitllm</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-jitllm:1.21.0-beta31'
+implementation 'dev.langchain4j:langchain4j-jitllm:1.22.0-beta32'
 ```
 
 ## Requirements
@@ -48,7 +48,7 @@ because the `jdk21` build uses the Foreign Function & Memory API, which is a pre
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jitllm</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
     <exclusions>
         <exclusion>
             <groupId>io.github.beehive-lab</groupId>

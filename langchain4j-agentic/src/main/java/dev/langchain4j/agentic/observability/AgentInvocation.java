@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
@@ -25,10 +26,23 @@ public class AgentInvocation {
     private AgentResponse agentResponse;
     private LocalDateTime finishTime;
     private int iterationIndex = -1;
+    private String skipReason;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
         this.startTime = LocalDateTime.now();
+    }
+
+    /**
+     * Creates the finished, zero-duration invocation of an agent that was skipped instead of being invoked.
+     */
+    static AgentInvocation skipped(AgentSkipped agentSkipped) {
+        AgentInvocation invocation =
+                new AgentInvocation(new AgentRequest(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of()));
+        invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of());
+        invocation.finishTime = invocation.startTime;
+        invocation.skipReason = agentSkipped.reason();
+        return invocation;
     }
 
     void finished(AgentResponse agentResponse) {
@@ -46,6 +60,21 @@ public class AgentInvocation {
 
     public boolean done() {
         return finishTime != null;
+    }
+
+    /**
+     * Returns {@code true} if the agent was skipped instead of being invoked, because its activation condition was
+     * false or because it is optional and one of its arguments was missing.
+     */
+    public boolean skipped() {
+        return skipReason != null;
+    }
+
+    /**
+     * Returns why the agent was skipped, or {@code null} if it was invoked.
+     */
+    public String skipReason() {
+        return skipReason;
     }
 
     public LocalDateTime startTime() {
@@ -86,13 +115,47 @@ public class AgentInvocation {
         return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
     }
 
+    /**
+     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. It is
+     * empty if the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider
+     * didn't report the token usage.
+     */
     public Optional<TokenUsage> tokenUsage() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Optional.ofNullable(agentResponse.chatResponse())
+        Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
                 .map(ChatResponseMetadata::tokenUsage);
+        return chatTokenUsage.isPresent() ? chatTokenUsage : decisionResponse().map(DecisionResponse::tokenUsage);
+    }
+
+    /**
+     * Returns the name of the model that answered the LLM calls of an AI agent, or the decision call of a
+     * decision agent, as reported by the provider in the response metadata. It is empty if the agent called no
+     * model, like a workflow or a non-AI agent, if it was skipped, if the provider didn't report the model name, or
+     * if the LLM calls of an AI agent (for example, the calls of a tool loop) were answered by different models,
+     * since {@link #tokenUsage()} is the total of all those calls.
+     */
+    public Optional<String> modelName() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::modelName);
+        return chatModelName.isPresent() ? chatModelName : decisionResponse().map(DecisionResponse::modelName);
+    }
+
+    /**
+     * Returns the response of the decision model of a decision agent, with its answers and their probabilities. It
+     * is empty for every other kind of agent, and if the agent was skipped.
+     */
+    public Optional<DecisionResponse> decisionResponse() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        return Optional.ofNullable(agentResponse.decisionResponse());
     }
 
     /**
@@ -123,6 +186,7 @@ public class AgentInvocation {
         StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
                 (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
+                (skipped() ? ", skipped=" + skipReason : "") +
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +

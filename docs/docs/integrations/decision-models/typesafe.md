@@ -25,7 +25,7 @@ This integration is experimental and may change in future releases.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-typesafe</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -44,7 +44,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);
@@ -62,9 +62,11 @@ TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .apiKey(...)              // required for api.typesafe.ai, optional for other servers
         .modelName(...)           // required here or on each request (otherwise decide() fails), e.g. "jev-1.13.0"
         .baseUrl(...)             // defaults to "https://api.typesafe.ai"
+        .apiPath(...)             // path of the System One endpoint, relative to baseUrl; defaults to "v1/systemone"
         .timeout(...)             // defaults to the HTTP client builder's timeouts, otherwise 15s connect / 60s read
         .maxRetries(...)          // retries after the first attempt; defaults to 2
         .customHeaders(...)       // additional HTTP headers, as a Map or a Supplier<Map>
+        .customParameters(...)    // additional parameters in the JSON body, see "Custom parameters" below
         .listeners(...)           // DecisionModelListeners, see Observability in the Decision Models tutorial
         .logRequests(...)         // defaults to false
         .logResponses(...)        // defaults to false
@@ -82,7 +84,12 @@ Both `decide()` and `decideAsync()` are supported.
 
 The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` question types.
 In the TypeSafe documentation, yes/no questions are called "noul" questions, scale questions are called "score"
-questions, and the input is called the "state".
+questions, and the input is called the "state". A scale level with a description (`level(label, description)`) is
+sent as an object with a `label` and a `description`.
+The API accepts text only: text contents are sent as their text, and images throw an `UnsupportedFeatureException`
+without calling the API. A conversation (`inputMessages(...)`) is sent as a
+[transcript](/tutorials/decision-models#conversations), as `{"messages": [...]}`; images in it throw an
+`UnsupportedFeatureException`.
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
@@ -92,10 +99,47 @@ offered, a probability outside of 0 to 1, or a scale mean outside of the levels 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data
 processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).
 
+## Custom parameters
+
+To send a parameter that `TypeSafeDecisionModel` does not support yet, set it with `customParameters(...)`. It is
+added to the JSON body of every request:
+
+```java
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-latest")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `TypeSafeDecisionRequestParameters`. If not empty, they
+replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(...)
+        .question(...)
+        .parameters(TypeSafeDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
+the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
+`state`.
+
+Passing the parameters class of another decision model to `TypeSafeDecisionModel` fails with an
+`IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
+decision models, works with every model.
+
 ## Other servers
 
-Any server that implements the System One API (`POST /v1/systemone`) can be used by setting the base URL.
-For example, with OpenRouter:
+Any server that implements the System One API can be used by setting the base URL. Requests are sent to the base URL
+followed by the API path, which defaults to `v1/systemone`; if the server exposes the API at another path, set it with
+`apiPath(...)`. For example, with OpenRouter:
 
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
@@ -105,24 +149,14 @@ DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .build();
 ```
 
-Or locally with [Ollama](https://docs.ollama.com/capabilities/decision) (v0.35.0 or later), after
-`ollama pull nimble` (or `ollama pull tev1`):
+For [Ollama](https://docs.ollama.com/capabilities/decision), which also implements this API, use
+[`OllamaDecisionModel`](/integrations/decision-models/ollama) instead: it supports images, and reports Ollama as the
+provider.
 
-```java
-DecisionModel decisionModel = TypeSafeDecisionModel.builder()
-        .baseUrl("http://localhost:11434")
-        .modelName("nimble")
-        .build();
-```
+Local and self-hosted servers usually need no API key. Without a GPU, a request can take several seconds, so consider
+a longer `timeout(...)`.
 
-Local and self-hosted servers usually need no API key. Ollama's decision models accept text input only, with a
-prompt of at most 2,048 tokens, 2 to 26 options or levels per question, and at most 64 questions per request.
-Without a GPU, a request can take several seconds, so consider a longer `timeout(...)`. With more than 64 tools,
-set `maxToolsPerDecisionRequest(64)` on the [tool selection](/tutorials/decision-models#selecting-tools) components.
-For [re-ranking](/tutorials/decision-models#re-ranking-retrieved-content), lower `maxSegmentsPerRequest(...)` so that
-the segments of one request fit in the prompt.
-
-`TypeSafeDecisionModel` is tested with the TypeSafe API, OpenRouter and Ollama (`nimble` and `tev1`).
+`TypeSafeDecisionModel` is tested with the TypeSafe API and OpenRouter.
 
 Servers can differ in the limits they apply (for example, the maximum number of options),
 in how they compute confidence and in the quality of their answers: small models and general-purpose language models

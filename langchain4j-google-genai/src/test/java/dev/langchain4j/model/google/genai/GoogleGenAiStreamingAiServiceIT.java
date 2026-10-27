@@ -16,7 +16,7 @@ class GoogleGenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
     protected List<StreamingChatModel> models() {
         return List.of(GoogleGenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .build());
     }
 

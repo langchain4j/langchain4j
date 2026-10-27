@@ -6,6 +6,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
@@ -19,6 +25,8 @@ import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import dev.langchain4j.data.message.ChatMessage;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -38,8 +46,8 @@ class DecisionModelQueryRouterTest {
 
     DecisionModelMock answering(double hrProbability, double wikiProbability) {
         decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
-                "source1", YesNoAnswer.of(hrProbability),
-                "source2", YesNoAnswer.of(wikiProbability)));
+                "source1", YesNoAnswer.from(hrProbability),
+                "source2", YesNoAnswer.from(wikiProbability)));
         return decisionModel;
     }
 
@@ -51,13 +59,88 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
 
         assertThat(router.route(Query.from("How many vacation days do I have?"))).containsExactly(hr);
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "How many vacation days do I have?"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "How many vacation days do I have?")));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "source1",
-                        YesNoQuestion.of(
+                        YesNoQuestion.from(
                                 "Could the following data source contain information that helps answer the query?\n"
                                         + "HR policies"));
+    }
+
+    @Test
+    void should_send_system_message_of_the_query_also_in_the_first_turn_and_with_one_message() {
+
+        Metadata metadata = new Metadata(
+                UserMessage.from("What are the opening hours of the canteen?"),
+                SystemMessage.from("You are the assistant of the Berlin office."),
+                "memory-id",
+                List.of());
+
+        new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers)
+                .route(Query.from("What are the opening hours of the canteen?", metadata));
+        DecisionModelQueryRouter.builder()
+                .decisionModel(decisionModel)
+                .retrieverToDescription(retrievers)
+                .maxMessages(1)
+                .build()
+                .route(Query.from("What are the opening hours of the canteen?", metadata));
+
+        FieldsInput expected = FieldsInput.from(Map.of(
+                "query", "What are the opening hours of the canteen?",
+                "messages", List.of(Map.of("role", "system", "text", "You are the assistant of the Berlin office."))));
+        assertThat(decisionModel.requests()).extracting(DecisionRequest::input).containsExactly(expected, expected);
+    }
+
+    @Test
+    void should_send_the_system_message_once_with_tool_messages_and_validate_limits() {
+
+        ToolExecutionRequest getEmployee = ToolExecutionRequest.builder()
+                .id("1")
+                .name("getEmployee")
+                .arguments("{}")
+                .build();
+        Metadata metadata = new Metadata(
+                UserMessage.from("How many vacation days do I get?"),
+                SystemMessage.from("You are the HR assistant."),
+                "memory-id",
+                List.of(
+                        SystemMessage.from("You are the HR assistant."),
+                        UserMessage.from("Who am I?"),
+                        AiMessage.from(getEmployee),
+                        ToolExecutionResultMessage.from(getEmployee, "{\"country\":\"Germany\"}"),
+                        AiMessage.from("You are Jan."),
+                        UserMessage.from("How many vacation days do I get?")));
+
+        DecisionModelQueryRouter.builder()
+                .decisionModel(answering(0.9, 0.2))
+                .retrieverToDescription(retrievers)
+                .maxMessages(4)
+                .build()
+                .route(Query.from("How many vacation days do I get?", metadata));
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(FieldsInput.from(Map.of(
+                        "query", "How many vacation days do I get?",
+                        "messages",
+                        List.of(
+                                Map.of("role", "system", "text", "You are the HR assistant."),
+                                Map.of("role", "user", "text", "Who am I?"),
+                                Map.of(
+                                        "role",
+                                        "assistant",
+                                        "tool_calls",
+                                        List.of(Map.of("id", "1", "name", "getEmployee", "arguments", "{}"))),
+                                Map.of("role", "tool", "tool_call_id", "1", "name", "getEmployee",
+                                        "text", "{\"country\":\"Germany\"}"),
+                                Map.of("role", "assistant", "text", "You are Jan.")))));
+        assertThatThrownBy(() -> DecisionModelQueryRouter.builder()
+                        .decisionModel(decisionModel)
+                        .retrieverToDescription(retrievers)
+                        .maxMessageLength(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxMessageLength");
     }
 
     @Test
@@ -77,12 +160,36 @@ class DecisionModelQueryRouterTest {
         router.route(Query.from("And for contractors?", metadata));
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "query", "And for contractors?",
                         "messages",
                         List.of(
+                                Map.of("role", "user", "text", "Hi!"),
+                                Map.of("role", "assistant", "text", "Hello! How can I help?"),
                                 Map.of("role", "user", "text", "How many vacation days do employees get?"),
-                                Map.of("role", "assistant", "text", "Employees get 28 days per year."))));
+                                Map.of("role", "assistant", "text", "Employees get 28 days per year.")))));
+    }
+
+    @Test
+    void should_send_the_query_and_the_9_previous_messages_by_default() {
+
+        QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
+        List<ChatMessage> messages = new ArrayList<>();
+        for (int i = 0; i <= 12; i++) {
+            messages.add(i % 2 == 0 ? UserMessage.from("question " + i) : AiMessage.from("answer " + i));
+        }
+        Metadata metadata = new Metadata(UserMessage.from("question 12"), "memory-id", messages);
+
+        router.route(Query.from("question 12", metadata));
+
+        List<Map<String, Object>> expected = new ArrayList<>();
+        for (int i = 3; i <= 11; i++) {
+            expected.add(i % 2 == 0
+                    ? Map.of("role", "user", "text", "question " + i)
+                    : Map.of("role", "assistant", "text", "answer " + i));
+        }
+        assertThat(decisionModel.request().input())
+                .isEqualTo(FieldsInput.from(Map.of("query", "question 12", "messages", expected)));
     }
 
     @Test
@@ -100,7 +207,7 @@ class DecisionModelQueryRouterTest {
 
         router.route(Query.from("And for contractors?", metadata));
 
-        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "And for contractors?"));
+        assertThat(decisionModel.request().input()).isEqualTo(FieldsInput.from(Map.of("query", "And for contractors?")));
     }
 
     @Test
@@ -143,6 +250,21 @@ class DecisionModelQueryRouterTest {
                         .build()
                         .route(Query.from("query")))
                 .hasMessage("decision model is down");
+    }
+
+    @Test
+    void should_apply_fallback_strategy_when_decision_model_refuses_to_answer() {
+
+        DecisionModel refusing = DecisionModelMock.thatAlwaysAnswers(
+                Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.from(0.9)));
+        QueryRouter router = DecisionModelQueryRouter.builder()
+                .decisionModel(refusing)
+                .retrieverToDescription(retrievers)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        assertThat(router.route(Query.from("query"))).containsExactly(hr, wiki);
+        assertThat(router.routeAsync(Query.from("query")).join()).containsExactly(hr, wiki);
     }
 
     @Test
@@ -197,7 +319,7 @@ class DecisionModelQueryRouterTest {
                 .route(Query.from("query"));
 
         assertThat(decisionModel.request().questions())
-                .containsEntry("source1", YesNoQuestion.of("Can this source answer the question? Source: HR policies"));
+                .containsEntry("source1", YesNoQuestion.from("Can this source answer the question? Source: HR policies"));
     }
 
     @Test

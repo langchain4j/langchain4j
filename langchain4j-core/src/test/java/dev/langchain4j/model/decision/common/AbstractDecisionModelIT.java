@@ -96,7 +96,7 @@ public abstract class AbstractDecisionModelIT {
                 .input("I love this product, it works perfectly!")
                 .question(
                         "sentiment",
-                        ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral")))
+                        ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral")))
                 .build());
 
         assertThat(response.choice("sentiment").value()).isEqualTo("positive");
@@ -106,7 +106,7 @@ public abstract class AbstractDecisionModelIT {
     void should_answer_several_questions_in_one_call() {
 
         DecisionResponse response = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "ticket", "I was charged twice this month and nobody answers my emails!",
                         "customer", Map.of("plan", "enterprise")))
                 .question("team", TEAM)
@@ -170,6 +170,26 @@ public abstract class AbstractDecisionModelIT {
     }
 
     @Test
+    void should_take_level_descriptions_into_account() {
+
+        // the labels carry no meaning: only the descriptions say what each level is
+        ScaleQuestion severity = ScaleQuestion.builder()
+                .text("How severe is the incident?")
+                .level("A", "Minor: no customer is affected")
+                .level("B", "Major: some customers are affected")
+                .level("C", "Critical: no customer can use the product")
+                .build();
+
+        ScaleAnswer answer = model().decide(DecisionRequest.builder()
+                        .input("Since 10 minutes, no customer can log in, the whole product is down.")
+                        .question("severity", severity)
+                        .build())
+                .scale("severity");
+
+        assertThat(answer.mean()).isGreaterThan(1.5);
+    }
+
+    @Test
     void should_take_criteria_into_account() {
 
         String ticket = "Hi, could you send me a copy of last month's invoice when you have a moment?";
@@ -202,14 +222,14 @@ public abstract class AbstractDecisionModelIT {
     void should_decide_on_structured_input() {
 
         DecisionResponse spam = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "subject", "Congratulations, you won!",
                         "body", "Claim your free cruise now, click here!",
                         "sender", Map.of("known", false)))
                 .question("spam", SPAM)
                 .build());
         DecisionResponse notSpam = model().decide(DecisionRequest.builder()
-                .input(Map.of(
+                .inputFields(Map.of(
                         "subject", "Meeting tomorrow",
                         "body", "Hi Anna, are we still meeting tomorrow at 10?",
                         "sender", Map.of("known", true)))
@@ -273,7 +293,7 @@ public abstract class AbstractDecisionModelIT {
         DecisionRequest.Builder request =
                 DecisionRequest.builder().input("I was charged twice this month and nobody answers my emails!");
         for (int i = 1; i <= 10; i++) {
-            request.question("question" + i, YesNoQuestion.of("Does the message mention the number " + i + "?"));
+            request.question("question" + i, YesNoQuestion.from("Does the message mention the number " + i + "?"));
         }
 
         DecisionResponse response = model().decide(request.build());

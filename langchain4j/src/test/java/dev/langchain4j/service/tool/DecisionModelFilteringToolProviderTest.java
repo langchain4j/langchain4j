@@ -1,8 +1,11 @@
 package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.SearchBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -15,6 +18,7 @@ import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import java.util.ArrayList;
+import dev.langchain4j.data.message.ChatMessage;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -75,7 +79,7 @@ class DecisionModelFilteringToolProviderTest {
                 .extracting(AiServiceTool::name)
                 .containsExactly("get_weather", "get_forecast");
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain?"))));
         assertThat(toolProvider.isDynamic()).isFalse();
     }
 
@@ -165,6 +169,16 @@ class DecisionModelFilteringToolProviderTest {
     }
 
     @Test
+    void should_fall_back_to_all_tools_when_decision_model_refuses_to_answer() {
+
+        DecisionModelMock refusing = DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of());
+        ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, refusing);
+
+        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+                .hasSize(4);
+    }
+
+    @Test
     void should_apply_configured_fallback_strategy() {
 
         ToolProvider noTools = DecisionModelFilteringToolProvider.builder()
@@ -202,6 +216,39 @@ class DecisionModelFilteringToolProviderTest {
     }
 
     @Test
+    void should_send_system_message_tool_calls_and_tool_results_that_pass_the_filter() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(allTools)
+                .decisionModel(decisionModel)
+                .messageFilter(message -> !(message instanceof ToolExecutionResultMessage))
+                .maxMessageLength(40)
+                .build();
+        ToolExecutionRequest getWeather = ToolExecutionRequest.builder()
+                .id("1")
+                .name("get_weather")
+                .arguments("{\"city\":\"Paris\"}")
+                .build();
+        UserMessage original = UserMessage.from("Will it rain in Paris?");
+        UserMessage augmented = UserMessage.from("Will it rain in Paris?\n\nAnswer using the following information:\n"
+                + "a long retrieved document");
+
+        toolProvider.provideTools(ToolProviderRequest.builder()
+                .invocationContext(InvocationContext.builder().originalUserMessage(original).build())
+                .userMessage(augmented)
+                .messages(List.of(
+                        SystemMessage.from("You are a weather assistant."),
+                        augmented,
+                        AiMessage.from(getWeather),
+                        ToolExecutionResultMessage.from(getWeather, "{\"rain\": false}")))
+                .build());
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(
+                        SystemMessage.from("You are a weather assistant."), original, AiMessage.from(getWeather))));
+    }
+
+    @Test
     void should_send_last_messages_of_conversation_when_configured() {
 
         ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
@@ -223,12 +270,42 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
-                        "messages",
-                        List.of(
-                                Map.of("role", "user", "text", "Will it rain in Paris?"),
-                                Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
+    }
+
+    @Test
+    void should_send_the_last_10_messages_by_default() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(allTools)
+                .decisionModel(decisionModel)
+                .build();
+        List<ChatMessage> messages = new ArrayList<>();
+        for (int i = 0; i <= 12; i++) {
+            messages.add(i % 2 == 0 ? UserMessage.from("question " + i) : AiMessage.from("answer " + i));
+        }
+
+        toolProvider.provideTools(ToolProviderRequest.builder()
+                .invocationContext(InvocationContext.builder().build())
+                .userMessage(UserMessage.from("question 12"))
+                .messages(messages)
+                .build());
+
+        assertThat(decisionModel.request().input()).isEqualTo(MessagesInput.from(messages.subList(3, 13)));
+    }
+
+    @Test
+    void should_pass_on_all_tools_without_asking_the_decision_model_when_the_filter_leaves_out_all_messages() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(allTools)
+                .decisionModel(decisionModel)
+                .messageFilter(message -> false)
+                .build();
+
+        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("What's the weather?"))).aiServiceTools())
+                .hasSize(4);
+        assertThat(decisionModel.requests()).isEmpty();
     }
 
     @Test
@@ -255,12 +332,7 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
-                        "messages",
-                        List.of(
-                                Map.of("role", "user", "text", "Will it rain in Paris?"),
-                                Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
     }
 
     @Test
@@ -283,12 +355,7 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of(
-                        "messages",
-                        List.of(
-                                Map.of("role", "user", "text", "Will it rain in Paris?"),
-                                Map.of("role", "assistant", "text", "No rain in Paris today."),
-                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
     }
 
     @Test
@@ -364,7 +431,7 @@ class DecisionModelFilteringToolProviderTest {
                         .extracting(ToolSpecification::name)
                         .containsExactlyInAnyOrder("get_weather", "get_forecast"));
         assertThat(decisionModel.request().input())
-                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain?"))));
     }
 
     @Test
@@ -384,7 +451,8 @@ class DecisionModelFilteringToolProviderTest {
         assistant.chat("Will it rain?");
 
         assertThat(chatModel.request().messages().get(0).toString()).contains("INV-1");
-        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
+        assertThat(decisionModel.request().input())
+                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain?"))));
     }
 
     @Test
@@ -402,6 +470,13 @@ class DecisionModelFilteringToolProviderTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("maxMessages");
+        assertThatThrownBy(() -> DecisionModelFilteringToolProvider.builder()
+                        .toolProvider(allTools)
+                        .decisionModel(decisionModel)
+                        .maxMessageLength(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxMessageLength");
         assertThatThrownBy(() -> DecisionModelFilteringToolProvider.builder()
                         .toolProvider(allTools)
                         .decisionModel(decisionModel)

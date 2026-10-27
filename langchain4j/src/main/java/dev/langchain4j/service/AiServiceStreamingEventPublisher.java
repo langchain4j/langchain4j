@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -31,8 +32,6 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -256,7 +255,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private ChatExecutor chatExecutor;
-        private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
+        private final Executor toolExecutor =
+                CapturedContextSupport.restoringIn(context.toolService.effectiveToolExecutor(), invocationContext);
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
@@ -356,6 +356,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
                 @Override
                 public void onNext(ChatModelStreamingEvent event) {
+                    handleNext(event);
+                }
+
+                private void handleNext(ChatModelStreamingEvent event) {
                     if (tube.cancelled()) {
                         return;
                     }
@@ -407,6 +411,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             });
         }
 
+        // the request whose response is being processed; rounds run one after another
+        private volatile ChatRequest lastChatRequest;
+
         private void processRound(
                 ChatRequest chatRequest,
                 ToolServiceContext currentToolContext,
@@ -415,6 +422,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             fireResponseReceivedEvent(chatRequest, chatResponse);
+            lastChatRequest = chatRequest;
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
@@ -709,6 +717,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .responseFromLLM(finalChatResponse)
                     .chatExecutor(toolAwareRepromptExecutor)
                     .requestParams(guardrailParams)
+                    .chatRequest(lastChatRequest)
                     .build();
 
             CompletableFuture<ChatResponse> guarded =
@@ -783,17 +792,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void fireInvocationComplete(ChatResponse finalChatResponse) {
-            context.eventListenerRegistrar.fireEvent(AiServiceCompletedEvent.builder()
-                    .invocationContext(invocationContext)
-                    .result(finalChatResponse)
-                    .build());
+            TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, finalChatResponse);
         }
 
         private void fireErrorReceived(Throwable error) {
-            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                    .invocationContext(invocationContext)
-                    .error(error)
-                    .build());
+            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, error);
         }
     }
 }

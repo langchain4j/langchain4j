@@ -5,7 +5,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.List;
 import java.util.Objects;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -17,6 +19,8 @@ public class ToolServiceResult {
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
     private final boolean immediateToolReturn;
+    private final List<ChatMessage> messages;
+    private final ChatRequest lastChatRequest;
 
     /**
      * @since 1.2.0
@@ -27,6 +31,8 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
         this.immediateToolReturn = builder.immediateToolReturn;
+        this.messages = copy(builder.messages);
+        this.lastChatRequest = builder.lastChatRequest;
     }
 
     /**
@@ -40,6 +46,8 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
         this.immediateToolReturn = false;
+        this.messages = List.of();
+        this.lastChatRequest = null;
     }
 
     /**
@@ -94,6 +102,27 @@ public class ToolServiceResult {
         return immediateToolReturn;
     }
 
+    /**
+     * The conversation the tool loop ended with (the messages sent, every tool round trip and the final response),
+     * when the AI Service has no chat memory. Empty when it has one: the chat memory holds the conversation then.
+     *
+     * @since 1.23.0
+     */
+    public List<ChatMessage> messages() {
+        return messages;
+    }
+
+    /**
+     * The last request the tool loop sent to the model, whose response is {@link #finalResponse()}: its messages
+     * include the tool calls and tool results of all rounds. {@code null} when the loop sent no request, because the
+     * response of the call that started the loop had no tool calls.
+     *
+     * @since 1.23.0
+     */
+    public ChatRequest lastChatRequest() {
+        return lastChatRequest;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -103,12 +132,21 @@ public class ToolServiceResult {
                 && Objects.equals(this.finalResponse, that.finalResponse)
                 && Objects.equals(this.toolExecutions, that.toolExecutions)
                 && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage)
-                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn);
+                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn)
+                && Objects.equals(this.messages, that.messages)
+                && Objects.equals(this.lastChatRequest, that.lastChatRequest);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(intermediateResponses, finalResponse, toolExecutions, aggregateTokenUsage, immediateToolReturn);
+        return Objects.hash(
+                intermediateResponses,
+                finalResponse,
+                toolExecutions,
+                aggregateTokenUsage,
+                immediateToolReturn,
+                messages,
+                lastChatRequest);
     }
 
     @Override
@@ -119,6 +157,8 @@ public class ToolServiceResult {
                 ", toolExecutions=" + toolExecutions +
                 ", aggregateTokenUsage=" + aggregateTokenUsage +
                 ", immediateToolReturn=" + immediateToolReturn +
+                ", messages=" + messages +
+                ", lastChatRequest=" + lastChatRequest +
                 '}';
     }
 
@@ -133,6 +173,8 @@ public class ToolServiceResult {
         private List<ToolExecution> toolExecutions;
         private TokenUsage aggregateTokenUsage;
         private boolean immediateToolReturn;
+        private List<ChatMessage> messages;
+        private ChatRequest lastChatRequest;
 
         public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
@@ -156,6 +198,22 @@ public class ToolServiceResult {
 
         public Builder immediateToolReturn(boolean immediateToolReturn) {
             this.immediateToolReturn = immediateToolReturn;
+            return this;
+        }
+
+        /**
+         * @since 1.23.0
+         */
+        public Builder messages(List<ChatMessage> messages) {
+            this.messages = messages;
+            return this;
+        }
+
+        /**
+         * @since 1.23.0
+         */
+        public Builder lastChatRequest(ChatRequest lastChatRequest) {
+            this.lastChatRequest = lastChatRequest;
             return this;
         }
 

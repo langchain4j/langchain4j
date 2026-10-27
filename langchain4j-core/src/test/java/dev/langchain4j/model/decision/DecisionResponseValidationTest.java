@@ -13,6 +13,8 @@ import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.time.Duration;
@@ -29,12 +31,12 @@ class DecisionResponseValidationTest {
 
     static final DecisionRequest REQUEST = DecisionRequest.builder()
             .input("I was charged twice this month")
-            .question("urgent", YesNoQuestion.of("Does this need attention today?"))
-            .question("team", ChoiceQuestion.of("Which team?", Map.of("billing", "Payments", "support", "Bugs")))
-            .question("frustration", ScaleQuestion.of("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
+            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+            .question("team", ChoiceQuestion.from("Which team?", Map.of("billing", "Payments", "support", "Bugs")))
+            .question("frustration", ScaleQuestion.from("How frustrated?", List.of("Calm", "Frustrated", "Angry")))
             .build();
 
-    static final YesNoAnswer URGENT = YesNoAnswer.of(0.9);
+    static final YesNoAnswer URGENT = YesNoAnswer.from(0.9);
     static final ChoiceAnswer TEAM = ChoiceAnswer.builder().value("billing").build();
     static final ScaleAnswer FRUSTRATION = ScaleAnswer.builder().mean(1.2).build();
 
@@ -45,6 +47,20 @@ class DecisionResponseValidationTest {
                 Map.of("urgent", URGENT, "team", TEAM, "frustration", FRUSTRATION));
 
         assertThat(model.decide(REQUEST).choice("team").value()).isEqualTo("billing");
+    }
+
+    @Test
+    void should_accept_refusals_for_any_question_type() {
+
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "urgent", RefusalAnswer.of(), "team", RefusalAnswer.of(), "frustration", FRUSTRATION));
+
+        DecisionResponse response = model.decide(REQUEST);
+
+        assertThat(response.isRefused("urgent")).isTrue();
+        assertThat(response.isRefused("team")).isTrue();
+        assertThat(response.isRefused("frustration")).isFalse();
+        assertThat(response.scale("frustration").mean()).isEqualTo(1.2);
     }
 
     @Test

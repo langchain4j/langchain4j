@@ -10,6 +10,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a pre-invocation hook for an agentic pattern.
  * The annotated method must be static, accept an {@link AgenticScope} as argument, and return void.
+ * It can also declare parameters resolved through a {@link SupplierParameterResolver}.
  * It will be invoked before every execution of the agent, allowing initialization or transformation
  * of the shared state.
  * <p>
