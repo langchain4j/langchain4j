@@ -24,6 +24,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -546,6 +548,74 @@ public class DefaultMcpClientTest {
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void tool_timeout_cancellation_is_supplied_with_its_context_before_listeners_are_notified() {
+        List<String> events = verifyTimeoutCancellationOrder(client -> client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build()));
+
+        assertThat(events).containsExactly("meta:tools/call", "meta:cancel", "listener:error");
+    }
+
+    @Test
+    public void async_tool_timeout_cancellation_is_supplied_with_its_context_before_listeners_are_notified() {
+        List<String> events = verifyTimeoutCancellationOrder(client -> client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .join());
+
+        assertThat(events).containsExactly("meta:tools/call", "meta:cancel", "listener:error");
+    }
+
+    /**
+     * Runs an operation that times out and records, in order, the messages that the meta supplier is called with
+     * and the listener error notifications. The meta supplier must get the cancellation in a context (so that,
+     * e.g., a tracing span can be attached to it), and while the timed out operation is still in progress from
+     * the listeners' point of view.
+     */
+    private static List<String> verifyTimeoutCancellationOrder(
+            java.util.function.Consumer<DefaultMcpClient> operation) {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
+        AtomicReference<Long> toolCallId = new AtomicReference<>();
+        McpClientListener listener = new McpClientListener() {
+            @Override
+            public void onExecuteToolError(McpCallContext context, Throwable error) {
+                events.add("listener:error");
+            }
+        };
+        McpMetaSupplier metaSupplier = context -> {
+            assertThat(context)
+                    .as("the meta supplier must always get a context")
+                    .isNotNull();
+            if (context.message() instanceof McpCallToolRequest request) {
+                toolCallId.set(request.getId());
+                events.add("meta:tools/call");
+            } else if (context.message() instanceof McpCancellationNotification cancellation) {
+                assertThat(((McpCancellationParams) cancellation.getParams()).getRequestId())
+                        .isEqualTo(toolCallId.get());
+                events.add("meta:cancel");
+            }
+            return Map.of();
+        };
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .listener(listener)
+                .metaSupplier(metaSupplier)
+                .build();
+
+        operation.accept(client);
+
+        verify(transport).sendMessage(any(McpCancellationNotification.class));
+        return events;
     }
 
     @Test
@@ -1255,6 +1325,168 @@ public class DefaultMcpClientTest {
                         .build()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void mrtr_max_retries_exceeded_should_be_reported_to_listeners() {
+        final McpTransport transport = getModernMcpTransportMock();
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createMcpClient(transport, listener);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .hasMessageContaining("retry limit");
+
+        ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(any(McpCallContext.class), error.capture());
+        assertThat(error.getValue()).hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void mrtr_max_retries_exceeded_for_resource_should_be_reported_to_listeners() {
+        final McpTransport transport = getModernMcpTransportMock();
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createMcpClient(transport, listener);
+
+        assertThatThrownBy(() -> client.readResource("file:///test")).hasMessageContaining("retry limit");
+
+        ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onResourceGetError(any(McpCallContext.class), error.capture());
+        assertThat(error.getValue()).hasMessageContaining("retry limit");
+    }
+
+    @Test
+    public void interrupted_tool_execution_should_be_reported_to_listeners() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .build();
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                            .name("test")
+                            .arguments("{}")
+                            .build()))
+                    .hasCauseInstanceOf(InterruptedException.class);
+        } finally {
+            // clear the interrupt flag, so that it doesn't affect other tests
+            Thread.interrupted();
+        }
+
+        verify(listener).onExecuteToolError(any(McpCallContext.class), any(RuntimeException.class));
+    }
+
+    @Test
+    public void interrupted_resource_read_should_be_reported_to_listeners() {
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createClientWithPendingOperations(listener);
+
+        runInterrupted(() -> client.readResource("file:///test"));
+
+        verify(listener).onResourceGetError(any(McpCallContext.class), any(RuntimeException.class));
+    }
+
+    @Test
+    public void interrupted_prompt_get_should_be_reported_to_listeners() {
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = createClientWithPendingOperations(listener);
+
+        runInterrupted(() -> client.getPrompt("test", Map.of()));
+
+        verify(listener).onPromptGetError(any(McpCallContext.class), any(RuntimeException.class));
+    }
+
+    private static DefaultMcpClient createClientWithPendingOperations(McpClientListener listener) {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .build();
+    }
+
+    private static void runInterrupted(ThrowingCallable operation) {
+        Thread.currentThread().interrupt();
+        try {
+            assertThatThrownBy(operation).hasCauseInstanceOf(InterruptedException.class);
+        } finally {
+            // clear the interrupt flag, so that it doesn't affect other tests
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    public void tool_timeout_cancellation_is_supplied_with_the_invocation_context_of_the_tool_call() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+        InvocationContext invocationContext = InvocationContext.builder().build();
+        AtomicReference<McpCallContext> cancellationContext = new AtomicReference<>();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .metaSupplier(context -> {
+                    if (context.message() instanceof McpCancellationNotification) {
+                        cancellationContext.set(context);
+                    }
+                    return Map.of();
+                })
+                .build();
+
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), invocationContext);
+
+        assertThat(cancellationContext.get()).isNotNull();
+        assertThat(cancellationContext.get().invocationContext()).isSameAs(invocationContext);
+    }
+
+    @Test
+    public void async_tool_execution_failing_to_send_should_be_reported_to_listeners() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        IllegalStateException failure = new IllegalStateException("transport is closed");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenThrow(failure);
+        McpClientListener listener = mock(McpClientListener.class);
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .build();
+
+        CompletableFuture<ToolExecutionResult> result = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThat(result).isCompletedExceptionally();
+        verify(listener).onExecuteToolError(any(McpCallContext.class), same(failure));
+    }
+
+    private static DefaultMcpClient createMcpClient(McpTransport transport, McpClientListener listener) {
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .subscribeToToolListChanges(false)
+                .listener(listener)
+                .build();
     }
 
     private static DefaultMcpClient createMcpClient(McpTransport transport) {
