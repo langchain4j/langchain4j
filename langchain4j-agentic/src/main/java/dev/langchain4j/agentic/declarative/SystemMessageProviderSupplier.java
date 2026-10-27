@@ -10,6 +10,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * Marks a method as a system message provider for an agent.
  * The annotated method must be static, accept an {@code Object} parameter (the memoryId),
  * and return a {@code String} (the system message).
+ * Besides the memoryId, it can declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * This provides a declarative alternative to programmatically calling
  * {@link dev.langchain4j.agentic.agent.AgentBuilder#systemMessageProvider(java.util.function.Function)},

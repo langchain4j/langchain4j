@@ -96,7 +96,7 @@ public abstract class AbstractDecisionModelIT {
                 .input("I love this product, it works perfectly!")
                 .question(
                         "sentiment",
-                        ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral")))
+                        ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral")))
                 .build());
 
         assertThat(response.choice("sentiment").value()).isEqualTo("positive");
@@ -293,7 +293,7 @@ public abstract class AbstractDecisionModelIT {
         DecisionRequest.Builder request =
                 DecisionRequest.builder().input("I was charged twice this month and nobody answers my emails!");
         for (int i = 1; i <= 10; i++) {
-            request.question("question" + i, YesNoQuestion.of("Does the message mention the number " + i + "?"));
+            request.question("question" + i, YesNoQuestion.from("Does the message mention the number " + i + "?"));
         }
 
         DecisionResponse response = model().decide(request.build());

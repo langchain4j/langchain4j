@@ -57,14 +57,17 @@ public final class DecisionMapper {
         openAiRequest.input = toInput(request.input());
         openAiRequest.questions = new ArrayList<>();
         request.questions().forEach((name, question) -> openAiRequest.questions.add(toQuestion(name, question)));
-        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters
-                && !isNullOrEmpty(parameters.customParameters())) {
+        if (request.parameters() instanceof OpenAiDecisionRequestParameters parameters) {
+            openAiRequest.promptCacheKey = parameters.promptCacheKey();
             Map<String, Object> customParameters = parameters.customParameters();
-            openAiRequest.customParameters = customParameters;
-            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
-            if (customParameters.containsKey("model")) openAiRequest.model = null;
-            if (customParameters.containsKey("input")) openAiRequest.input = null;
-            if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+            if (!isNullOrEmpty(customParameters)) {
+                openAiRequest.customParameters = customParameters;
+                // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
+                if (customParameters.containsKey("model")) openAiRequest.model = null;
+                if (customParameters.containsKey("input")) openAiRequest.input = null;
+                if (customParameters.containsKey("questions")) openAiRequest.questions = null;
+                if (customParameters.containsKey("prompt_cache_key")) openAiRequest.promptCacheKey = null;
+            }
         }
         return openAiRequest;
     }
@@ -246,7 +249,7 @@ public final class DecisionMapper {
             throw new InvalidDecisionResponseException("The answer to question '%s' has no type".formatted(name));
         }
         return switch (answer.type) {
-            case "predicate" -> YesNoAnswer.of(probability(name, answer.probability, "probability"));
+            case "predicate" -> YesNoAnswer.from(probability(name, answer.probability, "probability"));
             case "choice" -> toChoiceAnswer(name, answer);
             case "score" -> toScaleAnswer(name, answer, question);
             case "refusal" -> RefusalAnswer.of();

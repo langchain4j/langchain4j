@@ -52,6 +52,7 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -125,6 +126,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
+    private ToolSearchStrategy toolSearchStrategy;
     private Integer maxToolCallingRoundTrips;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
@@ -363,6 +365,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (!toolProviders.isEmpty()) {
             aiServices.toolProviders(toolProviders);
         }
+        if (toolSearchStrategy != null) {
+            aiServices.toolSearchStrategy(toolSearchStrategy);
+        }
         if (maxToolCallingRoundTrips != null) {
             aiServices.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         }
@@ -523,6 +528,21 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B toolProviders(ToolProvider... toolProviders) {
         return toolProviders(asList(toolProviders));
+    }
+
+    /**
+     * Sets the {@link ToolSearchStrategy} this agent uses to discover its tools, so that the model initially
+     * receives only the tool search tools and the tools marked as always visible, instead of every tool.
+     * Applies to the tools configured with {@code tools(...)} and to those supplied by a {@link ToolProvider}.
+     * Discovered tools stay available for the rest of the invocation and, when the agent has a chat memory,
+     * until the tool search result is evicted from it.
+     *
+     * @param toolSearchStrategy the tool search strategy
+     * @return {@code this}
+     */
+    public B toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        this.toolSearchStrategy = toolSearchStrategy;
+        return (B) this;
     }
 
     /**

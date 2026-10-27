@@ -7,12 +7,15 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -20,6 +23,12 @@ import java.util.function.Consumer;
 
 /**
  * Generic executor interface that defines a chat interaction
+ * <p>
+ * When built with an event listener registrar, the built-in executors fire an
+ * {@link AiServiceRequestIssuedEvent} for every request they send. They fire
+ * an {@link AiServiceResponseReceivedEvent} only for the methods that take
+ * chat messages (used for output guardrail reprompts): for {@link #execute()} and {@link #executeAsync()}, the caller
+ * fires it.
  */
 public interface ChatExecutor {
 
@@ -101,7 +110,7 @@ public interface ChatExecutor {
     @Experimental
     default CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
         try {
-            return ChatExchange.exchangeAsync(null, executeAsync(chatMessages));
+            return ChatExchanges.exchangeAsync(null, executeAsync(chatMessages));
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
         }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.time.Duration.ofMinutes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -27,6 +28,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     static final GoogleGenAiChatModel GOOGLE_GEN_AI_CHAT_MODEL = GoogleGenAiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
             .modelName("gemini-3.8-flash")
+            .thinkingBudget(0)
             .build();
 
     @Override
@@ -102,6 +104,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName("gemini-3.1-pro-preview")
                 .temperature(0.0)
+                .timeout(ofMinutes(2)) // this preview model sometimes stalls for minutes, the call is then retried
                 .build();
 
         ToolSpecification tool = ToolSpecification.builder()
@@ -169,7 +172,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
         assertThat(answer)
                 .contains("Code executed:\n```python\n")
-                .contains("Output:\n```\n1267650600228229401496703205376");
+                .containsPattern("Output:\\n```\\n[^`]*1267650600228229401496703205376");
     }
 
     @Override

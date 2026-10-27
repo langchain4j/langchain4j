@@ -153,7 +153,7 @@ public final class DecisionServices {
             Map<Method, DecisionMethod> methods = new HashMap<>();
             for (Method method : serviceInterface.getMethods()) {
                 if (!method.isDefault() && !Modifier.isStatic(method.getModifiers())) {
-                    methods.put(method, DecisionMethod.of(method));
+                    methods.put(method, DecisionMethod.from(method));
                 }
             }
             Map<Method, DecisionMethod> decisionMethods = Map.copyOf(methods);

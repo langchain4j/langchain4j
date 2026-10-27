@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static java.time.Duration.ofMinutes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -35,7 +36,8 @@ class GoogleGenAiChatModelThinkingIT {
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(THOUGHT_SIGNATURE_MODEL_NAME)
                 .includeThoughts(true)
-                .returnThinking(true);
+                .returnThinking(true)
+                .timeout(ofMinutes(2)); // this preview model sometimes stalls for minutes, the call is then retried
     }
 
     @Test

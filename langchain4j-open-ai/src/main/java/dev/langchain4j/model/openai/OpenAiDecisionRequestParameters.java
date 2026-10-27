@@ -16,7 +16,7 @@ import java.util.Objects;
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
  *         .input("...")
- *         .question("spam", YesNoQuestion.of("Is this message spam?"))
+ *         .question("spam", YesNoQuestion.from("Is this message spam?"))
  *         .parameters(OpenAiDecisionRequestParameters.builder()
  *                 .customParameters(Map.of("parameter_name", "value"))
  *                 .build())
@@ -28,11 +28,22 @@ import java.util.Objects;
 @Experimental
 public class OpenAiDecisionRequestParameters extends DefaultDecisionRequestParameters {
 
+    private final String promptCacheKey;
     private final Map<String, Object> customParameters;
 
     private OpenAiDecisionRequestParameters(Builder builder) {
         super(builder);
+        this.promptCacheKey = builder.promptCacheKey;
         this.customParameters = copy(builder.customParameters);
+    }
+
+    /**
+     * The {@code prompt_cache_key} sent with the request, {@code null} if not set.
+     *
+     * @see Builder#promptCacheKey(String)
+     */
+    public String promptCacheKey() {
+        return promptCacheKey;
     }
 
     /**
@@ -53,18 +64,19 @@ public class OpenAiDecisionRequestParameters extends DefaultDecisionRequestParam
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         OpenAiDecisionRequestParameters that = (OpenAiDecisionRequestParameters) o;
-        return Objects.equals(customParameters, that.customParameters);
+        return Objects.equals(promptCacheKey, that.promptCacheKey)
+                && Objects.equals(customParameters, that.customParameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), customParameters);
+        return Objects.hash(super.hashCode(), promptCacheKey, customParameters);
     }
 
     @Override
     public String toString() {
-        return "OpenAiDecisionRequestParameters{modelName=" + modelName() + ", customParameters="
-                + customParameters + '}';
+        return "OpenAiDecisionRequestParameters{modelName=" + modelName() + ", promptCacheKey=" + promptCacheKey
+                + ", customParameters=" + customParameters + '}';
     }
 
     public static Builder builder() {
@@ -73,6 +85,7 @@ public class OpenAiDecisionRequestParameters extends DefaultDecisionRequestParam
 
     public static class Builder extends DefaultDecisionRequestParameters.Builder<Builder> {
 
+        private String promptCacheKey;
         private Map<String, Object> customParameters;
 
         @Override
@@ -86,8 +99,23 @@ public class OpenAiDecisionRequestParameters extends DefaultDecisionRequestParam
             }
             super.overrideWith(parameters);
             if (parameters instanceof OpenAiDecisionRequestParameters openAiParameters) {
+                promptCacheKey(getOrDefault(openAiParameters.promptCacheKey(), promptCacheKey));
                 customParameters(getOrDefault(openAiParameters.customParameters(), customParameters));
             }
+            return this;
+        }
+
+        /**
+         * A key that separates prompt caching between groups of requests, sent as {@code prompt_cache_key}. OpenAI
+         * caches the shared input of requests automatically, also without a key. With a key, only requests with the
+         * same key reuse each other's cached input, for example to keep cache reuse and the cached token counts
+         * separate per customer or user. Not set by default.
+         * <p>
+         * If set, it replaces the key set on the {@link OpenAiDecisionModel} builder for this request.
+         * See the <a href="https://developers.openai.com/api/docs/guides/prompt-caching">prompt caching guide</a>.
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 

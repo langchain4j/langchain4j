@@ -150,7 +150,7 @@ public class DecisionModelMock implements DecisionModel {
             if (!(question instanceof YesNoQuestion yesNoQuestion)) {
                 throw new IllegalStateException("Expected a yes/no question, but got " + question);
             }
-            return YesNoAnswer.of(probability.apply(yesNoQuestion));
+            return YesNoAnswer.from(probability.apply(yesNoQuestion));
         });
     }
 

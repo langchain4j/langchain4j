@@ -2,6 +2,8 @@ package dev.langchain4j.agentic.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -11,6 +13,10 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Locale;
@@ -160,6 +166,94 @@ class HtmlReportGeneratorTest {
         } finally {
             Locale.setDefault(defaultLocale);
         }
+    }
+
+    public interface Assistant {
+
+        @UserMessage("Answer {{question}}")
+        @Agent(outputKey = "answer")
+        String answer(@V("question") String question);
+    }
+
+    public interface Workflow {
+
+        @Agent
+        String run(@V("question") String question);
+    }
+
+    public static class Clock {
+
+        @Tool
+        public String time() {
+            return "noon";
+        }
+    }
+
+    @Test
+    void generates_execution_with_the_model_of_each_ai_agent() {
+        Assistant assistant = AgenticServices.agentBuilder(
+                        Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("1")
+                                        .name("time")
+                                        .arguments("{}")
+                                        .build()),
+                                AiMessage.from("It is noon"))
+                        .withModelNames("answering-model", "answering-model"))
+                .tools(new Clock())
+                .build();
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        String html = HtmlReportGenerator.generateExecution(monitor);
+
+        assertThat(html).contains("<th>Duration</th><th>Model</th><th>Tokens</th>");
+        // only the AI agent row shows a model, not the sequence or the tool rows
+        assertThat(countMatches(html, Pattern.quote("<td class=\"wf-dur\">answering-model</td>")))
+                .isEqualTo(1);
+
+        // the rows of the sequence, of the AI agent and of its tool execution all have a cell per column
+        String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
+        String[] rows = body.split("<tr");
+        assertThat(rows).hasSize(4);
+        for (int i = 1; i < rows.length; i++) {
+            assertThat(countMatches(rows[i], "<td")).isEqualTo(7);
+        }
+    }
+
+    @Test
+    void does_not_show_a_model_next_to_the_tokens_of_llm_calls_answered_by_different_models() {
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("1")
+                                        .name("time")
+                                        .arguments("{}")
+                                        .build()),
+                                AiMessage.from("It is noon"))
+                        .withModelNames("tool-calling-model", "answering-model")
+                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
+                .tools(new Clock())
+                .build();
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        String html = HtmlReportGenerator.generateExecution(monitor);
+
+        // the tokens column shows the total of both LLM calls, so no single model can be credited with it
+        assertThat(html).doesNotContain("tool-calling-model").doesNotContain("answering-model");
+        assertThat(html).contains("<td class=\"wf-dur\">155</td>");
     }
 
     private static int countMatches(String html, String regex) {

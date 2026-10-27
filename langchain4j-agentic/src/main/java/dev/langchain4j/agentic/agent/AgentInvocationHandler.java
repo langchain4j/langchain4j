@@ -5,6 +5,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgentAiServiceEvent;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
@@ -29,7 +30,10 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -68,10 +72,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     private final Map<Object, LastResponse> lastResponses = new ConcurrentHashMap<>();
 
-    private record LastResponse(AiServiceResponseReceivedEvent event, TokenUsage tokenUsage) {
+    private record LastResponse(AiServiceResponseReceivedEvent event, TokenUsage tokenUsage, String modelName) {
 
         static LastResponse first(AiServiceResponseReceivedEvent event) {
-            return new LastResponse(event, event.response().metadata().tokenUsage());
+            ChatResponseMetadata metadata = event.response().metadata();
+            return new LastResponse(event, metadata.tokenUsage(), metadata.modelName());
         }
 
         LastResponse next(AiServiceResponseReceivedEvent nextEvent) {
@@ -80,9 +85,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     nextEvent.invocationContext().invocationId())) {
                 return first(nextEvent);
             }
+            ChatResponseMetadata nextMetadata = nextEvent.response().metadata();
             return new LastResponse(
                     nextEvent,
-                    TokenUsage.sum(tokenUsage, nextEvent.response().metadata().tokenUsage()));
+                    TokenUsage.sum(tokenUsage, nextMetadata.tokenUsage()),
+                    Objects.equals(modelName, nextMetadata.modelName()) ? modelName : null);
         }
 
         ChatResponse chatResponse() {
@@ -91,6 +98,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     .aiMessage(response.aiMessage())
                     .metadata(response.metadata().toBuilder()
                             .tokenUsage(tokenUsage)
+                            .modelName(modelName)
                             .build())
                     .build();
         }
@@ -106,6 +114,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.agentListener = builder.agentListener;
         this.chatModelProvider = builder.chatModelProvider;
         this.streamingChatModelProvider = builder.streamingChatModelProvider;
+        context.eventListenerRegistrar = new ForwardingRegistrar(context.eventListenerRegistrar);
     }
 
     @Override
@@ -343,6 +352,39 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
             context.toolService.afterToolExecution(toolExecution ->
                     agentListener.afterAgentToolExecution(new AfterAgentToolExecution(this, toolExecution)));
+        }
+    }
+
+    private class ForwardingRegistrar implements AiServiceListenerRegistrar {
+
+        private final AiServiceListenerRegistrar delegate;
+
+        private ForwardingRegistrar(AiServiceListenerRegistrar delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public <T extends AiServiceEvent> void register(AiServiceListener<T> listener) {
+            delegate.register(listener);
+        }
+
+        @Override
+        public <T extends AiServiceEvent> void unregister(AiServiceListener<T> listener) {
+            delegate.unregister(listener);
+        }
+
+        @Override
+        public <T extends AiServiceEvent> void fireEvent(T event) {
+            try {
+                delegate.fireEvent(event);
+            } finally {
+                onAgentAiServiceEvent(agentListener, AgentInvocationHandler.this, event);
+            }
+        }
+
+        @Override
+        public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
+            delegate.shouldThrowExceptionOnEventError(shouldThrowExceptionOnEventError);
         }
     }
 

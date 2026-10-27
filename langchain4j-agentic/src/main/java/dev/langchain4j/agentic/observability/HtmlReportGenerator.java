@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -20,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -507,7 +509,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                     : Math.max(1, Duration.between(base, LocalDateTime.now()).toMillis());
 
             html.append("<table class=\"wf-table\">\n");
-            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
+            html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Model</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
             int[] rowCounter = {0};
             appendWfRow(html, top, 0, base, totalMs, rowCounter, -1);
@@ -565,6 +567,13 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
+        // Model column
+        html.append("<td class=\"wf-dur\">");
+        if (inv.done()) {
+            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
+        }
+        html.append("</td>");
+
         // Tokens column
         html.append("<td class=\"wf-dur\">");
         if (inv.done() && inv.totalTokenCount() > 0) {
@@ -595,7 +604,12 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (inv.skipped()) {
             appendTruncatedWithTooltip(html, inv.skipReason(), 80);
         } else if (inv.done() && inv.output() != null) {
-            appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
+            Optional<DecisionResponse> decisionResponse = inv.decisionResponse();
+            if (decisionResponse.isPresent()) {
+                appendDecisionOutput(html, String.valueOf(inv.output()), decisionResponse.get(), 80);
+            } else {
+                appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
+            }
         }
         html.append("</td>");
 
@@ -649,6 +663,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
+        // Model column (empty for tools)
+        html.append("<td></td>");
+
         // Tokens column (empty for tools)
         html.append("<td></td>");
 
@@ -687,6 +704,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (text.length() > max) {
             html.append("<span class=\"tt-content\">").append(esc(text)).append("</span>");
         }
+        html.append("</span>");
+    }
+
+    /**
+     * The output of a decision agent, with the answers of the decision model and their probabilities in the tooltip.
+     */
+    private void appendDecisionOutput(StringBuilder html, String output, DecisionResponse decisionResponse, int max) {
+        StringBuilder tooltip = new StringBuilder(output);
+        decisionResponse.answers().forEach((name, answer) -> tooltip.append('\n').append(name).append(" = ").append(answer));
+        html.append("<span class=\"tt-trigger\">");
+        html.append(esc(truncate(output, max)));
+        html.append("<span class=\"tt-content\">").append(esc(tooltip.toString())).append("</span>");
         html.append("</span>");
     }
 
@@ -902,6 +931,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "ai";
             case NON_AI_AGENT -> "nonai";
+            case DECISION_AGENT -> "decision";
             case HUMAN_IN_THE_LOOP -> "human";
             case SEQUENCE -> "seq";
             case PARALLEL -> "par";
@@ -915,6 +945,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "AI";
             case NON_AI_AGENT -> "Action";
+            case DECISION_AGENT -> "Decision";
             case HUMAN_IN_THE_LOOP -> "Human";
             case SEQUENCE -> "Sequence";
             case PARALLEL -> "Parallel";
@@ -928,6 +959,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "#2e8555";
             case NON_AI_AGENT -> "#6b7280";
+            case DECISION_AGENT -> "#0d9488";
             case HUMAN_IN_THE_LOOP -> "#d97706";
             case SEQUENCE -> "#0891b2";
             case PARALLEL -> "#3b82f6";
@@ -1018,6 +1050,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 --c-rtr: #dc2626;
                 --c-star: #ca8a04;
                 --c-tool: #e74694;
+                --c-decision: #0d9488;
                 --bg: #f8faf9;
                 --bg2: #f0f4f2;
                 --fg: #1a1a2e;
@@ -1106,6 +1139,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .topology-badge.rtr   { background:var(--c-rtr); }
             .topology-badge.star  { background:var(--c-star); }
             .topology-badge.tool  { background:var(--c-tool); }
+            .topology-badge.decision { background:var(--c-decision); }
 
             .node-border-ai    { border-left:3px solid var(--c-ai); }
             .node-border-nonai { border-left:3px solid var(--c-nonai); }
@@ -1115,6 +1149,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .node-border-loop  { border-left:3px solid var(--c-loop); }
             .node-border-rtr   { border-left:3px solid var(--c-rtr); }
             .node-border-star  { border-left:3px solid var(--c-star); }
+            .node-border-decision { border-left:3px solid var(--c-decision); }
 
             .async-badge { font-size:9px; background:#fef3c7; color:#92400e; padding:0 5px;
                            border-radius:3px; border:1px solid #fcd34d; }
@@ -1233,6 +1268,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .bar-rtr   { background:var(--c-rtr); }
             .bar-star  { background:var(--c-star); }
             .bar-tool  { background:var(--c-tool); }
+            .bar-decision { background:var(--c-decision); }
 
             .wf-io { font-size:11px; color:var(--fg3); white-space:nowrap; }
 

@@ -238,7 +238,10 @@ jobs:
           ## reference the latest code (e.g., langchain4j-core and langchain4j)
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install 2>&1 | tee maven-output.log
 
+          ## kill a module's integration test JVM after 2 h, so that a hung test does not block the job for 6 h
+          ## (the slowest module takes ~80 min)
           mvn -B -U verify \
+            -Dfailsafe.timeout=7200 \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
@@ -373,7 +376,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: '17.0.20+101'
+          java-version: '17.0.21+9'
           distribution: 'temurin'
           cache: 'maven'
         # Check we only rely on permissive licenses in the main parts of the library:
@@ -405,7 +408,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: '17.0.20+101'
+          java-version: '17.0.21+9'
           distribution: 'temurin'
           cache: 'maven'
       - name: Spotless Check

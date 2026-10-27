@@ -14,7 +14,7 @@
     <description>Vespa is a fully featured search engine and vector database</description>
 
     <properties>
-        <vespa.version>8.524.25</vespa.version>
+        <vespa.version>8.763.13</vespa.version>
     </properties>
 
     <dependencies>
