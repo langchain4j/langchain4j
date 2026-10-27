@@ -53,6 +53,13 @@ When the user asks you to edit a Word document:
 
 Any file in the skill directory (other than `SKILL.md` itself and files under a `scripts/`
 subdirectory) is automatically loaded as a `SkillResource` that the LLM can read on demand.
+Symbolic links inside a skill directory work as long as they point to a file in the same skill directory.
+Symbolic links to directories inside a skill are not followed.
+If `SKILL.md` or a resource file is a symbolic link to a file outside of its skill directory,
+loading fails with an `IllegalArgumentException`.
+To share a file between skills, copy it into each skill directory.
+The skill directory itself may be a symbolic link (for example, when a skill installer links it into place);
+in that case, the files of the directory it points to are loaded.
 
 Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills from the file system:
 
