@@ -249,6 +249,17 @@ or
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
 ```
 
+A filter value must be one of the [supported comparison value types](/tutorials/rag#filter).
+To filter on an attribute of another type, pass the value in its text form,
+and the store converts it to the type of the attribute:
+the name of an enum constant, or the ISO-8601 text of a `LocalDate` or an `Instant`.
+
+```java
+MetadataFilterBuilder.metadataKey("status").isEqualTo(Status.PUBLISHED.name())     // an enum attribute
+MetadataFilterBuilder.metadataKey("publishedOn").isGreaterThan("2024-01-01")      // a LocalDate attribute
+MetadataFilterBuilder.metadataKey("updatedAt").isLessThan("2024-03-15T10:00:00Z") // an Instant attribute
+```
+
 Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
 
 ```java
