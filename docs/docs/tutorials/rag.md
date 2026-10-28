@@ -108,6 +108,8 @@ adjusting and customizing more and more aspects.
     <version>1.22.0-beta32</version>
 </dependency>
 ```
+On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
+See the Windows note on the [In-process (ONNX)](/integrations/embedding-models/in-process) page.
 
 2. Let's load your documents:
 ```java
