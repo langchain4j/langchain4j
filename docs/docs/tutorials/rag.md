@@ -108,6 +108,8 @@ adjusting and customizing more and more aspects.
     <version>1.22.0-beta32</version>
 </dependency>
 ```
+On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
+See the Windows note on the [In-process (ONNX)](/integrations/embedding-models/in-process) page.
 
 2. Let's load your documents:
 ```java
@@ -627,6 +629,28 @@ Currently, the following `Filter` types/operations are supported:
 -  `And`
 -  `Not`
 -  `Or`
+
+A comparison value must be a `String`, `UUID`, `Boolean`, `Integer`, `Long`, `Float`, `Double`,
+`Byte`, `Short`, `BigInteger`, `BigDecimal`, an enum, or a date/time value:
+`LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`, `ZonedDateTime`, `Instant`,
+`Year`, `YearMonth`, `MonthDay`, `java.util.Date`, `java.sql.Date`, `java.sql.Time` or `java.sql.Timestamp`.
+A `Float` or `Double` must be a finite number, not `NaN` or infinite.
+For `IsIn` and `IsNotIn`, this applies to every value in the collection.
+Any other value, for example a nested `List`, a `Map`, a `Character` or `Double.NaN`,
+is rejected with an `IllegalArgumentException` when the `Filter` is created.
+
+`Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),
+so compare with a value of the same type as the stored one, for example an enum by its name:
+
+```java
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+
+Filter filter = metadataKey("category").isEqualTo(category.name());
+```
+
+The other types are for stores that also hold data written outside LangChain4j,
+and are passed to the store as they are.
+Individual embedding stores may support only some of these value types.
 
 :::note
 Not all embedding stores support filtering by `Metadata`,
