@@ -18,17 +18,21 @@ public class MonitoredExecution {
 
     private final Map<Object, AgentInvocation> ongoingInvocations = new ConcurrentHashMap<>();
 
+    private final Map<Object, AgentInvocation> latestInvocations = new ConcurrentHashMap<>();
+
     private AgentInvocationError agentInvocationError;
 
     MonitoredExecution(AgentRequest firstAgentRequest) {
         this.topLevelInvocations = new AgentInvocation(firstAgentRequest);
         ongoingInvocations.put(firstAgentRequest.agentId(), this.topLevelInvocations);
+        latestInvocations.put(firstAgentRequest.agentId(), this.topLevelInvocations);
     }
 
     void beforeAgentInvocation(AgentRequest agentRequest) {
         AgentInvocation newInvocation = new AgentInvocation(agentRequest);
         addNestedInvocation(agentRequest.agent(), newInvocation);
         ongoingInvocations.put(agentRequest.agentId(), newInvocation);
+        latestInvocations.put(agentRequest.agentId(), newInvocation);
     }
 
     void onAgentSkipped(AgentSkipped agentSkipped) {
@@ -38,6 +42,9 @@ public class MonitoredExecution {
 
     private void addNestedInvocation(AgentInstance agent, AgentInvocation newInvocation) {
         AgentInvocation parentInvocation = ongoingInvocations.get(agent.parent().agentId());
+        if (parentInvocation == null) {
+            parentInvocation = latestInvocations.get(agent.parent().agentId());
+        }
         if (parentInvocation == null) {
             throw new IllegalStateException("No ongoing parent invocation found for agent ID: "
                     + agent.parent().agentId());
