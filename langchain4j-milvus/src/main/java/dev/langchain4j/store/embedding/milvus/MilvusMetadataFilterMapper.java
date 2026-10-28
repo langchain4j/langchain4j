@@ -8,6 +8,8 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -153,8 +155,19 @@ class MilvusMetadataFilterMapper {
             return "\"" + escape(stringValue) + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";
-        } else {
+        } else if (value instanceof Boolean
+                || value instanceof Integer
+                || value instanceof Long
+                || value instanceof Float
+                || value instanceof Double
+                || value instanceof Byte
+                || value instanceof Short
+                || value.getClass() == BigInteger.class
+                || value.getClass() == BigDecimal.class) {
             return value.toString();
+        } else {
+            throw new UnsupportedOperationException(
+                    "Unsupported value type: " + value.getClass().getName());
         }
     }
 
