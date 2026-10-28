@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeA
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.internal.AgentModelResponse;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
@@ -23,7 +24,6 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.ThresholdProvider;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
@@ -36,16 +36,16 @@ import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The invocation handler of the proxy of a decision agent: it implements the agent method with a call to the
- * decision model, keeps the response of the model for the listeners, and answers the {@link AgentInstance} methods.
+ * decision model, hands the response of the model to the {@link AgentModelResponse} of the invocation for the
+ * listeners, and answers the {@link AgentInstance} methods.
  */
 @Internal
-public class DecisionAgentInvocationHandler implements InvocationHandler, InternalAgent, DecisionResponseAccess {
+public class DecisionAgentInvocationHandler implements InvocationHandler, InternalAgent {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecisionAgentInvocationHandler.class);
 
@@ -53,7 +53,6 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
     private final DecisionMethod decisionMethod;
     private final ThresholdProvider thresholdProvider;
     private final DecisionServiceConfig fixedConfig;
-    private final Map<Object, DecisionResponse> lastResponses = new ConcurrentHashMap<>();
 
     private String agentId;
     private InternalAgent parent;
@@ -71,19 +70,6 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         Class<?> declaringClass = method.getDeclaringClass();
-        if (declaringClass == DecisionResponseAccess.class) {
-            return switch (method.getName()) {
-                case "lastDecisionResponse" -> lastResponses.get(args[0]);
-                case "removeLastDecisionResponse" -> {
-                    lastResponses.remove(args[0]);
-                    yield null;
-                }
-                default ->
-                    throw new UnsupportedOperationException(
-                            "Unknown method on DecisionResponseAccess class : " + method.getName());
-            };
-        }
-
         if (declaringClass == AgentInstance.class || declaringClass == InternalAgent.class) {
             try {
                 return method.invoke(this, args);
@@ -110,12 +96,10 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
             return InvocationHandler.invokeDefault(proxy, method, args);
         }
 
-        if (declaringClass == ChatMemoryAccess.class || declaringClass == ChatMessagesAccess.class) {
-            // the wrapper of an AI agent, which forwards the methods of these interfaces to the handler
+        if (declaringClass == ChatMemoryAccess.class) {
+            // the wrapper of an AI agent, which forwards the methods of this interface to the handler
             throw new UnsupportedOperationException("The decision agent '" + name()
-                    + "' has no chat memory or chat messages, so it cannot implement "
-                    + declaringClass.getSimpleName()
-                    + ": a class wrapping it must implement DecisionResponseAccess instead");
+                    + "' has no chat memory: a class wrapping it must not implement ChatMemoryAccess");
         }
         if (!method.equals(builder.agenticMethod)) {
             throw new UnsupportedOperationException("Method '" + method.getName()
@@ -130,22 +114,20 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
     }
 
     private Object decide(AgenticScope agenticScope, Object[] args) {
-        Object memoryId = agenticScope.memoryId();
-        try {
-            DecisionServiceConfig config = fixedConfig != null ? fixedConfig : config(decisionModel(agenticScope));
-            DecisionRequest request = decisionMethod.toRequest(args == null ? new Object[0] : args);
-            if (builder.requestParameters != null) {
-                request = request.toBuilder()
-                        .parameters(builder.requestParameters)
-                        .build();
-            }
-            DecisionResult<Object> result = decisionMethod.invokeWithResponse(config, request);
-            lastResponses.put(memoryId, result.response());
-            return result.content();
-        } catch (RuntimeException e) {
-            lastResponses.remove(memoryId);
-            throw e;
+        AgentModelResponse modelResponse = LangChain4jManaged.current(AgentModelResponse.class);
+        if (modelResponse != null) {
+            modelResponse.claim(this);
         }
+        DecisionServiceConfig config = fixedConfig != null ? fixedConfig : config(decisionModel(agenticScope));
+        DecisionRequest request = decisionMethod.toRequest(args == null ? new Object[0] : args);
+        if (builder.requestParameters != null) {
+            request = request.toBuilder().parameters(builder.requestParameters).build();
+        }
+        DecisionResult<Object> result = decisionMethod.invokeWithResponse(config, request);
+        if (modelResponse != null && modelResponse.isOwnedBy(this)) {
+            modelResponse.onDecisionResponse(result.response());
+        }
+        return result.content();
     }
 
     private DecisionModel decisionModel(AgenticScope agenticScope) {
@@ -170,18 +152,15 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
                 "Improper invocation of a standalone decision agent outside of an agentic system, consider using DecisionServices instead.");
 
         DefaultAgenticScope agenticScope = ephemeralAgenticScope();
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+        AgentModelResponse modelResponse = new AgentModelResponse();
+        LangChain4jManaged.setCurrent(
+                Map.of(AgenticScope.class, agenticScope, AgentModelResponse.class, modelResponse));
         Map<String, Object> namedArgs = namedArgs(args);
         beforeAgentInvocation(agentListener, agenticScope, this, namedArgs);
         try {
             Object result = decide(agenticScope, args);
             afterAgentInvocation(
-                    agentListener,
-                    agenticScope,
-                    this,
-                    namedArgs,
-                    result,
-                    lastResponses.remove(agenticScope.memoryId()));
+                    agentListener, agenticScope, this, namedArgs, result, modelResponse.decisionResponse());
             return result;
         } catch (RuntimeException e) {
             AgentInvocationException invocationException =
@@ -200,16 +179,6 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
             namedArgs.put(arguments.get(i).name(), args == null ? null : args[i]);
         }
         return namedArgs;
-    }
-
-    @Override
-    public DecisionResponse lastDecisionResponse(Object agenticScopeId) {
-        return lastResponses.get(agenticScopeId);
-    }
-
-    @Override
-    public void removeLastDecisionResponse(Object agenticScopeId) {
-        lastResponses.remove(agenticScopeId);
     }
 
     @Override

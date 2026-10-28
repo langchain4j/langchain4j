@@ -397,6 +397,6 @@ public class DecisionAgentBuilder<T> {
     }
 
     private static Class<?>[] interfacesToImplement(Class<?> agentServiceClass) {
-        return new Class<?>[] {agentServiceClass, InternalAgent.class, DecisionResponseAccess.class};
+        return new Class<?>[] {agentServiceClass, InternalAgent.class};
     }
 }

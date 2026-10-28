@@ -183,7 +183,10 @@ class ServiceOutputParserTest {
         assertThat(sut.jsonSchema(new TypeReference<Result<AiMessage>>() {
         }.getType())).isEmpty();
 
+        assertThat(sut.jsonSchema(ChatResponse.class)).isEmpty();
         assertThat(sut.jsonSchema(Response.class)).isEmpty(); // legacy
+        assertThat(sut.jsonSchema(new TypeReference<Response<AiMessage>>() {
+        }.getType())).isEmpty(); // legacy
         assertThat(sut.jsonSchema(TokenStream.class)).isEmpty();
 
         // JSON schema is (currently) not supported
@@ -294,6 +297,23 @@ class ServiceOutputParserTest {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
+    }
+
+    @Test
+    void outputFormatInstructions_types_returned_as_is() {
+        assertThat(sut.outputFormatInstructions(AiMessage.class)).isEmpty();
+        assertThat(sut.outputFormatInstructions(ChatResponse.class)).isEmpty();
+        assertThat(sut.outputFormatInstructions(Response.class)).isEmpty();
+        assertThat(sut.outputFormatInstructions(new TypeReference<Response<AiMessage>>() {
+        }.getType())).isEmpty();
+        assertThat(sut.outputFormatInstructions(TokenStream.class)).isEmpty();
+    }
+
+    @Test
+    void parse_ChatResponse() {
+        ChatResponse chatResponse = ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build();
+
+        assertThat(sut.parse(chatResponse, ChatResponse.class)).isSameAs(chatResponse);
     }
 
     @Test
