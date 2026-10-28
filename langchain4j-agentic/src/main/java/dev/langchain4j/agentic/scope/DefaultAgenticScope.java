@@ -15,11 +15,11 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.UserMessageTransformer;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -370,14 +371,18 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     /**
-     * The text contents of the given user message, joined by new lines: the message can also have other contents,
-     * like the image sent to a multimodal agent, which are not part of the conversation.
+     * The same text of the given user message that a {@link UserMessageTransformer} transforms, or, for a message
+     * without any text, like a message made only of an image, the types of its contents, like {@code [image]}, so
+     * that the conversation still tells that the user sent something.
      */
     private static String text(UserMessage userMessage) {
+        String text = UserMessageTransformer.text(userMessage);
+        if (!text.isEmpty() || userMessage.contents().isEmpty()) {
+            return text;
+        }
         return userMessage.contents().stream()
-                .filter(TextContent.class::isInstance)
-                .map(content -> ((TextContent) content).text())
-                .collect(Collectors.joining("\n"));
+                .map(content -> "[" + content.type().name().toLowerCase(Locale.ROOT) + "]")
+                .collect(Collectors.joining(" "));
     }
 
     @Override

@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 @FunctionalInterface
 public interface UserMessageTransformer extends BiFunction<ChatRequest, Object, ChatRequest> {
@@ -33,25 +34,43 @@ public interface UserMessageTransformer extends BiFunction<ChatRequest, Object, 
     }
 
     /**
-     * Transforms the text of the given user message, keeping its other contents, like images, in place, as well as
-     * its name and attributes. The first text content is transformed, and a message without any text, like a message
-     * made only of an image, gets the transformation of an empty text as its first content, unless it is empty.
+     * Transforms the text of the given user message, as returned by {@link #text(UserMessage)}, keeping its other
+     * contents, like images, as well as its name and attributes. The transformed text replaces all the text contents
+     * with a single one, in the position of the first of them. A message without any text, like a message made only
+     * of an image, gets the transformation of an empty text as its first content, unless it is empty.
      */
     private UserMessage transformText(UserMessage userMessage, Object memoryId) {
-        List<Content> contents = new ArrayList<>(userMessage.contents());
-        for (int i = 0; i < contents.size(); i++) {
-            if (contents.get(i) instanceof TextContent textContent) {
-                contents.set(i, TextContent.from(transformUserMessage(textContent.text(), memoryId)));
-                return userMessage.toBuilder().contents(contents).build();
+        String transformedText = transformUserMessage(text(userMessage), memoryId);
+
+        List<Content> contents = new ArrayList<>();
+        boolean textAdded = false;
+        for (Content content : userMessage.contents()) {
+            if (!(content instanceof TextContent)) {
+                contents.add(content);
+            } else if (!textAdded) {
+                contents.add(TextContent.from(transformedText));
+                textAdded = true;
             }
         }
 
-        String transformedText = transformUserMessage("", memoryId);
-        if (isNullOrEmpty(transformedText)) {
-            return userMessage;
+        if (!textAdded) {
+            if (isNullOrEmpty(transformedText)) {
+                return userMessage;
+            }
+            contents.add(0, TextContent.from(transformedText));
         }
-        contents.add(0, TextContent.from(transformedText));
         return userMessage.toBuilder().contents(contents).build();
+    }
+
+    /**
+     * The text contents of the given user message joined by new lines, or an empty string if it has none: the
+     * message can also have other contents, like the image sent to a multimodal agent.
+     */
+    static String text(UserMessage userMessage) {
+        return userMessage.contents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(content -> ((TextContent) content).text())
+                .collect(Collectors.joining("\n"));
     }
 
     String transformUserMessage(String userMessage, Object memoryId);
