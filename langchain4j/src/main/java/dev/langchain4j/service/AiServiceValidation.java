@@ -16,7 +16,6 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -24,8 +23,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 class AiServiceValidation {
-
-    private static final Set<Method> VALID_METHODS = new HashSet<>();
 
     /**
      * LangChain4j types that are supported as the content of a {@link Result}, e.g. {@code Result<AiMessage>}.
@@ -52,7 +49,10 @@ class AiServiceValidation {
         validateClass(serviceClass);
         Stream.of(serviceClass.getMethods())
                 .filter(AiServiceValidation::isImplementedByModel)
-                .forEach(m -> validateMethod(serviceClass, m, context.hasChatMemory(), context.hasModerationModel()));
+                .forEach(m -> {
+                    validateMethod(serviceClass, m, context.hasChatMemory(), context.hasModerationModel());
+                    validateParameters(serviceClass, m);
+                });
     }
 
     /**
@@ -122,7 +122,8 @@ class AiServiceValidation {
 
         if (rawReturnType == Result.class) {
             Type contentType = TypeUtils.resolveFirstGenericParameterType(returnType);
-            if (isResolvable(contentType) && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
+            if (isResolvable(contentType)
+                    && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
                 return;
             }
             validateContentType(methodName, returnType, contentType);
@@ -187,10 +188,6 @@ class AiServiceValidation {
     }
 
     static void validateParameters(Class<?> serviceClass, Method method) {
-        if (!VALID_METHODS.add(method)) {
-            return;
-        }
-
         Parameter[] parameters = method.getParameters();
         if (parameters == null || parameters.length < 2) {
             return;
