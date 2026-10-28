@@ -25,7 +25,7 @@ import java.util.UUID;
  * A helper class for building a {@link Filter} for {@link Metadata} key.
  * <p>
  * See {@link Filter} for the supported comparison value types. The methods that take a {@link Collection} check
- * every value in it, so a nested collection, a map, a date or an enum is rejected with an
+ * every value in it, so for example a nested collection or a map is rejected with an
  * {@link IllegalArgumentException}.
  */
 @JacocoIgnoreCoverageGenerated

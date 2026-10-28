@@ -7,7 +7,14 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import dev.langchain4j.data.document.Metadata;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,7 +28,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ComparisonValueTypeTest {
 
     enum Color {
-        RED
+        RED,
+        GREEN {
+            @Override
+            public String toString() {
+                return "green";
+            }
+        }
     }
 
     static Stream<Comparable<?>> supportedValues() {
@@ -36,7 +49,16 @@ class ComparisonValueTypeTest {
                 (byte) 1,
                 (short) 1,
                 new BigInteger("1"),
-                new BigDecimal("1.5"));
+                new BigDecimal("1.5"),
+                Color.RED,
+                // an enum constant with a body is an anonymous subclass of the enum
+                Color.GREEN,
+                LocalDate.of(2026, 1, 1),
+                LocalDateTime.of(2026, 1, 1, 10, 0),
+                LocalTime.of(10, 0),
+                OffsetDateTime.of(2026, 1, 1, 10, 0, 0, 0, ZoneOffset.UTC),
+                ZonedDateTime.of(2026, 1, 1, 10, 0, 0, 0, ZoneOffset.UTC),
+                Instant.parse("2026-01-01T10:00:00Z"));
     }
 
     static Stream<Object> unsupportedValues() {
@@ -54,8 +76,7 @@ class ComparisonValueTypeTest {
         return Stream.of(
                 new StringBuilder("a"),
                 'x',
-                Color.RED,
-                LocalDate.of(2026, 1, 1),
+                new Date(0),
                 // not final, so a subclass could change toString(); only the exact classes are accepted
                 new BigDecimal("1") {
                     @Override
@@ -217,6 +238,7 @@ class ComparisonValueTypeTest {
     }
 
     private static final String SUPPORTED_TYPES_HINT =
-            "Supported types are String, UUID, Boolean, Integer, Long, Float, Double, Byte, Short, BigInteger and "
-                    + "BigDecimal. Convert the value to one of these types first, for example an enum with name().";
+            "Supported types are String, UUID, Boolean, Integer, Long, Float, Double, Byte, Short, BigInteger, "
+                    + "BigDecimal, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime, Instant and enums. "
+                    + "Convert the value to one of these types first, for example a java.util.Date with toInstant().";
 }

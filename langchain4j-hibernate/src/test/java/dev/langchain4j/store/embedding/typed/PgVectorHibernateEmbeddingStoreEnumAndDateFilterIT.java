@@ -2,12 +2,14 @@ package dev.langchain4j.store.embedding.typed;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.typed.ArticleEntity.Status;
 import java.time.Instant;
@@ -26,10 +28,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-// Filter values must be one of the supported comparison value types, so enum and date/time attributes
-// are filtered by their text form, which the store converts to the attribute type.
+// Enum and date/time attributes can be filtered by the value itself, or by its text form,
+// which the store converts to the attribute type.
 @Testcontainers
-class PgVectorHibernateEmbeddingStoreTextFormFilterIT {
+class PgVectorHibernateEmbeddingStoreEnumAndDateFilterIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
@@ -80,10 +82,16 @@ class PgVectorHibernateEmbeddingStoreTextFormFilterIT {
     }
 
     @Test
-    void should_reject_enum_value_itself() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> metadataKey("status").isIn(List.of(Status.PUBLISHED)))
-                .withMessageContaining(Status.class.getName());
+    void should_filter_enum_attribute_by_value() {
+        assertThat(ids(new IsEqualTo("status", Status.PUBLISHED))).containsExactly("1", "2");
+        assertThat(ids(metadataKey("status").isIn(List.of(Status.DRAFT, Status.ARCHIVED))))
+                .containsExactly("3", "4");
+    }
+
+    @Test
+    void should_filter_date_and_time_attributes_by_value() {
+        assertThat(ids(new IsGreaterThan("publishedOn", LocalDate.of(2024, 1, 1)))).containsExactly("2", "3");
+        assertThat(ids(new IsLessThan("updatedAt", Instant.parse("2023-01-01T00:00:00Z")))).containsExactly("4");
     }
 
     private List<String> ids(Filter filter) {

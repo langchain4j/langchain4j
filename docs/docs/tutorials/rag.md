@@ -631,24 +631,25 @@ Currently, the following `Filter` types/operations are supported:
 -  `Or`
 
 A comparison value must be a `String`, `UUID`, `Boolean`, `Integer`, `Long`, `Float`, `Double`,
-`Byte`, `Short`, `BigInteger` or `BigDecimal`.
+`Byte`, `Short`, `BigInteger`, `BigDecimal`, `LocalDate`, `LocalDateTime`, `LocalTime`,
+`OffsetDateTime`, `ZonedDateTime` or `Instant`, or an enum.
 A `Float` or `Double` must be a finite number, not `NaN` or infinite.
 For `IsIn` and `IsNotIn`, this applies to every value in the collection.
-`Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),
-so compare with a value of the same type as the stored one.
-The other types (`Boolean`, `Byte`, `Short`, `BigInteger` and `BigDecimal`) are for stores
-that also hold data written outside LangChain4j.
-Individual embedding stores may support only some of these value types.
-
-Any other value, for example a nested `List`, a `Map`, a `LocalDate`, an enum or `Double.NaN`,
+Any other value, for example a nested `List`, a `Map`, a `java.util.Date` or `Double.NaN`,
 is rejected with an `IllegalArgumentException` when the `Filter` is created.
-Convert such values to a supported type first, for example an enum to its name:
+
+`Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),
+so compare with a value of the same type as the stored one, for example an enum by its name:
 
 ```java
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 
 Filter filter = metadataKey("category").isEqualTo(category.name());
 ```
+
+The other types are for stores that also hold data written outside LangChain4j,
+and are passed to the store as they are.
+Individual embedding stores may support only some of these value types.
 
 :::note
 Not all embedding stores support filtering by `Metadata`,

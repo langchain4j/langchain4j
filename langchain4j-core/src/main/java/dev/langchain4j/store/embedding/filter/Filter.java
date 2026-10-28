@@ -32,18 +32,22 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * {@link IsGreaterThanOrEqualTo}, {@link IsLessThan}, {@link IsLessThanOrEqualTo}, {@link IsIn} or
  * {@link IsNotIn}) compares with must be an instance of exactly one of these classes:
  * {@code String}, {@code UUID}, {@code Boolean}, {@code Integer}, {@code Long}, {@code Float}, {@code Double},
- * {@code Byte}, {@code Short}, {@code BigInteger} or {@code BigDecimal}.
+ * {@code Byte}, {@code Short}, {@code BigInteger}, {@code BigDecimal}, {@code LocalDate}, {@code LocalDateTime},
+ * {@code LocalTime}, {@code OffsetDateTime}, {@code ZonedDateTime} or {@code Instant}, or it must be an enum.
  * Subclasses, for example of {@code BigDecimal}, are not accepted, and a {@code Float} or {@code Double} must be
  * a finite number (not {@code NaN} or infinite). For {@link IsIn} and {@link IsNotIn}, this applies to every
  * value in the collection. Any other value is rejected with an {@link IllegalArgumentException} when the filter
- * is created. Convert such a value first, for example an enum with {@code name()}.
+ * is created. Convert such a value first, for example a {@code java.util.Date} with {@code toInstant()}.
  * <p>
  * {@link Metadata} itself can only store {@code String}, {@code UUID}, {@code Integer}, {@code Long},
- * {@code Float} and {@code Double} values, so compare with the same type as the stored value.
- * The other types are meant for embedding stores that hold data written outside LangChain4j.
+ * {@code Float} and {@code Double} values, so compare with the same type as the stored value,
+ * for example an enum by its {@code name()}.
+ * The other types are meant for embedding stores that hold data written outside LangChain4j,
+ * and are passed to the embedding store as they are.
  * Individual embedding stores may support only some of these types.
  * For {@link IsGreaterThan}, {@link IsGreaterThanOrEqualTo}, {@link IsLessThan} and {@link IsLessThanOrEqualTo},
- * use numbers or {@code String}s: embedding stores order {@code UUID} and {@code Boolean} values differently.
+ * use numbers, {@code String}s or dates and times: embedding stores order {@code UUID}, {@code Boolean} and enum
+ * values differently.
  * <p>
  * Stored metadata values can be {@code Float} or {@code Double}, and those can be infinite or {@code NaN}.
  * Infinite values are compared as one would expect: {@code -Infinity} is smaller and {@code +Infinity} is

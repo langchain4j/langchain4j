@@ -4,24 +4,32 @@ import dev.langchain4j.Internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.stream.Collectors.joining;
 
 @Internal
 class TypeChecker {
 
     private static final List<Class<?>> SUPPORTED_COMPARISON_VALUE_TYPES = List.of(
             String.class, UUID.class, Boolean.class, Integer.class, Long.class, Float.class, Double.class,
-            Byte.class, Short.class, BigInteger.class, BigDecimal.class);
+            Byte.class, Short.class, BigInteger.class, BigDecimal.class,
+            LocalDate.class, LocalDateTime.class, LocalTime.class, OffsetDateTime.class, ZonedDateTime.class, Instant.class);
 
     private static final String SUPPORTED_COMPARISON_VALUE_TYPES_HINT = supportedComparisonValueTypesHint();
 
     static <T> T ensureTypeIsSupported(T comparisonValue, String key) {
-        if (!SUPPORTED_COMPARISON_VALUE_TYPES.contains(comparisonValue.getClass())) {
+        if (!isSupportedType(comparisonValue)) {
             throw illegalArgument(
                     "Unsupported type of comparisonValue with key '%s': %s. %s",
                     key,
@@ -38,7 +46,7 @@ class TypeChecker {
     static void ensureTypesAreSupported(Collection<?> comparisonValues, String key) {
         for (Object comparisonValue : comparisonValues) {
             ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
-            if (!SUPPORTED_COMPARISON_VALUE_TYPES.contains(comparisonValue.getClass())) {
+            if (!isSupportedType(comparisonValue)) {
                 throw illegalArgument(
                         "Unsupported type of a value in comparisonValues with key '%s': %s. %s",
                         key,
@@ -52,16 +60,19 @@ class TypeChecker {
         }
     }
 
+    private static boolean isSupportedType(Object comparisonValue) {
+        return SUPPORTED_COMPARISON_VALUE_TYPES.contains(comparisonValue.getClass()) || comparisonValue instanceof Enum<?>;
+    }
+
     private static boolean isNotFinite(Object comparisonValue) {
         return comparisonValue instanceof Double doubleValue && !Double.isFinite(doubleValue)
                 || comparisonValue instanceof Float floatValue && !Float.isFinite(floatValue);
     }
 
     private static String supportedComparisonValueTypesHint() {
-        List<String> names = SUPPORTED_COMPARISON_VALUE_TYPES.stream().map(Class::getSimpleName).toList();
-        return "Supported types are " + String.join(", ", names.subList(0, names.size() - 1))
-                + " and " + names.get(names.size() - 1)
-                + ". Convert the value to one of these types first, for example an enum with name().";
+        String names = SUPPORTED_COMPARISON_VALUE_TYPES.stream().map(Class::getSimpleName).collect(joining(", "));
+        return "Supported types are " + names + " and enums"
+                + ". Convert the value to one of these types first, for example a java.util.Date with toInstant().";
     }
 
     static void ensureTypesAreCompatible(Object actualValue, Object comparisonValue, String key) {
