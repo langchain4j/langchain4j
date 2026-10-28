@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Monitors agent executions and provides observability for the LangChain4j Agentic system.
@@ -24,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  */
 public class AgentMonitor implements AgentListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AgentMonitor.class);
 
     private static final int DEFAULT_MAX_RETAINED_SESSIONS = 100;
 
@@ -114,6 +118,13 @@ public class AgentMonitor implements AgentListener {
     public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution == null) {
+            LOG.warn(
+                    "No ongoing execution found for agent '{}' with memory ID '{}'",
+                    agentResponse.agentName(),
+                    memoryId);
+            return;
+        }
         execution.afterAgentInvocation(agentResponse);
         finalizeExecution(memoryId, execution);
     }

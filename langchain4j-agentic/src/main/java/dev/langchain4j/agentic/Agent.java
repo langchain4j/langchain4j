@@ -151,6 +151,8 @@ public @interface Agent {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     * The root agent of the agentic system waits anyway for the completion of all its asynchronous subagents before returning,
+     * and it is reported to its listeners as completed, or as failed if one of them failed, only after all of them.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */

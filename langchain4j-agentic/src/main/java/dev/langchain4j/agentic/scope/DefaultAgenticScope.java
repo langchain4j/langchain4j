@@ -281,11 +281,29 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public void rootCallStarted(AgenticScopeRegistry registry) {}
 
-    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
-        // ensure that all pending async operations are completed before ending the root call
+    /**
+     * Waits for the responses of all the asynchronous agents still pending in the state, replacing them with the
+     * actual ones, and rethrows the failure of the first one that failed.
+     */
+    public void awaitPendingResponses() {
         Map.copyOf(state).forEach((key, value) -> {
             if (value instanceof DelayedResponse<?> pending) {
                 writeState(key, pending.blockingGet());
+            }
+        });
+    }
+
+    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
+        // ensure that all pending async operations are completed before ending the root call, tolerating the ones
+        // that failed: their error has already been reported, and awaitPendingResponses rethrows it when needed
+        Map.copyOf(state).forEach((key, value) -> {
+            if (value instanceof DelayedResponse<?> pending) {
+                try {
+                    writeState(key, pending.blockingGet());
+                } catch (RuntimeException e) {
+                    LOG.debug("Discarding the failed response of the async agent writing the '{}' key", key, e);
+                    writeState(key, null);
+                }
             }
         });
 

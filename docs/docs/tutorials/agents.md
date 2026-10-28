@@ -668,6 +668,8 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
+The root agent of the agentic system, on the other hand, always waits for the completion of all the asynchronous agents started during its invocation before returning. For the same reason, its `afterAgentInvocation` is notified to its listeners, and its invocation is recorded as completed by the `AgentMonitor`, only after the ones of all its asynchronous subagents, even when one of them starts after the agent that invoked it has already completed, as it can happen with a busy executor. An asynchronous agent whose failure is not handled by an error handler makes the root invocation fail, exactly like a synchronous one would do, with its `onAgentInvocationError` notified to the listeners.
+
 For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
 ```java
