@@ -72,7 +72,7 @@
         <okhttp.version>4.12.1</okhttp.version>
         <reactive-streams-tck.version>1.0.4</reactive-streams-tck.version>
         <retrofit.version>2.9.0</retrofit.version>
-        <slf4j.version>2.0.18</slf4j.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <testng.version>7.12.0</testng.version>
         <testng-engine.version>1.0.5</testng-engine.version>
