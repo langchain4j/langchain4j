@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
