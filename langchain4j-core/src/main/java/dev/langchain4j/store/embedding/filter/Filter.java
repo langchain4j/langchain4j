@@ -33,11 +33,13 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * {@link IsNotIn}) compares with must be an instance of exactly one of these classes:
  * {@code String}, {@code UUID}, {@code Boolean}, {@code Integer}, {@code Long}, {@code Float}, {@code Double},
  * {@code Byte}, {@code Short}, {@code BigInteger}, {@code BigDecimal}, {@code LocalDate}, {@code LocalDateTime},
- * {@code LocalTime}, {@code OffsetDateTime}, {@code ZonedDateTime} or {@code Instant}, or it must be an enum.
+ * {@code LocalTime}, {@code OffsetDateTime}, {@code OffsetTime}, {@code ZonedDateTime}, {@code Instant}, {@code Year},
+ * {@code YearMonth}, {@code MonthDay}, {@code java.util.Date}, {@code java.sql.Date}, {@code java.sql.Time} or
+ * {@code java.sql.Timestamp}, or it must be an enum.
  * Subclasses, for example of {@code BigDecimal}, are not accepted, and a {@code Float} or {@code Double} must be
  * a finite number (not {@code NaN} or infinite). For {@link IsIn} and {@link IsNotIn}, this applies to every
  * value in the collection. Any other value is rejected with an {@link IllegalArgumentException} when the filter
- * is created. Convert such a value first, for example a {@code java.util.Date} with {@code toInstant()}.
+ * is created. Convert such a value first, for example a {@code Character} with {@code String.valueOf()}.
  * <p>
  * {@link Metadata} itself can only store {@code String}, {@code UUID}, {@code Integer}, {@code Long},
  * {@code Float} and {@code Double} values, so compare with the same type as the stored value,

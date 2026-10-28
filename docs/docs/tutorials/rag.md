@@ -631,11 +631,12 @@ Currently, the following `Filter` types/operations are supported:
 -  `Or`
 
 A comparison value must be a `String`, `UUID`, `Boolean`, `Integer`, `Long`, `Float`, `Double`,
-`Byte`, `Short`, `BigInteger`, `BigDecimal`, `LocalDate`, `LocalDateTime`, `LocalTime`,
-`OffsetDateTime`, `ZonedDateTime` or `Instant`, or an enum.
+`Byte`, `Short`, `BigInteger`, `BigDecimal`, an enum, or a date/time value:
+`LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`, `ZonedDateTime`, `Instant`,
+`Year`, `YearMonth`, `MonthDay`, `java.util.Date`, `java.sql.Date`, `java.sql.Time` or `java.sql.Timestamp`.
 A `Float` or `Double` must be a finite number, not `NaN` or infinite.
 For `IsIn` and `IsNotIn`, this applies to every value in the collection.
-Any other value, for example a nested `List`, a `Map`, a `java.util.Date` or `Double.NaN`,
+Any other value, for example a nested `List`, a `Map`, a `Character` or `Double.NaN`,
 is rejected with an `IllegalArgumentException` when the `Filter` is created.
 
 `Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),

@@ -10,8 +10,14 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -58,7 +64,15 @@ class ComparisonValueTypeTest {
                 LocalTime.of(10, 0),
                 OffsetDateTime.of(2026, 1, 1, 10, 0, 0, 0, ZoneOffset.UTC),
                 ZonedDateTime.of(2026, 1, 1, 10, 0, 0, 0, ZoneOffset.UTC),
-                Instant.parse("2026-01-01T10:00:00Z"));
+                Instant.parse("2026-01-01T10:00:00Z"),
+                OffsetTime.of(10, 0, 0, 0, ZoneOffset.UTC),
+                Year.of(2026),
+                YearMonth.of(2026, 1),
+                MonthDay.of(1, 1),
+                new Date(0),
+                new java.sql.Date(0),
+                new Time(0),
+                new Timestamp(0));
     }
 
     static Stream<Object> unsupportedValues() {
@@ -76,7 +90,13 @@ class ComparisonValueTypeTest {
         return Stream.of(
                 new StringBuilder("a"),
                 'x',
-                new Date(0),
+                // not final, so a subclass could change toString(); only the exact classes are accepted
+                new Date(0) {
+                    @Override
+                    public String toString() {
+                        return "2";
+                    }
+                },
                 // not final, so a subclass could change toString(); only the exact classes are accepted
                 new BigDecimal("1") {
                     @Override
@@ -239,6 +259,7 @@ class ComparisonValueTypeTest {
 
     private static final String SUPPORTED_TYPES_HINT =
             "Supported types are String, UUID, Boolean, Integer, Long, Float, Double, Byte, Short, BigInteger, "
-                    + "BigDecimal, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime, Instant and enums. "
-                    + "Convert the value to one of these types first, for example a java.util.Date with toInstant().";
+                    + "BigDecimal, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime, Instant, "
+                    + "Year, YearMonth, MonthDay, java.util.Date, java.sql.Date, java.sql.Time, java.sql.Timestamp and enums. "
+                    + "Convert the value to one of these types first, for example a Character with String.valueOf().";
 }
