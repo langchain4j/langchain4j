@@ -2,8 +2,17 @@ package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class MilvusMetadataFilterMapperTest {
@@ -130,5 +139,79 @@ class MilvusMetadataFilterMapperTest {
         String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
 
         assertThat(expr).isEqualTo("metadata[\"user.email 1\"] == \"foo\"");
+    }
+
+    @Test
+    void should_keep_numbers_and_booleans_as_is() {
+        Filter filter = metadataKey("a")
+                .isEqualTo(1)
+                .and(metadataKey("b").isGreaterThan(2L))
+                .and(metadataKey("c").isLessThan(1.5f))
+                .and(metadataKey("d").isIn(2.5d))
+                .and(new IsEqualTo("e", true))
+                .and(new IsLessThan("f", new BigDecimal("9.99")))
+                .and(new IsGreaterThan("g", new BigInteger("12345678901234567890")))
+                .and(new IsEqualTo("h", (byte) 3))
+                .and(new IsLessThan("i", (short) 4));
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr)
+                .isEqualTo("metadata[\"a\"] == 1 and metadata[\"b\"] > 2 and metadata[\"c\"] < 1.5"
+                        + " and metadata[\"d\"] in [2.5] and metadata[\"e\"] == true and metadata[\"f\"] < 9.99"
+                        + " and metadata[\"g\"] > 12345678901234567890 and metadata[\"h\"] == 3"
+                        + " and metadata[\"i\"] < 4");
+    }
+
+    @Test
+    void should_reject_unsupported_value_type() {
+        // The filter classes may reject such values themselves; the subclass makes sure the mapper never
+        // renders an arbitrary toString() into the expression on its own.
+        Filter filter = new IsEqualTo("tenant", "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return new StringBuilder("\"x\" or metadata[\"tenant\"] == \"bob\"");
+            }
+        };
+
+        assertThatThrownBy(() -> MilvusMetadataFilterMapper.map(filter, "metadata"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("Unsupported value type: java.lang.StringBuilder");
+    }
+
+    @Test
+    void should_reject_unsupported_value_type_in_collection() {
+        Filter filter = new IsIn("tenant", List.of("placeholder")) {
+            @Override
+            public Collection<?> comparisonValues() {
+                return List.of(List.of("x\"] or metadata[\"tenant\"] == \"bob"));
+            }
+        };
+
+        assertThatThrownBy(() -> MilvusMetadataFilterMapper.map(filter, "metadata"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessageStartingWith("Unsupported value type: ");
+    }
+
+    @Test
+    void should_reject_subclass_of_supported_number_type() {
+        // BigDecimal is not final, so a subclass could put anything into the expression through toString().
+        // The filter classes reject such values themselves; the subclass makes sure the mapper does too.
+        BigDecimal value = new BigDecimal("1") {
+            @Override
+            public String toString() {
+                return "1 or true";
+            }
+        };
+        Filter filter = new IsEqualTo("tenant", "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
+
+        assertThatThrownBy(() -> MilvusMetadataFilterMapper.map(filter, "metadata"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessageStartingWith("Unsupported value type: ");
     }
 }
