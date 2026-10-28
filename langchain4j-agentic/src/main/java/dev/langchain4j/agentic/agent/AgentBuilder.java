@@ -710,6 +710,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Controls whether this agent executes asynchronously within an agentic system.
+     * The root agent of the agentic system waits anyway for the completion of all its asynchronous subagents before
+     * returning, and it is reported to its listeners as completed, or as failed if one of them failed, only after
+     * all of them.
      *
      * @param async {@code true} to run asynchronously
      * @return {@code this}
