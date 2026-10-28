@@ -15,6 +15,7 @@
 
     <properties>
         <vespa.version>8.763.13</vespa.version>
+        <skipVespaITs>${skipITs}</skipVespaITs>
     </properties>
 
     <dependencies>

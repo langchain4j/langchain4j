@@ -326,6 +326,14 @@ public interface McpClientListener {
     // ========== Server-initiated requests ==========
 
     /**
+     * Called when the server sends a request or a notification to the client, before the client handles it.
+     * Called for every such message, in addition to the more specific callbacks for the known ones
+     * (for example {@link #onNotificationResourceUpdated(String)}), and unlike them, it gives access to the whole
+     * message, including its JSON-RPC ID and {@code _meta}.
+     */
+    default void onServerMessage(McpServerMessageContext context) {}
+
+    /**
      * Called when the server sends a {@code ping} request and the client responds.
      */
     default void onServerPing() {}
