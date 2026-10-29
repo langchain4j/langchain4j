@@ -8,10 +8,11 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
 import dev.langchain4j.store.embedding.typed.GenericEmbeddingEntity;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.util.Map;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
 import org.hibernate.tool.schema.Action;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -23,15 +24,6 @@ import org.testcontainers.milvus.MilvusContainer;
 
 @Testcontainers
 class MilvusHibernateEmbeddingStoreEntityRemovalIT extends EmbeddingStoreWithRemovalIT {
-
-    static {
-        // Register the driver class to allow resolving from the JDBC URL
-        try {
-            DriverManager.registerDriver(new org.hibernate.milvus.jdbc.internal.MilvusDriver());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @Container
     static MilvusContainer databaseContainer =
@@ -58,6 +50,7 @@ class MilvusHibernateEmbeddingStoreEntityRemovalIT extends EmbeddingStoreWithRem
         embeddingStore = HibernateEmbeddingStore.builder(GenericEmbeddingEntity.class)
                 .sessionFactory(sessionFactory)
                 .databaseKind(MilvusDatabaseKind.INSTANCE)
+                .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .build();
     }
 

@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.milvus.generic;
 
+import java.util.Map;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -35,6 +39,7 @@ class MilvusHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT
                 .database("default")
                 .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(384)
+                .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();

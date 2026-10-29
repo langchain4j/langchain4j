@@ -154,6 +154,9 @@ HibernateEmbeddingStore embeddingStore = HibernateEmbeddingStore.dynamicBuilder(
         .createTable(true)                              // Automatically create the table if it doesn’t exist
         .dropTableFirst(false)                          // Don’t drop the table first (set to true if you want a fresh start)
         .distanceFunction(DistanceFunction.MANHATTEN)   // Use MANHATTAN distance function for vector search
+        
+        // Milvus specific query database hint to await flushes of writes, which helps during testing
+        .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
 
         .build();
 ```
@@ -605,3 +608,11 @@ Milvus differs from the relational databases described earlier in two ways:
   the "Custom Hibernate entity" section above.
 * **`DistanceFunction.MANHATTAN` is not available.** Milvus supports every other distance function, including the
   default `COSINE`. Choosing `MANHATTAN` fails when the query is executed.
+
+Also note that some NoSQL databases like e.g. Milvus might require the configuration of a query hint, to enable
+deterministic testing. Specifically, Milvus requires the following consistency level hint via the `queryHints()` builder
+method:
+
+```java
+.queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
+```

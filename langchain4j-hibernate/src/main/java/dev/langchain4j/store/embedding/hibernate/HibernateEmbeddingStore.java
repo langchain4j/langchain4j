@@ -13,11 +13,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.internal.ProviderJsonSpec;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.UUID;
@@ -83,6 +84,7 @@ import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.internal.util.ReaderInputStream;
+import org.hibernate.jpa.HibernateHints;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.spi.EntityInstantiator;
 import org.hibernate.persister.entity.EntityPersister;
@@ -110,7 +112,8 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 // Needed for inherited bean injection validation
 public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
     private static final boolean IS_HIBERNATE_ORM_7_1;
 
     static {
@@ -138,6 +141,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     protected final Type<Map<?, ?>> unmappedMetadataAttributeMapType;
     protected final Map<String, AttributeMapping> metadataAttributeMappings;
     protected final DistanceFunction distanceFunction;
+    protected final Map<String, Object> queryHints;
 
     private final JpaCriteriaDelete<?> deleteByIds;
     private final JpaCriteriaInsertValues<?> insertValues;
@@ -165,11 +169,50 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             String unmappedMetadataAttributeName,
             String[] metadataAttributePaths,
             DistanceFunction distanceFunction) {
+        this(
+                isDynamic,
+                sessionFactory,
+                databaseKind,
+                entityClass,
+                embeddingAttributeName,
+                embeddedTextAttributeName,
+                unmappedMetadataAttributeName,
+                metadataAttributePaths,
+                distanceFunction,
+                Collections.emptyMap());
+    }
+
+    /**
+     * Constructor for HibernateEmbeddingStore Class
+     *
+     * @param isDynamic                     Whether the session factory was created dynamically
+     * @param sessionFactory                The Hibernate session factory to use
+     * @param databaseKind                  The database kind
+     * @param entityClass                   The Hibernate entity class to use
+     * @param embeddingAttributeName        The name of the entity attribute containing the embedding vector
+     * @param embeddedTextAttributeName     The name of the entity attribute containing the text from which the embedding vector is derived, or null
+     * @param unmappedMetadataAttributeName The name of the entity attribute to store generic metadata in
+     * @param metadataAttributePaths        The name of the explicit metadata entity attributes
+     * @param distanceFunction              The distance function to use for vector search
+     * @param queryHints                    The query hints to apply for vector search
+     */
+    protected HibernateEmbeddingStore(
+            boolean isDynamic,
+            SessionFactory sessionFactory,
+            DatabaseKind databaseKind,
+            Class<E> entityClass,
+            String embeddingAttributeName,
+            String embeddedTextAttributeName,
+            String unmappedMetadataAttributeName,
+            String[] metadataAttributePaths,
+            DistanceFunction distanceFunction,
+            Map<String, Object> queryHints) {
         this.isDynamic = isDynamic;
         this.sessionFactory = ensureNotNull(sessionFactory, "sessionFactory");
         this.databaseKind = ensureNotNull(databaseKind, "databaseKind");
         this.entityClass = ensureNotNull(entityClass, "entityClass");
         this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
+        this.queryHints = Objects.requireNonNullElse(queryHints, Collections.emptyMap());
         this.entityPersister = sessionFactory
                 .unwrap(SessionFactoryImplementor.class)
                 .getRuntimeMetamodels()
@@ -308,6 +351,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         this.unmappedMetadataAttributeMapType = null;
         this.metadataAttributeMappings = null;
         this.distanceFunction = null;
+        this.queryHints = null;
         this.deleteByIds = null;
         this.insertValues = null;
     }
@@ -509,6 +553,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
             }
+            applyHints(selectionQuery);
             return selectionQuery.getResultList();
         });
     }
@@ -574,7 +619,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
             }
-
+            applyHints(selectionQuery);
             return transformToSearchResult(selectionQuery.getResultList());
         });
     }
@@ -610,9 +655,21 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 selectionQuery.setParameter("minDistance", scoreToDistance(minScore, distanceFunction));
             }
             selectionQuery.setMaxResults(maxResults);
-
+            applyHints(selectionQuery);
             return transformToSearchResult(selectionQuery.getResultList());
         });
+    }
+
+    private void applyHints(SelectionQuery<?> selectionQuery) {
+        for (Map.Entry<String, Object> entry : queryHints.entrySet()) {
+            if (HibernateHints.HINT_QUERY_DATABASE.equals(entry.getKey()) && entry.getValue() instanceof List<?> list) {
+                for (Object hintValue : list) {
+                    selectionQuery.setHint(HibernateHints.HINT_QUERY_DATABASE, hintValue);
+                }
+            } else {
+                selectionQuery.setHint(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private EmbeddingSearchResult<TextSegment> transformToSearchResult(List<Object[]> tuples) {
@@ -1441,6 +1498,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         private SessionFactory sessionFactory;
         private DatabaseKind databaseKind;
         private DistanceFunction distanceFunction;
+        private Map<String, Object> queryHints;
 
         Builder(Class<E> entityClass) {
             this.entityClass = entityClass;
@@ -1478,6 +1536,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
         public Builder<E> distanceFunction(DistanceFunction distanceFunction) {
             this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
+            return this;
+        }
+
+        public Builder<E> queryHints(Map<String, Object> queryHints) {
+            this.queryHints = queryHints;
             return this;
         }
 
@@ -1592,7 +1655,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     embeddedTextAttributeName,
                     unmappedMetadataAttributeName,
                     metadataAttributeNames,
-                    distanceFunction);
+                    distanceFunction,
+                    queryHints);
         }
 
         private void collectMetadataAttributes(
@@ -1640,6 +1704,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         protected Boolean createTable;
         protected Boolean dropTableFirst;
         protected DistanceFunction distanceFunction = DistanceFunction.COSINE;
+        protected Map<String, Object> queryHints;
 
         protected Configuration createConfiguration() {
             final int dimension = ensureNotNull(this.dimension, "dimension");
@@ -1744,6 +1809,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
             return this;
         }
+
+        public BaseBuilder<E> queryHints(Map<String, Object> queryHints) {
+            this.queryHints = queryHints;
+            return this;
+        }
     }
 
     public static class DynamicBuilder extends BaseBuilder<EmbeddingEntity> {
@@ -1840,6 +1910,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DynamicBuilder queryHints(Map<String, Object> queryHints) {
+            super.queryHints(queryHints);
+            return this;
+        }
+
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
             final Configuration cfg = createConfiguration();
             final DatabaseKind databaseKind;
@@ -1871,7 +1946,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     "text",
                     "metadata",
                     null,
-                    distanceFunction);
+                    distanceFunction,
+                    queryHints);
         }
 
         public String toString() {
@@ -1955,6 +2031,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public DynamicDatasourceBuilder queryHints(Map<String, Object> queryHints) {
+            super.queryHints(queryHints);
+            return this;
+        }
+
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
             final Configuration cfg = createConfiguration();
             cfg.getProperties().put(JdbcSettings.JAKARTA_NON_JTA_DATASOURCE, ensureNotNull(dataSource, "dataSource"));
@@ -1968,7 +2049,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     "text",
                     "metadata",
                     null,
-                    distanceFunction);
+                    distanceFunction,
+                    queryHints);
         }
 
         public String toString() {

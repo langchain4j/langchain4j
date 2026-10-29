@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -50,6 +52,7 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .database("default")
                 .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(embeddingModel.dimension())
+                .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();
