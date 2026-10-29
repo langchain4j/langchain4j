@@ -173,7 +173,7 @@ class PgVectorFilterMapperTest {
 
         WhereClause whereClause = jsonMapper.map(filter);
 
-        assertThat(whereClause.sql()).isEqualTo("(metadata->>'age')::int > ?");
+        assertThat(whereClause.sql()).isEqualTo("(metadata->>'age')::numeric > ?");
         assertThat(whereClause.parameters()).containsExactly("18");
     }
 
@@ -257,7 +257,7 @@ class PgVectorFilterMapperTest {
 
         assertThat(whereClause.sql())
                 .isEqualTo("(metadata->>'a')::text is not null and (metadata->>'a')::text = ?"
-                        + " and ((metadata->>'b')::bigint > ?"
+                        + " and ((metadata->>'b')::numeric > ?"
                         + " or ((metadata->>'c')::float8 is null or (metadata->>'c')::float8 != ?))");
         assertThat(whereClause.parameters()).containsExactly("1", "2", "3.5");
     }
@@ -289,5 +289,35 @@ class PgVectorFilterMapperTest {
                 return List.of(values);
             }
         };
+    }
+
+    @Test
+    void mapGreaterThan_shouldCompareIntegerValueAsNumeric_jsonMapper() {
+        Filter filter = metadataKey("price").isGreaterThan(5);
+
+        WhereClause whereClause = jsonMapper.map(filter);
+
+        assertThat(whereClause.sql()).isEqualTo("(metadata->>'price')::numeric > ?");
+        assertThat(whereClause.parameters()).containsExactly("5");
+    }
+
+    @Test
+    void mapIn_shouldCompareNumbersAsNumeric_jsonMapper() {
+        Filter filter = metadataKey("price").isIn(20, 30L);
+
+        WhereClause whereClause = jsonMapper.map(filter);
+
+        assertThat(whereClause.sql()).isEqualTo("(metadata->>'price')::numeric in (?,?)");
+        assertThat(whereClause.parameters()).containsExactly("20", "30");
+    }
+
+    @Test
+    void mapNotIn_shouldCompareNumbersAsNumeric_columnMapper() {
+        Filter filter = metadataKey("price").isNotIn(2.5);
+
+        WhereClause whereClause = columnMapper.map(filter);
+
+        assertThat(whereClause.sql()).isEqualTo("(price::numeric is null or price::numeric not in (?))");
+        assertThat(whereClause.parameters()).containsExactly("2.5");
     }
 }

@@ -21,8 +21,11 @@ import java.util.stream.Stream;
 abstract class PgVectorFilterMapper {
 
     static final Map<Class<?>, String> SQL_TYPE_MAP = Stream.of(
-                    new SimpleEntry<>(Integer.class, "int"),
-                    new SimpleEntry<>(Long.class, "bigint"),
+                    // Integer and Long filter values are compared as numeric rather than int or bigint, so
+                    // that a key holding fractional values (e.g. 9.99) can be filtered with an integer literal
+                    // instead of failing the cast, while keeping the full precision of large long values.
+                    new SimpleEntry<>(Integer.class, "numeric"),
+                    new SimpleEntry<>(Long.class, "numeric"),
                     new SimpleEntry<>(Float.class, "float"),
                     new SimpleEntry<>(Double.class, "float8"),
                     new SimpleEntry<>(Byte.class, "int"),
@@ -127,14 +130,27 @@ abstract class PgVectorFilterMapper {
 
     private String mapIn(IsIn isIn, List<String> parameters) {
         return format(
-                "%s in %s", formatKeyAsString(isIn.key()), formatValuesAsString(isIn.comparisonValues(), parameters));
+                "%s in %s",
+                formatKeyForValues(isIn.key(), isIn.comparisonValues()),
+                formatValuesAsString(isIn.comparisonValues(), parameters));
     }
 
     private String mapNotIn(IsNotIn isNotIn, List<String> parameters) {
-        String key = formatKeyAsString(isNotIn.key());
+        String key = formatKeyForValues(isNotIn.key(), isNotIn.comparisonValues());
         return format(
                 "(%s is null or %s not in %s)",
                 key, key, formatValuesAsString(isNotIn.comparisonValues(), parameters));
+    }
+
+    /**
+     * Numbers are compared by value, as {@link IsEqualTo} does, rather than by their text: as text,
+     * {@code 2} does not match a stored {@code 2.0}.
+     */
+    private String formatKeyForValues(String key, Collection<?> values) {
+        if (!values.isEmpty() && values.stream().allMatch(Number.class::isInstance)) {
+            return formatKey(key, BigDecimal.class);
+        }
+        return formatKeyAsString(key);
     }
 
     private String mapAnd(And and, List<String> parameters) {

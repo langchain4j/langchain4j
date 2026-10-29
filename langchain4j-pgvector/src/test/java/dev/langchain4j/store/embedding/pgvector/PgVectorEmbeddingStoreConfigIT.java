@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.pgvector;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Metadata;
@@ -28,6 +29,9 @@ import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -171,6 +175,42 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
 
         // The malicious filter must not have deleted the stored embedding.
         assertThat(getAllEmbeddings()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_filter_fractional_values_by_integer_comparison_value(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
+        should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
+    /**
+     * Numbers are compared by value whatever their Java type, as {@code Filter.test()} does: an integer
+     * comparison value must work on a key holding fractional values, and {@code 20} must match a stored
+     * {@code 20.0}.
+     */
+    static Stream<Arguments> should_filter_fractional_values_by_integer_comparison_value() {
+        return Stream.of(
+                Arguments.of(
+                        metadataKey("age").isGreaterThan(30),
+                        asList(new Metadata().put("age", 30.4), new Metadata().put("age", 40)),
+                        asList(new Metadata().put("age", 30), new Metadata().put("age", 29.9))),
+                Arguments.of(
+                        metadataKey("age").isLessThanOrEqualTo(30L),
+                        asList(new Metadata().put("age", 29.9), new Metadata().put("age", 30.0)),
+                        asList(new Metadata().put("age", 30.4))),
+                Arguments.of(
+                        metadataKey("age").isEqualTo(20),
+                        asList(new Metadata().put("age", 20.0), new Metadata().put("age", 20)),
+                        asList(new Metadata().put("age", 20.5), new Metadata().put("age", 19.6))),
+                Arguments.of(
+                        metadataKey("age").isIn(20, 30),
+                        asList(new Metadata().put("age", 20.0), new Metadata().put("age", 30)),
+                        asList(new Metadata().put("age", 20.5), new Metadata().put("age", 25))),
+                Arguments.of(
+                        metadataKey("age").isNotIn(20L),
+                        asList(new Metadata().put("age", 20.5), new Metadata().put("age", 25), new Metadata()),
+                        asList(new Metadata().put("age", 20.0), new Metadata().put("age", 20))));
     }
 
     @Test
