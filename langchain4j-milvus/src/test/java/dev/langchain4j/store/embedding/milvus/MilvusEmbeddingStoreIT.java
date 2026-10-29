@@ -155,8 +155,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 
@@ -192,8 +191,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 
@@ -245,8 +243,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 

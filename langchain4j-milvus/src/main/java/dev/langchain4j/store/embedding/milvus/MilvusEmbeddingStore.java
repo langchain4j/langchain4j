@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -216,8 +217,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withHost(getOrDefault(host, "localhost"))
                 .withPort(getOrDefault(port, 19530))
                 .withUri(uri)
-                .withToken(token)
-                .withAuthorization(getOrDefault(username, ""), getOrDefault(password, ""));
+                .withToken(token);
+
+        if (!isNullOrBlank(username)) {
+            connectBuilder.withAuthorization(username, getOrDefault(password, ""));
+        }
 
         if (databaseName != null) {
             connectBuilder.withDatabaseName(databaseName);
