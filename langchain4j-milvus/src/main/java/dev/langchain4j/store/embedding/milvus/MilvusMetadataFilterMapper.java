@@ -8,6 +8,8 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -111,18 +113,38 @@ class MilvusMetadataFilterMapper {
     }
 
     private static String formatKey(String key, String metadataFieldName) {
-        return metadataFieldName + "[\"" + key + "\"]";
+        return metadataFieldName + "[\"" + escape(key) + "\"]";
+    }
+
+    /**
+     * Escapes a string that is embedded into a double-quoted Milvus string literal. This applies both to
+     * metadata keys, which are embedded into the {@code metadata["..."]} accessor, and to string values.
+     * Without it, a key or value containing a double quote could break out of the literal and inject
+     * arbitrary Milvus filter expression syntax.
+     */
+    private static String escape(String value) {
+        // Escape backslashes first, then double quotes (Milvus treats backslash as the escape character)
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static String formatValue(Object value) {
         if (value instanceof String stringValue) {
-            // Escape double quotes by replacing them with \"
-            final String escapedValue = stringValue.replace("\"", "\\\"");
-            return "\"" + escapedValue + "\"";
+            return "\"" + escape(stringValue) + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";
-        } else {
+        } else if (value instanceof Boolean
+                || value instanceof Integer
+                || value instanceof Long
+                || value instanceof Float
+                || value instanceof Double
+                || value instanceof Byte
+                || value instanceof Short
+                || value.getClass() == BigInteger.class
+                || value.getClass() == BigDecimal.class) {
             return value.toString();
+        } else {
+            throw new UnsupportedOperationException(
+                    "Unsupported value type: " + value.getClass().getName());
         }
     }
 

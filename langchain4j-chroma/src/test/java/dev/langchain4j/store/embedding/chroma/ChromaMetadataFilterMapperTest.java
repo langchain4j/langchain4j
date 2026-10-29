@@ -24,7 +24,14 @@ class ChromaMetadataFilterMapperTest {
     void should_map_equal() {
         IsEqualTo filter = new IsEqualTo("key", "value");
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
-        assertThat(result).isEqualTo(singletonMap("key", "value"));
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$eq", "value")));
+    }
+
+    @Test
+    void should_not_interpret_map_value_as_operator() {
+        IsEqualTo filter = unvalidatedIsEqualTo("key", singletonMap("$ne", "value"));
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$eq", singletonMap("$ne", "value"))));
     }
 
     @Test
@@ -81,7 +88,8 @@ class ChromaMetadataFilterMapperTest {
         And filter = new And(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
-            .isEqualTo(singletonMap("$and", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+            .isEqualTo(singletonMap("$and", asList(
+                singletonMap("key1", singletonMap("$eq", "value1")), singletonMap("key2", singletonMap("$eq", "value2")))));
     }
 
     @Test
@@ -89,6 +97,18 @@ class ChromaMetadataFilterMapperTest {
         Or filter = new Or(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
-            .isEqualTo(singletonMap("$or", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+            .isEqualTo(singletonMap("$or", asList(
+                singletonMap("key1", singletonMap("$eq", "value1")), singletonMap("key2", singletonMap("$eq", "value2")))));
+    }
+
+    // The filter classes reject values like these, so they are returned from the overridden accessor
+    // to check that the store handles them safely on its own.
+    private static IsEqualTo unvalidatedIsEqualTo(String key, Object value) {
+        return new IsEqualTo(key, "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
     }
 }
