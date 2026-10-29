@@ -1,6 +1,7 @@
 package dev.langchain4j.service.decision;
 
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
 import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
@@ -147,7 +148,7 @@ class DecisionServicesTest {
 
         assertThat(inspector.isDamaged(PHOTO, "Arrived like this")).isTrue();
 
-        assertThat(damaged.request().input()).isEqualTo(Map.of("photo", PHOTO, "comment", "Arrived like this"));
+        assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("photo", PHOTO, "comment", "Arrived like this")));
     }
 
     @Test
@@ -155,7 +156,7 @@ class DecisionServicesTest {
 
         inspector.isDamaged(PHOTO, null);
 
-        assertThat(damaged.request().input()).isEqualTo(Map.of("photo", PHOTO));
+        assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("photo", PHOTO)));
     }
 
     @Test
@@ -172,7 +173,7 @@ class DecisionServicesTest {
         inspector.anyDamagedInWildcardList(List.of(PHOTO));
 
         assertThat(damaged.requests())
-                .extracting(DecisionRequest::input)
+                .extracting(request -> ((FieldsInput) request.input()).fields())
                 .containsExactly(
                         Map.of(
                                 "photos",
@@ -188,7 +189,7 @@ class DecisionServicesTest {
 
         inspector.isDamagedAccordingTo(PHOTO);
 
-        assertThat(damaged.request().input()).isEqualTo(Map.of("evidence", PHOTO));
+        assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("evidence", PHOTO)));
     }
 
     @Test
@@ -198,7 +199,7 @@ class DecisionServicesTest {
 
         inspector.isInvoiceForDamagedItem(invoice);
 
-        assertThat(damaged.request().input()).isEqualTo(Map.of("invoice", invoice));
+        assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("invoice", invoice)));
     }
 
     @Test
@@ -212,7 +213,7 @@ class DecisionServicesTest {
     @Test
     void should_not_register_content_parameters_as_json_input_types() throws Exception {
 
-        DecisionMethod method = DecisionMethod.of(
+        DecisionMethod method = DecisionMethod.from(
                 DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
 
         assertThat(method.inputTypes()).containsExactly(String.class);
@@ -231,7 +232,7 @@ class DecisionServicesTest {
 
         // then
         assertThat(spam).isTrue();
-        assertThat(model.request().input()).isEqualTo(Map.of("message", "You won a cruise!"));
+        assertThat(model.request().input()).isEqualTo(FieldsInput.from(Map.of("message", "You won a cruise!")));
         assertThat(model.request().questions())
                 .isEqualTo(Map.of(
                         "isSpam",
@@ -370,7 +371,7 @@ class DecisionServicesTest {
 
         // then
         assertThat(model.request().modelName()).isEqualTo("jev-1.13.0");
-        assertThat(model.request().input()).isEqualTo(Map.of("message", "You won a cruise!"));
+        assertThat(model.request().input()).isEqualTo(FieldsInput.from(Map.of("message", "You won a cruise!")));
     }
 
     @Test
@@ -639,7 +640,7 @@ class DecisionServicesTest {
         assertThat(triage.refund.probability()).isEqualTo(0.3);
 
         DecisionRequest request = model.request();
-        assertThat(request.input()).isEqualTo(Map.of("ticket", "I was charged twice", "plan", "enterprise"));
+        assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("ticket", "I was charged twice", "plan", "enterprise")));
         assertThat(request.questions()).containsOnlyKeys("team", "urgent", "refund");
         assertThat(request.questions().get("urgent"))
                 .isEqualTo(YesNoQuestion.builder()
@@ -669,7 +670,7 @@ class DecisionServicesTest {
         assertThat(triage.team().value()).isEqualTo(Team.BILLING);
         assertThat(triage.urgent()).isFalse(); // 0.7 < 0.8 (from thresholdProvider)
         assertThat(triage.refund()).isTrue(); // 0.7 >= 0.5 (default)
-        assertThat(model.request().input()).isEqualTo(Map.of("ticket", "I was charged twice"));
+        assertThat(model.request().input()).isEqualTo(FieldsInput.from(Map.of("ticket", "I was charged twice")));
     }
 
     // wrappers
@@ -825,16 +826,16 @@ class DecisionServicesTest {
         desk.urgent("Payouts are failing", new Customer("enterprise", 3));
 
         assertThat(model.request().input())
-                .isEqualTo(Map.of(
+                .isEqualTo(FieldsInput.from(Map.of(
                         "ticket", "Payouts are failing",
-                        "customer", Map.of("customerPlan", "enterprise", "openTickets", 3)));
+                        "customer", Map.of("customerPlan", "enterprise", "openTickets", 3))));
     }
 
     @Test
     void decision_method_should_expose_its_analysis() throws Exception {
 
         // given
-        DecisionMethod method = DecisionMethod.of(SupportDesk.class.getMethod("triageRecord", String.class));
+        DecisionMethod method = DecisionMethod.from(SupportDesk.class.getMethod("triageRecord", String.class));
 
         // then
         assertThat(method.questions()).containsOnlyKeys("team", "urgent", "refund");
@@ -843,7 +844,7 @@ class DecisionServicesTest {
         assertThat(method.reflectiveTypes()).containsExactlyInAnyOrder(TriageRecord.class, Team.class);
 
         DecisionRequest request = method.toRequest(new Object[] {"I was charged twice"});
-        assertThat(request.input()).isEqualTo(Map.of("ticket", "I was charged twice"));
+        assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("ticket", "I was charged twice")));
 
         TriageRecord triage = (TriageRecord) method.toResult(
                 DecisionResponse.builder()
@@ -922,7 +923,7 @@ class DecisionServicesTest {
     @Test
     void decision_method_should_expose_reflective_and_input_types() throws Exception {
 
-        DecisionMethod method = DecisionMethod.of(
+        DecisionMethod method = DecisionMethod.from(
                 ExtendedDesk.class.getMethod("triage", String.class, DecisionRequestParameters.class));
 
         assertThat(method.questions()).containsOnlyKeys("team", "urgent");
@@ -940,7 +941,7 @@ class DecisionServicesTest {
     void frameworks_should_be_able_to_invoke_methods_with_their_own_async_types() throws Exception {
 
         // given: a return type unknown to LangChain4j, analyzed as if it returned its type argument
-        DecisionMethod method = DecisionMethod.of(LazyRouter.class.getMethod("route", String.class), Team.class);
+        DecisionMethod method = DecisionMethod.from(LazyRouter.class.getMethod("route", String.class), Team.class);
         FakeDecisionModel model = new FakeDecisionModel(Map.of("route", BILLING_ANSWER));
 
         // when

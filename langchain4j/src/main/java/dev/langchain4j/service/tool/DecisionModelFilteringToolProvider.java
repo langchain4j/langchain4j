@@ -1,5 +1,8 @@
 package dev.langchain4j.service.tool;
 
+import java.util.function.Predicate;
+import dev.langchain4j.model.decision.request.MessagesInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +42,11 @@ import org.slf4j.LoggerFactory;
  * }</pre>
  * Unlike a {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, the tools are selected before the first
  * LLM call, so no tool search round trip is needed. By default, every tool whose probability of being useful reaches
- * the minimum probability is passed on, and the selection is based on the last 3 messages of the conversation (see
- * {@link Builder#maxMessages(Integer)}), which helps with follow-up messages such as "do the same for Berlin".
+ * the minimum probability is passed on, and the selection is based on the system messages and the last 10 messages of
+ * the conversation, with tool calls and tool results (see {@link Builder#maxMessages(Integer)} and
+ * {@link Builder#messageFilter(Predicate)}), which helps with follow-up messages such as "do the same for Berlin".
+ * Long messages are shortened (see {@link Builder#maxMessageLength(Integer)}). The conversation is sent with every
+ * batch of tools (see {@link Builder#maxToolsPerDecisionRequest(Integer)}).
  * <p>
  * Only the tools of the wrapped tool provider are filtered: tools configured directly on the AI Service, tools with
  * the {@link dev.langchain4j.agent.tool.SearchBehavior#ALWAYS_VISIBLE} search behavior and the tools configured with
@@ -52,8 +57,9 @@ import org.slf4j.LoggerFactory;
  * passes them in {@link ToolProviderRequest#messages()}, as LangChain4j AI Services do.
  * <p>
  * If the wrapped tool provider is {@link ToolProvider#isDynamic() dynamic}, the tools are selected again, with a call
- * to the decision model, before each LLM call of the tool-calling loop. Since the messages sent to the decision model
- * usually do not change within a tool-calling loop, this only helps if the tools of the wrapped provider change.
+ * to the decision model, before each LLM call of the tool-calling loop. The decision model then also sees the tool
+ * calls and tool results of the previous rounds, so the selected tools can change from one LLM call to the next, which
+ * can also keep the LLM provider from reusing its prompt cache.
  * <p>
  * The tools are selected for the user message as the user sent it: in AI Services, before retrieved content (RAG) and
  * output format instructions were added to it (see {@link InvocationContext#originalUserMessage()}). Otherwise, the
@@ -78,7 +84,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
 
     private static final Logger log = LoggerFactory.getLogger(DecisionModelFilteringToolProvider.class);
 
-    private static final int DEFAULT_MAX_MESSAGES = 3;
+    private static final int DEFAULT_MAX_MESSAGES = 10;
+    private static final int DEFAULT_MAX_MESSAGE_LENGTH = 2000;
 
     /**
      * What the tool provider does when the decision model fails.
@@ -106,6 +113,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
     private final DecisionModelToolSelector selector;
     private final Set<String> alwaysIncludedTools;
     private final int maxMessages;
+    private final int maxMessageLength;
+    private final Predicate<? super ChatMessage> messageFilter;
     private final FallbackStrategy fallbackStrategy;
 
     public DecisionModelFilteringToolProvider(ToolProvider toolProvider, DecisionModel decisionModel) {
@@ -122,6 +131,9 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
                 builder.maxToolsPerDecisionRequest);
         this.alwaysIncludedTools = Set.copyOf(builder.alwaysIncludedTools);
         this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
+        this.maxMessageLength = ensureGreaterThanZero(
+                getOrDefault(builder.maxMessageLength, DEFAULT_MAX_MESSAGE_LENGTH), "maxMessageLength");
+        this.messageFilter = getOrDefault(builder.messageFilter, message -> true);
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.ALL_TOOLS);
     }
 
@@ -131,7 +143,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         if (result == null || result.aiServiceTools().isEmpty()) {
             return result;
         }
-        Object input = input(request);
+        DecisionInput input = input(request);
         if (input == null) {
             return result;
         }
@@ -161,7 +173,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
     /**
      * Returns the names of the selected tools, or {@code null} if all tools should be passed on.
      */
-    private Set<String> select(Object input, List<ToolSpecification> candidates) {
+    private Set<String> select(DecisionInput input, List<ToolSpecification> candidates) {
         try {
             return Set.copyOf(selector.select(input, candidates));
         } catch (RuntimeException e) {
@@ -190,28 +202,32 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
     }
 
     /**
-     * The text of the user message or, with {@code maxMessages > 1}, the last messages of the conversation. Returns
-     * {@code null} if the user message has no text.
+     * The last messages of the conversation, the current user message as the user sent it. Returns {@code null} if
+     * the user message has no text.
      */
-    private Object input(ToolProviderRequest request) {
+    private DecisionInput input(ToolProviderRequest request) {
         UserMessage userMessage = originalUserMessage(request);
         if (userMessage == null || !DecisionModelInputUtils.hasText(userMessage)) {
             return null;
         }
-        String text = DecisionModelInputUtils.text(userMessage);
-        if (maxMessages == 1) {
-            return text;
-        }
-        List<Map<String, String>> conversation = new ArrayList<>(DecisionModelInputUtils.messages(request.messages()));
-        Map<String, String> current = Map.of("role", "user", "text", text);
-        if (!conversation.isEmpty() && isCurrentUserMessage(conversation.get(conversation.size() - 1), request, text)) {
-            conversation.set(conversation.size() - 1, current);
+        List<ChatMessage> messages = new ArrayList<>(request.messages() == null ? List.of() : request.messages());
+        int current = lastUserMessage(messages);
+        if (current >= 0 && isCurrentUserMessage(messages.get(current), request, userMessage)) {
+            messages.set(current, userMessage);
         } else {
-            conversation.add(current);
+            messages.add(userMessage);
         }
-        return Map.of(
-                "messages",
-                conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size()));
+        List<ChatMessage> conversation = DecisionModelInputUtils.window(messages, messageFilter, maxMessages, maxMessageLength);
+        return conversation.isEmpty() ? null : MessagesInput.from(conversation);
+    }
+
+    private static int lastUserMessage(List<ChatMessage> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -231,13 +247,13 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
     /**
      * Whether the message is the current user message, as sent to the LLM or before retrieved content was added.
      */
-    private static boolean isCurrentUserMessage(Map<String, String> message, ToolProviderRequest request, String text) {
-        if (!"user".equals(message.get("role"))) {
+    private static boolean isCurrentUserMessage(ChatMessage message, ToolProviderRequest request, UserMessage current) {
+        if (!(message instanceof UserMessage userMessage)) {
             return false;
         }
-        return message.get("text").equals(text)
-                || (request.userMessage() != null
-                        && message.get("text").equals(DecisionModelInputUtils.text(request.userMessage())));
+        String text = DecisionModelInputUtils.text(userMessage);
+        return text.equals(DecisionModelInputUtils.text(current))
+                || (request.userMessage() != null && text.equals(DecisionModelInputUtils.text(request.userMessage())));
     }
 
     @Override
@@ -259,6 +275,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         private Integer maxToolsPerDecisionRequest;
         private final Set<String> alwaysIncludedTools = new HashSet<>();
         private Integer maxMessages;
+        private Integer maxMessageLength;
+        private Predicate<? super ChatMessage> messageFilter;
         private FallbackStrategy fallbackStrategy;
 
         /**
@@ -342,9 +360,11 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         }
 
         /**
-         * Sets how many of the last messages of the conversation (user and assistant messages with text, the last
-         * one being the user message) the decision model receives. System messages, tool calls and tool results are
-         * never sent, and do not count.
+         * Sets how many of the last messages of the conversation the decision model receives, plus the user message if
+         * it is older. An AI message with tool calls and each tool result count as one message each. Tool results whose
+         * AI message does not fit are left out. With parallel tool calls, set it higher than the number of tool calls
+         * in one round. With 1, system messages are still sent; leave them out with {@link #messageFilter(Predicate)}.
+         * System messages are sent in addition and do not count.
          * <p>
          * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGES}. More messages can make
          * an older topic of the conversation outweigh the user message.
@@ -352,6 +372,37 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
          */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;
+            return this;
+        }
+
+        /**
+         * Sets the maximum length, in characters, of the text of each message the decision model receives, other than
+         * system messages, and of the arguments of each tool call. A longer text is shortened in the middle:
+         * its beginning and its end are kept, with a note of about 90 characters saying how many characters were left
+         * out. Long tool results and user messages with retrieved content are
+         * the usual cases. As a rough guide, 4 characters make one token in English text.
+         * <p>
+         * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGE_LENGTH}.
+         * @since 1.23.0
+         */
+        public Builder maxMessageLength(Integer maxMessageLength) {
+            this.maxMessageLength = maxMessageLength;
+            return this;
+        }
+
+        /**
+         * Sets which messages of the conversation the decision model receives; it also applies to the last user
+         * message. For example,
+         * {@code message -> !(message instanceof SystemMessage)} leaves out the system message, and
+         * {@code message -> !(message instanceof ToolExecutionResultMessage)} leaves out tool results, which can be
+         * large.
+         * <p>
+         * By default, all messages are sent: system messages, user messages, AI messages with their tool calls, and
+         * tool results.
+         * @since 1.23.0
+         */
+        public Builder messageFilter(Predicate<? super ChatMessage> messageFilter) {
+            this.messageFilter = messageFilter;
             return this;
         }
 

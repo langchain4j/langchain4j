@@ -1,9 +1,9 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -29,22 +29,26 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException;
 
+    /**
+     * Invokes the agent, reports the invocation to its listeners with the response of the model it called, and
+     * registers the messages it exchanged in the context of the scope. Everything happens on the calling thread,
+     * which for an asynchronous agent is the thread of its executor.
+     */
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
-        Object result = internalInvoke(agenticScope, listener, agent, args);
-        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
-                    chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
-                    chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
-        } else {
-            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
-        }
+        AgentModelResponse modelResponse = new AgentModelResponse();
+        Object result = internalInvoke(agenticScope, listener, agent, args, modelResponse);
+        afterAgentInvocation(listener, new AgentResponse(agenticScope, this, args.namedArgs(), result,
+                modelResponse.chatRequest(), modelResponse.chatResponse(), modelResponse.decisionResponse()));
+        agenticScope.registerContext(this, agent, modelResponse.lastUserMessage(), result);
         return result;
     }
 
-    private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args) {
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+    private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args,
+                                  AgentModelResponse modelResponse) {
+        LangChain4jManaged.setCurrent(
+                Map.of(AgenticScope.class, agenticScope, AgentModelResponse.class, modelResponse));
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
@@ -66,7 +70,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
                 : List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
-                spec.listener());
+                spec.listener(), spec.activationCondition());
         return new SpecAgentInvoker(agenticMethod, agentInstance);
     }
 

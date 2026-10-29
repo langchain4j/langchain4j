@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.BatchJob;
 import com.google.genai.types.BatchJobSource;
 import com.google.genai.types.CancelBatchJobConfig;
@@ -20,6 +21,7 @@ import com.google.genai.types.InlinedRequest;
 import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.batch.BatchItemResult;
@@ -71,6 +73,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
     private final String cachedContent;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
     private final ChatRequestParameters defaultRequestParameters;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
@@ -91,6 +96,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
         this.defaultRequestParameters = builder.defaultRequestParameters;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
@@ -216,6 +224,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 vertexSearchDatastore,
                 labels,
                 cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                null,
                 generateContentConfigCustomizer);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
@@ -292,6 +304,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private String apiEndpoint;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         public Builder client(Client client) {
@@ -464,6 +479,21 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
             return this;
         }
 

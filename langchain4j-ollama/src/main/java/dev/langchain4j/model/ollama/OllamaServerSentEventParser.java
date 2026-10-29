@@ -43,11 +43,16 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
                 if (line.isEmpty()) {
                     continue; // skip blank lines (consistent with the incremental parser)
                 }
+                if (parsingHandle.isCancelled()) {
+                    break;
+                }
                 ServerSentEvent sse = new ServerSentEvent(null, line);
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }
         } catch (IOException e) {
-            ignoringExceptions(() -> listener.onError(e));
+            if (!parsingHandle.isCancelled()) {
+                ignoringExceptions(() -> listener.onError(e));
+            }
         }
     }
 

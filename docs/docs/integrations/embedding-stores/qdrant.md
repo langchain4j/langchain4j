@@ -13,7 +13,7 @@ https://qdrant.tech/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-qdrant</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 

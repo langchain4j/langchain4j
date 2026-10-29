@@ -44,6 +44,26 @@ class BedrockGuardrailConfigurationTest {
     }
 
     @Test
+    void should_not_be_equal_when_guard_content_placement_differs() {
+        BedrockGuardrailConfiguration first = fullyPopulated()
+                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+                .build();
+        BedrockGuardrailConfiguration second = fullyPopulated()
+                .guardContentPlacement(BedrockGuardContentPlacement.ALL_USER_MESSAGES)
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_not_set_guard_content_placement_when_created_via_constructor() {
+        BedrockGuardrailConfiguration configuration =
+                new BedrockGuardrailConfiguration("guardrail", "1", ProcessingMode.SYNC);
+
+        assertThat(configuration.guardContentPlacement()).isNull();
+    }
+
+    @Test
     void should_not_be_equal_to_null_or_other_type() {
         BedrockGuardrailConfiguration configuration = fullyPopulated().build();
 
@@ -54,6 +74,7 @@ class BedrockGuardrailConfigurationTest {
         return BedrockGuardrailConfiguration.builder()
                 .guardrailIdentifier("guardrail")
                 .guardrailVersion("1")
-                .streamProcessingMode(ProcessingMode.SYNC);
+                .streamProcessingMode(ProcessingMode.SYNC)
+                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
     }
 }
