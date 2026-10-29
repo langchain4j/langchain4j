@@ -4,11 +4,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -22,7 +24,9 @@ import org.jspecify.annotations.NonNull;
 public interface InvocationContext {
 
     /**
-     * Unique identifier for an entire AI Service invocation
+     * Unique identifier for an entire AI Service invocation. AI Services created with
+     * {@code AiServices} treat each subscription to a publisher returned by an AI Service
+     * method as a separate invocation, with its own identifier.
      */
     UUID invocationId();
 
@@ -51,6 +55,18 @@ public interface InvocationContext {
      * @since 1.13.0
      */
     default UserMessage userMessage() {
+        return null;
+    }
+
+    /**
+     * The {@link UserMessage} created from the AI Service method and its prompt template, before any transformation
+     * (RAG augmentation, content injection, input guardrails, output format instructions).
+     * It is what the user asked, without the retrieved content, for example to decide which tools or models are
+     * relevant to the question.
+     *
+     * @since 1.21.0
+     */
+    default UserMessage originalUserMessage() {
         return null;
     }
 
@@ -100,6 +116,9 @@ public interface InvocationContext {
     /**
      * Converts the current instance of {@link DefaultInvocationContext} into a {@link Builder},
      * pre-populated with the current values of the instance.
+     * <p>
+     * When this is a {@link DefaultInvocationContext}, a copy built with the same {@link #invocationId()} shares
+     * whether the invocation has already reported its end (see {@link InvocationEnd}).
      */
     default Builder toBuilder() {
         return new Builder(this);
@@ -123,12 +142,16 @@ public interface InvocationContext {
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
+        private UserMessage originalUserMessage;
         private Object chatMemoryId;
         private ChatRequestParameters defaultRequestParameters;
         private ModelProvider modelProvider;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
+        CapturedContext capturedContext;
+        AtomicBoolean ended;
+        UUID endedInvocationId;
 
         protected Builder() {}
 
@@ -138,12 +161,18 @@ public interface InvocationContext {
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
+            originalUserMessage(invocationContext.originalUserMessage());
             chatMemoryId(invocationContext.chatMemoryId());
             defaultRequestParameters(invocationContext.defaultRequestParameters());
             modelProvider(invocationContext.modelProvider());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
+            if (invocationContext instanceof DefaultInvocationContext defaultInvocationContext) {
+                this.capturedContext = defaultInvocationContext.capturedContext();
+                this.ended = defaultInvocationContext.ended();
+                this.endedInvocationId = defaultInvocationContext.invocationId();
+            }
         }
 
         /**
@@ -199,6 +228,16 @@ public interface InvocationContext {
          */
         public Builder userMessage(UserMessage userMessage) {
             this.userMessage = userMessage;
+            return this;
+        }
+
+        /**
+         * Sets the user message before any transformation, see {@link InvocationContext#originalUserMessage()}.
+         *
+         * @since 1.21.0
+         */
+        public Builder originalUserMessage(UserMessage originalUserMessage) {
+            this.originalUserMessage = originalUserMessage;
             return this;
         }
 
@@ -284,6 +323,10 @@ public interface InvocationContext {
 
         public UserMessage userMessage() {
             return userMessage;
+        }
+
+        public UserMessage originalUserMessage() {
+            return originalUserMessage;
         }
 
         public Object chatMemoryId() {

@@ -2,11 +2,40 @@ package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 class BedrockChatRequestParametersTest {
+
+    @Test
+    void should_build_with_request_metadata() {
+        Map<String, String> requestMetadata = new HashMap<>();
+        requestMetadata.put("team", "platform");
+
+        BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+                .requestMetadata(requestMetadata)
+                .build();
+
+        requestMetadata.put("environment", "production");
+
+        assertThat(parameters.requestMetadata()).isEqualTo(Map.of("team", "platform"));
+    }
+
+    @Test
+    void should_override_request_metadata() {
+        BedrockChatRequestParameters defaults = BedrockChatRequestParameters.builder()
+                .requestMetadata(Map.of("team", "platform"))
+                .build();
+        BedrockChatRequestParameters overrides = BedrockChatRequestParameters.builder()
+                .requestMetadata(Map.of("traceId", "abc-123"))
+                .build();
+
+        BedrockChatRequestParameters merged = defaults.overrideWith(overrides);
+
+        assertThat(merged.requestMetadata()).isEqualTo(Map.of("traceId", "abc-123"));
+    }
 
     @Test
     void should_enable_prompt_caching_with_placement() {
@@ -175,6 +204,7 @@ class BedrockChatRequestParametersTest {
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
                         .guardrailIdentifier("12345")
                         .guardrailVersion("DRAFT")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
                         .build())
                 .build();
 
@@ -182,6 +212,7 @@ class BedrockChatRequestParametersTest {
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
                         .guardrailIdentifier("67890")
                         .guardrailVersion("LIVE")
+                        .guardContentPlacement(BedrockGuardContentPlacement.ALL_USER_MESSAGES)
                         .build())
                 .build();
 
@@ -191,6 +222,24 @@ class BedrockChatRequestParametersTest {
         // Then
         assertThat(merged.bedrockGuardrailConfiguration().guardrailIdentifier()).isEqualTo("67890");
         assertThat(merged.bedrockGuardrailConfiguration().guardrailVersion()).isEqualTo("LIVE");
+        assertThat(merged.bedrockGuardrailConfiguration().guardContentPlacement())
+                .isEqualTo(BedrockGuardContentPlacement.ALL_USER_MESSAGES);
+    }
+
+    @Test
+    void should_build_guardrail_configuration_with_guard_content_placement() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("12345")
+                        .guardrailVersion("DRAFT")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+                        .build())
+                .build();
+
+        // Then
+        assertThat(params.bedrockGuardrailConfiguration().guardContentPlacement())
+                .isEqualTo(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
     }
 
     @Test
@@ -400,6 +449,19 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
+    void should_not_be_equal_when_request_metadata_differs() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .requestMetadata(Map.of("team", "platform"))
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .requestMetadata(Map.of("team", "application"))
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+        assertThat(first.hashCode()).isNotEqualTo(second.hashCode());
+    }
+
+    @Test
     void should_not_be_equal_when_an_inherited_parameter_differs() {
         BedrockChatRequestParameters first = fullyPopulated().temperature(0.1).build();
         BedrockChatRequestParameters second = fullyPopulated().temperature(0.2).build();
@@ -417,7 +479,9 @@ class BedrockChatRequestParametersTest {
                 .contains("cachePointPlacement=AFTER_SYSTEM")
                 .contains("cacheTtl=")
                 .contains("bedrockGuardrailConfiguration=")
-                .contains("serviceTier=DEFAULT");
+                .contains("serviceTier=DEFAULT")
+                .contains("requestMetadata=[REDACTED]")
+                .doesNotContain("platform");
     }
 
     private static BedrockChatRequestParameters.Builder fullyPopulated() {
@@ -427,7 +491,8 @@ class BedrockChatRequestParametersTest {
                 .additionalModelRequestField("key", "value")
                 .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_5_M)
                 .guardrailConfiguration(guardrail())
-                .serviceTier(BedrockServiceTier.DEFAULT);
+                .serviceTier(BedrockServiceTier.DEFAULT)
+                .requestMetadata(Map.of("team", "platform"));
     }
 
     private static BedrockGuardrailConfiguration guardrail() {

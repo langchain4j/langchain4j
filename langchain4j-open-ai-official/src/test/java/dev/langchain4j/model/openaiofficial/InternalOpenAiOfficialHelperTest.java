@@ -97,6 +97,24 @@ class InternalOpenAiOfficialHelperTest {
     }
 
     @Test
+    void should_map_ai_message_without_text_and_without_tool_execution_requests() {
+        AiMessage message = AiMessage.builder().thinking("reasoning only").build();
+
+        ChatCompletionMessageParam param = InternalOpenAiOfficialHelper.toOpenAiMessage(message);
+
+        assertThat(param.asAssistant().content().orElseThrow().asText()).isEmpty();
+    }
+
+    @Test
+    void should_keep_text_of_ai_message_without_tool_execution_requests() {
+        AiMessage message = AiMessage.from("Paris");
+
+        ChatCompletionMessageParam param = InternalOpenAiOfficialHelper.toOpenAiMessage(message);
+
+        assertThat(param.asAssistant().content().orElseThrow().asText()).isEqualTo("Paris");
+    }
+
+    @Test
     void should_throw_content_filtered_exception_when_chat_completion_contains_refusal() throws Exception {
         ChatCompletion chatCompletion = chatCompletionFrom("""
                 {"role":"assistant","content":null,"refusal":"I cannot help with that request."}""");

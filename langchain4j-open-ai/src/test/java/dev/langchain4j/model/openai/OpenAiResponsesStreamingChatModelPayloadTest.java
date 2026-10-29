@@ -29,6 +29,11 @@ class OpenAiResponsesStreamingChatModelPayloadTest {
                     .build())
             .build();
 
+    private static final ToolSpecification DYNAMIC_TOOL = ToolSpecification.builder()
+            .name("call_tool")
+            .description("Calls a tool discovered via find_tool")
+            .build();
+
     @Test
     void should_send_only_server_tools() throws Exception {
         MockHttpClient mockHttpClient = new MockHttpClient();
@@ -122,5 +127,83 @@ class OpenAiResponsesStreamingChatModelPayloadTest {
         assertThat(payload.get("tools").get(0).get("type").asText()).isEqualTo("file_search");
         assertThat(payload.get("tools").get(0).get("vector_store_ids").get(0).asText())
                 .isEqualTo("vs_1");
+    }
+
+    @Test
+    void should_send_object_schema_for_tool_without_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(DYNAMIC_TOOL)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("parameters").get("type").asText()).isEqualTo("object");
+        assertThat(tool.get("parameters").get("properties")).isEmpty();
+        assertThat(tool.get("parameters").get("required")).isEmpty();
+        assertThat(tool.get("parameters").has("additionalProperties")).isFalse();
+        // the Responses API defaults "strict" to true, so it must be sent explicitly
+        assertThat(tool.get("strict").asBoolean()).isFalse();
+    }
+
+    @Test
+    void should_send_strict_object_schema_for_tool_without_parameters_when_strict() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(DYNAMIC_TOOL)
+                .strictTools(true)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("parameters").get("type").asText()).isEqualTo("object");
+        assertThat(tool.get("parameters").get("additionalProperties").asBoolean())
+                .isFalse();
+        assertThat(tool.get("strict").asBoolean()).isTrue();
+    }
+
+    @Test
+    void should_send_strict_false_explicitly_for_tool_with_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("strict").asBoolean()).isFalse();
     }
 }

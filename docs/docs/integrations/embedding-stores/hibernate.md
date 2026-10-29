@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.19.0-beta29'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.23.0-beta33'```
 
 ## APIs
 
@@ -247,6 +247,18 @@ or
 
 ```java
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
+```
+
+A filter value must be one of the [supported comparison value types](/tutorials/rag#filter).
+An enum or date/time attribute can be filtered by the value itself, or by its text form,
+which the store converts to the type of the attribute:
+the name of an enum constant, or the ISO-8601 text of a `LocalDate` or an `Instant`.
+
+```java
+new IsEqualTo("status", Status.PUBLISHED)                                         // an enum attribute
+new IsGreaterThan("publishedOn", LocalDate.of(2024, 1, 1))                        // a LocalDate attribute
+MetadataFilterBuilder.metadataKey("status").isEqualTo(Status.PUBLISHED.name())    // an enum attribute, as text
+MetadataFilterBuilder.metadataKey("updatedAt").isLessThan("2024-03-15T10:00:00Z") // an Instant attribute, as text
 ```
 
 Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
@@ -502,7 +514,7 @@ create index if not exists my_entity_ivfflat_index
 
 ##### CockroachDB
 
-See the [CockroachDB documentation]([https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing](https://www.cockroachlabs.com/docs/v26.2/vector-indexes)) for details.
+See the [CockroachDB documentation](https://www.cockroachlabs.com/docs/v26.2/vector-indexes) for details.
 
 ```sql
 create vector index if not exists my_entity_ivfflat_index
@@ -531,7 +543,7 @@ create vector index my_entity_vector_index
 
 ##### SAP HANA
 
-See the [`create vector index` statement documentation]([https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US))
+See the [`create vector index` statement documentation](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US)
 for details.
 
 ```sql

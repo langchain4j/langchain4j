@@ -28,7 +28,7 @@ public class AiServiceContext {
     private static final Function<Object, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER = x -> Optional.empty();
 
     public final Class<?> aiServiceClass;
-    public final AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
+    public AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
 
     public Class<?> returnType;
 
@@ -47,6 +47,13 @@ public class AiServiceContext {
     public RetrievalAugmentor retrievalAugmentor;
 
     public boolean storeRetrievedContentInChatMemory = true;
+
+    /**
+     * Bounded back-pressure buffer size for the reactive ({@code Flow.Publisher}) streaming path. {@code null}
+     * means "unset" — {@link AiServiceStreamingEventPublisher#DEFAULT_BUFFER_SIZE} is applied (and the value
+     * validated) in {@link AiServiceStreamingEventPublisher}'s constructor.
+     */
+    public Integer streamingBufferSize;
 
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;

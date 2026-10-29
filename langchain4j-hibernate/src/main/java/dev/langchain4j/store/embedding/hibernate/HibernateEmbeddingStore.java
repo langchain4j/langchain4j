@@ -13,9 +13,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -109,7 +110,7 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 // Needed for inherited bean injection validation
 public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
     private static final boolean IS_HIBERNATE_ORM_7_1;
 
     static {
@@ -621,12 +622,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 final Object textMetadata = tuple[3];
                 final Metadata metadata;
                 if (textMetadata instanceof String metadataJson) {
-                    try {
-                        //noinspection unchecked
-                        metadata = new Metadata(OBJECT_MAPPER.readValue(getOrDefault(metadataJson, "{}"), Map.class));
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
-                    }
+                    //noinspection unchecked
+                    metadata = new Metadata(CODEC.fromJson(getOrDefault(metadataJson, "{}"), Map.class));
                 } else if (textMetadata instanceof Map<?, ?> metadataMap) {
                     //noinspection unchecked
                     metadata = new Metadata((Map<String, ?>) metadataMap);
@@ -1250,12 +1247,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 if (unmappedMetadataAttributeMapType != null) {
                     values[unmappedMetadataAttributeMapping.getStateArrayPosition()] = metadataMap;
                 } else {
-                    try {
-                        values[unmappedMetadataAttributeMapping.getStateArrayPosition()] =
-                                OBJECT_MAPPER.writeValueAsString(metadataMap);
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
-                    }
+                    values[unmappedMetadataAttributeMapping.getStateArrayPosition()] = CODEC.toJson(metadataMap);
                 }
             } else {
                 if (embeddedTextAttributeMapping != null) {
@@ -1316,13 +1308,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                             metadataMap,
                             unmappedMetadataAttributeMapType);
                 } else {
-                    try {
-                        mutationQuery.setParameter(
-                                unmappedMetadataAttributeMapping.getAttributeName(),
-                                OBJECT_MAPPER.writeValueAsString(metadataMap));
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
-                    }
+                    mutationQuery.setParameter(
+                            unmappedMetadataAttributeMapping.getAttributeName(), CODEC.toJson(metadataMap));
                 }
             } else {
                 if (embeddedTextAttributeMapping != null) {

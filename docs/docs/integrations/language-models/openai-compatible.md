@@ -45,10 +45,11 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
+- [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
@@ -67,7 +68,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.19.0</version>
+    <version>1.23.0</version>
 </dependency>
 ```
 
@@ -75,10 +76,34 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
+
+## OrcaRouter
+
+**Deployment:** SaaS (key required)
+
+**Description:** [OrcaRouter](https://www.orcarouter.ai) is an OpenAI-compatible AI gateway built for both models and agents. Like OpenRouter, it exposes a provider/model namespace across many models — but it also combines adaptive routing, automatic failover, zero-markup inference, observability, guardrails, and agent-tool governance behind the same endpoint. Adding OrcaRouter as a first-class provider means this project's users can use that stack directly, without treating OrcaRouter as an anonymous custom base URL. It also runs gateway-level, zero-trust security for AI agents on the same endpoint — screening every prompt/response and governing every tool call on a default-deny basis, with no application code changes.
+
+**Setup:**
+To use OrcaRouter, you'll need an API key from [OrcaRouter](https://www.orcarouter.ai) (keys start with `sk-orca-`).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.orcarouter.ai/v1")
+        .apiKey(System.getenv("ORCAROUTER_API_KEY")) // Your actual key, e.g. "sk-orca-..."
+        .modelName("deepseek/deepseek-v4-flash-0731") // Or any other model offered by OrcaRouter
+        .build();
+```
+You can find available model names on the [OrcaRouter models page](https://www.orcarouter.ai).
 
 ## Tuning Engines
 
@@ -192,31 +217,12 @@ ChatModel model = OpenAiChatModel.builder()
 2. Download your desired model(s) through the LM Studio UI (Search tab), for example `smollm2-135m-instruct`.
 3. Go to the "Developer" tab (icon like `>_` on the left) and toggle the server status on to 'running'
 4. When the server runs, you get to see the address on the top right (e.g., `http://127.0.0.1:1234`). Alternatively, the cURL call will give you the full URL.
-5. LMStudio as for now does not support HTTP2, hence we need to enforce the use of HTTP1.1. For that, we need to add the correct maven or gradle dependency:
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.19.0</version>
-</dependency>
-```
-6. Configure LangChain4j and specify the `httpClientBuilder`
+5. Configure LangChain4j with the server address:
 ```java
-import java.net.http.HttpClient;
-import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
-import dev.langchain4j.http.client.jdk.JdkHttpClient;
-
-...
-
-HttpClient.Builder httpClientBuilder = HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1) ;
-
-JdkHttpClientBuilder jdkHttpClientBuilder = JdkHttpClient.builder()
-        .httpClientBuilder(httpClientBuilder);
-
 ChatModel model = OpenAiChatModel.builder()
         .baseUrl("http://127.0.0.1:1234/v1")
         .modelName("smollm2-135m-instruct")
-        .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
+
+With LangChain4j versions before 1.23.0, configure HTTP/1.1 explicitly, see [HTTP version](/tutorials/customizable-http-client#http-version).

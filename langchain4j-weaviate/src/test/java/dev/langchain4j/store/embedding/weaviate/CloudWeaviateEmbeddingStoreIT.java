@@ -52,9 +52,4 @@ class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
             throw new RuntimeException(ex);
         }
     }
-
-    @Override
-    protected void ensureStoreIsEmpty() {
-        // TODO fix
-    }
 }

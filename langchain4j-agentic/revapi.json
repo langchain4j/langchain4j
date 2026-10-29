@@ -5,6 +5,21 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.service.tool.search.ToolSearchStrategy",
+          "justification": "The new optional AgentBuilder configuration exposes ToolSearchStrategy from the existing langchain4j dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.observability.api.event.AiServiceEvent",
+          "justification": "The new AgentAiServiceEvent, passed to the new default AgentListener.onAgentAiServiceEvent method, exposes AiServiceEvent from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.observability.api.listener.AiServiceListener",
+          "justification": "The new static AgentListener.forAiServiceListeners method takes AiServiceListener from the existing langchain4j-core dependency, so that listeners written for AI Services can be reused for agents. Existing API signatures are unchanged."
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
           "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."
@@ -159,6 +174,83 @@
           "code": "java.method.addedToInterface",
           "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
           "justification": "Add tool actions compensation at agentic system level for supervisor agents"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method T dev.langchain4j.agentic.planner.AgenticService<T, A>::activationCondition(java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a workflow or planner declare the condition under which it runs as a subagent. AgenticService is a builder interface implemented by AbstractServiceBuilder and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method T dev.langchain4j.agentic.planner.AgenticService<T, A>::activationCondition(java.lang.String, java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a workflow or planner declare the condition, with its description, under which it runs as a subagent. AgenticService is a builder interface implemented by AbstractServiceBuilder and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::activationCondition(java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a supervisor declare the condition under which it runs as a subagent. SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::activationCondition(java.lang.String, java.util.function.Predicate<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "Lets a supervisor declare the condition, with its description, under which it runs as a subagent. SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and not meant to be implemented by users."
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.removed",
+          "old": {
+            "matcher": "regex",
+            "match": "parameter void dev\\.langchain4j\\.agentic\\.scope\\.AgentInvocation::<init>\\(.*\\)"
+          },
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "justification": "AgentInvocation gained a 'skipReason' record component, so the five-argument constructor is no longer the canonical one and its parameters lost the @JsonProperty annotations, which moved to the new canonical constructor. The five-argument constructor is kept for compatibility, and a persisted invocation without the 'skipReason' property is still read, as not skipped."
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "justification": "Names the JSON properties of the agent-state types on the types themselves, replacing the Jackson-2-only mixins that named them before. The annotation comes from jackson-annotations, which both Jackson versions read, which is what lets this module carry no JSON library. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest.",
+          "package": "dev.langchain4j.agentic.scope"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
+          "justification": "Marks the constructor the persisted state is read back through, replacing the Jackson-2-only mixin that marked it before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest.",
+          "package": "dev.langchain4j.agentic.scope"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonInclude",
+          "justification": "Keeps null properties out of persisted agent state, as the Jackson-2-only mixin did before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest.",
+          "package": "dev.langchain4j.agentic.scope"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.response.DecisionResponse",
+          "justification": "Decision agents report the response of their decision model (answers with probabilities, model name, token usage) through AgentResponse.decisionResponse() and AgentInvocation.decisionResponse(), like AI agents expose the ChatResponse of their chat model. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.service.decision.ThresholdProvider",
+          "justification": "DecisionAgentBuilder.thresholdProvider(...) takes the threshold provider of Decision Services for the boolean answers of a decision agent, the same type DecisionServices.Builder takes. The type is the public, experimental decision API of the langchain4j module."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.DecisionModel",
+          "justification": "DecisionAgentBuilder.decisionModel(...) and decisionModelProvider(...) take the decision model of a decision agent, like AgentBuilder.chatModel(...) takes the chat model of an AI agent. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.decision.request.DecisionRequestParameters",
+          "justification": "DecisionAgentBuilder.requestParameters(...) sets the parameters of the decision requests of a decision agent, the same type the decision model and Decision Services use. The type is the public, experimental decision API of langchain4j-core."
+        },
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.agent.ChatMessagesAccess",
+          "justification": "Plumbing between the invocation handler of an AI agent and its invoker, never documented for users: the handler kept the last chat request and response per agentic scope id, so concurrent invocations of one agent in one scope overwrote each other (issue #6857). The response of each invocation is now handed to the invoker with the invocation itself, and nothing reads this interface any more."
         }
       ]
     }

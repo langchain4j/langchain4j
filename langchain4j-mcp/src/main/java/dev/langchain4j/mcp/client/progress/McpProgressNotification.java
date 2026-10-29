@@ -1,6 +1,6 @@
 package dev.langchain4j.mcp.client.progress;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -23,14 +23,37 @@ public class McpProgressNotification {
 
     /**
      * Parses a McpProgressNotification from the contents of the 'params' object
-     * inside a 'notifications/progress' message.
+     * inside a 'notifications/progress' message, presented as plain values.
      */
-    public static McpProgressNotification fromJson(JsonNode params) {
-        String progressToken = params.path("progressToken").asText(null);
-        double progress = params.path("progress").asDouble();
-        Double total = params.has("total") ? params.get("total").asDouble() : null;
-        String message = params.has("message") ? params.get("message").asText() : null;
-        return new McpProgressNotification(progressToken, progress, total, message);
+    public static McpProgressNotification fromMap(Map<String, Object> params) {
+        Object progressToken = params.get("progressToken");
+        Object progress = params.get("progress");
+        Object total = params.get("total");
+        Object message = params.get("message");
+        Double totalValue = toDouble(total);
+        Double progressValue = toDouble(progress);
+        return new McpProgressNotification(
+                progressToken == null ? null : String.valueOf(progressToken),
+                progressValue == null ? 0d : progressValue,
+                totalValue,
+                message == null ? null : String.valueOf(message));
+    }
+
+    /**
+     * Mirrors JsonNode.asDouble(), which also parses numeric strings.
+     */
+    private static Double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     public String progressToken() {

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.mutableCopy;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -156,7 +157,7 @@ record GeminiContent(
 
                 @Override
                 public String toString() {
-                    return name().toLowerCase();
+                    return name().toLowerCase(Locale.ROOT);
                 }
             }
 
@@ -180,7 +181,7 @@ record GeminiContent(
 
                 @Override
                 public String toString() {
-                    return this.name().toLowerCase();
+                    return this.name().toLowerCase(Locale.ROOT);
                 }
             }
         }

@@ -10,9 +10,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -20,6 +22,7 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
@@ -29,6 +32,7 @@ import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
+import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceRequestIssuedListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -42,8 +46,11 @@ import dev.langchain4j.service.memory.ChatMemoryService;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -95,10 +102,15 @@ class AiServicesObservabilityTests {
             List<Class<? extends AiServiceEvent>> expectedEventsReceivedClasses,
             Consumer<AiServiceEvent> expectedEventsReceivedAssertion) {
 
+        // Every invocation ends in a completed or error event, so it should also produce an invocation summary event
+        List<Class<? extends AiServiceEvent>> expectedClasses = Stream.<Class<? extends AiServiceEvent>>concat(
+                        expectedEventsReceivedClasses.stream(), Stream.of(AiServiceInvocationSummaryEvent.class))
+                .toList();
+
         // Invoke the operation without registered listeners
         // No listeners should be fired
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
-        assertNoEventsReceived(8, listeners.values());
+        assertNoEventsReceived(9, listeners.values());
 
         // Let's invoke the operation a few times with the registered listeners
         IntStream.range(0, 5).forEach(i -> chatAssertion.accept(assistantCreatorWithListeners.get()));
@@ -109,21 +121,50 @@ class AiServicesObservabilityTests {
 
         assertEventsReceived(
                 hasTools,
-                expectedEventsReceivedClasses.size(),
+                expectedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedClasses.stream().map(listeners::get).toList(),
                 expectedEventsReceivedAssertion);
 
         // No additional events should fire when invoking the operation again
         chatAssertion.accept(assistantCreatorWithoutListeners.get());
         assertEventsReceived(
                 hasTools,
-                expectedEventsReceivedClasses.size(),
+                expectedClasses.size(),
                 expectedUserMessage,
                 expectedMethodName,
-                expectedEventsReceivedClasses.stream().map(listeners::get).toList(),
+                expectedClasses.stream().map(listeners::get).toList(),
                 expectedEventsReceivedAssertion);
+        assertInvocationSummaryEvent(expectedEventsReceivedClasses);
+    }
+
+    private void assertInvocationSummaryEvent(List<Class<? extends AiServiceEvent>> expectedEventClasses) {
+        var invocationSummaryEvent = (AiServiceInvocationSummaryEvent)
+                listeners.get(AiServiceInvocationSummaryEvent.class).event();
+        var expectedListeners =
+                expectedEventClasses.stream().map(listeners::get).toList();
+        var terminalEventClass = expectedEventClasses.contains(AiServiceCompletedEvent.class)
+                ? AiServiceCompletedEvent.class
+                : AiServiceErrorEvent.class;
+
+        // Each listener's count covers the 5 invocations made with listeners registered
+        var expectedEventsPerInvocation =
+                expectedListeners.stream().mapToInt(MyListener::count).sum() / 5;
+
+        assertThat(invocationSummaryEvent).isNotNull();
+        assertThat(invocationSummaryEvent.events())
+                .hasSize(expectedEventsPerInvocation)
+                // The summary is from the last invocation, so it contains the last event each listener got
+                .containsAll(expectedListeners.stream()
+                        .<AiServiceEvent>map(MyListener::event)
+                        .toList())
+                .startsWith(listeners.get(AiServiceStartedEvent.class).event())
+                .endsWith(listeners.get(terminalEventClass).event())
+                .allSatisfy(event -> assertThat(event.invocationContext().invocationId())
+                        .isEqualTo(invocationSummaryEvent.invocationContext().invocationId()))
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .hasSameElementsAs(expectedEventClasses);
     }
 
     @Test
@@ -174,7 +215,7 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class,
                         ToolExecutedEvent.class),
                 "Hello!",
-                List.of(AiServiceStartedEvent.class, AiServiceErrorEvent.class));
+                List.of(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class, AiServiceErrorEvent.class));
     }
 
     @Test
@@ -185,6 +226,25 @@ class AiServicesObservabilityTests {
                 assistant ->
                         assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> assistant.chat("Hello!")),
                 "chat",
+                false,
+                List.of(
+                        AiServiceCompletedEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        ToolExecutedEvent.class),
+                "Hello!",
+                List.of(AiServiceStartedEvent.class, AiServiceRequestIssuedEvent.class, AiServiceErrorEvent.class));
+    }
+
+    @Test
+    void failureChatAsync() {
+        runScenario(
+                () -> Assistant.createFailingService(false),
+                () -> Assistant.createFailingService(false, listeners.values()),
+                assistant -> assertThatExceptionOfType(RuntimeException.class)
+                        .isThrownBy(() -> await(assistant.chatAsync("Hello!"))),
+                "chatAsync",
                 false,
                 List.of(
                         AiServiceCompletedEvent.class,
@@ -269,6 +329,57 @@ class AiServicesObservabilityTests {
                         AiServiceRequestIssuedEvent.class,
                         AiServiceCompletedEvent.class,
                         AiServiceResponseReceivedEvent.class));
+    }
+
+    @Test
+    void successfulChatAsyncNoTools() {
+        runScenario(
+                () -> Assistant.create(false, false),
+                () -> Assistant.create(false, false, listeners.values()),
+                assistant -> assertThat(await(assistant.chatAsync("Hello!"))).isEqualTo(DEFAULT_EXPECTED_RESPONSE),
+                "chatAsync",
+                false,
+                List.of(
+                        AiServiceErrorEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        ToolExecutedEvent.class),
+                "Hello!",
+                List.of(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class));
+    }
+
+    @Test
+    void successfulChatAsyncWithTools() {
+        runScenario(
+                () -> Assistant.create(true, false),
+                () -> Assistant.create(true, false, listeners.values()),
+                assistant -> assertThat(await(assistant.chatAsync(TOOL_USER_MESSAGE)))
+                        .isEqualTo(TOOL_EXPECTED_RESPONSE),
+                "chatAsync",
+                true,
+                List.of(
+                        AiServiceErrorEvent.class,
+                        InputGuardrailExecutedEvent.class,
+                        OutputGuardrailExecutedEvent.class),
+                TOOL_USER_MESSAGE,
+                List.of(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceCompletedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        ToolExecutedEvent.class),
+                aiServiceEvent -> {
+                    if (aiServiceEvent instanceof AiServiceResponseReceivedEvent aiServiceResponseReceivedEvent) {
+                        assertThat(aiServiceResponseReceivedEvent.response()).isNotNull();
+                        assertThat(aiServiceResponseReceivedEvent.request()).isNotNull();
+                    } else if (aiServiceEvent instanceof AiServiceRequestIssuedEvent aiServiceRequestIssuedEvent) {
+                        assertThat(aiServiceRequestIssuedEvent.request()).isNotNull();
+                    }
+                });
     }
 
     @Test
@@ -478,12 +589,53 @@ class AiServicesObservabilityTests {
                         AiServiceResponseReceivedEvent.class));
     }
 
+    @Test
+    void chatAsyncWithOutputGuardrails() {
+        runScenario(
+                () -> Assistant.create(false, false),
+                () -> Assistant.create(false, false, listeners.values()),
+                assistant -> assertThatExceptionOfType(OutputGuardrailException.class)
+                        .isThrownBy(() -> await(assistant.chatAsyncWithOutputGuardrails("Hello!")))
+                        .withMessage(
+                                "The guardrail %s failed with this message: LLM response is not valid",
+                                FailureOutputGuardrail.class.getName()),
+                "chatAsyncWithOutputGuardrails",
+                false,
+                List.of(AiServiceCompletedEvent.class, InputGuardrailExecutedEvent.class, ToolExecutedEvent.class),
+                "Hello!",
+                List.of(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceErrorEvent.class,
+                        OutputGuardrailExecutedEvent.class,
+                        AiServiceResponseReceivedEvent.class));
+    }
+
+    private static <T> T await(CompletableFuture<T> future) {
+        try {
+            return future.get(1, TimeUnit.MINUTES);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static void assertNoEventsReceived(
             int expectedSize, Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
-        assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
+        assertThat(listeners)
                 .isNotNull()
-                .extracting(MyListener::count, MyListener::event)
-                .containsExactly(0, null));
+                .hasSize(expectedSize)
+                .allSatisfy(l -> assertThat(l)
+                        .isNotNull()
+                        .extracting(MyListener::count, MyListener::event)
+                        .containsExactly(0, null));
     }
 
     private static void assertEventsReceived(
@@ -523,7 +675,7 @@ class AiServicesObservabilityTests {
         // Verify that all the listeners have the same invocationContext()
         assertThat(listeners)
                 .extracting(l -> l.event().invocationContext())
-                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("userMessage")
+                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("userMessage", "originalUserMessage")
                 .containsOnly(ic);
 
         // And because all the invocationContext() is the same, verify that it has the correct information
@@ -557,6 +709,7 @@ class AiServicesObservabilityTests {
                         new MyAiServiceRequestIssuedListener(),
                         new MyAiServiceResponseReceivedListener(),
                         new MyOutputGuardrailExecutedListener(),
+                        new MyAiServiceInvocationSummaryListener(),
                         new MyToolExecutedListener())
                 .collect(Collectors.toMap(AiServiceListener::getEventClass, Function.identity()));
     }
@@ -565,7 +718,12 @@ class AiServicesObservabilityTests {
     interface Assistant {
         String chat(String message);
 
+        CompletableFuture<String> chatAsync(String message);
+
         TokenStream streamingChat(String message);
+
+        @OutputGuardrails({SuccessOutputGuardrail.class, FailureOutputGuardrail.class})
+        CompletableFuture<String> chatAsyncWithOutputGuardrails(String message);
 
         @InputGuardrails({SuccessInputGuardrail.class, FailureInputGuardrail.class})
         String chatWithInputGuardrails(String message);
@@ -647,12 +805,22 @@ class AiServicesObservabilityTests {
         public InputGuardrailResult validate(UserMessage userMessage) {
             return successWith("Success!!");
         }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     public static class FailureInputGuardrail implements InputGuardrail {
         @Override
         public InputGuardrailResult validate(UserMessage userMessage) {
             return failure("User message is not valid");
+        }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
         }
     }
 
@@ -661,12 +829,22 @@ class AiServicesObservabilityTests {
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return successWith("Success!!");
         }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     public static class FailureOutputGuardrail implements OutputGuardrail {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return failure("LLM response is not valid");
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
         }
     }
 
@@ -713,6 +891,9 @@ class AiServicesObservabilityTests {
 
     public static class MyAiServiceCompletedListener extends MyListener<AiServiceCompletedEvent>
             implements AiServiceCompletedListener {}
+
+    public static class MyAiServiceInvocationSummaryListener extends MyListener<AiServiceInvocationSummaryEvent>
+            implements AiServiceInvocationSummaryListener {}
 
     public static class MyInputGuardrailExecutedListener extends MyListener<InputGuardrailExecutedEvent>
             implements InputGuardrailExecutedListener {}

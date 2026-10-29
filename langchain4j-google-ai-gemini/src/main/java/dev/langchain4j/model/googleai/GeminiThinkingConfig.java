@@ -2,6 +2,7 @@ package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Locale;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record GeminiThinkingConfig(
@@ -41,7 +42,7 @@ public record GeminiThinkingConfig(
         }
 
         public Builder thinkingLevel(GeminiThinkingLevel thinkingLevel) {
-            this.thinkingLevel = thinkingLevel.toString().toLowerCase();
+            this.thinkingLevel = thinkingLevel.name().toLowerCase(Locale.ROOT);
             return this;
         }
 

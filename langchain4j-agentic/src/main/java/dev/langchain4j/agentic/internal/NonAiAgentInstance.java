@@ -1,7 +1,9 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -20,6 +22,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final String outputKey;
     private final boolean async;
     private final List<AgentArgument> arguments;
+    private final AgentCondition activationCondition;
 
     private AgentListener listener;
 
@@ -29,6 +32,12 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     public NonAiAgentInstance(Class<?> type, String name, String description,
             Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
             AgentListener listener) {
+        this(type, name, description, outputType, outputKey, async, arguments, listener, null);
+    }
+
+    public NonAiAgentInstance(Class<?> type, String name, String description,
+            Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
+            AgentListener listener, AgentCondition activationCondition) {
         this.type = type;
         this.name = name;
         this.agentId = name;
@@ -38,6 +47,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         this.async = async;
         this.arguments = arguments;
         this.listener = listener;
+        this.activationCondition = activationCondition;
     }
 
     @Override
@@ -101,15 +111,30 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
+    }
+
+    @Override
     public AgentListener listener() {
         return listener;
     }
 
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
-        if (parentListener != null && parentListener.inheritedBySubagents()) {
+        if (parentListener != null && parentListener.inheritedBySubagents() && isNewListener(listener, parentListener)) {
             listener = composeWithInherited(listener(), parentListener);
         }
+    }
+
+    private static boolean isNewListener(AgentListener currentListener, AgentListener newListener) {
+        if (newListener == currentListener) {
+            return false;
+        }
+        if (currentListener instanceof ComposedAgentListener composed) {
+            return !composed.contains(newListener);
+        }
+        return true;
     }
 
     @Override
@@ -124,12 +149,13 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
                 Objects.equals(this.outputKey, that.outputKey) &&
                 this.async == that.async &&
                 Objects.equals(this.arguments, that.arguments) &&
-                Objects.equals(this.listener, that.listener);
+                Objects.equals(this.listener, that.listener) &&
+                Objects.equals(this.activationCondition, that.activationCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, name, description, outputType, outputKey, async, arguments, listener);
+        return Objects.hash(type, name, description, outputType, outputKey, async, arguments, listener, activationCondition);
     }
 
     @Override
@@ -142,12 +168,16 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
                 "outputKey=" + outputKey + ", " +
                 "async=" + async + ", " +
                 "arguments=" + arguments + ", " +
-                "listener=" + listener + ']';
+                "listener=" + listener + ", " +
+                "activationCondition=" + activationCondition + ']';
     }
 
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
     }
 
     @Override

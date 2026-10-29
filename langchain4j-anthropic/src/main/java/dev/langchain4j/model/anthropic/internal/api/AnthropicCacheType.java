@@ -16,4 +16,8 @@ public enum AnthropicCacheType {
     public AnthropicCacheControl cacheControl() {
         return this.value.get();
     }
+
+    public AnthropicCacheControl cacheControl(String ttl) {
+        return ttl == null ? cacheControl() : new AnthropicCacheControl(cacheControl().getType(), ttl);
+    }
 }

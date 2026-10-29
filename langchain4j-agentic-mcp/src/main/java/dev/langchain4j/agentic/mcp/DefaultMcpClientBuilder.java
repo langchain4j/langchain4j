@@ -1,17 +1,26 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -24,10 +33,10 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, InternalAgent, InvocationHandler {
 
@@ -45,10 +54,13 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private InternalAgent parent;
 
     private String[] inputKeys;
+    private Map<String, String> inputDescriptions = Map.of();
+    private List<AgentArgument> arguments = List.of();
     private String outputKey;
     private boolean async;
 
     private AgentListener agentListener;
+    private AgentCondition activationCondition;
 
     DefaultMcpClientBuilder(McpClient mcpClient, Class<T> agentServiceClass) {
         this.mcpClient = mcpClient;
@@ -81,7 +93,13 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public McpClientBuilder<T> listener(AgentListener agentListener) {
-        this.agentListener = agentListener;
+        this.agentListener = compose(this.agentListener, agentListener);
+        return this;
+    }
+
+    @Override
+    public McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
         return this;
     }
 
@@ -92,9 +110,20 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         this.name = toolSpec.name();
         this.agentId = this.name;
         this.description = toolSpec.description();
+        JsonObjectSchema params = toolSpec.parameters();
+        if (params != null && params.properties() != null) {
+            Map<String, String> descriptions = new HashMap<>();
+            params.properties().forEach((key, schema) -> {
+                if (schema != null
+                        && schema.description() != null
+                        && !schema.description().isBlank()) {
+                    descriptions.put(key, schema.description());
+                }
+            });
+            this.inputDescriptions = Map.copyOf(descriptions);
+        }
 
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
-            JsonObjectSchema params = toolSpec.parameters();
             if (params != null && params.properties() != null) {
                 this.inputKeys = params.properties().keySet().toArray(new String[0]);
             } else {
@@ -102,11 +131,29 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
             }
         }
 
+        if (agentServiceClass == UntypedAgent.class) {
+            this.arguments = McpSchemaToType.arguments(params, inputKeys);
+        } else {
+            this.arguments = McpSchemaToType.mergeDescriptions(typedArguments(), inputDescriptions);
+        }
+
         Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
+                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
 
         return (T) agent;
+    }
+
+    private List<AgentArgument> typedArguments() {
+        for (Method method : agentServiceClass.getMethods()) {
+            Optional<Method> agentMethod = getAnnotatedMethod(method, Agent.class);
+            if (agentMethod.isEmpty()) {
+                agentMethod = getAnnotatedMethod(method, McpClientAgent.class);
+            }
+            if (agentMethod.isPresent()) {
+                return AgentUtil.argumentsFromMethod(agentMethod.get());
+            }
+        }
+        return List.of();
     }
 
     private ToolSpecification findTool() {
@@ -116,16 +163,16 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 return tools.get(0);
             }
             throw new AgenticSystemConfigurationException(
-                    "Tool name is required when there is more than one tool available: " +
-                            tools.stream().map(ToolSpecification::name).toList());
+                    "Tool name is required when there is more than one tool available: "
+                            + tools.stream().map(ToolSpecification::name).toList());
         }
 
         return tools.stream()
                 .filter(t -> toolName == null || t.name().equals(toolName))
                 .findFirst()
-                .orElseThrow(() -> new AgenticSystemConfigurationException(
-                        "Tool '" + toolName + "' not found. Available tools: " +
-                                tools.stream().map(ToolSpecification::name).toList()));
+                .orElseThrow(() ->
+                        new AgenticSystemConfigurationException("Tool '" + toolName + "' not found. Available tools: "
+                                + tools.stream().map(ToolSpecification::name).toList()));
     }
 
     @Override
@@ -139,9 +186,10 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 case "toolName" -> name;
                 case "toolDescription" -> description;
                 case "inputKeys" -> inputKeys;
+                case "inputDescriptions" -> inputDescriptions;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on McpClientInstance class: " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on McpClientInstance class: " + method.getName());
             };
         }
 
@@ -256,8 +304,13 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
-        return List.of();
+        return arguments;
     }
 
     @Override

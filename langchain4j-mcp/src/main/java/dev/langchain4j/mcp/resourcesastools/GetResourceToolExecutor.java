@@ -1,9 +1,8 @@
 package dev.langchain4j.mcp.resourcesastools;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
@@ -12,6 +11,7 @@ import dev.langchain4j.mcp.client.McpTextResourceContents;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -29,15 +29,15 @@ class GetResourceToolExecutor implements ToolExecutor {
     @Override
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
-        ObjectNode arguments = parseArguments(toolExecutionRequest);
-        if (!arguments.has("mcpServer")) {
+        Map<String, Object> arguments = parseArguments(toolExecutionRequest);
+        if (!arguments.containsKey("mcpServer")) {
             throw new ToolArgumentsException("ERROR: missing argument 'mcpServer'");
         }
-        String mcpServerKey = arguments.get("mcpServer").asText();
-        if (!arguments.has("uri")) {
+        String mcpServerKey = String.valueOf(arguments.get("mcpServer"));
+        if (!arguments.containsKey("uri")) {
             throw new ToolArgumentsException("ERROR: missing argument 'uri'");
         }
-        String uri = arguments.get("uri").asText();
+        String uri = String.valueOf(arguments.get("uri"));
         Optional<McpClient> client = mcpClients.stream()
                 .filter(mcpClient -> mcpClient.key().equals(mcpServerKey))
                 .findFirst();
@@ -51,7 +51,8 @@ class GetResourceToolExecutor implements ToolExecutor {
                 if (content instanceof McpTextResourceContents) {
                     result.append(((McpTextResourceContents) content).text());
                 } else {
-                    throw new ToolExecutionException("ERROR: binary content was requested, this is not supported yet");
+                    throw new LlmVisibleToolExecutionException(
+                            "ERROR: binary content was requested, this is not supported yet");
                 }
             }
             return ToolExecutionResult.builder().resultText(result.toString()).build();
@@ -63,9 +64,10 @@ class GetResourceToolExecutor implements ToolExecutor {
         return executeWithContext(toolExecutionRequest, null).resultText();
     }
 
-    private static ObjectNode parseArguments(ToolExecutionRequest toolExecutionRequest) {
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> parseArguments(ToolExecutionRequest toolExecutionRequest) {
         try {
-            return Json.fromJson(toolExecutionRequest.arguments(), ObjectNode.class);
+            return Json.fromJson(toolExecutionRequest.arguments(), Map.class);
         } catch (Exception e) {
             throw new ToolArgumentsException(e.getCause());
         }

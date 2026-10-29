@@ -1,7 +1,5 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -15,6 +13,8 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 @Internal
 public class InternalStreamingChatResponseHandlerUtils {

@@ -1,21 +1,34 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
  * Generic executor interface that defines a chat interaction
+ * <p>
+ * When built with an event listener registrar, the built-in executors fire an
+ * {@link AiServiceRequestIssuedEvent} for every request they send. They fire
+ * an {@link AiServiceResponseReceivedEvent} only for the methods that take
+ * chat messages (used for output guardrail reprompts): for {@link #execute()} and {@link #executeAsync()}, the caller
+ * fires it.
  */
 public interface ChatExecutor {
 
@@ -32,6 +45,76 @@ public interface ChatExecutor {
      * @return A response object containing the AI's response and additional metadata.
      */
     ChatResponse execute(List<ChatMessage> chatMessages);
+
+    /**
+     * Non-blocking counterpart of {@link #execute()}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
+     *
+     * @return a {@link CompletableFuture} that completes with the response
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> executeAsync() {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(List)}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return a {@link CompletableFuture} that completes with the response
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
+
+    /**
+     * Like {@link #execute(List)}, but also returns the request that produced the response. When the response is the
+     * result of a tool-calling loop, the request is the last one sent to the model, with the tool calls and tool
+     * results of all rounds.
+     * <p>
+     * The default implementation calls {@link #execute(List)} and returns {@code null} as the request, because the
+     * request that the executor sent is not known.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return the response and the request that produced it; {@link ChatExchange#request()} is {@code null} when the
+     *         request is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    default ChatExchange exchange(List<ChatMessage> chatMessages) {
+        return new ChatExchange(null, execute(chatMessages));
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #exchange(List)}.
+     * <p>
+     * The default implementation calls {@link #executeAsync(List)} and returns {@code null} as the request, because
+     * the request that the executor sent is not known.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return a {@link CompletableFuture} that completes with the request and the response
+     * @since 1.23.0
+     */
+    @Experimental
+    default CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
+        try {
+            return ChatExchanges.exchangeAsync(null, executeAsync(chatMessages));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
 
     /**
      * Creates a new {@link SynchronousBuilder} instance for constructing {@link ChatExecutor} objects
@@ -141,7 +224,7 @@ public interface ChatExecutor {
          * @return a fully constructed {@link ChatExecutor} instance
          */
         public ChatExecutor build() {
-            return new SynchronousChatExecutor(this);
+            return new DirectChatExecutor(this);
         }
     }
 

@@ -3,6 +3,8 @@ package dev.langchain4j.model.anthropic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -67,6 +69,14 @@ class AnthropicBatchChatModelTest {
                     + "\"model\":\"claude-haiku-4-5-20251001\",\"stop_reason\":\"end_turn\","
                     + "\"usage\":{\"input_tokens\":5,\"output_tokens\":1}}}}\n";
 
+    private static final String DIAGNOSTICS_RESULTS_JSONL =
+            "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"succeeded\",\"message\":{\"id\":\"msg_0\","
+                    + "\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"A\"}],"
+                    + "\"model\":\"claude-haiku-4-5-20251001\",\"stop_reason\":\"end_turn\","
+                    + "\"usage\":{\"input_tokens\":5,\"output_tokens\":1},"
+                    + "\"diagnostics\":{\"cache_miss_reason\":{\"type\":\"system_changed\","
+                    + "\"cache_missed_input_tokens\":41850}}}}}\n";
+
     private static final String CANCELED_RESULTS_JSONL =
             "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"canceled\"}}\n";
 
@@ -105,6 +115,8 @@ class AnthropicBatchChatModelTest {
                     responseBody = CANCELED_RESULTS_JSONL;
                 } else if (path.contains("msgbatch_thinking")) {
                     responseBody = THINKING_RESULTS_JSONL;
+                } else if (path.contains("msgbatch_diagnostics")) {
+                    responseBody = DIAGNOSTICS_RESULTS_JSONL;
                 } else {
                     responseBody = RESULTS_JSONL;
                 }
@@ -239,6 +251,26 @@ class AnthropicBatchChatModelTest {
     }
 
     @Test
+    void retrieve_maps_cache_diagnostics_from_the_result_message() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_diagnostics");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata)
+                response.results().get(0).response().metadata();
+        assertThat(metadata.cacheDiagnostics()).isNotNull();
+        assertThat(metadata.cacheDiagnostics().cacheMissReasonType()).isEqualTo("system_changed");
+        assertThat(metadata.cacheDiagnostics().cacheMissedInputTokens()).isEqualTo(41850);
+    }
+
+    @Test
+    void retrieve_maps_absent_cache_diagnostics_to_null() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_1");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata)
+                response.results().get(0).response().metadata();
+        assertThat(metadata.cacheDiagnostics()).isNull();
+    }
+
+    @Test
     void retrieve_returns_thinking_when_return_thinking_is_enabled() {
         AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
                 .baseUrl(baseUrl)
@@ -272,6 +304,29 @@ class AnthropicBatchChatModelTest {
                 ChatRequest.builder().messages(UserMessage.from("first")).build())));
 
         assertThat(capturedCreateBody.get()).contains("\"thinking\"", "\"budget_tokens\" : 1024");
+    }
+
+    @Test
+    void submit_applies_automatic_caching_and_cache_ttl_from_default_request_parameters() throws Exception {
+        AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey("test-key")
+                .modelName("claude-haiku-4-5-20251001")
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .cacheAutomatically(true)
+                        .cacheTtl("1h")
+                        .build())
+                .build();
+
+        model.submit(new BatchRequest<>(List.of(
+                ChatRequest.builder().messages(UserMessage.from("first")).build())));
+
+        JsonNode params = new ObjectMapper()
+                .readTree(capturedCreateBody.get())
+                .get("requests")
+                .get(0)
+                .get("params");
+        assertThat(params.get("cache_control").toString()).isEqualTo("{\"type\":\"ephemeral\",\"ttl\":\"1h\"}");
     }
 
     @Test

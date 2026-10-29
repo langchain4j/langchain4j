@@ -1,8 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
 /**
@@ -13,7 +11,6 @@ import java.util.List;
  * cursor to pass back as {@code after_id} to fetch the next page.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicListBatchesResponse {
 
     public List<AnthropicBatch> data;

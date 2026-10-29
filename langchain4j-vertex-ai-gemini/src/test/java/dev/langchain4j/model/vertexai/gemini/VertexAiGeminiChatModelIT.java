@@ -461,7 +461,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(file).exists();
 
         UserMessage msg = UserMessage.from(
-                AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+                VideoContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
                 TextContent.from("What's in this video?"));
 
         // when
