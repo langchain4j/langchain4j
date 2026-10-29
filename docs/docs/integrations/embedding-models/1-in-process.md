@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 ```java
@@ -40,6 +40,13 @@ Embedding embedding = response.content();
 
 The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j/tree/main/embeddings).
 
+:::note Windows
+ONNX runtime needs version 14.40 or newer of the Microsoft Visual C++ runtime library `msvcp140.dll`.
+Many JDKs ship their own copy of this file in their `bin` folder, and Windows uses that copy first.
+If your JDK ships an older copy, the model fails to load, and the root cause of the error is
+`java.lang.UnsatisfiedLinkError: ...\onnxruntime.dll: A dynamic link library (DLL) initialization routine failed`.
+To fix it, update your JDK to a recent build that ships `msvcp140.dll` version 14.40 or newer.
+:::
 
 ## Parallelization
 
@@ -73,7 +80,7 @@ Example of using custom embedding model:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 ```java

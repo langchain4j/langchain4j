@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.UserMessageTransformer;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -358,7 +360,7 @@ public class DefaultAgenticScope implements AgenticScope {
             }
             ChatMessage message = agentMessage.message();
             if (message instanceof UserMessage userMessage) {
-                sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
+                sb.append("User: \"").append(text(userMessage)).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
                 sb.append(agentMessage.agentName())
                         .append(" agent: \"")
@@ -370,6 +372,21 @@ public class DefaultAgenticScope implements AgenticScope {
         String contextAsConversation = sb.toString();
         LOG.trace("AgenticScope context as conversation: '{}'", contextAsConversation);
         return contextAsConversation;
+    }
+
+    /**
+     * The same text of the given user message that a {@link UserMessageTransformer} transforms, or, for a message
+     * without any text, like a message made only of an image, the types of its contents, like {@code [image]}, so
+     * that the conversation still tells that the user sent something.
+     */
+    private static String text(UserMessage userMessage) {
+        String text = UserMessageTransformer.text(userMessage);
+        if (!text.isEmpty() || userMessage.contents().isEmpty()) {
+            return text;
+        }
+        return userMessage.contents().stream()
+                .map(content -> "[" + content.type().name().toLowerCase(Locale.ROOT) + "]")
+                .collect(Collectors.joining(" "));
     }
 
     @Override

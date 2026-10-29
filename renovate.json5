@@ -3,6 +3,17 @@
     "extends": [
         "config:recommended"
     ],
+    // the ignorePaths of config:recommended (:ignoreModulesAndTests) without "**/test/**", which would hide
+    // the Milvus test image tags in src/test/java from the custom manager below
+    "ignorePaths": [
+        "**/node_modules/**",
+        "**/bower_components/**",
+        "**/vendor/**",
+        "**/examples/**",
+        "**/__tests__/**",
+        "**/tests/**",
+        "**/__fixtures__/**"
+    ],
     "labels": [
         // add "dependencies" label to PRs
         "dependencies"
@@ -47,6 +58,25 @@
             ],
             "matchPackageNames": ["io.netty:*"],
             "allowedVersions": "(,4.2)"
+        },
+        {
+            // the Milvus tests pin one image per server major version; a new major gets its own entry instead
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["milvusdb/milvus"],
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        }
+    ],
+    "customManagers": [
+        {
+            // the Milvus test image is a plain string, which no built-in manager detects
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^langchain4j-milvus(-v2)?/src/test/java/.+IT\\.java$/",
+                "/^\\.github/workflows/.+\\.ya?ml$/"
+            ],
+            "matchStrings": ["(?<depName>milvusdb/milvus):(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "docker"
         }
     ]
 }
