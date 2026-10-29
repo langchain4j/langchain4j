@@ -16,45 +16,71 @@ import java.util.UUID;
 
 class MilvusMetadataFilterMapper {
 
-    static String map(Filter filter, String metadataFieldName) {
+    static String map(Filter filter, String metadataFieldName, MilvusServerVersion serverVersion) {
+        return map(filter, metadataFieldName, serverVersion, false);
+    }
+
+    private static String map(Filter filter, String metadataFieldName, MilvusServerVersion serverVersion, boolean insideNot) {
         if (filter instanceof ContainsString containsString) {
-            return mapContains(containsString, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot,
+                    containsString.key(),
+                    metadataFieldName,
+                    mapContains(containsString, metadataFieldName, serverVersion));
         } else if (filter instanceof IsEqualTo isEqualTo) {
-            return mapEqual(isEqualTo, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot, isEqualTo.key(), metadataFieldName, mapEqual(isEqualTo, metadataFieldName));
         } else if (filter instanceof IsNotEqualTo isNotEqualTo) {
-            return mapNotEqual(isNotEqualTo, metadataFieldName);
+            return keyMissingOr(isNotEqualTo.key(), metadataFieldName, mapNotEqual(isNotEqualTo, metadataFieldName));
         } else if (filter instanceof IsGreaterThan isGreaterThan) {
-            return mapGreaterThan(isGreaterThan, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot, isGreaterThan.key(), metadataFieldName, mapGreaterThan(isGreaterThan, metadataFieldName));
         } else if (filter instanceof IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual(isGreaterThanOrEqualTo, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot,
+                    isGreaterThanOrEqualTo.key(),
+                    metadataFieldName,
+                    mapGreaterThanOrEqual(isGreaterThanOrEqualTo, metadataFieldName));
         } else if (filter instanceof IsLessThan isLessThan) {
-            return mapLessThan(isLessThan, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot, isLessThan.key(), metadataFieldName, mapLessThan(isLessThan, metadataFieldName));
         } else if (filter instanceof IsLessThanOrEqualTo isLessThanOrEqualTo) {
-            return mapLessThanOrEqual(isLessThanOrEqualTo, metadataFieldName);
+            return requireKeyIfInsideNot(
+                    insideNot,
+                    isLessThanOrEqualTo.key(),
+                    metadataFieldName,
+                    mapLessThanOrEqual(isLessThanOrEqualTo, metadataFieldName));
         } else if (filter instanceof IsIn isIn) {
-            return mapIn(isIn, metadataFieldName);
+            return requireKeyIfInsideNot(insideNot, isIn.key(), metadataFieldName, mapIn(isIn, metadataFieldName));
         } else if (filter instanceof IsNotIn isNotIn) {
-            return mapNotIn(isNotIn, metadataFieldName);
+            return keyMissingOr(isNotIn.key(), metadataFieldName, mapNotIn(isNotIn, metadataFieldName));
         } else if (filter instanceof And and) {
-            return mapAnd(and, metadataFieldName);
+            return format(
+                    "%s and %s",
+                    map(and.left(), metadataFieldName, serverVersion, insideNot),
+                    map(and.right(), metadataFieldName, serverVersion, insideNot));
         } else if (filter instanceof Not not) {
-            return mapNot(not, metadataFieldName);
+            return format("not(%s)", map(not.expression(), metadataFieldName, serverVersion, true));
         } else if (filter instanceof Or or) {
-            return mapOr(or, metadataFieldName);
+            return format(
+                    "(%s or %s)",
+                    map(or.left(), metadataFieldName, serverVersion, insideNot),
+                    map(or.right(), metadataFieldName, serverVersion, insideNot));
         } else {
             throw new UnsupportedOperationException(
                     "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
-    private static String mapContains(ContainsString containsString, String metadataFieldName) {
+    private static String mapContains(
+            ContainsString containsString, String metadataFieldName, MilvusServerVersion serverVersion) {
         // ContainsString is a literal substring match (see Filter / ContainsString#test, which uses
         // String#contains). Milvus LIKE treats % and _ as wildcards, so any % or _ in the user-supplied
         // value must be escaped to be matched literally; only the surrounding % we add are real wildcards.
         return format(
                 "%s LIKE %s",
                 formatKey(containsString.key(), metadataFieldName),
-                formatLikePattern(containsString.comparisonValue()));
+                formatLikePattern(containsString.comparisonValue(), serverVersion));
     }
 
     /**
@@ -67,13 +93,18 @@ class MilvusMetadataFilterMapper {
      * in the expression we send so that a single one reaches the pattern; a single backslash makes the
      * server reject the whole expression with a parse error.
      *
-     * <p>Two inputs are known not to work, because Milvus itself mis-parses them: a value ending with
-     * {@code %}, and a value containing a backslash immediately before a {@code %} or {@code _}.
+     * <p>In the LIKE pattern, Milvus 3 resolves a backslash before any character, while Milvus 2.5.10 to 2.6
+     * resolve it only before {@code %} and {@code _} and keep it as a literal backslash otherwise. A backslash that
+     * is part of the value therefore needs one more level of escaping on Milvus 3. Older Milvus 2 versions (2.4.24
+     * and 2.5.4 were tested) behave like Milvus 3 here, so on them such a value does not match.
+     *
+     * <p>On Milvus 2, a value ending with {@code %} is known not to work, because Milvus itself mis-parses it.
      */
-    private static String formatLikePattern(String value) {
+    private static String formatLikePattern(String value, MilvusServerVersion serverVersion) {
         // escape() covers the string literal layer. A wildcard has to survive the LIKE pattern layer as
         // well, so it gets two backslashes here and reaches the pattern with one.
-        String escaped = escape(value).replace("%", "\\\\%").replace("_", "\\\\_");
+        String literal = serverVersion.likePatternNeedsExtraBackslash() ? value.replace("\\", "\\\\") : value;
+        String escaped = escape(literal).replace("%", "\\\\%").replace("_", "\\\\_");
         return "\"%" + escaped + "%\"";
     }
 
@@ -123,16 +154,26 @@ class MilvusMetadataFilterMapper {
                 "%s not in %s", formatKey(isNotIn.key(), metadataFieldName), formatValues(isNotIn.comparisonValues()));
     }
 
-    private static String mapAnd(And and, String metadataFieldName) {
-        return format("%s and %s", map(and.left(), metadataFieldName), map(and.right(), metadataFieldName));
+    /**
+     * Since Milvus 2.6.20, a comparison on a missing JSON key is UNKNOWN. Outside {@code not(...)} that already
+     * drops the entry, as {@link Filter#test(Object)} does. Inside {@code not(...)} the comparison has to be false
+     * instead, so that the negation matches entries without the key.
+     * <p>
+     * Before Milvus 2.6, {@code exists} has the lowest precedence, so it is wrapped in its own parentheses.
+     */
+    private static String requireKeyIfInsideNot(
+            boolean insideNot, String key, String metadataFieldName, String comparison) {
+        return insideNot
+                ? format("((exists %s) and %s)", formatKey(key, metadataFieldName), comparison)
+                : comparison;
     }
 
-    private static String mapNot(Not not, String metadataFieldName) {
-        return format("not(%s)", map(not.expression(), metadataFieldName));
-    }
-
-    private static String mapOr(Or or, String metadataFieldName) {
-        return format("(%s or %s)", map(or.left(), metadataFieldName), map(or.right(), metadataFieldName));
+    /**
+     * {@link IsNotEqualTo} and {@link IsNotIn} match entries without the key (see {@link Filter#test(Object)}),
+     * which Milvus 2.6.20 and later only do when it is checked explicitly.
+     */
+    private static String keyMissingOr(String key, String metadataFieldName, String comparison) {
+        return format("((not exists %s) or %s)", formatKey(key, metadataFieldName), comparison);
     }
 
     private static String formatKey(String key, String metadataFieldName) {

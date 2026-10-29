@@ -1,8 +1,11 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -23,7 +26,7 @@ import org.testcontainers.milvus.MilvusContainer;
 class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+    static MilvusContainer milvus = new MilvusContainer(MilvusV2EmbeddingStoreIT.MILVUS_DOCKER_IMAGE)
             .withEnv("DEPLOY_MODE", "STANDALONE")
             .withEnv("MILVUS_MODE", "standalone")
             .withEnv("ETCD_USE_EMBED", "true")
@@ -93,5 +96,22 @@ class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
         var searchResult = embeddingStore.search(searchRequest);
         assertThat(searchResult.matches()).isEmpty();
+    }
+
+    @Test
+    void should_also_remove_entries_without_the_key_when_removing_by_not_equal() {
+        TextSegment withA = TextSegment.from("k is a", new Metadata().put("k", "a"));
+        TextSegment withB = TextSegment.from("k is b", new Metadata().put("k", "b"));
+        TextSegment withoutK = TextSegment.from("no k", new Metadata().put("other", "x"));
+        for (TextSegment segment : List.of(withA, withB, withoutK)) {
+            embeddingStore().add(embeddingModel().embed(segment).content(), segment);
+        }
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(3));
+
+        embeddingStore().removeAll(metadataKey("k").isNotEqualTo("a"));
+
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+        assertThat(getAllEmbeddings().get(0).embedded().metadata().getString("k"))
+                .isEqualTo("a");
     }
 }

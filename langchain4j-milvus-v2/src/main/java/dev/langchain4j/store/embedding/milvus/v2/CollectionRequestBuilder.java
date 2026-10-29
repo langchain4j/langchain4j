@@ -55,7 +55,8 @@ class CollectionRequestBuilder {
             String collectionName,
             FieldDefinition fieldDefinition,
             IndexParam.MetricType metricType,
-            ConsistencyLevel consistencyLevel) {
+            ConsistencyLevel consistencyLevel,
+            MilvusServerVersion serverVersion) {
         return createDenseSearchReq(
                 collectionName,
                 embeddingSearchRequest.queryEmbedding(),
@@ -63,7 +64,7 @@ class CollectionRequestBuilder {
                 metricType,
                 consistencyLevel,
                 embeddingSearchRequest.maxResults(),
-                embeddingSearchRequest.filter());
+                filterExpression(embeddingSearchRequest.filter(), fieldDefinition, serverVersion));
     }
 
     static HybridSearchReq buildHybridSearchRequest(
@@ -73,7 +74,8 @@ class CollectionRequestBuilder {
             IndexParam.MetricType metricType,
             IndexParam.MetricType sparseMetricType,
             MilvusV2Ranker ranker,
-            ConsistencyLevel consistencyLevel) {
+            ConsistencyLevel consistencyLevel,
+            MilvusServerVersion serverVersion) {
         return createHybridSearchReq(
                 fieldDefinition,
                 embeddingSearchRequest.queryEmbedding(),
@@ -81,7 +83,7 @@ class CollectionRequestBuilder {
                 embeddingSearchRequest.query(),
                 metricType,
                 sparseMetricType,
-                embeddingSearchRequest.filter(),
+                filterExpression(embeddingSearchRequest.filter(), fieldDefinition, serverVersion),
                 embeddingSearchRequest.maxResults(),
                 collectionName,
                 ranker,
@@ -95,7 +97,7 @@ class CollectionRequestBuilder {
             IndexParam.MetricType metricType,
             ConsistencyLevel consistencyLevel,
             int maxResults,
-            Filter filter) {
+            String filterExpression) {
         SearchReq.SearchReqBuilder builder = SearchReq.builder()
                 .collectionName(collectionName)
                 .data(Collections.singletonList(new FloatVec(denseEmbedding.vectorAsList())))
@@ -108,8 +110,8 @@ class CollectionRequestBuilder {
                         fieldDefinition.getTextFieldName(),
                         fieldDefinition.getMetadataFieldName()));
 
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        if (filterExpression != null) {
+            builder.filter(filterExpression);
         }
         return builder.build();
     }
@@ -118,7 +120,7 @@ class CollectionRequestBuilder {
             FieldDefinition fieldDefinition,
             Embedding queryEmbedding,
             IndexParam.MetricType metricType,
-            Filter filter,
+            String filterExpression,
             int maxResults) {
         AnnSearchReq.AnnSearchReqBuilder builder = AnnSearchReq.builder()
                 .vectorFieldName(fieldDefinition.getVectorFieldName())
@@ -126,8 +128,8 @@ class CollectionRequestBuilder {
                 .metricType(metricType)
                 .limit(maxResults);
 
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        if (filterExpression != null) {
+            builder.filter(filterExpression);
         }
         return builder.build();
     }
@@ -137,7 +139,7 @@ class CollectionRequestBuilder {
             FieldDefinition fieldDefinition,
             SparseEmbedding sparseEmbedding,
             IndexParam.MetricType metricType,
-            Filter filter,
+            String filterExpression,
             int maxResults) {
         AnnSearchReq.AnnSearchReqBuilder builder = AnnSearchReq.builder()
                 .vectorFieldName(fieldDefinition.getSparseVectorFieldName())
@@ -145,8 +147,8 @@ class CollectionRequestBuilder {
                 .metricType(metricType)
                 .limit(maxResults);
 
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        if (filterExpression != null) {
+            builder.filter(filterExpression);
         }
         return builder.build();
     }
@@ -156,7 +158,7 @@ class CollectionRequestBuilder {
             FieldDefinition fieldDefinition,
             String queryText,
             IndexParam.MetricType metricType,
-            Filter filter,
+            String filterExpression,
             int maxResults) {
         if (metricType != IndexParam.MetricType.BM25) {
             throw new IllegalArgumentException(
@@ -172,8 +174,8 @@ class CollectionRequestBuilder {
                 .metricType(metricType)
                 .limit(maxResults);
 
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+        if (filterExpression != null) {
+            builder.filter(filterExpression);
         }
         return builder.build();
     }
@@ -185,20 +187,20 @@ class CollectionRequestBuilder {
             String queryText,
             IndexParam.MetricType metricType,
             IndexParam.MetricType sparseMetricType,
-            Filter filter,
+            String filterExpression,
             int maxResults,
             String collectionName,
             MilvusV2Ranker ranker,
             ConsistencyLevel consistencyLevel) {
         List<AnnSearchReq> searchRequests = new ArrayList<>();
-        searchRequests.add(createDenseAnnSearchReq(fieldDefinition, denseEmbedding, metricType, filter, maxResults));
+        searchRequests.add(createDenseAnnSearchReq(fieldDefinition, denseEmbedding, metricType, filterExpression, maxResults));
         if (sparseEmbedding != null) {
             searchRequests.add(
-                    createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filter, maxResults));
+                    createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filterExpression, maxResults));
         } else {
             // Milvus auto-generated sparse embedding (BM25)
             searchRequests.add(
-                    createSparseAnnSearchReq(fieldDefinition, queryText, sparseMetricType, filter, maxResults));
+                    createSparseAnnSearchReq(fieldDefinition, queryText, sparseMetricType, filterExpression, maxResults));
         }
         return HybridSearchReq.builder()
                 .collectionName(collectionName)
@@ -211,6 +213,12 @@ class CollectionRequestBuilder {
                         fieldDefinition.getMetadataFieldName()))
                 .consistencyLevel(consistencyLevel)
                 .build();
+    }
+
+    private static String filterExpression(Filter filter, FieldDefinition fieldDefinition, MilvusServerVersion serverVersion) {
+        return filter == null
+                ? null
+                : MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName(), serverVersion);
     }
 
     static QueryReq buildQueryRequest(
