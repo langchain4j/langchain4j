@@ -1,7 +1,7 @@
 name: Nightly Build Milvus
 
 # Milvus modules are tested separately, against a current Milvus 2.6 and 3.0 server,
-# because the other workflows skip their integration tests
+# because they are too heavy to be mixed with other modules
 
 on:
   schedule:
