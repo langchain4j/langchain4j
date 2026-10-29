@@ -7,7 +7,10 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import java.util.Map;
 import java.util.UUID;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.junit.jupiter.Container;
@@ -35,6 +38,8 @@ class MilvusHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT
                 .database("default")
                 .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(384)
+                .queryHints(
+                        Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();
