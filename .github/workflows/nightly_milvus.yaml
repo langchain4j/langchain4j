@@ -27,7 +27,7 @@ jobs:
           - milvus_image: milvusdb/milvus:v2.6.26
             # the Milvus Cloud tests run in one entry only, so that two runs do not share the same cloud collection
             run_cloud_tests: true
-          - milvus_image: milvusdb/milvus:v3.0.4
+          - milvus_image: milvusdb/milvus:v3.0.5
             run_cloud_tests: false
 
     steps:
