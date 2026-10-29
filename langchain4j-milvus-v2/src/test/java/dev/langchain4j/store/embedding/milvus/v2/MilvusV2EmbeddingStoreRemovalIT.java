@@ -72,6 +72,17 @@ class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     @Test
     void should_remove_hybrid_embeddings() {
         // given
+        MilvusV2EmbeddingStore embeddingStore = MilvusV2EmbeddingStore.builder()
+                .uri(milvus.getEndpoint())
+                .collectionName("test_collection_" + randomUUID().replace("-", ""))
+                .username(System.getenv("MILVUS_USERNAME"))
+                .password(System.getenv("MILVUS_PASSWORD"))
+                .consistencyLevel(ConsistencyLevel.STRONG)
+                .dimension(384)
+                .searchMode(MilvusV2EmbeddingStore.SearchMode.HYBRID)
+                .sparseVectorFieldName("sparse_vector_field")
+                .sparseMode(MilvusV2EmbeddingStore.MilvusSparseMode.CUSTOM)
+                .build();
         Embedding denseEmbedding =
                 embeddingModel.embed("test document for removal").content();
         SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
@@ -91,6 +102,7 @@ class MilvusV2EmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         // then - should not find the removed embedding
         MilvusV2EmbeddingSearchRequest searchRequest = MilvusV2EmbeddingSearchRequest.milvusBuilder()
                 .queryEmbedding(denseEmbedding)
+                .sparseEmbedding(sparseEmbedding)
                 .maxResults(10)
                 .build();
 
