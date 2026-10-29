@@ -544,6 +544,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final CapturedContext requestContext;
         private final AtomicBoolean finished = new AtomicBoolean();
         private final StringBuilder body = new StringBuilder();
+        private final StringBuilder sseData = new StringBuilder();
+        private boolean sseDataPresent;
         private volatile Flow.Subscription subscription;
         private boolean sseResponse;
         private boolean responseReceived;
@@ -649,12 +651,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (logResponses && !line.trim().isEmpty()) {
                 trafficLog.info("SSE event received: " + line);
             }
-            if (line.startsWith("data:")) {
-                try {
-                    operationHandler.onMessage(line.substring(5));
-                } catch (RuntimeException e) {
-                    trafficLog.warn("Failed to handle SSE event: " + line, e);
+            if (line.isEmpty()) {
+                dispatchSseEvent();
+            } else if (line.startsWith("data:")) {
+                // an event's data may span several data lines, joined with a line feed
+                // (https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation)
+                if (sseDataPresent) {
+                    sseData.append('\n');
                 }
+                sseData.append(line, 5, line.length());
+                sseDataPresent = true;
             } else if (opened != null && line.startsWith("id:")) {
                 subsidiaryLastEventId.set(line.substring(3).trim());
             } else if (opened != null && line.startsWith("retry:")) {
@@ -663,6 +669,20 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 } catch (NumberFormatException e) {
                     trafficLog.warn("Failed to parse SSE retry value: " + line, e);
                 }
+            }
+        }
+
+        private void dispatchSseEvent() {
+            if (!sseDataPresent) {
+                return;
+            }
+            String data = sseData.toString();
+            sseData.setLength(0);
+            sseDataPresent = false;
+            try {
+                operationHandler.onMessage(data);
+            } catch (RuntimeException e) {
+                trafficLog.warn("Failed to handle SSE event: " + data, e);
             }
         }
 
@@ -738,6 +758,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         private void handleComplete() {
+            if (sseResponse && !closed.get() && (future == null || !future.isCancelled())) {
+                // a stream that ends without the blank line terminating its last event
+                dispatchSseEvent();
+            }
             if (!finish()) {
                 return;
             }
