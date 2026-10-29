@@ -31,7 +31,7 @@ public class TypeSafeClient {
             .build());
 
     private final HttpClient httpClient;
-    private final String baseUrl;
+    private final String url;
     private final String authorizationHeader;
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
@@ -49,7 +49,8 @@ public class TypeSafeClient {
         } else {
             this.httpClient = httpClient;
         }
-        this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
+        this.url = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"))
+                + ensureNotBlank(builder.apiPath, "apiPath").replaceAll("^/+", "");
         this.authorizationHeader = builder.apiKey == null ? null : "Bearer " + builder.apiKey;
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
@@ -74,7 +75,7 @@ public class TypeSafeClient {
     private HttpRequest toHttpRequest(TypeSafeRequest request) {
         HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)
-                .url(baseUrl + "v1/systemone")
+                .url(url)
                 .addHeader("Content-Type", "application/json")
                 .body(CODEC.toJson(request));
         if (authorizationHeader != null) {
@@ -91,6 +92,7 @@ public class TypeSafeClient {
 
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
+        private String apiPath;
         private String apiKey;
         private Duration timeout;
         private boolean logRequests;
@@ -105,6 +107,11 @@ public class TypeSafeClient {
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder apiPath(String apiPath) {
+            this.apiPath = apiPath;
             return this;
         }
 

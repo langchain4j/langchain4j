@@ -15,7 +15,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.typesafe.internal.TypeSafeClient;
 import dev.langchain4j.model.typesafe.internal.TypeSafeMapper;
@@ -33,13 +32,17 @@ import org.slf4j.Logger;
  * ({@code POST /v1/systemone}), which serves decision models such as Jev.
  * <p>
  * Other servers that implement the same API (for example OpenRouter, or self-hosted open models) can be used by
- * setting {@link TypeSafeDecisionModelBuilder#baseUrl(String)}.
+ * setting {@link TypeSafeDecisionModelBuilder#baseUrl(String)} and, if they serve it at another path,
+ * {@link TypeSafeDecisionModelBuilder#apiPath(String)}.
  * <pre>{@code
  * DecisionModel model = TypeSafeDecisionModel.builder()
  *         .apiKey(System.getenv("TYPESAFE_API_KEY"))
  *         .modelName("jev-latest")
  *         .build();
  * }</pre>
+ * The input can be text, named fields (sent as a JSON object), a list of text contents, or a conversation (sent as a
+ * JSON transcript, {@code {"messages": [...]}}); images are not supported and throw an
+ * {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  *
  * @since 1.21.0
  */
@@ -47,16 +50,18 @@ import org.slf4j.Logger;
 public class TypeSafeDecisionModel implements DecisionModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.typesafe.ai";
+    private static final String DEFAULT_API_PATH = "v1/systemone";
 
     private final TypeSafeClient client;
     private final Integer maxRetries;
-    private final DecisionRequestParameters defaultRequestParameters;
+    private final TypeSafeDecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
 
     public TypeSafeDecisionModel(TypeSafeDecisionModelBuilder builder) {
         this.client = TypeSafeClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .apiPath(getOrDefault(builder.apiPath, DEFAULT_API_PATH))
                 .apiKey(apiKey(builder))
                 .customHeaders(builder.customHeadersSupplier)
                 .timeout(builder.timeout)
@@ -65,8 +70,10 @@ public class TypeSafeDecisionModel implements DecisionModel {
                 .logger(builder.logger)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.defaultRequestParameters =
-                DecisionRequestParameters.builder().modelName(builder.modelName).build();
+        this.defaultRequestParameters = TypeSafeDecisionRequestParameters.builder()
+                .modelName(builder.modelName)
+                .customParameters(builder.customParameters)
+                .build();
         this.listeners = copy(builder.listeners);
     }
 
@@ -102,7 +109,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     @Override
-    public DecisionRequestParameters defaultRequestParameters() {
+    public TypeSafeDecisionRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -120,6 +127,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
+        private String apiPath;
         private String apiKey;
         private String modelName;
         private Duration timeout;
@@ -128,6 +136,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         private Boolean logResponses;
         private Logger logger;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
 
         /**
@@ -141,10 +150,23 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
         /**
          * The base URL of the API. Defaults to {@code https://api.typesafe.ai}. Set it to use another server that
-         * implements the System One API.
+         * implements the System One API. Requests are sent to the base URL followed by the
+         * {@link #apiPath(String) API path}.
          */
         public TypeSafeDecisionModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * The path of the System One endpoint, relative to the {@link #baseUrl(String) base URL}.
+         * Defaults to {@code v1/systemone}. Set it for servers that expose the System One API at another path.
+         * <p>
+         * For example, with base URL {@code http://localhost:8100/gateway} and API path {@code v1/decision},
+         * requests are sent to {@code http://localhost:8100/gateway/v1/decision}.
+         */
+        public TypeSafeDecisionModelBuilder apiPath(String apiPath) {
+            this.apiPath = apiPath;
             return this;
         }
 
@@ -221,6 +243,17 @@ public class TypeSafeDecisionModel implements DecisionModel {
          */
         public TypeSafeDecisionModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Custom parameters added to the body of every request, for example to use a feature of the System One API that
+         * this class does not support yet. A custom parameter with the same name as a parameter set by this class
+         * replaces it. They can be replaced for a single request with
+         * {@link TypeSafeDecisionRequestParameters.Builder#customParameters(Map)}.
+         */
+        public TypeSafeDecisionModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

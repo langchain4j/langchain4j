@@ -16,7 +16,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
@@ -33,18 +32,22 @@ import org.slf4j.Logger;
 
 /**
  * A {@link DecisionModel} backed by the <a href="https://developers.openai.com/api/docs/guides/decisions">OpenAI
- * Decisions API</a> ({@code POST /v1/decisions}), which answers yes/no, choice and scale questions about a text or
- * image input with probabilities.
+ * Decisions API</a> ({@code POST /v1/decisions}), which answers yes/no, choice and scale questions about a text,
+ * image or conversation input with probabilities.
  * <pre>{@code
  * DecisionModel model = OpenAiDecisionModel.builder()
  *         .apiKey(System.getenv("OPENAI_API_KEY"))
  *         .modelName(OpenAiDecisionModelName.GPT_6_LUNA)
  *         .build();
  * }</pre>
- * The input can be text, a {@link java.util.Map} (sent as JSON text), or a list of
- * {@link dev.langchain4j.data.message.TextContent}s and {@link dev.langchain4j.data.message.ImageContent}s. Images
- * must be inline (base64 data or data URLs): images referenced by URL are not supported by the API. The image detail
- * levels {@code LOW}, {@code HIGH} and {@code AUTO} are supported.
+ * The input can be text, named fields (each sent as a text part labeled with its name, and images as images), a
+ * list of {@link dev.langchain4j.data.message.TextContent}s and {@link dev.langchain4j.data.message.ImageContent}s,
+ * or a conversation (a list of {@link dev.langchain4j.data.message.ChatMessage}s), see
+ * {@link dev.langchain4j.model.decision.request.DecisionRequest}. Images can be base64 data, {@code data:} URLs or
+ * publicly accessible {@code http(s)} URLs. The image detail levels {@code LOW}, {@code HIGH} and {@code AUTO} are
+ * supported.
+ * <p>
+ * A conversation is sent as a JSON transcript in a user message, followed by its images.
  * <p>
  * The API can refuse to answer a single question, for example because it goes against the usage policies of
  * OpenAI: the answer to that question is then a {@link dev.langchain4j.model.decision.response.RefusalAnswer}.
@@ -56,7 +59,7 @@ public class OpenAiDecisionModel implements DecisionModel {
 
     private final OpenAiClient client;
     private final Integer maxRetries;
-    private final DecisionRequestParameters defaultRequestParameters;
+    private final OpenAiDecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
 
     public OpenAiDecisionModel(OpenAiDecisionModelBuilder builder) {
@@ -76,8 +79,11 @@ public class OpenAiDecisionModel implements DecisionModel {
                 .customQueryParams(builder.customQueryParams)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.defaultRequestParameters =
-                DecisionRequestParameters.builder().modelName(builder.modelName).build();
+        this.defaultRequestParameters = OpenAiDecisionRequestParameters.builder()
+                .modelName(builder.modelName)
+                .promptCacheKey(builder.promptCacheKey)
+                .customParameters(builder.customParameters)
+                .build();
         this.listeners = copy(builder.listeners);
     }
 
@@ -101,7 +107,7 @@ public class OpenAiDecisionModel implements DecisionModel {
     }
 
     @Override
-    public DecisionRequestParameters defaultRequestParameters() {
+    public OpenAiDecisionRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
@@ -137,6 +143,8 @@ public class OpenAiDecisionModel implements DecisionModel {
         private Logger logger;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
+        private String promptCacheKey;
+        private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
 
         public OpenAiDecisionModelBuilder() {
@@ -256,6 +264,32 @@ public class OpenAiDecisionModel implements DecisionModel {
 
         public OpenAiDecisionModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * A key that separates prompt caching between groups of requests, sent as {@code prompt_cache_key}. OpenAI
+         * caches the shared input of requests automatically, also without a key. With a key, only requests with the
+         * same key reuse each other's cached input, for example to keep cache reuse and the cached token counts
+         * separate per customer or user. Not set by default.
+         * <p>
+         * It can be replaced for a single request with
+         * {@link OpenAiDecisionRequestParameters.Builder#promptCacheKey(String)}.
+         * See the <a href="https://developers.openai.com/api/docs/guides/prompt-caching">prompt caching guide</a>.
+         */
+        public OpenAiDecisionModelBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * Custom parameters added to the body of every request, for example to use a feature of the OpenAI Decisions
+         * API that this class does not support yet. A custom parameter with the same name as a parameter set by this
+         * class replaces it. They can be replaced for a single request with
+         * {@link OpenAiDecisionRequestParameters.Builder#customParameters(Map)}.
+         */
+        public OpenAiDecisionModelBuilder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

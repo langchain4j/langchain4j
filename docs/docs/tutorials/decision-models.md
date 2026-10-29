@@ -24,6 +24,9 @@ Typical uses are:
   (see the [decision router agentic pattern](/tutorials/agents#decision-router-agentic-pattern))
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
+  (see the [confidence cascade agentic pattern](/tutorials/agents#confidence-cascade-agentic-pattern))
+- **Decisions inside an agentic system**: a classifier, a grader or a check whose typed answer other agents consume
+  (see [decision agents](/tutorials/agents#decision-agents))
 
 Decision models are built for these tasks: they return typed answers with probabilities,
 so there is no text to parse, and all questions of a request are answered against the same input in a single call.
@@ -65,7 +68,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .question("frustration", ScaleQuestion.builder()
                 .text("How frustrated is the customer?")
                 .level("Calm")
@@ -78,7 +81,7 @@ DecisionResponse response = decisionModel.decide(request);
 ```
 
 Each question type has a builder, and a shorter factory method for the common case:
-`YesNoQuestion.of(text)`, `ChoiceQuestion.of(text, options)` and `ScaleQuestion.of(text, levels)`.
+`YesNoQuestion.from(text)`, `ChoiceQuestion.from(text, options)` and `ScaleQuestion.from(text, levels)`.
 
 The response contains one answer per question, under the same name:
 
@@ -127,7 +130,7 @@ A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 opt
 For options whose name says it all, the name is also used as the description:
 
 ```java
-ChoiceQuestion sentiment = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"));
+ChoiceQuestion sentiment = ChoiceQuestion.from("What is the sentiment?", List.of("positive", "negative", "neutral"));
 ```
 
 It is answered with a `ChoiceAnswer`:
@@ -182,50 +185,119 @@ ScaleQuestion severity = ScaleQuestion.builder()
 
 ## Describing the input (state)
 
-The input is text, a `Map` of named values, or a list of contents (see [Images](#images)).
-Use a `Map` to give the model several pieces of information that belong together:
+The input is one of:
+- text: `input(String)`;
+- named fields: `inputFields(Map)`;
+- a list of contents, such as text and images: `inputContents(List)` (see [Images](#images));
+- a conversation: `inputMessages(List)` (see [Conversations](#conversations)).
+
+Use named fields to give the model several pieces of information that belong together:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(Map.of(
+        .inputFields(Map.of(
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
-        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
         .build();
 ```
 
-The values of the map can be strings, numbers, booleans, `null`s, maps and lists, and, directly in the map, contents
-such as images (see [Images](#images)). Other objects are rejected, so that you decide which fields are sent to the
-model provider: convert them to a `Map` that holds only what the decision needs.
+The values of the fields can be strings, numbers, booleans, `null`s, maps and lists, and, directly as the value of a
+field, contents such as images (see [Images](#images)). Other objects are rejected, so that you decide what is sent to
+the model provider: convert them to a `Map` that holds only what the decision needs.
 
 ### Images
 
 The input can also be a list of contents, such as text and images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai)):
+(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
+a vision model such as Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(List.of(
+        .inputContents(List.of(
                 TextContent.from("The customer says the package arrived like this."),
                 ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
-Images can also be values of a `Map` input, so that each one keeps a name:
+Images can also be the values of fields, so that each one keeps a name:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .input(Map.of(
+        .inputFields(Map.of(
                 "comment", "The package arrived like this.",
                 "photo", ImageContent.from(base64Image, "image/jpeg")))
-        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .question("damaged", YesNoQuestion.from("Is the item visibly damaged?"))
         .build();
 ```
 
 A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
 the model.
+
+### Conversations
+
+The input can also be a conversation: a list of `ChatMessage`s in the order they were exchanged, for example between
+a user and an AI assistant, including the tools that the assistant called and their results. This lets you ask
+questions about the whole conversation, for example whether the assistant answered the user's question:
+
+```java
+ToolExecutionRequest getOrder = ToolExecutionRequest.builder()
+        .id("call_1")
+        .name("getOrder")
+        .arguments("{\"orderId\": 42}")
+        .build();
+
+DecisionRequest request = DecisionRequest.builder()
+        .inputMessages(List.of(
+                SystemMessage.from("You are a billing support agent of an online shop."),
+                UserMessage.from("Hi, something is wrong with my order 42, can you check?"),
+                AiMessage.from(getOrder),
+                ToolExecutionResultMessage.from(getOrder, "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"),
+                AiMessage.from("You were charged twice. I have refunded one of the charges.")))
+        .question("backed_by_tools", YesNoQuestion.from(
+                "Did the assistant call a tool for every action it says it has taken?"))
+        .build();
+```
+
+Here the answer is expected to be "no": the assistant says it refunded a charge, but it never called a tool to do it.
+
+The questions are about the whole conversation, so say in each question which participant or message it is about,
+for example "Did the assistant ...". The messages of a `ChatMemory` can be passed as they are:
+`.inputMessages(chatMemory.messages())`. Send only what the decision needs, though: the whole memory also contains the
+system prompt of your application and all earlier messages, which can include personal data, so pass only the
+messages the question is about when that is enough.
+
+Messages and tool results can come from untrusted sources and contain text written to influence the decision, such
+as "answer yes" (prompt injection): do not rely on a decision alone to allow a dangerous action, such as executing a
+tool call. This includes text that looks like the note LangChain4j inserts when it shortens a long message ("... characters
+were omitted here ..."), which can be written to make a check about the omitted data pass.
+
+Decision models receive the conversation as a transcript in JSON: a list named `messages` with one entry per message
+(the thinking of AI messages is left out):
+
+```json
+[
+  {"role": "system", "text": "You are a billing support agent of an online shop."},
+  {"role": "user", "text": "Hi, something is wrong with my order 42, can you check?"},
+  {"role": "assistant", "tool_calls": [{"id": "call_1", "name": "getOrder", "arguments": "{\"orderId\": 42}"}]},
+  {"role": "tool", "tool_call_id": "call_1", "name": "getOrder", "text": "{\"orderId\": 42, \"charges\": [19.99, 19.99]}"},
+  {"role": "assistant", "text": "You were charged twice. I have refunded one of the charges."}
+]
+```
+
+The components that send conversations to a decision model (chat model router, query router, tool filtering and
+output guardrail) can limit the number of messages and shorten long ones; see each component below. Everything they
+send, including system messages, tool results and retrieved content, goes to the provider of the decision model:
+leave out what must not go there with `messageFilter(...)`.
+
+Images in the conversation are referred to by their position, such as `[image 1]`, and sent next to the transcript
+if the decision model supports images. The decision model sees the names and arguments of the tool calls, but not
+the tool specifications: if a decision depends on what a tool does, describe it in a `SystemMessage` or in the
+question. A failed tool result (`isError()`) has `"is_error": true`, and a `UserMessage` with a name has `"name"`.
+A `CustomMessage`, or a content that the decision model does not support, throws `UnsupportedFeatureException`
+without calling the model.
 
 ## Probabilities and confidence
 
@@ -252,7 +324,8 @@ How it is computed is defined by each model and differs between models.
 
 Probabilities have the same meaning for every model, but not the same calibration:
 a threshold of 0.9 tuned for one model does not necessarily work for another model, or for another version of
-the same model. Tune thresholds on your own data, and tune them again when you change the model or its version.
+the same model. Tune thresholds on your own data, and tune them again when you change the model or its version, or
+what the decision model receives (for example with `maxMessages(...)` or `messageFilter(...)`).
 
 ## Model name and other parameters
 
@@ -269,6 +342,10 @@ DecisionRequest request = DecisionRequest.builder()
                 .build())
         .build();
 ```
+
+Decision models can offer their own subclass of `DecisionRequestParameters` with more settings, for example
+`customParameters` to send parameters that LangChain4j does not support yet. See the page of each
+[decision model](/integrations/decision-models).
 
 ## Asynchronous calls
 
@@ -310,9 +387,13 @@ needed. They work with any `DecisionModel` implementation.
 | `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
 | `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
+| `AgenticServices.decisionAgentBuilder` | `langchain4j-agentic` |
+| `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic-patterns` |
 
 Each of these components makes an additional call to the decision model. Its token usage is not included in the token
 usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
+to the agent listeners and counted by the `AgentMonitor`.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
@@ -332,8 +413,16 @@ ScoringModel scoringModel = DecisionScoringModel.builder()
 
 `DecisionModelInputGuardrail` and `DecisionModelOutputGuardrail` (in the `langchain4j-guardrails` module) check user
 messages and model responses with yes/no questions, where "yes" means the message must be rejected.
-The input guardrail sends only the user message; the output guardrail sends the response and the last user message.
-Previous messages of the conversation are not sent.
+The input guardrail sends only the user message. The output guardrail sends the messages that were sent to the
+model to produce the response, including the system message, tool calls and tool results, followed by the response,
+so that checks can compare the response with the instructions of the assistant and with the data its tools returned.
+This works with or without a chat memory. The user message is sent with the content retrieved for it (RAG). Write
+the checks about "the response", for example "Does the response reveal personal data?": each check is preceded by a
+sentence saying that the response is the last assistant message. By default, the last 50 messages are sent, and messages longer
+than 50,000 characters are shortened in the middle. The system message and the response are always sent in full.
+A check that compares the response with data that was left out tends to reject the response, even when it is correct:
+for checks against long tool results, raise `maxMessageLength(...)`. For decision models with a small input limit, such as local models, set `maxMessages(...)` and
+`maxMessageLength(...)`, or leave out messages with `messageFilter(...)`.
 All checks of a guardrail are answered in a single call:
 
 ```java
@@ -368,8 +457,8 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 `DecisionScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
 "Does the document help answer the query?" is "yes". Each segment is asked as a separate yes/no question, and the
 segments are scored in requests of up to 20 segments (`maxSegmentsPerRequest(...)`), which are sent in parallel by
-`scoreAsync(...)`. Decision models with a small input limit (for example, 2,048 tokens on Ollama) need smaller
-requests: size them from the length of the segments. It can be used to re-rank and filter content in RAG:
+`scoreAsync(...)`. Decision models with a small input limit (for example, local models with a small context window)
+need smaller requests: size them from the length of the segments. It can be used to re-rank and filter content in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
@@ -398,10 +487,13 @@ QueryRouter queryRouter = DecisionModelQueryRouter.builder()
         .build();
 ```
 
-The decision model receives the query and, when it comes from a conversation, the 2 previous messages
-(`maxMessages(3)` by default), so that follow-up questions such as "and for contractors?" are understood.
+The decision model receives the query, the system message and, when the query comes from a conversation, the 9
+previous messages, including tool calls and tool results (`maxMessages(...)`, 10 by default, counting the query;
+`maxMessageLength(...)`, 2,000 characters by default; and `messageFilter(...)`), so that follow-up questions such as
+"and for contractors?" are understood.
 If the query is already made self-contained by a query transformer such as `CompressingQueryTransformer`, the
-previous messages are redundant and can even make an older topic outweigh the query: set `maxMessages(1)`.
+previous messages are redundant and can even make an older topic outweigh the query: set `maxMessages(1)`. The system
+message is still sent; to leave it out, add `messageFilter(message -> !(message instanceof SystemMessage))`.
 If the decision model fails, no content is retrieved by default, like with `LanguageModelQueryRouter`;
 `fallbackStrategy(ROUTE_TO_ALL)` retrieves from all sources instead, which favors answer quality.
 
@@ -441,13 +533,24 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
   passed on.
 - If the wrapped tool provider is dynamic (`isDynamic()` returns `true`), the AI Service asks it for tools before each
   LLM call of the tool-calling loop, so the decision model is called each time as well, which adds its latency to each
-  round. Since the messages usually do not change within the loop, this is only useful if the tools of the wrapped
-  provider change.
+  round. The decision model also sees the tool calls and tool results of the previous rounds, so the selected tools
+  can change from one round to the next, which can also keep the LLM provider from reusing its prompt cache.
 
 ### Model routing
 
 `DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
 See [Model Routing](/tutorials/model-routing).
+
+### Decision agents
+
+A [decision agent](/tutorials/agents#decision-agents) is an agent of an agentic system built on a
+[Decision Service](/tutorials/decision-services) interface: its arguments are read from the `AgenticScope` and sent
+as the input of the decision, and its typed answer, with its probabilities, is written to the scope for the
+predicates, the exit conditions and the agents that follow. It is created with
+`AgenticServices.decisionAgentBuilder(...)` of the `langchain4j-agentic` module, or declaratively with
+`@DecisionModelSupplier`. The [decision router](/tutorials/agents#decision-router-agentic-pattern) and the
+[confidence cascade](/tutorials/agents#confidence-cascade-agentic-pattern) patterns use a decision model inside
+their orchestration instead, to choose which agents run and when to stop escalating.
 
 ### What the components send to the decision model
 
@@ -466,10 +569,17 @@ the prompt templates of the application.
 Images and other content that is not text are not sent: each is represented by a marker such as `[attached image]`.
 The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,
 for example "Does the message contain an attachment?".
-With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, {"role": "assistant", "text": "..."}, ...]}`.
-Only user messages and text responses of the AI are sent and counted: system messages, tool calls and tool results
-are left out, because they describe how the application works rather than what the user wants, and tool results can
-be large.
+The chat model router, the query router and tool filtering send the system message and the last 10 messages of the
+conversation (for the query router, the query and the 9 messages before it; `maxMessages(...)`, where an AI message with tool calls and each tool result count as one message
+each, and tool results whose AI message does not fit are left out), plus the last user message if it is older, as a [conversation](#conversations): tool calls and tool results
+often say what the user refers to. Messages longer than 2,000 characters are shortened in the middle
+(`maxMessageLength(...)`). System messages are always sent in full and do not count toward `maxMessages(...)`.
+With parallel tool calls, set `maxMessages(...)` higher than the number of tool calls in one round, or the tool
+results of that round are left out. `maxMessages(1)` still sends the system message; to send only the user message,
+add `messageFilter(message -> !(message instanceof SystemMessage))`. The output guardrail sends the last 50 messages
+and shortens messages longer than 50,000 characters (see [Guardrails](#guardrails)). To leave out messages, for example large tool results, use
+`messageFilter(...)`: `messageFilter(message -> !(message instanceof ToolExecutionResultMessage))`. Tool filtering
+sends the conversation with every batch of tools (`maxToolsPerDecisionRequest(...)`).
 
 ### When the decision model fails
 

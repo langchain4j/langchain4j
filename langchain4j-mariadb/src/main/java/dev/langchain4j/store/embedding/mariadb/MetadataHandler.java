@@ -40,9 +40,9 @@ interface MetadataHandler {
      * Generate the SQL where clause following @{@link Filter}
      *
      * @param filter filter
-     * @return the sql where clause
+     * @return the sql where clause and the parameters to bind to it
      */
-    String whereClause(Filter filter);
+    WhereClause whereClause(Filter filter);
 
     /**
      * Extract Metadata from Resultset and Metadata definition

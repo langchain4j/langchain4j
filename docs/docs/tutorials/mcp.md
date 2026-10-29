@@ -75,6 +75,88 @@ With the modern protocol (2026-07-28), notifications are received via `subscript
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
+#### Custom HTTP client
+
+By default, the Streamable HTTP transport sends its requests with the JDK HTTP client
+(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in). You can use any other
+[HTTP client](./customizable-http-client.md) instead, for example to reuse a proxy or
+TLS setup. Pass its builder:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .httpClientBuilder(OkHttpClient.builder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ZERO)) // no read timeout: MCP streams can stay idle for a long time
+        .build();
+```
+
+If you exclude `langchain4j-http-client-jdk` from your dependencies, you must set
+`httpClientBuilder(...)` or `httpClient(...)`.
+
+The HTTP client must support streaming responses (`HttpClient.stream(request, parser)`).
+The JDK, OkHttp and Apache clients do. The Spring `RestClient` integration supports it only
+when `spring-webflux` is on the classpath. With a client that does not support streaming,
+every MCP request fails.
+
+Things to know when you use your own HTTP client:
+
+- **TLS, HTTP version and redirects** are configured on the HTTP client. The transport options
+  `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(true)` work only with the default
+  JDK client. Combining them with `httpClientBuilder(...)` or `httpClient(...)` fails when the
+  transport is built.
+- **Redirects:** the transport does not follow redirects by default, but OkHttp and Apache do.
+  On a redirect, they can send your custom headers (for example an API key) and the request body
+  to another host. If you don't need redirects, turn them off on the client, for example
+  `OkHttpClient.builder().okHttpClientBuilder(new okhttp3.OkHttpClient.Builder().followRedirects(false))`.
+- **Timeouts:** the transport `timeout(...)` is the connection timeout. With `httpClientBuilder(...)`,
+  it is set on the builder you pass in; without it, the client keeps its own connection timeout.
+  The transport never sets a read timeout, so the client's own read timeout applies. MCP responses
+  and notification streams can stay idle for a long time, so turn the read timeout off or make it
+  long. OkHttp's default read timeout is only 10 seconds.
+- **Executor:** if you set the transport `executor(...)`, responses and notifications are handled on it.
+  It is also used to schedule reconnects of the subsidiary channel. The HTTP client still sends
+  requests on its own threads.
+- **Slow callbacks:** the default JDK client reads a response only as fast as the transport handles it,
+  so a slow progress or notification callback pauses reading. If you pass your own `JdkHttpClient`
+  builder, call `.streamingBackpressure(true)` on it to get the same behavior. Other clients buffer
+  a limited number of events and fail the response when the buffer is full.
+- **Error responses:** when the server answers with an error status, for example `404` for an expired
+  session, the JDK, OkHttp and Apache clients report it as soon as the response headers arrive. The
+  transport then fails the request, or starts a new session, right away. Other clients may report the
+  error only after they have read the whole response body.
+
+Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
+closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client
+between several transports, build it yourself and pass it with `.httpClient(client)`. The transport
+then never closes it, and you cannot set `timeout(...)` on the transport.
+
+#### Per-call context
+
+Some applications keep per-request information in thread-local context, for example a tracing span,
+the SLF4J MDC or a security context. The Streamable HTTP transport prepares requests and handles
+responses on other threads, so this context would normally be lost there.
+
+To keep it, register an `ExecutorProvider` that implements `captureContext()`, as described in
+[Controlling the executor and propagating context](./non-blocking.md#controlling-the-executor-and-propagating-context).
+The transport then captures the context of the thread that sends a request or initializes the
+connection. It restores that context while it prepares the request (including calling your
+`customHeaders(...)` supplier) and while it handles the response.
+Without such a provider, nothing is captured.
+
+Some work is not started by a request of yours. It uses the context captured when the connection
+was initialized:
+
+- the `notifications/initialized` message sent after initialization,
+- the automatic re-initialization after the server reports an expired session (a 404 response),
+- the subsidiary SSE channel and its reconnects.
+
+`DefaultMcpClient` initializes the connection when it is built, so build it in a context that is
+valid for the whole connection, not in the context of a single user request.
+
+The transport restores the context only for its own work. A custom HTTP client must propagate it
+across any threads it starts itself.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()

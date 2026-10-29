@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.compos
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
@@ -11,6 +12,7 @@ import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -37,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientBuilder;
@@ -90,6 +93,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
+    private AgentCondition activationCondition;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -229,7 +233,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
             for (String inputKey : inputKeys) {
-                parts.add(new TextPart(params.get(inputKey).toString()));
+                Object value = params.get(inputKey);
+                if (value == null) {
+                    throw new MissingArgumentException(inputKey);
+                }
+                parts.add(new TextPart(value.toString()));
             }
         } else {
             java.lang.reflect.Parameter[] parameters = method.getParameters();
@@ -538,6 +546,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
+    public DefaultA2AClientBuilder<T> activationCondition(
+            String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
+        return this;
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public DefaultA2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer) {
         if (clientCustomizer != null) {
@@ -613,6 +628,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public boolean async() {
         return async;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return activationCondition;
     }
 
     @Override

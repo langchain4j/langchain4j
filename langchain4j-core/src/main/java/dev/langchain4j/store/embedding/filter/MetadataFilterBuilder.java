@@ -23,6 +23,10 @@ import java.util.UUID;
 
 /**
  * A helper class for building a {@link Filter} for {@link Metadata} key.
+ * <p>
+ * See {@link Filter} for the supported comparison value types. The methods that take a {@link Collection} check
+ * every value in it, so for example a nested collection or a map is rejected with an
+ * {@link IllegalArgumentException}.
  */
 @JacocoIgnoreCoverageGenerated
 public class MetadataFilterBuilder {
@@ -235,6 +239,14 @@ public class MetadataFilterBuilder {
         return new IsIn(key, stream(values).boxed().collect(toList()));
     }
 
+    /**
+     * Creates a filter that matches when the value of this metadata key is one of the given values.
+     *
+     * @param values the values to compare with, not empty, see {@link Filter} for the supported types
+     * @throws IllegalArgumentException if {@code values} is {@code null} or empty, or if a value in it is
+     *                                  {@code null}, of an unsupported type (for example a nested collection)
+     *                                  or not a finite number
+     */
     public Filter isIn(Collection<?> values) {
         return new IsIn(key, values);
     }
@@ -269,6 +281,15 @@ public class MetadataFilterBuilder {
         return new IsNotIn(key, stream(values).boxed().collect(toList()));
     }
 
+    /**
+     * Creates a filter that matches when the value of this metadata key is none of the given values, or when the
+     * key is missing.
+     *
+     * @param values the values to compare with, not empty, see {@link Filter} for the supported types
+     * @throws IllegalArgumentException if {@code values} is {@code null} or empty, or if a value in it is
+     *                                  {@code null}, of an unsupported type (for example a nested collection)
+     *                                  or not a finite number
+     */
     public Filter isNotIn(Collection<?> values) {
         return new IsNotIn(key, values);
     }

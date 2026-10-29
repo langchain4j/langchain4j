@@ -13,7 +13,7 @@ class AgentInvocationsTest {
     void should_not_allow_modifying_agent_invocations() {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         AgentInvocation invocation = new AgentInvocation(Object.class, "agent", "agent-id", Map.of(), null);
-        scope.registerAgentInvocation(invocation, null);
+        scope.registerAgentInvocation(invocation);
 
         List<AgentInvocation> invocations = scope.agentInvocations();
 
