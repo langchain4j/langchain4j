@@ -54,7 +54,7 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     @Test
     void should_not_retrieve_embeddings_when_searching() {
         EmbeddingStore<TextSegment> embeddingStore = MilvusV2EmbeddingStore.builder()
-                .uri(System.getenv("MILVUS_API_URI"))
+                .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(COLLECTION_NAME)
                 .consistencyLevel(ConsistencyLevel.STRONG)
@@ -88,7 +88,7 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         // given
         String hybridColl = COLLECTION_NAME + "_hybrid";
         MilvusV2EmbeddingStore hybridStore = MilvusV2EmbeddingStore.builder()
-                .uri(System.getenv("MILVUS_API_URI"))
+                .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(hybridColl)
                 .consistencyLevel(ConsistencyLevel.STRONG)
@@ -135,7 +135,7 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     void should_perform_hybrid_search_bm25_in_cloud() {
         String coll = COLLECTION_NAME + "_bm25_hybrid_" + System.currentTimeMillis();
         MilvusV2EmbeddingStore store = MilvusV2EmbeddingStore.builder()
-                .uri(System.getenv("MILVUS_API_URI"))
+                .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName(coll)
                 .consistencyLevel(ConsistencyLevel.STRONG)

@@ -1,9 +1,12 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.filter.Filter.not;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -13,14 +16,19 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.ConsistencyLevel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.milvus.MilvusContainer;
@@ -30,8 +38,10 @@ class MilvusV2EmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+    private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE)
             .withEnv("DEPLOY_MODE", "STANDALONE")
             .withEnv("MILVUS_MODE", "standalone")
             .withEnv("ETCD_USE_EMBED", "true")
@@ -387,5 +397,39 @@ class MilvusV2EmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(hybridResult.matches().get(0).score()).isGreaterThan(0);
 
         hybridStore.dropCollection("compare_test_collection");
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_match_entries_without_the_key_inside_not(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
+        should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
+    static Stream<Arguments> should_match_entries_without_the_key_inside_not() {
+        return Stream.of(
+                Arguments.of(
+                        not(metadataKey("age").isGreaterThan(40)),
+                        List.of(new Metadata().put("age", 30), new Metadata().put("name", "a"), new Metadata()),
+                        List.of(new Metadata().put("age", 50))),
+                Arguments.of(
+                        not(metadataKey("name").isIn("a", "b")),
+                        List.of(new Metadata().put("name", "c"), new Metadata().put("age", 1), new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("name", "b"))),
+                Arguments.of(
+                        not(metadataKey("name").isEqualTo("a").or(metadataKey("age").isGreaterThan(40))),
+                        List.of(
+                                new Metadata().put("name", "b").put("age", 30),
+                                new Metadata().put("other", 1),
+                                new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("age", 50))),
+                Arguments.of(
+                        not(metadataKey("name").isEqualTo("a").and(metadataKey("age").isNotEqualTo(30))),
+                        List.of(
+                                new Metadata().put("name", "b"),
+                                new Metadata().put("name", "a").put("age", 30),
+                                new Metadata().put("age", 50),
+                                new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("name", "a").put("age", 50))));
     }
 }
