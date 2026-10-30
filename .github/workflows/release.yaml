@@ -9,10 +9,6 @@ on:
       betaVersion:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
-      branch:
-        description: "Branch to release from (e.g., 'main' for minor releases, 'release/x.y.z' for patch releases)"
-        required: false
-        default: "main"
       startFrom:
         description: "Phase to start from (use to resume after a failed release)"
         required: false
@@ -25,10 +21,12 @@ on:
           - commit-and-tag
 
 env:
-  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
-  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
-  BRANCH: ${{ github.event.inputs.branch || github.event.client_payload.branch || 'main' }}
-  START_FROM: ${{ github.event.inputs.startFrom || github.event.client_payload.startFrom || 'core-and-parent' }}
+  STABLE_VERSION: ${{ inputs.stableVersion }}
+  BETA_VERSION: ${{ inputs.betaVersion }}
+  # The branch to release from is the one selected in "Use workflow from",
+  # so that the workflow file and the released code always come from the same branch
+  BRANCH: ${{ github.ref_name }}
+  START_FROM: ${{ inputs.startFrom }}
 
 permissions:
   contents: write
@@ -40,6 +38,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
     steps:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
