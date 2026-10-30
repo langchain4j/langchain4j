@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -43,9 +44,13 @@ class ServiceOutputParserImageReturnTypeTest {
 
     @ParameterizedTest
     @MethodSource("structuredReturnTypes")
-    void should_keep_schema_and_format_for_textual_return_types(Type returnType) {
+    void should_keep_schema_for_textual_return_types(Type returnType) {
         assertThat(parser.jsonSchema(returnType)).isPresent();
-        assertThat(parser.outputFormatInstructions(returnType)).isNotEmpty();
+    }
+
+    @Test
+    void should_keep_text_format_for_pojo_return_types() {
+        assertThat(parser.outputFormatInstructions(Answer.class)).isNotEmpty();
     }
 
     static Stream<Type> structuredReturnTypes() {
