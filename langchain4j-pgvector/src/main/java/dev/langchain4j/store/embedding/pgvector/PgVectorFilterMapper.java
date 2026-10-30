@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 abstract class PgVectorFilterMapper {
 
-    static final Map<Class<?>, String> SQL_TYPE_MAP = Stream.of(
+    private static final Map<Class<?>, String> SQL_TYPE_MAP = Stream.of(
                     new SimpleEntry<>(Integer.class, "int"),
                     new SimpleEntry<>(Long.class, "bigint"),
                     new SimpleEntry<>(Float.class, "float"),
@@ -31,10 +31,12 @@ abstract class PgVectorFilterMapper {
                     new SimpleEntry<>(BigDecimal.class, "numeric"),
                     new SimpleEntry<>(String.class, "text"),
                     new SimpleEntry<>(UUID.class, "uuid"),
-                    new SimpleEntry<>(Boolean.class, "boolean"),
-                    // Default
-                    new SimpleEntry<>(Object.class, "text"))
+                    new SimpleEntry<>(Boolean.class, "boolean"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    static String sqlType(Class<?> valueType) {
+        return SQL_TYPE_MAP.getOrDefault(valueType, "text");
+    }
 
     public WhereClause map(Filter filter) {
         List<String> parameters = new ArrayList<>();
