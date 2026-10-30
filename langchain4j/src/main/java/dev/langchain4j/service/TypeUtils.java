@@ -2,13 +2,17 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.Response;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -164,5 +168,29 @@ public class TypeUtils {
 
     public static boolean isImageType(Class<?> rawReturnType) {
         return Image.class.isAssignableFrom(rawReturnType) || ImageContent.class.isAssignableFrom(rawReturnType);
+    }
+
+    /**
+     * Whether this return type is taken from the model response instead of being parsed from text.
+     */
+    public static boolean isReturnedAsIs(Type type) {
+        Class<?> rawClass = getRawClass(type);
+        return rawClass == AiMessage.class
+                || rawClass == ChatResponse.class
+                || rawClass == Response.class
+                || rawClass == TokenStream.class
+                || isImage(type);
+    }
+
+    public static boolean isImage(Type type) {
+        Class<?> rawClass = getRawClass(type);
+        if (isImageType(rawClass)) {
+            return true;
+        }
+        if (Collection.class.isAssignableFrom(rawClass)) {
+            Class<?> genericParameter = resolveFirstGenericParameterClass(type);
+            return genericParameter != null && isImageType(genericParameter);
+        }
+        return false;
     }
 }
