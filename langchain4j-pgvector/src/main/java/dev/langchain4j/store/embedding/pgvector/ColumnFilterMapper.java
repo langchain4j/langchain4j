@@ -15,7 +15,7 @@ class ColumnFilterMapper extends PgVectorFilterMapper {
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
 
     String formatKey(String key, Class<?> valueType) {
-        return String.format("%s::%s", validateIdentifier(key), SQL_TYPE_MAP.get(valueType));
+        return String.format("%s::%s", validateIdentifier(key), sqlType(valueType));
     }
 
     String formatKeyAsString(String key) {

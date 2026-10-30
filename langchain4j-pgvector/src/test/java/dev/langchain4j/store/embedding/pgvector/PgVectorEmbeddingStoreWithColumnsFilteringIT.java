@@ -41,7 +41,9 @@ class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbeddingStor
                         "double_minus_1 float8 null",
                         "double_0 float8 null",
                         "double_1 float8 null",
-                        "double_123 float8 null"))
+                        "double_123 float8 null",
+                        "status varchar null",
+                        "created_on varchar null"))
                 .indexes(Arrays.asList("key", "name", "age"))
                 .build();
         PgVectorEmbeddingStoreConfigIT.configureStore(config);
