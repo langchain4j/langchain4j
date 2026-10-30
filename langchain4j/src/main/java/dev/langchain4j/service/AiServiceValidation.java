@@ -122,7 +122,8 @@ class AiServiceValidation {
 
         if (rawReturnType == Result.class) {
             Type contentType = TypeUtils.resolveFirstGenericParameterType(returnType);
-            if (isResolvable(contentType) && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
+            if (isResolvable(contentType)
+                    && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
                 return;
             }
             validateContentType(methodName, returnType, contentType);
