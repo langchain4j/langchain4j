@@ -233,8 +233,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .timestampNow()
                                 .build();
                         try {
-                            InvocationContext withCapturedContext =
-                                    CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
+                            InvocationContext withCapturedContext = CapturedContextSupport.captureInto(
+                                            invocationContext.toBuilder())
+                                    .build();
                             return invoke(method, args, withCapturedContext);
                         } catch (VirtualMachineError e) {
                             throw e;
@@ -269,15 +270,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
-                        Type returnType =
-                                asyncReturnType ? resolveFirstGenericParameterType(declaredReturnType) : declaredReturnType;
+                        Type returnType = asyncReturnType
+                                ? resolveFirstGenericParameterType(declaredReturnType)
+                                : declaredReturnType;
 
                         if (asyncReturnType) {
                             CompletableFuture<Object> failed = new CompletableFuture<>();
                             completeExceptionallyAsFailure(failed, error);
-                            return Optional.of(completableFutureAdapter != null
-                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
-                                    : failed);
+                            return Optional.of(
+                                    completableFutureAdapter != null
+                                            ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
+                                            : failed);
                         }
 
                         PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
@@ -300,7 +303,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             context.guardrailService().hasOutputGuardrails(method),
                                             context.streamingBufferSize);
                             return Optional.of(
-                                    publisherAdapter != null ? publisherAdapter.fromPublisher(returnType, mapped) : mapped);
+                                    publisherAdapter != null
+                                            ? publisherAdapter.fromPublisher(returnType, mapped)
+                                            : mapped);
                         }
 
                         return Optional.empty();
@@ -348,7 +353,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
-                        CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
+                        CompletableFutureAdapter completableFutureAdapter =
+                                findCompletableFutureAdapter(declaredReturnType);
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
@@ -447,7 +453,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             .build();
 
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
-                                            context.guardrailService(), method, augmentedUserMessage, commonGuardrailParam);
+                                            context.guardrailService(),
+                                            method,
+                                            augmentedUserMessage,
+                                            commonGuardrailParam);
                                     propagateCancellation(result, inputGuardrails);
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
@@ -522,12 +531,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                    subscriber.onError(new IllegalStateException(
-                                            "This AI Service reactive stream cannot be subscribed to more than once "
-                                                    + "because a ChatMemory is configured: re-subscribing would re-run "
-                                                    + "the interaction and duplicate messages in the chat memory. To "
-                                                    + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
-                                                    + "Mono.retry() around the call), not re-subscribe the publisher."));
+                                    subscriber.onError(
+                                            new IllegalStateException(
+                                                    "This AI Service reactive stream cannot be subscribed to more than once "
+                                                            + "because a ChatMemory is configured: re-subscribing would re-run "
+                                                            + "the interaction and duplicate messages in the chat memory. To "
+                                                            + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
+                                                            + "Mono.retry() around the call), not re-subscribe the publisher."));
                                     return;
                                 }
 
@@ -565,7 +575,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 });
 
                                 CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
-                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, subscriptionContext);
+                                        reactiveChatMemory,
+                                        reactiveSystemMessage,
+                                        originalUserMessage,
+                                        subscriptionContext);
                                 subscription.setCancelAction(() -> augmentation.cancel(true));
 
                                 augmentation.whenComplete((augmentationResult, augmentationError) -> {
@@ -606,7 +619,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         return;
                                     }
                                     CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
-                                            context.guardrailService(), method, reactiveInputUserMessage, commonGuardrailParam);
+                                            context.guardrailService(),
+                                            method,
+                                            reactiveInputUserMessage,
+                                            commonGuardrailParam);
                                     subscription.setCancelAction(() -> inputGuardrails.cancel(true));
                                     inputGuardrails
                                             .thenApply(guardedUserMessage -> prepareGuardedInput(
@@ -653,19 +669,27 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 var streamingEventStreamParameters =
                                                                         AiServiceTokenStreamParameters.builder()
                                                                                 .messages(assembledMessages)
-                                                                                .toolServiceContext(reactiveToolServiceContext)
-                                                                                .toolArgumentsErrorHandler(context.toolService
-                                                                                        .argumentsErrorHandler())
-                                                                                .toolExecutionErrorHandler(context.toolService
-                                                                                        .executionErrorHandler())
-                                                                                .toolExecutor(context.toolService.executor())
-                                                                                .retrievedContents(augmentationResult != null
-                                                                                        ? augmentationResult.contents()
-                                                                                        : null)
+                                                                                .toolServiceContext(
+                                                                                        reactiveToolServiceContext)
+                                                                                .toolArgumentsErrorHandler(
+                                                                                        context.toolService
+                                                                                                .argumentsErrorHandler())
+                                                                                .toolExecutionErrorHandler(
+                                                                                        context.toolService
+                                                                                                .executionErrorHandler())
+                                                                                .toolExecutor(
+                                                                                        context.toolService.executor())
+                                                                                .retrievedContents(
+                                                                                        augmentationResult != null
+                                                                                                ? augmentationResult
+                                                                                                        .contents()
+                                                                                                : null)
                                                                                 .context(context)
                                                                                 .invocationContext(
-                                                                                        guardedInput.invocationContext())
-                                                                                .commonGuardrailParams(commonGuardrailParam)
+                                                                                        guardedInput
+                                                                                                .invocationContext())
+                                                                                .commonGuardrailParams(
+                                                                                        commonGuardrailParam)
                                                                                 .methodKey(method)
                                                                                 .build();
                                                                 publisher = new AiServiceStreamingEventPublisher(
@@ -690,7 +714,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onNext(AiServiceStreamingEvent item) {
-                                                                    if (item instanceof AiServiceStreamingEvent.FinalResponseEvent) {
+                                                                    if (item
+                                                                            instanceof
+                                                                            AiServiceStreamingEvent
+                                                                                    .FinalResponseEvent) {
                                                                         terminated.set(true);
                                                                     }
                                                                     subscriber.onNext(item);
@@ -698,7 +725,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                                                                 @Override
                                                                 public void onError(Throwable error) {
-                                                                    fireErrorIfNotEnded(terminated, subscriptionContext, error);
+                                                                    fireErrorIfNotEnded(
+                                                                            terminated, subscriptionContext, error);
                                                                     subscriber.onError(error);
                                                                 }
 
@@ -1168,13 +1196,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : CompletableFuture.completedFuture(null);
                             ChatMessage userMessageToStore =
                                     context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
-                            assembled = addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                            assembled = addSystem
+                                    .thenCompose(ignored -> chatMemory.messagesAsync())
                                     .thenCompose(history -> {
                                         List<ChatMessage> messages = new ArrayList<>(history);
-                                        return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
-                                            messages.add(userMessage);
-                                            return messages;
-                                        });
+                                        return chatMemory
+                                                .addAsync(List.of(userMessageToStore))
+                                                .thenApply(ignored2 -> {
+                                                    messages.add(userMessage);
+                                                    return messages;
+                                                });
                                     })
                                     .toCompletableFuture();
                         } catch (Throwable t) {
