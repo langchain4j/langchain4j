@@ -142,10 +142,7 @@ public class TypeUtils {
         return illegalArgument(
                 "The return type '%s' of the method '%s' must be parameterized with a concrete type, "
                         + "for example: %s or %s",
-                actualDeclaration,
-                methodName,
-                exampleStringDeclaration,
-                examplePojoDeclaration);
+                actualDeclaration, methodName, exampleStringDeclaration, examplePojoDeclaration);
     }
 
     private static String getActualDeclaration(List<Type> typeChain) {
