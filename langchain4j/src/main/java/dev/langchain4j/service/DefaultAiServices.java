@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -33,6 +32,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -389,9 +389,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (supportsJsonSchema && !streaming && !reactiveStreaming) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-                        boolean appendOutputFormat = (!supportsJsonSchema || jsonSchema.isEmpty())
-                                && !streaming
-                                && !reactiveStreaming;
+                        boolean appendOutputFormat =
+                                (!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming && !reactiveStreaming;
 
                         ResponseFormat responseFormat = null;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
