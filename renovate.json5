@@ -65,6 +65,12 @@
             "matchPackageNames": ["milvusdb/milvus"],
             "matchUpdateTypes": ["major"],
             "enabled": false
+        },
+        {
+            // Milvus pushes a new image days before its release is final, and may push it again in between
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["milvusdb/milvus"],
+            "minimumReleaseAge": "3 days"
         }
     ],
     "customManagers": [
