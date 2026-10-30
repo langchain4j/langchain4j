@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.output.ServiceOutputParser.isReturnedAsIs;
+import static dev.langchain4j.service.TypeUtils.isReturnedAsIs;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.stream.Collectors.joining;
 
@@ -116,13 +116,14 @@ class AiServiceValidation {
         }
 
         Class<?> rawReturnType = TypeUtils.getRawClass(returnType);
-        if (isReturnedAsIs(rawReturnType) || isImage(returnType)) {
+        if (isReturnedAsIs(returnType)) {
             return;
         }
 
         if (rawReturnType == Result.class) {
             Type contentType = TypeUtils.resolveFirstGenericParameterType(returnType);
-            if (isResolvable(contentType) && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
+            if (isResolvable(contentType)
+                    && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
                 return;
             }
             validateContentType(methodName, returnType, contentType);
@@ -150,21 +151,6 @@ class AiServiceValidation {
                             + "(token usage, sources, tool executions, the final ChatResponse) is available via 'Result<T>'.",
                     typeName(returnType), methodName, rawContentType.getSimpleName());
         }
-    }
-
-    /**
-     * Mirrors the image detection in {@code DefaultAiServices}: images are returned as-is, not parsed from text.
-     */
-    private static boolean isImage(Type type) {
-        Class<?> rawClass = TypeUtils.getRawClass(type);
-        if (TypeUtils.isImageType(rawClass)) {
-            return true;
-        }
-        if (Collection.class.isAssignableFrom(rawClass)) {
-            Class<?> genericParameter = TypeUtils.resolveFirstGenericParameterClass(type);
-            return genericParameter != null && TypeUtils.isImageType(genericParameter);
-        }
-        return false;
     }
 
     private static boolean isLangChain4jType(Class<?> type) {
