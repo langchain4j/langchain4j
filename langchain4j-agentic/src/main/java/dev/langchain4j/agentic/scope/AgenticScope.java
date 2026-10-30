@@ -73,8 +73,10 @@ public interface AgenticScope extends LangChain4jManaged {
 
     /**
      * Writes multiple key-value pairs into the shared state at once.
+     * Replacing an incomplete {@link DeferredResponse} completes it with the new value.
      *
      * @param newState a map of key-value pairs to store
+     * @throws NullPointerException if the map, a key, or a value is {@code null}
      */
     void writeStates(Map<String, Object> newState);
 

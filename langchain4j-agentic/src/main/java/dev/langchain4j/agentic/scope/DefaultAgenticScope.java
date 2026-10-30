@@ -196,8 +196,14 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void writeStates(Map<String, Object> newState) {
-        withReadLock(() -> state.putAll(newState));
+        withReadLock(() -> newState.forEach((key, value) -> {
+            Object old = state.put(key, value);
+            if (old != value && old instanceof DeferredResponse<?> pending && !pending.isDone()) {
+                ((DeferredResponse<Object>) pending).complete(value);
+            }
+        }));
     }
 
     @Override
