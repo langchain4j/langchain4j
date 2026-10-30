@@ -322,7 +322,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
     }
 
     /**
@@ -874,10 +874,12 @@ public class AgenticServices {
 
     private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
         if (activationCondition(agentServiceClass) != null) {
-            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
-                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
-                    + "Set the activation condition when building the agent registered as '"
-                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+            throw new AgenticSystemConfigurationException(
+                    "An @ActivationCondition is not supported on the @RegistryAgent "
+                            + agentServiceClass.getName()
+                            + ", because its agent is taken already built from the registry. "
+                            + "Set the activation condition when building the agent registered as '"
+                            + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
         }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
@@ -943,8 +945,7 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
@@ -1008,6 +1009,7 @@ public class AgenticServices {
                 humanInTheLoop.description(),
                 humanInTheLoop.outputKey(),
                 humanInTheLoop.async(),
+                false,
                 activationCondition(agentServiceClass));
         return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
