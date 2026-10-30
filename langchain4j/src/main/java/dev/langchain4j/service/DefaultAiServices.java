@@ -41,6 +41,7 @@ import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
 import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -222,6 +223,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
+                                .parentInvocationId(CurrentInvocation.invocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
@@ -232,7 +234,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
                                 .build();
-                        try {
+                        try (var ignored = CurrentInvocation.enter(invocationContext)) {
                             InvocationContext withCapturedContext =
                                     CapturedContextSupport.captureInto(invocationContext.toBuilder()).build();
                             return invoke(method, args, withCapturedContext);

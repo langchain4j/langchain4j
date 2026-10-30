@@ -309,7 +309,7 @@ class AiServicesInvocationSummaryEventTest {
     }
 
     @Test
-    void nestedInvocationFiresItsOwnInvocationSummaryEvent() {
+    void nestedInvocationFiresItsOwnInvocationSummaryEventAndAppearsInTheParent() {
         var inner = AiServices.builder(InnerAssistant.class)
                 .chatModel(respondingWith("inner"))
                 .registerListener(invocationSummaryListener)
@@ -332,19 +332,36 @@ class AiServicesInvocationSummaryEventTest {
 
         assertThat(summaries)
                 .hasSize(2)
-                .allSatisfy(summary -> assertThat(summary.events())
-                        .allSatisfy(event -> assertThat(
-                                        event.invocationContext().invocationId())
-                                .isEqualTo(summary.invocationContext().invocationId()))
-                        .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(
-                                AiServiceStartedEvent.class,
-                                AiServiceRequestIssuedEvent.class,
-                                AiServiceResponseReceivedEvent.class,
-                                AiServiceCompletedEvent.class))
                 .extracting(summary -> summary.invocationContext().interfaceName())
                 // The inner invocation ends first
                 .containsExactly(InnerAssistant.class.getName(), Assistant.class.getName());
+        var innerSummary = summaries.get(0);
+        var outerSummary = summaries.get(1);
+        assertThat(innerSummary.invocationContext().parentInvocationId())
+                .isEqualTo(outerSummary.invocationContext().invocationId());
+        assertThat(outerSummary.invocationContext().parentInvocationId()).isNull();
+        assertThat(innerSummary.events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .containsExactly(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        AiServiceCompletedEvent.class);
+        assertThat(outerSummary.events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .containsExactly(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceInvocationSummaryEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        AiServiceCompletedEvent.class);
+        assertThat(outerSummary.events().get(2)).isSameAs(innerSummary);
+        assertThat(summaries)
+                .allSatisfy(summary -> assertThat(summary.events())
+                        .filteredOn(event -> !(event instanceof AiServiceInvocationSummaryEvent))
+                        .allSatisfy(
+                                event -> assertThat(event.invocationContext().invocationId())
+                                        .isEqualTo(summary.invocationContext().invocationId())));
     }
 
     private static ChatModel respondingWith(String response) {
