@@ -18,7 +18,7 @@ import static dev.langchain4j.service.AiServiceValidation.isImplementedByModel;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
-import static dev.langchain4j.service.TypeUtils.isImageType;
+import static dev.langchain4j.service.TypeUtils.isImage;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -386,13 +386,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         boolean returnsImage = isImage(returnType);
 
-                        if (supportsJsonSchema && !streaming && !reactiveStreaming && !returnsImage) {
+                        if (supportsJsonSchema && !streaming && !reactiveStreaming) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
                         boolean appendOutputFormat = (!supportsJsonSchema || jsonSchema.isEmpty())
                                 && !streaming
-                                && !reactiveStreaming
-                                && !returnsImage;
+                                && !reactiveStreaming;
 
                         ResponseFormat responseFormat = null;
                         if (supportsJsonSchema && jsonSchema.isPresent()) {
@@ -1422,18 +1421,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {
                         TerminalEvents.fireCompleted(context.eventListenerRegistrar, invocationContext, result);
                         return result;
-                    }
-
-                    private static boolean isImage(Type returnType) {
-                        Class<?> rawReturnType = getRawClass(returnType);
-                        if (isImageType(rawReturnType)) {
-                            return true;
-                        }
-                        if (Collection.class.isAssignableFrom(rawReturnType)) {
-                            Class<?> genericParam = resolveFirstGenericParameterClass(returnType);
-                            return genericParam != null && isImageType(genericParam);
-                        }
-                        return false;
                     }
 
                     private static Object parseImages(ChatResponse response, Type returnType) {
