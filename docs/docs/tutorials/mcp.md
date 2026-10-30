@@ -77,10 +77,12 @@ If the stream breaks after being established, the transport reconnects automatic
 
 #### Custom HTTP client
 
-By default, the Streamable HTTP transport sends its requests with the JDK HTTP client
-(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in). You can use any other
-[HTTP client](./customizable-http-client.md) instead, for example to reuse a proxy or
-TLS setup. Pass its builder:
+By default, the Streamable HTTP transport discovers an
+[HTTP client](./customizable-http-client.md#selecting-an-http-client) on the classpath.
+`langchain4j-mcp` brings in `langchain4j-http-client-jdk` as a runtime dependency, but it is a fallback:
+adding one other implementation selects that client automatically. Multiple clients with the same
+highest priority cause a conflict; select one with `langchain4j.http.clientBuilderFactory` or pass
+its builder explicitly. For example, to reuse a proxy or TLS setup, pass its builder:
 
 ```java
 McpTransport transport = StreamableHttpMcpTransport.builder()
@@ -91,8 +93,16 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
-If you exclude `langchain4j-http-client-jdk` from your dependencies, you must set
-`httpClientBuilder(...)` or `httpClient(...)`.
+:::note
+Starting with 1.23.0-beta33, applications with another HTTP client on the classpath use that client
+automatically, instead of always using JDK. To retain the previous selection, set
+`langchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory`.
+Excluding the JDK dependency also works, provided another client is available or supplied explicitly.
+:::
+
+For an automatically discovered client, the transport sets a 60-second connection timeout (overridden
+by `timeout(...)`) and disables the read timeout for long-lived MCP streams. Explicitly supplied builders
+and clients retain their own read timeout settings.
 
 The HTTP client must support streaming responses (`HttpClient.stream(request, parser)`).
 The JDK, OkHttp and Apache clients do. The Spring `RestClient` integration supports it only
@@ -102,16 +112,17 @@ every MCP request fails.
 Things to know when you use your own HTTP client:
 
 - **TLS, HTTP version and redirects** are configured on the HTTP client. The transport options
-  `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(true)` work only with the default
-  JDK client. Combining them with `httpClientBuilder(...)` or `httpClient(...)` fails when the
-  transport is built.
-- **Redirects:** the transport does not follow redirects by default, but OkHttp and Apache do.
+  `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(...)` are deprecated. They work only
+  when the automatically discovered client is JDK; using them with another discovered client fails
+  when the transport is built (including `followRedirects(false)`). Combining `sslContext(...)`,
+  `setHttpVersion1_1()` or `followRedirects(true)` with an explicitly supplied builder or client also fails.
+- **Redirects:** the automatically discovered JDK client does not follow redirects by default, but OkHttp and Apache do.
   On a redirect, they can send your custom headers (for example an API key) and the request body
   to another host. If you don't need redirects, turn them off on the client, for example
   `OkHttpClient.builder().okHttpClientBuilder(new okhttp3.OkHttpClient.Builder().followRedirects(false))`.
 - **Timeouts:** the transport `timeout(...)` is the connection timeout. With `httpClientBuilder(...)`,
   it is set on the builder you pass in; without it, the client keeps its own connection timeout.
-  The transport never sets a read timeout, so the client's own read timeout applies. MCP responses
+  For an explicitly supplied builder or client, the client's own read timeout applies. MCP responses
   and notification streams can stay idle for a long time, so turn the read timeout off or make it
   long. OkHttp's default read timeout is only 10 seconds.
 - **Executor:** if you set the transport `executor(...)`, responses and notifications are handled on it.
@@ -126,7 +137,7 @@ Things to know when you use your own HTTP client:
   transport then fails the request, or starts a new session, right away. Other clients may report the
   error only after they have read the whole response body.
 
-Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
+Closing the transport cancels its open requests. An automatically discovered client or one built from `httpClientBuilder(...)` is
 closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client
 between several transports, build it yourself and pass it with `.httpClient(client)`. The transport
 then never closes it, and you cannot set `timeout(...)` on the transport.
