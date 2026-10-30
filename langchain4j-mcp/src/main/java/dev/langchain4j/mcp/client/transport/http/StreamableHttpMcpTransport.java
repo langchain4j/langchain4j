@@ -997,7 +997,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * @deprecated Configure TLS with {@link #httpClientBuilder(HttpClientBuilder)} instead.
          * Only supported when the automatically discovered client is the JDK client; otherwise building fails.
          */
-        @Deprecated(since = "1.23.0", forRemoval = true)
+        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
             return this;
@@ -1011,7 +1011,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * @deprecated Configure the HTTP version with {@link #httpClientBuilder(HttpClientBuilder)} instead.
          * Only supported when the automatically discovered client is the JDK client; otherwise building fails.
          */
-        @Deprecated(since = "1.23.0", forRemoval = true)
+        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
             this.forceHttpVersion1_1 = true;
             return this;
@@ -1029,7 +1029,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * @deprecated Configure redirects with {@link #httpClientBuilder(HttpClientBuilder)} instead.
          * Calling this method (even with {@code false}) fails when a non-JDK client is automatically discovered.
          */
-        @Deprecated(since = "1.23.0", forRemoval = true)
+        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder followRedirects(boolean followRedirects) {
             this.followRedirects = followRedirects;
             return this;

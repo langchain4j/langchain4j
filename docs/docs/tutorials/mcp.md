@@ -94,7 +94,7 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
 ```
 
 :::note
-Starting with 1.23.0-beta33, applications with another HTTP client on the classpath use that client
+Starting with 1.24.0-beta34, applications with another HTTP client on the classpath use that client
 automatically, instead of always using JDK. To retain the previous selection, set
 `langchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory`.
 Excluding the JDK dependency also works, provided another client is available or supplied explicitly.

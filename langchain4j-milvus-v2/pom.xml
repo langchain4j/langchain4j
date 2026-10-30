@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.23.0-beta33-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Milvus</name>
 
     <properties>
-        <milvus-sdk-java.version>2.6.14</milvus-sdk-java.version>
+        <milvus-sdk-java.version>2.6.27</milvus-sdk-java.version>
         <jackson.version>2.22.4</jackson.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
     </properties>
@@ -25,11 +25,17 @@
                 <artifactId>error_prone_annotations</artifactId>
                 <version>2.50.0</version>
             </dependency>
-            <!-- milvus-sdk-java brings protobuf-java transitively at 3.23.2/3.24.0/3.25.5; pin to converge -->
+            <!-- milvus-sdk-java brings protobuf-java transitively at 3.25.5/3.25.8; pin to converge -->
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>3.25.5</version>
+                <version>3.25.8</version>
+            </dependency>
+            <!-- milvus-sdk-java brings org.jetbrains:annotations at 17.0.0 and via kotlin-stdlib at 13.0; pin to converge (23.0.0, as resolved before) -->
+            <dependency>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>23.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -39,7 +45,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.23.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -51,7 +57,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.23.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

@@ -13,7 +13,7 @@ public interface HttpClientBuilderFactory extends PrioritizedFactory {
      *
      * @return the priority, {@link #DEFAULT_PRIORITY} by default; the JDK implementation uses
      *         {@link #YIELDS_TO_OTHERS} as a fallback
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Override
     default int priority() {

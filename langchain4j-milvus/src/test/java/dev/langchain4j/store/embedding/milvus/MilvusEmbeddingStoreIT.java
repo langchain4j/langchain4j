@@ -1,11 +1,13 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.Filter.not;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -27,8 +29,12 @@ import io.milvus.param.index.DescribeIndexParam;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.milvus.MilvusContainer;
@@ -36,7 +42,17 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static final String MILVUS_DOCKER_IMAGE = "milvusdb/milvus:v2.5.10";
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+
+    static MilvusContainer milvusContainer() {
+        // without these settings, Milvus 2.6 and later never reports healthy when started in a single container
+        return new MilvusContainer(MILVUS_DOCKER_IMAGE)
+                .withEnv("DEPLOY_MODE", "STANDALONE")
+                .withEnv("MILVUS_MODE", "standalone")
+                .withEnv("ETCD_USE_EMBED", "true")
+                .withEnv("COMMON_STORAGETYPE", "local")
+                .withCommand("milvus", "run", "standalone");
+    }
 
     private static final String COLLECTION_NAME = "test_collection";
 
@@ -44,7 +60,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private static final Map<String, Object> IVFPQ_PARAMETERS = Map.of("m", 8, "nlist", 1024);
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE);
+    private static final MilvusContainer milvus = milvusContainer();
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
@@ -139,8 +155,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 
@@ -176,8 +191,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 
@@ -229,8 +243,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()
                 .withHost(milvus.getHost())
                 .withUri(milvus.getEndpoint())
-                .withPort(milvus.getMappedPort(19530))
-                .withAuthorization("", "");
+                .withPort(milvus.getMappedPort(19530));
 
         MilvusServiceClient milvusServiceClient = new MilvusServiceClient(connectBuilder.build());
 
@@ -297,5 +310,39 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .build();
 
         embeddingStore().search(searchRequest);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_match_entries_without_the_key_inside_not(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
+        should_filter_by_metadata_not(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
+    static Stream<Arguments> should_match_entries_without_the_key_inside_not() {
+        return Stream.of(
+                Arguments.of(
+                        not(metadataKey("age").isGreaterThan(40)),
+                        List.of(new Metadata().put("age", 30), new Metadata().put("name", "a"), new Metadata()),
+                        List.of(new Metadata().put("age", 50))),
+                Arguments.of(
+                        not(metadataKey("name").isIn("a", "b")),
+                        List.of(new Metadata().put("name", "c"), new Metadata().put("age", 1), new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("name", "b"))),
+                Arguments.of(
+                        not(metadataKey("name").isEqualTo("a").or(metadataKey("age").isGreaterThan(40))),
+                        List.of(
+                                new Metadata().put("name", "b").put("age", 30),
+                                new Metadata().put("other", 1),
+                                new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("age", 50))),
+                Arguments.of(
+                        not(metadataKey("name").isEqualTo("a").and(metadataKey("age").isNotEqualTo(30))),
+                        List.of(
+                                new Metadata().put("name", "b"),
+                                new Metadata().put("name", "a").put("age", 30),
+                                new Metadata().put("age", 50),
+                                new Metadata()),
+                        List.of(new Metadata().put("name", "a"), new Metadata().put("name", "a").put("age", 50))));
     }
 }

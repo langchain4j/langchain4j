@@ -11,6 +11,7 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.Method;
@@ -33,6 +34,13 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
 
     @Override
     public T build() {
+        if (subagents.isEmpty()) {
+            throw new AgenticSystemConfigurationException("A loop agent requires at least one subagent.");
+        }
+        if (maxIterations < 1) {
+            throw new AgenticSystemConfigurationException(
+                    "A loop agent requires maxIterations to be at least 1, but was " + maxIterations + ".");
+        }
         return build(() -> new LoopPlanner(maxIterations, testExitAtLoopEnd, exitCondition, exitConditionDescription));
     }
 
