@@ -22,6 +22,7 @@ class ServiceOutputParserImageReturnTypeTest {
     @MethodSource("imageReturnTypes")
     void should_not_request_json_schema_for_image_return_types(Type returnType) {
         assertThat(parser.jsonSchema(returnType)).isEmpty();
+        assertThat(JsonSchemas.jsonSchemaFrom(returnType)).isEmpty();
     }
 
     @ParameterizedTest
