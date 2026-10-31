@@ -1,5 +1,9 @@
 package dev.langchain4j.model.workersai;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
@@ -8,18 +12,14 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Base64;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import javax.imageio.ImageIO;
 
 /**
  * WorkerAI Image model.
@@ -93,8 +93,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         /**
          * Simple constructor.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Simple constructor.
@@ -162,7 +161,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     public Response<Image> edit(Image image, String prompt) {
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
-        return new Response<>(convertAsImage(executeQuery(prompt, null, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, null)), null, FinishReason.STOP);
     }
 
     /** {@inheritDoc} */
@@ -170,7 +169,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
         ensureNotNull(mask, "Mask");
-        return new Response<>(convertAsImage(executeQuery(prompt, mask, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, mask)), null, FinishReason.STOP);
     }
 
     /**
@@ -211,14 +210,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
             WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
             imgReq.setPrompt(prompt);
             if (image != null) {
-                if (image.url() != null) {
-                    imgReq.setImage(getPixels(image.url().toURL()));
-                }
+                imgReq.setImage(pixelsOf(image));
             }
             if (mask != null) {
-                if (mask.url() != null) {
-                    imgReq.setMask(getPixels(mask.url().toURL()));
-                }
+                imgReq.setMask(pixelsOf(mask));
             }
 
             return client.generateImage(imgReq, accountId, modelName);
@@ -237,8 +232,31 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      *      return an exception if pixel not returned
      */
     public int[] getPixels(URL imageUrl) throws Exception {
-        BufferedImage image = ImageIO.read(imageUrl);
+        return pixelsOf(ImageIO.read(imageUrl));
+    }
 
+    /**
+     * Read the pixels of an image that carries either a URL or base64-encoded data.
+     *
+     * @param image
+     *      current image
+     * @return
+     *      pixels of the image, or null if it carries neither
+     * @throws Exception
+     *      return an exception if pixel not returned
+     */
+    private int[] pixelsOf(Image image) throws Exception {
+        if (image.url() != null) {
+            return getPixels(image.url().toURL());
+        }
+        if (image.base64Data() != null) {
+            byte[] bytes = Base64.getDecoder().decode(image.base64Data());
+            return pixelsOf(ImageIO.read(new ByteArrayInputStream(bytes)));
+        }
+        return null;
+    }
+
+    private int[] pixelsOf(BufferedImage image) {
         // Get image dimensions
         int width = image.getWidth();
         int height = image.getHeight();
@@ -283,7 +301,4 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 .mimeType(MIME_TYPE)
                 .build();
     }
-
 }
-
-
