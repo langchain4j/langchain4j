@@ -2,6 +2,7 @@ package dev.langchain4j.memory.chat;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -121,6 +122,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void set(Iterable<ChatMessage> iter) {
+        ensureNotNull(iter, "messages");
         if (iter instanceof List) {
             set((List<ChatMessage>) iter);
         } else {
@@ -131,6 +133,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     private void set(List<ChatMessage> messages) {
+        ensureNotEmpty(messages, "messages");
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
         messages = new ArrayList<>(messages);
@@ -143,6 +146,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
         // consistent with addAsync and the async error contract.
         try {
+            ensureNotEmpty(messages, "messages");
             Integer maxMessages = this.maxMessagesProvider.apply(this.id);
             ensureGreaterThanZero(maxMessages, "maxMessages");
             List<ChatMessage> windowed = new ArrayList<>(messages);
