@@ -1,16 +1,15 @@
 package dev.langchain4j.skills.shell;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.io.IOException;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
-
-import java.io.IOException;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ShellCommandRunnerTest {
 
@@ -60,7 +59,8 @@ class ShellCommandRunnerTest {
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    void should_return_empty_output_when_command_produces_nothing_on_windows() throws IOException, InterruptedException {
+    void should_return_empty_output_when_command_produces_nothing_on_windows()
+            throws IOException, InterruptedException {
         ShellCommandRunner.Result result = ShellCommandRunner.run("type nul", null, 10);
 
         assertThat(result.isSuccess()).isTrue();
@@ -124,7 +124,8 @@ class ShellCommandRunnerTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    void should_run_in_specified_working_directory_on_unix(@TempDir Path tempDir) throws IOException, InterruptedException {
+    void should_run_in_specified_working_directory_on_unix(@TempDir Path tempDir)
+            throws IOException, InterruptedException {
         ShellCommandRunner.Result result = ShellCommandRunner.run("pwd", tempDir, 10);
 
         assertThat(result.stdOut()).contains(tempDir.toRealPath().toString());
@@ -132,7 +133,8 @@ class ShellCommandRunnerTest {
 
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    void should_run_in_specified_working_directory_on_windows(@TempDir Path tempDir) throws IOException, InterruptedException {
+    void should_run_in_specified_working_directory_on_windows(@TempDir Path tempDir)
+            throws IOException, InterruptedException {
         ShellCommandRunner.Result result = ShellCommandRunner.run("cd", tempDir, 10);
 
         assertThat(result.stdOut()).containsIgnoringCase(tempDir.toRealPath().toString());
@@ -168,8 +170,7 @@ class ShellCommandRunnerTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_keep_tail_when_truncating_stdout_on_windows() throws IOException, InterruptedException {
-        ShellCommandRunner.Result result = ShellCommandRunner.run(
-                "for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
+        ShellCommandRunner.Result result = ShellCommandRunner.run("for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
 
         assertThat(result.stdOut()).startsWith("[truncated: showing last");
         assertThat(result.stdOut()).contains("1000");
@@ -186,10 +187,41 @@ class ShellCommandRunnerTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_include_line_counts_in_truncation_notice_on_windows() throws IOException, InterruptedException {
-        ShellCommandRunner.Result result = ShellCommandRunner.run(
-                "for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
+        ShellCommandRunner.Result result = ShellCommandRunner.run("for /l %i in (1,1,1000) do @echo %i", null, 10, 100);
 
         assertThat(result.stdOut()).matches("(?s)\\[truncated: showing last \\d+ of 1000 lines\\].*");
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void should_truncate_single_line_exceeding_max_output_bytes_on_unix() throws IOException, InterruptedException {
+        // 1000 characters with no newline: one line that alone exceeds the cap
+        ShellCommandRunner.Result result =
+                ShellCommandRunner.run("head -c 1000 /dev/zero | tr '\\0' a; printf b", null, 10, 100);
+
+        assertThat(result.stdOut()).startsWith("[truncated: last line cut to its last 100 of 1001 chars]\n");
+        assertThat(result.stdOut()).endsWith("b"); // tail of the line is preserved
+        assertThat(result.stdOut().length()).isLessThan(200);
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void should_truncate_long_last_line_after_dropping_earlier_lines_on_unix()
+            throws IOException, InterruptedException {
+        ShellCommandRunner.Result result =
+                ShellCommandRunner.run("seq 1 10; head -c 1000 /dev/zero | tr '\\0' a; printf b", null, 10, 100);
+
+        assertThat(result.stdOut()).startsWith("[truncated: showing last 1 of 11 lines");
+        assertThat(result.stdOut()).endsWith("b");
+        assertThat(result.stdOut().length()).isLessThan(200);
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void should_treat_crlf_and_cr_as_line_terminators_on_unix() throws IOException, InterruptedException {
+        ShellCommandRunner.Result result = ShellCommandRunner.run("printf 'one\\r\\ntwo\\rthree\\n'", null, 10);
+
+        assertThat(result.stdOut()).isEqualTo("one\ntwo\nthree");
     }
 
     @Test
