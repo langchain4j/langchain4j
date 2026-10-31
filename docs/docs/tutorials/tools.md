@@ -1009,6 +1009,10 @@ class Tools {
 In this case, the LLM is not aware of these parameters;
 they are only visible to LangChain4j and user code.
 
+If a tool calls another AI Service, the `InvocationContext` of that inner invocation
+returns the `invocationId` of the calling invocation from `parentInvocationId()`,
+see [Linking nested invocations](/tutorials/observability#linking-nested-invocations).
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
 you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:

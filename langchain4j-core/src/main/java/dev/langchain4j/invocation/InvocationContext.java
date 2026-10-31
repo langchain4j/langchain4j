@@ -1,5 +1,6 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -29,6 +30,47 @@ public interface InvocationContext {
      * method as a separate invocation, with its own identifier.
      */
     UUID invocationId();
+
+    /**
+     * The {@link #invocationId()} of the parent invocation: the AI Service invocation whose own work started this
+     * invocation. This is the case when one of these parts of an AI Service calls another AI Service:
+     * <ul>
+     * <li>a tool, a tool error handler or the strategy for hallucinated tool names</li>
+     * <li>a tool provider</li>
+     * <li>an input or output guardrail</li>
+     * <li>a component of the retrieval augmentor (for example a query transformer or a content retriever)</li>
+     * <li>the system or user message provider, or the system message transformer</li>
+     * <li>the moderation model</li>
+     * <li>the {@code chatRequestTransformer}</li>
+     * </ul>
+     * <p>
+     * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
+     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), from any
+     * other part of an AI Service (for example its chat memory), when there is no parent, or when this
+     * {@code InvocationContext} implementation does not track it.
+     * <p>
+     * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
+     * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands
+     * the call to another thread (for example with {@code CompletableFuture.supplyAsync(..., executor)}), it is
+     * {@code null}. In rare cases, when futures are shared between invocations, it can even name another
+     * invocation. So treat it as best effort.
+     * <p>
+     * It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that
+     * implementation (for example through {@code AiServicesFactory}) return {@code null} until they add support for
+     * it, also for AI Services they create through {@code AiServices.builder(...)}.
+     * <p>
+     * It is set when the AI Service method is called: later runs of the same {@code TokenStream} keep it.
+     * <p>
+     * Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor currently have no
+     * parent. An agent called from a tool of another agent has one.
+     *
+     * @return the id of the parent invocation, or {@code null} if there is none or it is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    default UUID parentInvocationId() {
+        return null;
+    }
 
     /**
      * The fully-qualified name of the AI Service interface where the invocation was initiated from
@@ -138,6 +180,7 @@ public interface InvocationContext {
     class Builder {
 
         private UUID invocationId;
+        private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
@@ -157,6 +200,7 @@ public interface InvocationContext {
 
         protected Builder(InvocationContext invocationContext) {
             invocationId(invocationContext.invocationId());
+            parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
@@ -180,6 +224,17 @@ public interface InvocationContext {
          */
         public Builder invocationId(UUID invocationId) {
             this.invocationId = invocationId;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext#parentInvocationId()}.
+         *
+         * @since 1.23.0
+         */
+        @Experimental
+        public Builder parentInvocationId(UUID parentInvocationId) {
+            this.parentInvocationId = parentInvocationId;
             return this;
         }
 
@@ -307,6 +362,11 @@ public interface InvocationContext {
 
         public UUID invocationId() {
             return invocationId;
+        }
+
+        @Experimental
+        public UUID parentInvocationId() {
+            return parentInvocationId;
         }
 
         public String interfaceName() {
