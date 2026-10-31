@@ -242,6 +242,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
+            currentScope.awaitPendingResponses();
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
             currentScope.rootCallEnded(registry, agentListener);
         }

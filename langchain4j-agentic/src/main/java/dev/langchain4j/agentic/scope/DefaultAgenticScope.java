@@ -281,13 +281,17 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public void rootCallStarted(AgenticScopeRegistry registry) {}
 
-    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
-        // ensure that all pending async operations are completed before ending the root call
+    public void awaitPendingResponses() {
         Map.copyOf(state).forEach((key, value) -> {
             if (value instanceof DelayedResponse<?> pending) {
                 writeState(key, pending.blockingGet());
             }
         });
+    }
+
+    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
+        // ensure that all pending async operations are completed before ending the root call
+        awaitPendingResponses();
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
