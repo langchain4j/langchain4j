@@ -180,6 +180,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 googleMapsEnabled,
                 urlContextEnabled,
                 codeExecutionEnabled,
+                client.vertexAI(),
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
