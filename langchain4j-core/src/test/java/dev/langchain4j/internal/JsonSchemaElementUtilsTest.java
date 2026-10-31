@@ -42,6 +42,51 @@ class JsonSchemaElementUtilsTest {
         assertThat(JsonSchemaElementUtils.isCustomClass(LocalDateTime.class)).isFalse();
     }
 
+    static class WithTransientState {
+
+        String name;
+        transient String cache;
+        transient Object handle;
+    }
+
+    @Test
+    void should_ignore_transient_fields() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(WithTransientState.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addStringProperty("name")
+                        .required("name")
+                        .build());
+    }
+
+    static class WithTransientProperties {
+
+        @com.fasterxml.jackson.annotation.JsonProperty
+        transient String annotated;
+
+        transient String accessed;
+
+        public String getAccessed() {
+            return accessed;
+        }
+    }
+
+    @Test
+    void should_keep_transient_fields_that_jackson_maps() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(WithTransientProperties.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(((JsonObjectSchema) jsonSchemaElement).properties()).containsOnlyKeys("annotated", "accessed");
+    }
+
     static class Order {
 
         Address billingAddress;
