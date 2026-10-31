@@ -106,6 +106,44 @@ Passing the parameters class of another decision model to `OllamaDecisionModel` 
 `IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
 decision models, works with every model.
 
+## Spring Boot
+
+Add the starter:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-ollama-spring-boot4-starter</artifactId>
+    <version>1.23.0-beta33</version>
+</dependency>
+```
+
+On Spring Boot 3, use `langchain4j-ollama-spring-boot-starter` instead
+(see [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions)).
+
+An `OllamaDecisionModel` bean is created when its base URL is set in `application.properties`:
+
+```properties
+# Mandatory properties:
+langchain4j.ollama.decision-model.base-url=http://localhost:11434
+langchain4j.ollama.decision-model.model-name=nimble
+
+# Optional properties:
+langchain4j.ollama.decision-model.timeout=...
+langchain4j.ollama.decision-model.max-retries=...
+langchain4j.ollama.decision-model.keep-alive=...
+langchain4j.ollama.decision-model.log-requests=...
+langchain4j.ollama.decision-model.log-responses=...
+langchain4j.ollama.decision-model.custom-headers...=...
+langchain4j.ollama.decision-model.custom-parameters...=...
+```
+
+`DecisionModelListener` beans are registered on the decision model automatically.
+
+`decideAsync(...)` sends the request with Spring's `WebClient`, so it has to be on the classpath (see
+[Spring Boot Integration](/tutorials/spring-boot-integration#flux)); without it, `decideAsync(...)` fails with an
+`AsyncNotSupportedException`.
+
 ## Input
 
 The input can be:
