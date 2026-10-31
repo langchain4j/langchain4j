@@ -125,6 +125,10 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void set(Iterable<ChatMessage> iter) {
+        ensureNotNull(iter, "messages");
+        if (!iter.iterator().hasNext()) {
+            throw new IllegalArgumentException("messages must not be empty");
+        }
         if (iter instanceof List) {
             set((List<ChatMessage>) iter);
         } else {
@@ -147,6 +151,10 @@ public class TokenWindowChatMemory implements ChatMemory {
         // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
         // consistent with addAsync and the async error contract.
         try {
+            ensureNotNull(messages, "messages");
+            if (messages.isEmpty()) {
+                throw new IllegalArgumentException("messages must not be empty");
+            }
             Integer maxTokens = maxTokensProvider.apply(id);
             ensureGreaterThanZero(maxTokens, "maxTokens");
             List<ChatMessage> windowed = new ArrayList<>(messages);
