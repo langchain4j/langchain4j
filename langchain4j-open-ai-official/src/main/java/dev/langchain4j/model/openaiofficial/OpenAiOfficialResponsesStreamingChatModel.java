@@ -20,6 +20,7 @@ import com.openai.core.JsonField;
 import com.openai.core.JsonMissing;
 import com.openai.core.JsonValue;
 import com.openai.credential.Credential;
+import com.openai.errors.SseException;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
@@ -243,6 +244,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                             streamResponse.stream().forEach(eventHandler::handleEvent);
                         } catch (CancellationException e) {
                             withLoggingExceptions(() -> handler.onError(e));
+                        } catch (SseException e) {
+                            // The SDK intercepts nested error payloads; its type() accessor requires a type.
+                            JsonField<?> error = e.body();
+                            var type = error.asObject()
+                                    .map(OpenAiOfficialResponsesStreamingChatModel::extractErrorType)
+                                    .orElse(null);
+                            withLoggingExceptions(() -> handler.onError(new OpenAiOfficialResponsesStreamingException(
+                                    e.getMessage(), e.code().orElse(null), type, e)));
                         } catch (Exception e) {
                             RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
                             withLoggingExceptions(() -> handler.onError(mappedException));
@@ -279,6 +288,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     @Override
     public Set<Capability> supportedCapabilities() {
         return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    private static String extractErrorType(Map<String, JsonValue> error) {
+        JsonField<?> type = error.getOrDefault("type", JsonMissing.of());
+        return type.asString().orElse(null);
     }
 
     static String extractReasoningSummary(com.openai.models.responses.Response response) {
@@ -1396,13 +1410,22 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void handleError(ResponseErrorEvent event) {
             var message = event.message();
-            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response error: " + message)));
+            withLoggingExceptions(() -> handler.onError(new OpenAiOfficialResponsesStreamingException(
+                    "Response error: " + message, event.code().orElse(null), null)));
         }
 
         private void handleFailed(ResponseFailedEvent event) {
             var response = event.response();
             var message = response.error().map(this::extractErrorMessage).orElse("Response failed");
-            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response failed: " + message)));
+            var code = response.error()
+                    .flatMap(error -> error._code().asKnown())
+                    .map(ResponseError.Code::asString)
+                    .orElse(null);
+            var type = response.error()
+                    .map(error -> extractErrorType(error._additionalProperties()))
+                    .orElse(null);
+            withLoggingExceptions(() -> handler.onError(
+                    new OpenAiOfficialResponsesStreamingException("Response failed: " + message, code, type)));
         }
 
         private String extractErrorMessage(ResponseError error) {
