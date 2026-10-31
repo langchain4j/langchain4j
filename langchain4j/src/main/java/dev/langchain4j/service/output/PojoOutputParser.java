@@ -23,6 +23,7 @@ import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -49,14 +50,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
         try {
             if (isPolymorphic(type)) {
                 return extractAndParseJson(text, json -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> map = Json.fromJson(json, Map.class);
-                    if (map != null && map.size() == 1 && map.containsKey("value")) {
-                        return Json.fromJson(Json.toJson(map.get("value")), type);
-                    } else {
-                        return Json.fromJson(json, type);
-                    }
-                }).value();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = Json.fromJson(json, Map.class);
+                            if (map != null && map.size() == 1 && map.containsKey("value")) {
+                                return Json.fromJson(Json.toJson(map.get("value")), type);
+                            } else {
+                                return Json.fromJson(json, type);
+                            }
+                        })
+                        .value();
             } else {
                 return extractAndParseJson(text, type).value();
             }
@@ -101,7 +103,7 @@ class PojoOutputParser<T> implements OutputParser<T> {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : fieldsIncludingInherited(type)) {
             String name = field.getName();
             if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip coverage instrumentation field.
@@ -116,6 +118,22 @@ class PojoOutputParser<T> implements OutputParser<T> {
         }
         jsonSchema.append("}");
         return jsonSchema.toString();
+    }
+
+    private static List<Field> fieldsIncludingInherited(Class<?> type) {
+        List<Class<?>> hierarchy = new ArrayList<>();
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            hierarchy.add(current);
+        }
+
+        Map<String, Field> fields = new LinkedHashMap<>();
+        for (int i = hierarchy.size() - 1; i >= 0; i--) {
+            for (Field field : hierarchy.get(i).getDeclaredFields()) {
+                // A field redeclared in a subclass shadows the inherited one.
+                fields.put(field.getName(), field);
+            }
+        }
+        return List.copyOf(fields.values());
     }
 
     private static String descriptionFor(Field field, Set<Class<?>> visited) {
