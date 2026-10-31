@@ -2,6 +2,10 @@ package dev.langchain4j.http.client;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.spi.ServiceHelper;
 import java.util.Collections;
@@ -14,6 +18,85 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 class HttpClientBuilderLoaderTest {
+
+    @Test
+    void should_select_highest_priority_independently_of_discovery_order() {
+        HttpClientBuilderFactory fallback = factory(-1);
+        HttpClientBuilderFactory preferred = factory(0);
+        HttpClientBuilder expected = preferred.create();
+        for (var factories : List.of(List.of(fallback, preferred), List.of(preferred, fallback))) {
+            try (MockedStatic<ServiceHelper> mocked = Mockito.mockStatic(ServiceHelper.class)) {
+                mocked.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
+                        .thenReturn(factories);
+                assertThat(HttpClientBuilderLoader.loadHttpClientBuilder()).isSameAs(expected);
+            }
+        }
+        verify(fallback, never()).create();
+    }
+
+    @Test
+    void should_ignore_ties_below_the_highest_priority() {
+        HttpClientBuilderFactory first = factory(0);
+        HttpClientBuilderFactory second = factory(0);
+        HttpClientBuilderFactory preferred = factory(1);
+        HttpClientBuilder expected = preferred.create();
+        for (var factories : List.of(
+                List.of(first, second, preferred),
+                List.of(first, preferred, second),
+                List.of(preferred, first, second))) {
+            try (MockedStatic<ServiceHelper> mocked = Mockito.mockStatic(ServiceHelper.class)) {
+                mocked.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
+                        .thenReturn(factories);
+                assertThat(HttpClientBuilderLoader.loadHttpClientBuilder()).isSameAs(expected);
+            }
+        }
+        verify(first, never()).create();
+        verify(second, never()).create();
+    }
+
+    @Test
+    void should_reject_tied_highest_priorities() {
+        var factories = List.of(factory(-1), factory(2), factory(2));
+        try (MockedStatic<ServiceHelper> mocked = Mockito.mockStatic(ServiceHelper.class)) {
+            mocked.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
+                    .thenReturn(factories);
+            assertThatThrownBy(HttpClientBuilderLoader::loadHttpClientBuilder)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("multiple HTTP clients");
+        }
+    }
+
+    @Test
+    void should_select_single_factory_with_minimum_priority() {
+        HttpClientBuilderFactory factory = factory(Integer.MIN_VALUE);
+        HttpClientBuilder expected = factory.create();
+        try (MockedStatic<ServiceHelper> mocked = Mockito.mockStatic(ServiceHelper.class)) {
+            mocked.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
+                    .thenReturn(List.of(factory));
+            assertThat(HttpClientBuilderLoader.loadHttpClientBuilder()).isSameAs(expected);
+        }
+    }
+
+    @Test
+    void property_should_override_priority() {
+        HttpClientBuilderFactory selected = MockHttpClientBuilder.MockClientFactory.of();
+        var factories = List.of(factory(10), selected, factory(10));
+        try (var ignored = ResettableSystemProperties.of(
+                        "langchain4j.http.clientBuilderFactory",
+                        selected.getClass().getName());
+                MockedStatic<ServiceHelper> mocked = Mockito.mockStatic(ServiceHelper.class)) {
+            mocked.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
+                    .thenReturn(factories);
+            assertThat(HttpClientBuilderLoader.loadHttpClientBuilder()).isInstanceOf(MockHttpClientBuilder.class);
+        }
+    }
+
+    private static HttpClientBuilderFactory factory(int priority) {
+        HttpClientBuilderFactory factory = mock(HttpClientBuilderFactory.class);
+        when(factory.priority()).thenReturn(priority);
+        when(factory.create()).thenReturn(mock(HttpClientBuilder.class));
+        return factory;
+    }
 
     @Test
     void noFactories() {
