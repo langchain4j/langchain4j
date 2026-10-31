@@ -8,8 +8,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import java.lang.reflect.Type;
-import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -25,6 +23,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -33,6 +32,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,14 +51,14 @@ class InternalOllamaHelper {
     private static final Predicate<UserMessage> hasImages =
             userMessage -> userMessage.contents().stream().anyMatch(content -> IMAGE.equals(content.type()));
 
-    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
+    static List<Message> toOllamaMessages(List<ChatMessage> messages, boolean sendThinking) {
         if (!messagesContainOnlyTextAndOrImageContentType(messages)) {
             throw new UnsupportedFeatureException("Ollama only supports message types Text and Image.");
         }
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
                         ? messagesWithImageSupport((UserMessage) message)
-                        : otherMessages(message))
+                        : otherMessages(message, sendThinking))
                 .collect(Collectors.toList());
     }
 
@@ -160,11 +160,11 @@ class InternalOllamaHelper {
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 
-    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream) {
+    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream, boolean sendThinking) {
         OllamaChatRequestParameters requestParameters = (OllamaChatRequestParameters) chatRequest.parameters();
         return OllamaChatRequest.builder()
                 .model(requestParameters.modelName())
-                .messages(toOllamaMessages(chatRequest.messages()))
+                .messages(toOllamaMessages(chatRequest.messages(), sendThinking))
                 .options(Options.builder()
                         .mirostat(requestParameters.mirostat())
                         .mirostatEta(requestParameters.mirostatEta())
@@ -235,7 +235,7 @@ class InternalOllamaHelper {
                 .collect(Collectors.joining("\n"));
     }
 
-    private static Message otherMessages(ChatMessage chatMessage) {
+    private static Message otherMessages(ChatMessage chatMessage, boolean sendThinking) {
         if (chatMessage instanceof CustomMessage customMessage) {
             return Message.builder()
                     .additionalFields(customMessage.attributes())
@@ -243,7 +243,9 @@ class InternalOllamaHelper {
         }
 
         List<ToolCall> toolCalls = null;
+        String thinking = null;
         if (chatMessage instanceof AiMessage aiMessage) {
+            thinking = sendThinking ? aiMessage.thinking() : null;
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
@@ -263,6 +265,7 @@ class InternalOllamaHelper {
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(toText(chatMessage))
+                .thinking(thinking)
                 .toolCalls(toolCalls)
                 .build();
     }
