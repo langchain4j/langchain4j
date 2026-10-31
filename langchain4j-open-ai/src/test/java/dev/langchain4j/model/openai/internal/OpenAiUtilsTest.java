@@ -262,6 +262,23 @@ class OpenAiUtilsTest {
     }
 
     @Test
+    void should_return_empty_text_when_content_is_empty() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder().content("").build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.text()).isEmpty();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
     void should_throw_when_choices_is_null() {
         // given
         ChatCompletionResponse response =
@@ -382,7 +399,8 @@ class OpenAiUtilsTest {
                 Arguments.of("{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("\n\n{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("{\"error\":\"Service is too busy\"}", "Service is too busy"),
-                Arguments.of("{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
+                Arguments.of(
+                        "{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
                 Arguments.of("{\"error\":{\"code\":503}}", "{\"error\":{\"code\":503}}"),
                 Arguments.of("{\"id\":\"chatcmpl-123\",\"choices\":[]}", "no choices returned in response"),
                 Arguments.of("{\"error\":null}", "no choices returned in response"),
