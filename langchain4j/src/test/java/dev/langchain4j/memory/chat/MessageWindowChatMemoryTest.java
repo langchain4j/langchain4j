@@ -6,6 +6,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -13,6 +14,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
@@ -669,5 +671,31 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         // and further mutation of the caller's list must not affect stored memory
         callerList.add(userMessage("a4-injected"));
         assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
+    }
+
+    @Test
+    void set_rejects_null_and_empty_without_clearing_history() {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory.add(userMessage("keep me"));
+
+        assertThatThrownBy(() -> chatMemory.set((Iterable<ChatMessage>) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("null");
+        assertThatThrownBy(() -> chatMemory.set(Collections.<ChatMessage>emptyList()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+        assertThatThrownBy(() -> chatMemory.set(() -> Collections.emptyIterator()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
+
+        assertThatThrownBy(() -> ((MessageWindowChatMemory) chatMemory)
+                        .setAsync(Collections.emptyList())
+                        .join())
+                .cause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("messages must not be empty");
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
     }
 }
