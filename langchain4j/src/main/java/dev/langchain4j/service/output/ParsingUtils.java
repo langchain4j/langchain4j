@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.Utils.toBase64;
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import java.lang.reflect.Type;
+import java.time.DateTimeException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -127,8 +128,8 @@ class ParsingUtils {
     private static <T> T parse(String text, Function<String, T> parser, String type) {
         try {
             return parser.apply(text);
-        } catch (IllegalArgumentException iae) {
-            throw outputParsingException(text, type, iae);
+        } catch (IllegalArgumentException | DateTimeException e) {
+            throw outputParsingException(text, type, e);
         }
     }
 
