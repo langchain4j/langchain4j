@@ -13,6 +13,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -54,6 +55,7 @@ import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
@@ -1341,5 +1343,17 @@ class AnthropicMapperTest {
 
     private static <K, V> Map.Entry<K, V> entry(K key, V value) {
         return new AbstractMap.SimpleEntry<>(key, value);
+    }
+
+    @Test
+    void should_map_stop_reasons_to_finish_reasons() {
+        assertThat(toFinishReason("end_turn")).isEqualTo(FinishReason.STOP);
+        assertThat(toFinishReason("stop_sequence")).isEqualTo(FinishReason.STOP);
+        assertThat(toFinishReason("max_tokens")).isEqualTo(FinishReason.LENGTH);
+        assertThat(toFinishReason("model_context_window_exceeded")).isEqualTo(FinishReason.LENGTH);
+        assertThat(toFinishReason("tool_use")).isEqualTo(FinishReason.TOOL_EXECUTION);
+        assertThat(toFinishReason("refusal")).isEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(toFinishReason("pause_turn")).isEqualTo(FinishReason.OTHER);
+        assertThat(toFinishReason(null)).isNull();
     }
 }
