@@ -321,4 +321,24 @@ class PgVectorFilterMapperTest {
             }
         };
     }
+
+    @Test
+    void mapNot_shouldTreatNullAsFalse_jsonMapper() {
+        Filter filter = Filter.not(metadataKey("age").isGreaterThan(30));
+
+        WhereClause whereClause = jsonMapper.map(filter);
+
+        assertThat(whereClause.sql()).isEqualTo("not(coalesce((metadata->>'age')::int > ?, false))");
+        assertThat(whereClause.parameters()).containsExactly("30");
+    }
+
+    @Test
+    void mapNot_shouldTreatNullAsFalse_columnMapper() {
+        Filter filter = Filter.not(metadataKey("age").isGreaterThan(30));
+
+        WhereClause whereClause = columnMapper.map(filter);
+
+        assertThat(whereClause.sql()).isEqualTo("not(coalesce(age::int > ?, false))");
+        assertThat(whereClause.parameters()).containsExactly("30");
+    }
 }

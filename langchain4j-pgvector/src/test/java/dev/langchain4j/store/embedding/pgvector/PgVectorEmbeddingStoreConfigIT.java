@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.pgvector;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Metadata;
@@ -31,6 +32,9 @@ import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -179,6 +183,59 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
 
         // The malicious filter must not have deleted the stored embedding.
         assertThat(getAllEmbeddings()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_filter_by_not_when_key_is_missing(
+            Filter metadataFilter, List<Metadata> matchingMetadatas, List<Metadata> notMatchingMetadatas) {
+        should_filter_by_metadata(metadataFilter, matchingMetadatas, notMatchingMetadatas);
+    }
+
+    /**
+     * {@link Filter#not(Filter)} matches every row that its expression does not match, including rows
+     * where the key is missing, as {@code Not.test()} does.
+     */
+    static Stream<Arguments> should_filter_by_not_when_key_is_missing() {
+        return Stream.of(
+                Arguments.of(
+                        Filter.not(metadataKey("age").isGreaterThan(30)),
+                        asList(new Metadata().put("age", 20), new Metadata().put("name", "Klaus"), new Metadata()),
+                        asList(new Metadata().put("age", 40))),
+                Arguments.of(
+                        Filter.not(metadataKey("age").isGreaterThanOrEqualTo(30)),
+                        asList(new Metadata().put("age", 20), new Metadata().put("name", "Klaus"), new Metadata()),
+                        asList(new Metadata().put("age", 30))),
+                Arguments.of(
+                        Filter.not(metadataKey("age").isLessThan(30)),
+                        asList(new Metadata().put("age", 40), new Metadata().put("name", "Klaus"), new Metadata()),
+                        asList(new Metadata().put("age", 20))),
+                Arguments.of(
+                        Filter.not(metadataKey("age").isLessThanOrEqualTo(30)),
+                        asList(new Metadata().put("age", 40), new Metadata().put("name", "Klaus"), new Metadata()),
+                        asList(new Metadata().put("age", 30))),
+                Arguments.of(
+                        Filter.not(metadataKey("name").isIn("Klaus", "Alice")),
+                        asList(new Metadata().put("name", "Bob"), new Metadata().put("age", 42), new Metadata()),
+                        asList(new Metadata().put("name", "Klaus"), new Metadata().put("name", "Alice"))),
+                Arguments.of(
+                        Filter.not(metadataKey("age")
+                                .isGreaterThan(30)
+                                .and(metadataKey("name").isEqualTo("Klaus"))),
+                        asList(
+                                new Metadata().put("age", 40).put("name", "Alice"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata()),
+                        asList(new Metadata().put("age", 40).put("name", "Klaus"))),
+                Arguments.of(
+                        Filter.not(metadataKey("age")
+                                .isGreaterThan(30)
+                                .or(metadataKey("name").isEqualTo("Klaus"))),
+                        asList(
+                                new Metadata().put("age", 20).put("name", "Alice"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata()),
+                        asList(new Metadata().put("age", 40), new Metadata().put("name", "Klaus"))));
     }
 
     @Test
