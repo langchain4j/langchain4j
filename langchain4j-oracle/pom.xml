@@ -14,7 +14,7 @@
     <description>Oracle Database Embedding Store</description>
 
     <properties>
-        <jdbc.version>23.5.0.24.07</jdbc.version>
+        <jdbc.version>23.26.4.0.0</jdbc.version>
         <maven.compiler.release>17</maven.compiler.release>
         <skipOracleITs>${skipITs}</skipOracleITs>
     </properties>
