@@ -20,6 +20,34 @@ import org.junit.jupiter.params.provider.ValueSource;
 class HttpRequestTest {
 
     @ParameterizedTest
+    @MethodSource("urlsWithQueryParamsAndFragments")
+    void should_add_query_parameters_before_fragment(String url, String expectedUrl) {
+        String result = HttpRequest.builder()
+                .method(GET)
+                .url(url)
+                .addQueryParam("q", "hello world")
+                .build()
+                .url();
+
+        assertThat(result).isEqualTo(expectedUrl);
+    }
+
+    private static Stream<Arguments> urlsWithQueryParamsAndFragments() {
+        return Stream.of(
+                Arguments.of("https://example.com/search", "https://example.com/search?q=hello+world"),
+                Arguments.of("https://example.com/search?lang=en", "https://example.com/search?lang=en&q=hello+world"),
+                Arguments.of("https://example.com/search#results", "https://example.com/search?q=hello+world#results"),
+                Arguments.of(
+                        "https://example.com/search?lang=en#results",
+                        "https://example.com/search?lang=en&q=hello+world#results"),
+                Arguments.of(
+                        "https://example.com/search#results?tab=all",
+                        "https://example.com/search?q=hello+world#results?tab=all"),
+                Arguments.of("https://example.com/search#", "https://example.com/search?q=hello+world#"),
+                Arguments.of("https://example.com/search%23results", "https://example.com/search%23results?q=hello+world"));
+    }
+
+    @ParameterizedTest
     @MethodSource("validUrlCombinations")
     void should_correctly_concatenate_baseUrl_and_path(String baseUrl, String path, String expectedUrl) {
 
