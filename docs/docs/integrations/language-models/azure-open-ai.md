@@ -103,7 +103,7 @@ langchain4j.azure-open-ai.chat-model.reasoningEffort=...
 See the description of some of the parameters above [here](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#completions).
 
 This configuration will create an `AzureOpenAiChatModel` bean (with default model parameters),
-which can be either used by an [AI Service](/tutorials/spring-boot-integration/#langchain4j-spring-boot-starter)
+which can be either used by an [AI Service](/tutorials/spring-boot-integration/#spring-boot-starter-for-declarative-ai-services)
 or autowired where needed, for example:
 
 ```java
