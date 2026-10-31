@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import java.io.IOException;
+import java.net.URL;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -41,6 +42,20 @@ class ClassPathSourceTests {
 
         assertThat(new String(classPathSource.inputStream().readAllBytes()).trim())
                 .isEqualTo("This is %s".formatted(filename));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+      file:/docs/my%20notes.txt                    | my notes.txt
+      file:/docs/%E4%B8%AD%E6%96%87.txt            | 中文.txt
+      jar:file:/libs/docs.jar!/docs/my%20notes.txt | my notes.txt
+      file:/docs/c++.txt                           | c++.txt
+      file:/docs/100%.txt                          | 100%.txt
+      """)
+    void fileNameIsDecoded(String url, String expectedFileName) throws IOException {
+        var classPathSource = new ClassPathSource(new URL(url), getClass().getClassLoader());
+
+        assertThat(classPathSource.metadata().getString(Document.FILE_NAME)).isEqualTo(expectedFileName);
     }
 
     @ParameterizedTest
