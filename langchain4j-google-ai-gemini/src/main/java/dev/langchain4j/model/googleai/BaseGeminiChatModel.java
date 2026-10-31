@@ -109,6 +109,7 @@ class BaseGeminiChatModel {
                 .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 // Gemini-specific parameters
+                .seed(getOrDefault(builder.seed, geminiParameters.seed()))
                 .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
                 .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))
                 .cachedContentName(getOrDefault(builder.cachedContentName, geminiParameters.cachedContentName()))
@@ -164,7 +165,7 @@ class BaseGeminiChatModel {
                         .stopSequences(parameters.stopSequences())
                         .temperature(parameters.temperature())
                         .topK(parameters.topK())
-                        .seed(seed)
+                        .seed(getOrDefault(parameters.seed(), seed))
                         .topP(parameters.topP())
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
