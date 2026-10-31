@@ -11,7 +11,10 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.watsonx.WatsonxModerationModel;
+import dev.langchain4j.model.watsonx.WatsonxModerationResponseMetadata;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -34,16 +37,23 @@ public class WatsonxModerationModelIT {
     @Test
     public void should_flag_content_and_include_metadata_from_detection() {
 
-        var response = model.moderate("I kill you!");
-        assertTrue(response.content().flagged());
-        assertEquals("I kill you!", response.content().flaggedText());
+        ModerationResponse response = model.moderate(
+                ModerationRequest.builder().texts(List.of("I kill you!")).build());
 
-        var metadata = response.metadata();
-        assertEquals(0, metadata.get("start"));
-        assertEquals(11, metadata.get("end"));
-        assertEquals("hap", metadata.get("detection_type"));
-        assertEquals("has_HAP", metadata.get("detection"));
-        assertEquals(0.98, (double) metadata.get("score"), 0.01);
+        assertTrue(response.moderation().flagged());
+        assertEquals("I kill you!", response.moderation().flaggedText());
+        assertEquals(0, response.metadata().get("start"));
+        assertEquals(11, response.metadata().get("end"));
+        assertEquals("hap", response.metadata().get("detection_type"));
+        assertEquals("has_HAP", response.metadata().get("detection"));
+        assertEquals(0.98, (double) response.metadata().get("score"), 0.01);
+
+        var metadata = (WatsonxModerationResponseMetadata) response.typedMetadata();
+        assertEquals(0, metadata.start());
+        assertEquals(11, metadata.end());
+        assertEquals("hap", metadata.detectionType());
+        assertEquals("has_HAP", metadata.detection());
+        assertEquals(0.98, metadata.score(), 0.01);
     }
 
     @Test
@@ -70,12 +80,5 @@ public class WatsonxModerationModelIT {
 
         assertTrue(response.content().flagged());
         assertEquals("I kill you!", response.content().flaggedText());
-
-        var metadata = response.metadata();
-        assertEquals(0, metadata.get("start"));
-        assertEquals(11, metadata.get("end"));
-        assertEquals("hap", metadata.get("detection_type"));
-        assertEquals("has_HAP", metadata.get("detection"));
-        assertEquals(0.98, (double) metadata.get("score"), 0.01);
     }
 }
