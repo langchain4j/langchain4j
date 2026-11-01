@@ -9,6 +9,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as an exit predicate for a loop in a loop-based agent.
  * The method must be static and return a boolean indicating whether the loop should exit.
+ * It can also declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>

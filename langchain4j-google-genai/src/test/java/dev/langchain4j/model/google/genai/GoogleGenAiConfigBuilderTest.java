@@ -3,11 +3,15 @@ package dev.langchain4j.model.google.genai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.HarmCategory;
 import com.google.genai.types.Part;
+import com.google.genai.types.PrebuiltVoiceConfig;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
+import com.google.genai.types.VoiceConfig;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -15,6 +19,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +42,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config).isNotNull();
         assertThat(config.temperature().get()).isEqualTo(0.7f);
@@ -54,7 +60,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config).isNotNull();
     }
@@ -68,7 +74,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build());
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, safetySettings, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, safetySettings, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.safetySettings().get()).hasSize(1);
     }
@@ -79,7 +85,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, List.of(), null, null, null, false, false, false, null, null, null, null);
+                parameters, null, List.of(), null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config).isNotNull();
     }
@@ -92,7 +98,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.responseMimeType().get()).isEqualTo("application/json");
         assertThat(config.responseSchema().isPresent()).isFalse();
@@ -112,7 +118,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.responseMimeType().get()).isEqualTo("application/json");
         assertThat(config.responseSchema().isPresent()).isTrue();
@@ -125,7 +131,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, 1024, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, 1024, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.thinkingConfig().get().thinkingBudget().get()).isEqualTo(1024);
     }
@@ -136,7 +142,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, "MEDIUM", null, false, false, false, null, null, null, null);
+                parameters, null, null, null, "MEDIUM", null, null, false, false, false, null, null, null, null);
 
         assertThat(config.thinkingConfig().get().thinkingLevel().get().toString())
                 .contains("MEDIUM");
@@ -148,7 +154,20 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         assertThatThrownBy(() -> GoogleGenAiConfigBuilder.buildConfig(
-                        parameters, null, null, 1024, "MEDIUM", null, false, false, false, null, null, null, null))
+                        parameters,
+                        null,
+                        null,
+                        1024,
+                        "MEDIUM",
+                        null,
+                        null,
+                        false,
+                        false,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cannot use both thinkingBudget and thinkingLevel at the same time");
     }
@@ -160,6 +179,7 @@ class GoogleGenAiConfigBuilderTest {
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 parameters,
+                null,
                 null,
                 null,
                 null,
@@ -183,7 +203,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, 42, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, 42, false, false, false, null, null, null, null);
 
         assertThat(config.seed().get()).isEqualTo(42);
     }
@@ -198,7 +218,20 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, systemInstruction, null, null, null, null, false, false, false, null, null, null, null);
+                parameters,
+                systemInstruction,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null);
 
         assertThat(config.systemInstruction().get().parts().get().get(0).text().get())
                 .isEqualTo("Be helpful");
@@ -219,7 +252,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.tools().get()).isNotEmpty();
         assertThat(config.toolConfig()
@@ -245,7 +278,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.toolConfig()
                         .get()
@@ -270,7 +303,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config.toolConfig()
                         .get()
@@ -294,7 +327,20 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, List.of("getWeather"), null, null, null);
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                List.of("getWeather"),
+                null,
+                null,
+                null);
 
         assertThat(config.toolConfig()
                         .get()
@@ -311,7 +357,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, true, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, true, false, false, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(1);
         assertThat(config.tools().get().get(0).googleSearch().isPresent()).isTrue();
@@ -323,7 +369,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, true, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, true, false, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(1);
         assertThat(config.tools().get().get(0).googleMaps().isPresent()).isTrue();
@@ -335,7 +381,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, true, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, true, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(1);
         assertThat(config.tools().get().get(0).urlContext().isPresent()).isTrue();
@@ -347,7 +393,7 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, true, true, true, null, null, null, null);
+                parameters, null, null, null, null, null, null, true, true, true, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(3);
         assertThat(config.tools().get().get(0).googleSearch().isPresent()).isTrue();
@@ -367,7 +413,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, true, true, true, null, null, null, null);
+                parameters, null, null, null, null, null, null, true, true, true, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(4);
         assertThat(config.tools().get().get(0).functionDeclarations().get()).isNotEmpty();
@@ -388,7 +434,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, true, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, true, false, false, null, null, null, null);
 
         assertThat(config.tools().get()).hasSize(2);
         assertThat(config.tools().get().get(0).functionDeclarations().get()).isNotEmpty();
@@ -403,7 +449,7 @@ class GoogleGenAiConfigBuilderTest {
                 .build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
 
         assertThat(config).isNotNull();
     }
@@ -415,6 +461,7 @@ class GoogleGenAiConfigBuilderTest {
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 parameters,
+                null,
                 null,
                 null,
                 null,
@@ -460,7 +507,7 @@ class GoogleGenAiConfigBuilderTest {
         labels.put("team", "billing");
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, labels, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, labels, null);
 
         assertThat(config.labels().isPresent()).isTrue();
         assertThat(config.labels().get()).containsEntry("env", "prod").containsEntry("team", "billing");
@@ -473,6 +520,7 @@ class GoogleGenAiConfigBuilderTest {
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 parameters,
+                null,
                 null,
                 null,
                 null,
@@ -497,6 +545,7 @@ class GoogleGenAiConfigBuilderTest {
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 parameters,
+                null,
                 null,
                 null,
                 null,
@@ -531,6 +580,7 @@ class GoogleGenAiConfigBuilderTest {
                 null,
                 null,
                 null,
+                null,
                 false,
                 false,
                 false,
@@ -550,8 +600,378 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().temperature(0.7).build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null, null);
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null, null);
 
         assertThat(config.temperature().get()).isEqualTo(0.7f);
+    }
+
+    @Test
+    void should_set_include_thoughts() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, true, null, false, false, false, null, null, null, null);
+
+        assertThat(config.thinkingConfig().get().includeThoughts()).hasValue(true);
+    }
+
+    @Test
+    void should_set_include_thoughts_to_false() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, false, null, false, false, false, null, null, null, null);
+
+        assertThat(config.thinkingConfig().get().includeThoughts()).hasValue(false);
+    }
+
+    @Test
+    void should_not_set_thinking_config_when_no_thinking_option_is_set() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
+
+        assertThat(config.thinkingConfig()).isEmpty();
+    }
+
+    @Test
+    void should_set_include_thoughts_together_with_thinking_budget() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, 1024, null, true, null, false, false, false, null, null, null, null);
+
+        assertThat(config.thinkingConfig().get().thinkingBudget()).hasValue(1024);
+        assertThat(config.thinkingConfig().get().includeThoughts()).hasValue(true);
+    }
+
+    @Test
+    void should_set_include_thoughts_together_with_thinking_level() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, "MEDIUM", true, null, false, false, false, null, null, null, null);
+
+        assertThat(config.thinkingConfig().get().thinkingLevel().get().toString())
+                .contains("MEDIUM");
+        assertThat(config.thinkingConfig().get().includeThoughts()).hasValue(true);
+    }
+
+    @Test
+    void should_set_audio_transcription_config() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        AudioTranscriptionConfig transcriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("VERBATIM")
+                .languageCodes(List.of("en", "fr"))
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                transcriptionConfig,
+                null);
+
+        assertThat(config.audioTranscriptionConfig()).isPresent();
+        assertThat(config.audioTranscriptionConfig().get().mode().get().toString())
+                .contains("VERBATIM");
+        assertThat(config.audioTranscriptionConfig().get().languageCodes().get())
+                .containsExactly("en", "fr");
+    }
+
+    @Test
+    void should_not_set_audio_transcription_config_when_not_provided() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.audioTranscriptionConfig()).isEmpty();
+    }
+
+    @Test
+    void should_set_speech_config_and_response_modalities_and_automatic_continuation() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        SpeechConfig speechConfig = SpeechConfig.builder()
+                .languageCode("en-US")
+                .voiceConfig(VoiceConfig.builder()
+                        .prebuiltVoiceConfig(
+                                PrebuiltVoiceConfig.builder().voiceName("Kore").build())
+                        .build())
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                speechConfig,
+                List.of("AUDIO"),
+                true,
+                null);
+
+        assertThat(config.speechConfig()).isPresent();
+        assertThat(config.speechConfig().get().languageCode()).hasValue("en-US");
+        assertThat(config.speechConfig()
+                        .get()
+                        .voiceConfig()
+                        .get()
+                        .prebuiltVoiceConfig()
+                        .get()
+                        .voiceName())
+                .hasValue("Kore");
+        assertThat(config.responseModalities()).isPresent();
+        assertThat(config.responseModalities().get()).containsExactly("AUDIO");
+        assertThat(config.automaticContinuation()).hasValue(true);
+    }
+
+    @Test
+    void should_override_labels_cached_content_and_automatic_continuation_from_google_request_parameters() {
+        GoogleGenAiChatRequestParameters parameters = GoogleGenAiChatRequestParameters.builder()
+                .labels(Map.of("env", "staging", "requestId", "req-42"))
+                .cachedContent("projects/123/locations/us-central1/cachedContents/override")
+                .automaticContinuation(false)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                Map.of("env", "prod"),
+                "projects/123/locations/us-central1/cachedContents/default",
+                null,
+                null,
+                null,
+                true,
+                null);
+
+        assertThat(config.labels()).isPresent();
+        assertThat(config.labels().get())
+                .containsEntry("env", "staging")
+                .containsEntry("requestId", "req-42")
+                .hasSize(2);
+        assertThat(config.cachedContent()).hasValue("projects/123/locations/us-central1/cachedContents/override");
+        assertThat(config.automaticContinuation()).hasValue(false);
+    }
+
+    @Test
+    void should_verify_google_gen_ai_chat_request_parameters_override_equals_hashcode_and_to_string() {
+        GoogleGenAiChatRequestParameters first = GoogleGenAiChatRequestParameters.builder()
+                .temperature(0.7)
+                .cachedContent("cache-1")
+                .labels(Map.of("k", "v"))
+                .automaticContinuation(true)
+                .build();
+
+        GoogleGenAiChatRequestParameters second = GoogleGenAiChatRequestParameters.builder()
+                .labels(Map.of("k2", "v2"))
+                .automaticContinuation(false)
+                .build();
+
+        GoogleGenAiChatRequestParameters merged = first.overrideWith(second);
+        assertThat(merged.labels()).containsExactlyEntriesOf(Map.of("k2", "v2"));
+        assertThat(merged.automaticContinuation()).isFalse();
+        assertThat(merged.temperature()).isEqualTo(0.7);
+        assertThat(merged.cachedContent()).isEqualTo("cache-1");
+
+        GoogleGenAiChatRequestParameters copyOfFirst =
+                GoogleGenAiChatRequestParameters.builder().overrideWith(first).build();
+        assertThat(copyOfFirst).isEqualTo(first).hasSameHashCodeAs(first);
+        assertThat(first).isNotEqualTo(merged);
+        assertThat(first.toString())
+                .contains("labels={k=v}")
+                .contains("automaticContinuation=true")
+                .contains("cachedContent=\"cache-1\"");
+    }
+
+    @Test
+    void should_use_response_json_schema_when_root_element_is_raw_schema() {
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Answer")
+                        .rootElement(JsonRawSchema.from(
+                                "{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}}}"))
+                        .build())
+                .build();
+
+        ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
+
+        assertThat(config.responseMimeType()).hasValue("application/json");
+        assertThat(config.responseSchema()).isEmpty();
+        assertThat(config.responseJsonSchema()).isPresent();
+        assertThat(config.responseJsonSchema().get()).isInstanceOf(Map.class);
+    }
+
+    @Test
+    void should_use_response_json_schema_when_root_element_has_definitions() {
+        JsonObjectSchema personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addProperty(
+                        "parent",
+                        JsonReferenceSchema.builder().reference("Person").build())
+                .definitions(Map.of(
+                        "Person",
+                        JsonObjectSchema.builder().addStringProperty("name").build()))
+                .build();
+
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(personSchema)
+                        .build())
+                .build();
+
+        ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
+                .responseFormat(responseFormat)
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, false, false, false, null, null, null, null);
+
+        assertThat(config.responseMimeType()).hasValue("application/json");
+        assertThat(config.responseSchema()).isEmpty();
+        assertThat(config.responseJsonSchema()).isPresent();
+    }
+
+    @Test
+    void should_enable_code_execution_when_no_tools() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.tools().get()).hasSize(1);
+        assertThat(config.tools().get().get(0).codeExecution()).isPresent();
+    }
+
+    @Test
+    void should_add_code_execution_after_the_other_google_tools() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true,
+                true,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.tools().get()).hasSize(4);
+        assertThat(config.tools().get().get(0).googleSearch()).isPresent();
+        assertThat(config.tools().get().get(1).googleMaps()).isPresent();
+        assertThat(config.tools().get().get(2).urlContext()).isPresent();
+        assertThat(config.tools().get().get(3).codeExecution()).isPresent();
+    }
+
+    @Test
+    void should_not_enable_code_execution_through_the_overloads_without_it() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, null, true, true, true, null, null, null, null);
+
+        assertThat(config.tools().get())
+                .hasSize(3)
+                .allSatisfy(tool -> assertThat(tool.codeExecution()).isEmpty());
     }
 }

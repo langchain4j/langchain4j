@@ -3,14 +3,12 @@ package dev.langchain4j.mcp.client.transport.websocket;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
@@ -38,7 +36,6 @@ public class WebSocketMcpTransport implements McpTransport {
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private volatile McpOperationHandler operationHandler;
     private volatile McpInitializeRequest initializeRequest;
     private final Duration connectTimeout;
@@ -147,9 +144,9 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture =
+        CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
         return completableFuture
                 .thenCompose(originalResponse -> {
@@ -161,28 +158,23 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return executeOperationWithResponse(new McpCallContext(null, request));
-    }
-
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        executeOperationWithoutResponse(new McpCallContext(null, request));
-    }
-
-    @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
+    public void sendMessage(McpCallContext context) {
         execute(context, Optional.empty(), null);
     }
 
     @Override
     public void checkHealth() {
         // no transport-specific checks right now
+    }
+
+    @Override
+    public boolean requiresCancellationNotification() {
+        return true;
     }
 
     @Override
@@ -221,24 +213,26 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));
             return future;
         }
         if (id != null) {
-            operationHandler.startOperation(id, future);
+            operationHandler.expectResponse(id, future);
         }
         try {
-            String messageJson = OBJECT_MAPPER.writeValueAsString(context.message());
+            String messageJson = McpJson.serialize(context.message());
             WebSocket wsToUse = webSocket.orElseGet(() -> getWebSocket());
             if (logRequests) {
                 trafficLog.info("> " + messageJson);
             }
             synchronized (wsToUse) {
-                wsToUse.sendText(messageJson, true).thenAccept(ws -> {
-                    if (id == null) {
+                wsToUse.sendText(messageJson, true).whenComplete((ws, error) -> {
+                    if (error != null) {
+                        future.completeExceptionally(error);
+                    } else if (id == null) {
                         // for operations without an ID, consider them done immediately after the message was sent
                         future.complete(null);
                     }
@@ -341,4 +335,5 @@ public class WebSocketMcpTransport implements McpTransport {
             return new WebSocketMcpTransport(this);
         }
     }
+
 }

@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.BatchJob;
 import com.google.genai.types.BatchJobSource;
 import com.google.genai.types.CancelBatchJobConfig;
@@ -20,7 +21,9 @@ import com.google.genai.types.InlinedRequest;
 import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
@@ -40,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,6 +62,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
@@ -66,7 +73,11 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
     private final String cachedContent;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
     private final ChatRequestParameters defaultRequestParameters;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiBatchChatModel(Builder builder) {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
@@ -74,6 +85,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
@@ -82,7 +96,11 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
         this.defaultRequestParameters = builder.defaultRequestParameters;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -185,7 +203,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     private InlinedRequest createInlinedRequest(ChatRequest request) {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(request.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages(), sendThinking);
 
         ChatRequestParameters params = defaultRequestParameters != null
                 ? defaultRequestParameters.overrideWith(request.parameters())
@@ -197,6 +215,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
@@ -204,7 +223,12 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                null,
+                generateContentConfigCustomizer);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
     }
@@ -226,7 +250,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 for (var inlined : inlinedResponses) {
                     if (inlined.response().isPresent()) {
                         results.add(BatchItemResult.success(GoogleGenAiContentMapper.toChatResponse(
-                                inlined.response().get(), batchJob.model().orElse(modelName))));
+                                inlined.response().get(), batchJob.model().orElse(modelName), returnThinking)));
                     } else if (inlined.error().isPresent()) {
                         results.add(BatchItemResult.failure(GoogleGenAiBatchUtils.toBatchError(
                                 inlined.error().get())));
@@ -265,6 +289,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private Duration timeout;
         private Integer thinkingBudget;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Integer seed;
         private Boolean googleSearch;
         private Boolean googleMaps;
@@ -277,6 +304,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private String apiEndpoint;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         public Builder client(Client client) {
             this.client = client;
@@ -339,6 +370,58 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
             return this;
         }
 
+        /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            return this;
+        }
+
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
@@ -396,6 +479,35 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
             return this;
         }
 

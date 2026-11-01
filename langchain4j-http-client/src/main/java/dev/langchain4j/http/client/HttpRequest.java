@@ -30,7 +30,7 @@ public class HttpRequest {
         validate(builder);
         this.method = ensureNotNull(builder.method, "method");
         this.url = buildUrl(builder);
-        this.headers = copy(builder.headers);
+        this.headers = HttpHeaders.copyCaseInsensitive(builder.headers);
         this.formDataFields = copy(builder.formDataFields);
         this.formDataFiles = copy(builder.formDataFiles);
         this.body = builder.body;

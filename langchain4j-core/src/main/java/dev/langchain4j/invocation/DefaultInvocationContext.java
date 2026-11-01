@@ -3,14 +3,23 @@ package dev.langchain4j.invocation;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * The {@link InvocationContext} built by LangChain4j.
+ * <p>
+ * Besides its values, it holds whether the invocation has already reported its end (see {@link InvocationEnd}).
+ * Copies made with {@link #toBuilder()} that keep the same {@link #invocationId()} share this state, so the
+ * invocation reports its end only once, whichever copy is used. A copy with another invocation id, or a context
+ * built from scratch, starts as not ended.
+ *
  * @since 1.6.0
  */
 public class DefaultInvocationContext implements InvocationContext {
@@ -20,12 +29,15 @@ public class DefaultInvocationContext implements InvocationContext {
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
     private final UserMessage userMessage;
+    private final UserMessage originalUserMessage;
     private final Object chatMemoryId;
     private final ChatRequestParameters defaultRequestParameters;
     private final ModelProvider modelProvider;
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
+    private final CapturedContext capturedContext;
+    private final AtomicBoolean ended;
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
@@ -33,12 +45,25 @@ public class DefaultInvocationContext implements InvocationContext {
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
         this.userMessage = builder.userMessage();
+        this.originalUserMessage = builder.originalUserMessage();
         this.chatMemoryId = builder.chatMemoryId();
         this.defaultRequestParameters = builder.defaultRequestParameters();
         this.modelProvider = builder.modelProvider();
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
+        this.capturedContext = builder.capturedContext;
+        this.ended = builder.ended != null && Objects.equals(builder.endedInvocationId, invocationId)
+                ? builder.ended
+                : new AtomicBoolean();
+    }
+
+    CapturedContext capturedContext() {
+        return capturedContext;
+    }
+
+    AtomicBoolean ended() {
+        return ended;
     }
 
     @Override
@@ -64,6 +89,11 @@ public class DefaultInvocationContext implements InvocationContext {
     @Override
     public UserMessage userMessage() {
         return userMessage;
+    }
+
+    @Override
+    public UserMessage originalUserMessage() {
+        return originalUserMessage;
     }
 
     @Override
@@ -106,6 +136,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
                 && Objects.equals(userMessage, that.userMessage)
+                && Objects.equals(originalUserMessage, that.originalUserMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(defaultRequestParameters, that.defaultRequestParameters)
                 && Objects.equals(modelProvider, that.modelProvider)
@@ -122,6 +153,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 methodName,
                 methodArguments,
                 userMessage,
+                originalUserMessage,
                 chatMemoryId,
                 defaultRequestParameters,
                 modelProvider,
@@ -138,6 +170,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +
                 ", userMessage=" + userMessage +
+                ", originalUserMessage=" + originalUserMessage +
                 ", chatMemoryId=" + chatMemoryId +
                 ", defaultRequestParameters=" + defaultRequestParameters +
                 ", modelProvider=" + modelProvider +

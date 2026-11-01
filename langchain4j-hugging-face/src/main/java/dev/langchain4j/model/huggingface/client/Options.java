@@ -2,8 +2,6 @@ package dev.langchain4j.model.huggingface.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.Objects;
 
@@ -11,7 +9,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class Options {
 
     private final Boolean waitForModel;
@@ -20,6 +17,14 @@ public class Options {
     Options(Builder builder) {
         this.waitForModel = builder.waitForModel;
         this.useCache = builder.useCache;
+    }
+
+    public Boolean getWaitForModel() {
+        return waitForModel;
+    }
+
+    public Boolean getUseCache() {
+        return useCache;
     }
 
     @Override

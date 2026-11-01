@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.vespa.Record.Fields.Vector;
 import static dev.langchain4j.store.embedding.vespa.VespaClient.createInstance;
@@ -16,9 +17,11 @@ import ai.vespa.feed.client.FeedClientBuilder;
 import ai.vespa.feed.client.FeedException;
 import ai.vespa.feed.client.JsonFeeder;
 import ai.vespa.feed.client.Result;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -44,7 +47,10 @@ import retrofit2.Response;
  */
 public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    // SNAKE_CASE matches the @JsonNaming that Record.Fields still carries for Retrofit's own mapper,
+    // so both paths agree whichever JSON library backs this codec.
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(
+            ProviderJsonSpec.builder().propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE).build());
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     static final String DEFAULT_NAMESPACE = "namespace";
@@ -170,14 +176,9 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
-        }
-        if (ids.size() != embeddings.size()) {
-            throw new IllegalArgumentException("The list of ids and embeddings must have the same size");
-        }
-        if (embedded != null && embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }
 
         try (JsonFeeder jsonFeeder = feeder()) {
@@ -189,7 +190,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             jsonFeeder.feedMany(
                     new ByteArrayInputStream(
-                            OBJECT_MAPPER.writeValueAsString(records).getBytes()),
+                            CODEC.toJson(records).getBytes()),
                     new JsonFeeder.ResultCallback() {
                         @Override
                         public void onNextResult(Result result, FeedException error) {
@@ -223,8 +224,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .ranking(rankProfile)
                     .param(
                             "input.query(q)",
-                            OBJECT_MAPPER.writeValueAsString(
-                                    request.queryEmbedding().vectorAsList()))
+                            CODEC.toJson(request.queryEmbedding().vectorAsList()))
                     .param("input.query(threshold)", String.valueOf(request.minScore()))
                     .build();
 
@@ -264,7 +264,7 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (JsonFeeder jsonFeeder = feeder()) {
             jsonFeeder
-                    .feedSingle(OBJECT_MAPPER.writeValueAsString(buildRecord(id, embedding, textSegment)))
+                    .feedSingle(CODEC.toJson(buildRecord(id, embedding, textSegment)))
                     .whenComplete(((result, throwable) -> {
                         if (throwable != null) {
                             throw new RuntimeException(throwable);

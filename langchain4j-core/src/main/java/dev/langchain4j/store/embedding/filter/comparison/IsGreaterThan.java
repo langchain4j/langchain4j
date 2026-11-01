@@ -7,7 +7,8 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isGreaterThan;
+import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypeIsSupported;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 public class IsGreaterThan implements Filter {
@@ -15,9 +16,18 @@ public class IsGreaterThan implements Filter {
     private final String key;
     private final Comparable<?> comparisonValue;
 
+    /**
+     * Creates a filter that matches when the value of the {@code key} metadata entry is greater than the given value.
+     *
+     * @param key             the metadata key
+     * @param comparisonValue the value to compare with, see {@link Filter} for the supported types
+     * @throws IllegalArgumentException if {@code key} is blank, or if {@code comparisonValue} is {@code null},
+     *                                  of an unsupported type or not a finite number
+     */
     public IsGreaterThan(String key, Comparable<?> comparisonValue) {
         this.key = ensureNotBlank(key, "key");
-        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
+        this.comparisonValue =
+                ensureTypeIsSupported(ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'"), key);
     }
 
     public String key() {
@@ -42,7 +52,7 @@ public class IsGreaterThan implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) > 0;
+            return isGreaterThan(actualValue, comparisonValue);
         }
 
         return ((Comparable) actualValue).compareTo(comparisonValue) > 0;

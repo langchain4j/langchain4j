@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.formatValues;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
@@ -58,7 +58,8 @@ class CollectionRequestBuilder {
             Filter filter,
             int maxResults,
             MetricType metricType,
-            ConsistencyLevelEnum consistencyLevel) {
+            ConsistencyLevelEnum consistencyLevel,
+            MilvusServerVersion serverVersion) {
         SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFloatVectors(singletonList(vector))
@@ -72,7 +73,8 @@ class CollectionRequestBuilder {
                         fieldDefinition.getMetadataFieldName()));
 
         if (filter != null) {
-            builder.withExpr(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+            builder.withExpr(
+                    MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName(), serverVersion));
         }
 
         return builder.build();
@@ -100,6 +102,6 @@ class CollectionRequestBuilder {
     }
 
     private static String buildQueryExpression(List<String> rowIds, String idFieldName) {
-        return rowIds.stream().map(id -> format("%s == '%s'", idFieldName, id)).collect(joining(" || "));
+        return format("%s in %s", idFieldName, formatValues(rowIds));
     }
 }

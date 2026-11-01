@@ -506,8 +506,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                                 .build())
                         .build();
 
-                onCompleteResponse(handler, chatResponse);
-
                 ChatResponse listenerResponse = ChatResponse.builder()
                         .aiMessage(fullResponse.content())
                         .metadata(ChatResponseMetadata.builder()
@@ -525,6 +523,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                         logger.warn("Exception while calling model listener (onResponse)", e);
                     }
                 });
+
+                onCompleteResponse(handler, chatResponse);
 
                 if (this.logResponses && logger.isDebugEnabled()) {
                     logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);

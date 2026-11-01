@@ -15,6 +15,12 @@ public class McpGetPromptParams extends McpClientParams {
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private Map<String, Object> arguments;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Map<String, Object> inputResponses;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Object requestState;
+
     public McpGetPromptParams() {}
 
     public McpGetPromptParams(String name, Map<String, Object> arguments) {
@@ -36,5 +42,21 @@ public class McpGetPromptParams extends McpClientParams {
 
     public void setArguments(Map<String, Object> arguments) {
         this.arguments = arguments;
+    }
+
+    public Map<String, Object> getInputResponses() {
+        return inputResponses;
+    }
+
+    public void setInputResponses(Map<String, Object> inputResponses) {
+        this.inputResponses = inputResponses;
+    }
+
+    public Object getRequestState() {
+        return requestState;
+    }
+
+    public void setRequestState(Object requestState) {
+        this.requestState = requestState;
     }
 }

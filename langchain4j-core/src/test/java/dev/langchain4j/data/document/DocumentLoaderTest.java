@@ -5,10 +5,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class DocumentLoaderTest implements WithAssertions {
+
+    private static final DocumentParser COLLIDING_PARSER = inputStream ->
+            Document.from("Hello, world!", new Metadata().put("foo", "baz").put("title", "Bar"));
+
     public static final class StringSource implements DocumentSource {
         private final String content;
         private final Metadata metadata;
@@ -96,5 +101,104 @@ class DocumentLoaderTest implements WithAssertions {
                     throw new RuntimeException("Failed to parse document");
                 }))
                 .withMessageContaining("Failed to load document");
+    }
+
+    @Test
+    void load_sourceWinsWhenDocumentAndSourceMetadataShareKeys() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
+
+        Document document = DocumentLoader.load(source, COLLIDING_PARSER);
+
+        assertThat(document.metadata().toMap()).containsOnly(entry("foo", "bar"), entry("title", "Bar"));
+    }
+
+    @Test
+    void load_wrapsIllegalArgumentExceptionThrownByParser() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
+        DocumentParser failingParser = inputStream -> {
+            throw new IllegalArgumentException("Failed to parse document");
+        };
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> DocumentLoader.load(source, failingParser))
+                .withMessageContaining("Failed to load document")
+                .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void describeConflicts_reportsSharedKeysWithDifferentValues() {
+        Metadata documentMetadata = new Metadata().put("file_name", "report.pdf");
+        Map<String, Object> sourceMetadata =
+                new Metadata().put("file_name", "2024-report.pdf").toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .containsExactly("file_name=(document=\"report.pdf\", source=\"2024-report.pdf\")");
+    }
+
+    @Test
+    void describeConflicts_ignoresSharedKeysWithEqualValues() {
+        Metadata documentMetadata = new Metadata().put("file_name", "report.pdf");
+        Map<String, Object> sourceMetadata =
+                new Metadata().put("file_name", "report.pdf").toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .isEmpty();
+    }
+
+    @Test
+    void describeConflicts_ignoresKeysSetByOnlyOneSide() {
+        Metadata documentMetadata = new Metadata().put("title", "Bar");
+        Map<String, Object> sourceMetadata =
+                new Metadata().put("absolute_directory_path", "/docs").toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .isEmpty();
+    }
+
+    @Test
+    void describeConflicts_reportsAllConflictsSortedByKey() {
+        Metadata documentMetadata = new Metadata()
+                .put("title", "Bar")
+                .put("author", "Alice")
+                .put("file_name", "report.pdf")
+                .put("language", "en");
+        Map<String, Object> sourceMetadata = new Metadata()
+                .put("title", "Baz")
+                .put("author", "Alice")
+                .put("file_name", "2024-report.pdf")
+                .put("absolute_directory_path", "/docs")
+                .toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .containsExactly(
+                        "file_name=(document=\"report.pdf\", source=\"2024-report.pdf\")",
+                        "title=(document=\"Bar\", source=\"Baz\")");
+    }
+
+    @Test
+    void describeConflicts_addsTypesWhenValuesOfDifferentTypesRenderTheSame() {
+        Metadata documentMetadata = new Metadata().put("page", 5);
+        Map<String, Object> sourceMetadata = new Metadata().put("page", "5").toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .containsExactly("page=(document=\"5\" (Integer), source=\"5\" (String))");
+    }
+
+    @Test
+    void describeConflicts_omitsTypesWhenValuesRenderDifferently() {
+        Metadata documentMetadata = new Metadata().put("page", 5);
+        Map<String, Object> sourceMetadata = new Metadata().put("page", "6").toMap();
+
+        assertThat(DocumentLoader.describeConflicts(documentMetadata, sourceMetadata))
+                .containsExactly("page=(document=\"5\", source=\"6\")");
+    }
+
+    @Test
+    void load_keepsSourceValueWhenSharedKeysHaveEqualValues() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "baz"));
+
+        Document document = DocumentLoader.load(source, COLLIDING_PARSER);
+
+        assertThat(document.metadata().toMap()).containsOnly(entry("foo", "baz"), entry("title", "Bar"));
     }
 }

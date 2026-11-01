@@ -3,7 +3,8 @@ package dev.langchain4j.model.jina;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -14,10 +15,27 @@ import org.junit.jupiter.api.Test;
 
 class JinaMultimodalEmbeddingModelTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    // Mirrors the codec JinaJsonUtils uses, which is where the snake_case naming now lives.
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
+            .build());
 
     private static JinaEmbeddingModel model(String modelName) {
         return JinaEmbeddingModel.builder().apiKey("test-key").modelName(modelName).build();
+    }
+
+    private static JinaEmbeddingModel model(String modelName, Boolean lateChunking) {
+        return JinaEmbeddingModel.builder()
+                .apiKey("test-key")
+                .modelName(modelName)
+                .lateChunking(lateChunking)
+                .build();
+    }
+
+    private static String multimodalRequestJson(JinaEmbeddingModel model) throws Exception {
+        JinaMultimodalEmbeddingRequest request =
+                model.buildMultimodalRequest(EmbeddingRequest.builder().input("a caption").build());
+        return CODEC.toJson(request);
     }
 
     @Test
@@ -48,7 +66,7 @@ class JinaMultimodalEmbeddingModelTest {
                 .input("a caption")
                 .input(ImageContent.from("https://example.com/cat.png"))
                 .build());
-        String json = MAPPER.writeValueAsString(request);
+        String json = CODEC.toJson(request);
 
         // batch of two single-modality items (Jina embeds one modality per item)
         assertThat(json).contains("jina-clip-v2");
@@ -63,9 +81,31 @@ class JinaMultimodalEmbeddingModelTest {
         JinaMultimodalEmbeddingRequest request = model.buildMultimodalRequest(EmbeddingRequest.builder()
                 .input(ImageContent.from("aGVsbG8=", "image/png"))
                 .build());
-        String json = MAPPER.writeValueAsString(request);
+        String json = CODEC.toJson(request);
 
         assertThat(json).contains("data:image/png;base64,aGVsbG8=");
+    }
+
+    @Test
+    void sends_late_chunking_when_enabled_on_multimodal_model() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4", true));
+
+        assertThat(json).contains("\"late_chunking\":true");
+    }
+
+    @Test
+    void sends_late_chunking_false_when_not_configured() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4"));
+
+        assertThat(json).contains("\"late_chunking\":false");
+    }
+
+    @Test
+    void sends_late_chunking_for_clip_models_too() throws Exception {
+        // the multimodal path does not filter by model name, matching the text path
+        String json = multimodalRequestJson(model("jina-clip-v2", true));
+
+        assertThat(json).contains("\"late_chunking\":true");
     }
 
     @Test

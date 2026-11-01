@@ -33,13 +33,13 @@ class OpenAiOfficialResponsesAiServiceWithToolsIT extends AbstractAiServiceWithT
                 .build();
     }
 
-    private static ChatModel streamingModel(boolean strictJsonSchema) {
+    private static ChatModel streamingModel(boolean strictTools) {
         StreamingChatModel streamingModel = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("gpt-5.4-mini")
                 .temperature(0.0)
-                .strictJsonSchema(strictJsonSchema)
+                .strictTools(strictTools)
                 .build();
         return StreamingChatModelAdapter.adapt(streamingModel);
     }

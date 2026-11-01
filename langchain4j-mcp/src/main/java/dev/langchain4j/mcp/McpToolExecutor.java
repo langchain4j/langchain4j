@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -7,7 +8,9 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @since 1.4.0
@@ -20,13 +23,20 @@ public class McpToolExecutor implements ToolExecutor {
     // this executor will always execute the tool with this name
     private final Optional<String> fixedToolName;
 
+    private final boolean returnToolResultAttributes;
+
     public McpToolExecutor(McpClient mcpClient) {
         this(mcpClient, null);
     }
 
     public McpToolExecutor(McpClient mcpClient, String fixedToolName) {
+        this(mcpClient, fixedToolName, false);
+    }
+
+    McpToolExecutor(McpClient mcpClient, String fixedToolName, boolean returnToolResultAttributes) {
         this.mcpClient = ensureNotNull(mcpClient, "mcpClient");
         this.fixedToolName = Optional.ofNullable(fixedToolName);
+        this.returnToolResultAttributes = returnToolResultAttributes;
     }
 
     @Override
@@ -41,7 +51,40 @@ public class McpToolExecutor implements ToolExecutor {
     @Override
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
-        return mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+        ToolExecutionResult result = mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+        return applyToolResultAttributesPolicy(result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Non-blocking: delegates to
+     * {@link McpClient#executeToolAsync(ToolExecutionRequest, InvocationContext)}, so no thread is held
+     * while the tool executes on the MCP server.
+     * <p>
+     * The result follows the same {@code returnToolResultAttributes} behavior as the synchronous
+     * {@link #executeWithContext(ToolExecutionRequest, InvocationContext)}. Cancelling the returned
+     * future also cancels the underlying MCP client future.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        CompletableFuture<ToolExecutionResult> resultFuture =
+                mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
+        if (returnToolResultAttributes) {
+            return resultFuture;
+        }
+        CompletableFuture<ToolExecutionResult> filteredFuture =
+                resultFuture.thenApply(this::applyToolResultAttributesPolicy);
+        propagateCancellation(filteredFuture, resultFuture);
+        return filteredFuture;
+    }
+
+    private ToolExecutionResult applyToolResultAttributesPolicy(ToolExecutionResult result) {
+        if (returnToolResultAttributes || result.attributes().isEmpty()) {
+            return result;
+        }
+        return result.toBuilder().attributes(Map.of()).build();
     }
 
     private ToolExecutionRequest sanitizeToolName(ToolExecutionRequest executionRequest) {

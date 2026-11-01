@@ -1,6 +1,5 @@
 package dev.langchain4j.http.client;
 
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
 import java.nio.charset.Charset;
@@ -16,7 +15,7 @@ public class SuccessfulHttpResponse {
 
     public SuccessfulHttpResponse(Builder builder) {
         this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
-        this.headers = copy(builder.headers);
+        this.headers = HttpHeaders.copyCaseInsensitive(builder.headers);
         this.body = builder.body;
     }
 

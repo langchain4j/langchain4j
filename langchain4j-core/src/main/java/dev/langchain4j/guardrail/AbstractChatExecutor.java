@@ -1,15 +1,21 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for chat executors that provides a common structure and shared functionality
@@ -42,9 +48,25 @@ abstract class AbstractChatExecutor implements ChatExecutor {
 
     @Override
     public ChatResponse execute(List<ChatMessage> chatMessages) {
-        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+        return exchange(chatMessages).response();
+    }
 
-        return executeInternal(newChatRequest);
+    @Override
+    public ChatExchange exchange(List<ChatMessage> chatMessages) {
+        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+        ChatResponse chatResponse = executeInternal(newChatRequest);
+        fireResponseReceivedEvent(newChatRequest, chatResponse);
+        return new ChatExchange(newChatRequest, chatResponse);
+    }
+
+    @Override
+    public CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
+        try {
+            var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+            return ChatExchanges.exchangeAsync(newChatRequest, executeAndFireResponseReceivedAsync(newChatRequest));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override
@@ -61,9 +83,53 @@ abstract class AbstractChatExecutor implements ChatExecutor {
         }
     }
 
+    private void fireResponseReceivedEvent(ChatRequest chatRequest, ChatResponse chatResponse) {
+        if (this.eventListenerRegistrar != null) {
+            this.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                    .invocationContext(this.invocationContext)
+                    .request(chatRequest)
+                    .response(chatResponse)
+                    .build());
+        }
+    }
+
     private ChatResponse executeInternal(ChatRequest chatRequest) {
         fireRequestIssuedEvent(chatRequest);
         return execute(chatRequest);
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+        try {
+            var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+            return executeAndFireResponseReceivedAsync(newChatRequest);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    private CompletableFuture<ChatResponse> executeAndFireResponseReceivedAsync(ChatRequest chatRequest) {
+        CompletableFuture<ChatResponse> response = executeInternalAsync(chatRequest);
+        CompletableFuture<ChatResponse> responseAfterEvent = response.thenApply(chatResponse -> {
+            fireResponseReceivedEvent(chatRequest, chatResponse);
+            return chatResponse;
+        });
+        propagateCancellation(responseAfterEvent, response);
+        return responseAfterEvent;
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> executeAsync() {
+        return executeInternalAsync(this.chatRequest);
+    }
+
+    private CompletableFuture<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
+        try {
+            fireRequestIssuedEvent(chatRequest);
+            return executeAsync(chatRequest);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     /**
@@ -73,4 +139,18 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * @return the chat response generated as a result of processing the given chat request
      */
     protected abstract ChatResponse execute(ChatRequest chatRequest);
+
+    /**
+     * Non-blocking counterpart of {@link #execute(ChatRequest)}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; subclasses that support
+     * non-blocking execution should override it (consistent with {@code ChatModel#doChatAsync} and
+     * {@code HttpClient#executeAsync}).
+     *
+     * @param chatRequest the chat request to process, containing the input messages and any necessary configurations
+     * @return a {@link CompletableFuture} that completes with the chat response
+     */
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
 }

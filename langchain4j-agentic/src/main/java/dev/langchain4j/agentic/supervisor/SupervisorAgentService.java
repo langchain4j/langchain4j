@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public interface SupervisorAgentService<T> {
 
@@ -45,4 +46,10 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> listener(AgentListener agentListener);
 
     SupervisorAgentService<T> beforeCall(Consumer<AgenticScope> beforeCall);
+
+    SupervisorAgentService<T> compensateOnError(boolean compensateOnError);
+
+    SupervisorAgentService<T> activationCondition(Predicate<AgenticScope> activationCondition);
+
+    SupervisorAgentService<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
 }

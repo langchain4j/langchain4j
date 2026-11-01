@@ -11,6 +11,7 @@ import java.lang.annotation.Target;
  * Marks a method as the output definition of a workflow agent,
  * generally combining results from different states of the {@link AgenticScope}.
  * The method must be static and return the output of the agent.
+ * It can also declare parameters resolved through a {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>

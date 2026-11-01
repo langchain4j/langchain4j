@@ -1,7 +1,7 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -23,10 +23,8 @@ public class ToolSpecificationJsonUtils {
     private static final ToolSpecificationJsonCodec CODEC = loadCodec();
 
     private static ToolSpecificationJsonCodec loadCodec() {
-        for (ToolSpecificationJsonCodecFactory factory : loadFactories(ToolSpecificationJsonCodecFactory.class)) {
-            return factory.create();
-        }
-        return new JacksonToolSpecificationJsonCodec();
+        ToolSpecificationJsonCodecFactory factory = loadFactory(ToolSpecificationJsonCodecFactory.class);
+        return factory != null ? factory.create() : new JacksonToolSpecificationJsonCodec();
     }
 
     private ToolSpecificationJsonUtils() {}

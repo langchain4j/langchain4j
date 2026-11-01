@@ -28,10 +28,15 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +45,7 @@ import java.util.stream.Stream;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -327,6 +333,39 @@ class UtilsTest {
     }
 
     @Test
+    void read_bytes_from_local_file_system_path(@TempDir Path tempDir) throws IOException {
+        Path file = tempDir.resolve("cat.jpg");
+        Files.write(file, "meow".getBytes());
+
+        // a plain filesystem path, as shown in the user documentation
+        assertThat(Utils.readBytes(file.toString())).isEqualTo("meow".getBytes());
+
+        // a file:// URI keeps working
+        assertThat(Utils.readBytes(file.toUri().toString())).isEqualTo("meow".getBytes());
+
+        // a plain filesystem path that is not a valid URI
+        Path fileWithSpace = tempDir.resolve("my cat.jpg");
+        Files.write(fileWithSpace, "purr".getBytes());
+        assertThat(Utils.readBytes(fileWithSpace.toString())).isEqualTo("purr".getBytes());
+    }
+
+    @Test
+    void read_bytes_from_local_file_system_should_fail(@TempDir Path tempDir) throws IOException {
+        Path missingFile = tempDir.resolve("missing.jpg");
+        assertThatThrownBy(() -> Utils.readBytes(missingFile.toString()))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(NoSuchFileException.class);
+
+        // a malformed file URI is reported as such, not retried as a plain path
+        Path file = tempDir.resolve("cat.jpg");
+        Files.write(file, "meow".getBytes());
+        assertThatThrownBy(() -> Utils.readBytes(file.toUri() + "#fragment"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("URI has a fragment component");
+    }
+
+    @Test
     void copy_if_not_null_set() {
         assertThat(Utils.copyIfNotNull((Set<?>) null)).isNull();
         assertThat(Utils.copyIfNotNull(emptySet())).isEmpty();
@@ -395,6 +434,113 @@ class UtilsTest {
         assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
         assertThat(Utils.copy(emptyMap())).isEmpty();
         assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copy(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_if_not_null_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copyIfNotNull(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_returns_unmodifiable_collections() {
+        List<String> list = Utils.copy(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> list.add("two"));
+
+        Set<String> set = Utils.copy(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> set.add("two"));
+
+        Map<String, String> map = Utils.copy(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> map.put("k", "v"));
+
+        List<String> listIfNotNull = Utils.copyIfNotNull(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> listIfNotNull.add("two"));
+
+        Set<String> setIfNotNull = Utils.copyIfNotNull(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> setIfNotNull.add("two"));
+
+        Map<String, String> mapIfNotNull = Utils.copyIfNotNull(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mapIfNotNull.put("k", "v"));
+    }
+
+    @Test
+    void copy_preserves_iteration_order_and_null_elements() {
+        List<String> list = new ArrayList<>();
+        list.add("one");
+        list.add(null);
+        list.add("two");
+        assertThat(Utils.copy(list)).containsExactly("one", null, "two");
+
+        Set<String> set = new LinkedHashSet<>();
+        set.add("one");
+        set.add(null);
+        set.add("two");
+        assertThat(Utils.copy(set)).containsExactly("one", null, "two");
+
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("one", "1");
+        map.put("two", null);
+        assertThat(Utils.copy(map)).containsExactly(entry("one", "1"), entry("two", null));
     }
 
     @Test
@@ -510,6 +656,58 @@ class UtilsTest {
 
         assertThat(getAnnotatedMethod(proxyMethod, MyAnnotation.class)).contains(myMethod);
         assertThat(getAnnotatedMethod(proxyMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    public static class MyBaseClass {
+
+        @MyAnnotation
+        public void myMethod() {}
+    }
+
+    /**
+     * Overrides an annotated method without repeating the annotation,
+     * just like the subclasses generated by class-based proxies (CGLIB, Byte Buddy).
+     */
+    public static class MySubclass extends MyBaseClass {
+
+        @Override
+        public void myMethod() {}
+    }
+
+    public static class MyImplementation implements MyInterface {
+
+        @Override
+        public void myMethod() {}
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnOverriddenSuperclassMethod() throws NoSuchMethodException {
+        Method subclassMethod = MySubclass.class.getDeclaredMethod("myMethod");
+        Method baseClassMethod = MyBaseClass.class.getDeclaredMethod("myMethod");
+
+        assertThat(getAnnotatedMethod(subclassMethod, MyAnnotation.class)).contains(baseClassMethod);
+        assertThat(getAnnotatedMethod(subclassMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void shouldRetrieveAnnotationOnImplementedInterfaceMethod() throws NoSuchMethodException {
+        Method implementationMethod = MyImplementation.class.getDeclaredMethod("myMethod");
+        Method interfaceMethod = MyInterface.class.getDeclaredMethod("myMethod");
+
+        assertThat(getAnnotatedMethod(implementationMethod, MyAnnotation.class)).contains(interfaceMethod);
+        assertThat(getAnnotatedMethod(implementationMethod, AnotherAnnotation.class)).isEmpty();
+    }
+
+    @Test
+    void shouldNotRetrieveAnnotationWhenNoSupertypeDeclaresTheMethod() throws NoSuchMethodException {
+        Method myMethod = MyClassWithoutSupertypes.class.getDeclaredMethod("myMethod");
+
+        assertThat(getAnnotatedMethod(myMethod, MyAnnotation.class)).isEmpty();
+    }
+
+    public static class MyClassWithoutSupertypes {
+
+        public void myMethod() {}
     }
 
     @Test

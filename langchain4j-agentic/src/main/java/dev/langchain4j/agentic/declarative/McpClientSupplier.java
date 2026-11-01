@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a static method that returns the McpClient instance for declarative MCP client agents.
+ * It can only declare parameters resolved through a {@link SupplierParameterResolver}.
  */
 @Retention(RUNTIME)
 @Target({METHOD})

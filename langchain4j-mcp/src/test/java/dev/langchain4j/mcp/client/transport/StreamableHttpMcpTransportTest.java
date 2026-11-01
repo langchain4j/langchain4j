@@ -2,13 +2,56 @@ package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import java.lang.reflect.Field;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import javax.net.ssl.SSLContext;
 import org.junit.jupiter.api.Test;
 
 class StreamableHttpMcpTransportTest {
+
+    @Test
+    void shouldUseDefaultConnectionTimeoutForDefaultBackend() throws Exception {
+        try (StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build()) {
+            assertThat(extractHttpClient(transport).connectTimeout()).contains(Duration.ofSeconds(60));
+        }
+    }
+
+    @Test
+    void shouldApplyExplicitConnectionTimeoutToDefaultBackend() throws Exception {
+        try (StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .timeout(Duration.ofSeconds(13))
+                .build()) {
+            assertThat(extractHttpClient(transport).connectTimeout()).contains(Duration.ofSeconds(13));
+        }
+    }
+
+    @Test
+    void shouldPreserveConnectionTimeoutOnUnderlyingJdkBuilder() throws Exception {
+        try (StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .httpClientBuilder(JdkHttpClient.builder()
+                        .httpClientBuilder(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))))
+                .build()) {
+            assertThat(extractHttpClient(transport).connectTimeout()).contains(Duration.ofSeconds(5));
+        }
+    }
+
+    @Test
+    void shouldOverrideUnderlyingJdkBuilderTimeoutWhenTransportTimeoutIsExplicit() throws Exception {
+        try (StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .httpClientBuilder(JdkHttpClient.builder()
+                        .httpClientBuilder(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))))
+                .timeout(Duration.ofSeconds(13))
+                .build()) {
+            assertThat(extractHttpClient(transport).connectTimeout()).contains(Duration.ofSeconds(13));
+        }
+    }
 
     @Test
     void shouldApplyCustomSslContext() throws Exception {
@@ -88,6 +131,8 @@ class StreamableHttpMcpTransportTest {
     private static HttpClient extractHttpClient(StreamableHttpMcpTransport transport) throws Exception {
         Field field = StreamableHttpMcpTransport.class.getDeclaredField("httpClient");
         field.setAccessible(true);
-        return (HttpClient) field.get(transport);
+        Field delegate = JdkHttpClient.class.getDeclaredField("delegate");
+        delegate.setAccessible(true);
+        return (HttpClient) delegate.get(field.get(transport));
     }
 }

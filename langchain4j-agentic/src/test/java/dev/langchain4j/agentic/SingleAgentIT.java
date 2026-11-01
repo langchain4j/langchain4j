@@ -1,12 +1,14 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
+import dev.langchain4j.agentic.observability.AgentAiServiceEvent;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
@@ -14,16 +16,20 @@ import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -51,6 +57,34 @@ public class SingleAgentIT {
 
         assertTrue(BEFORE_AGENT_INVOKED.get());
         assertTrue(AFTER_AGENT_INVOKED.get());
+    }
+
+    @Test
+    public void invoke_standalone_agent_and_receive_its_ai_service_events() {
+        List<AgentAiServiceEvent> events = new CopyOnWriteArrayList<>();
+        TextCreativeWriter writer = AgenticServices.agentBuilder(TextCreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .listener(new AgentListener() {
+                    @Override
+                    public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
+                        events.add(agentAiServiceEvent);
+                    }
+                })
+                .build();
+
+        String story = writer.generateStoryText("dragons and wizards");
+
+        assertThat(story).isNotBlank();
+        assertThat(events).extracting(AgentAiServiceEvent::agentName).containsOnly("generateStoryText");
+        assertThat(events.get(0).aiServiceEvent()).isInstanceOf(AiServiceStartedEvent.class);
+        assertThat(events.get(events.size() - 1).aiServiceEvent()).isInstanceOf(AiServiceCompletedEvent.class);
+        assertThat(events)
+                .extracting(AgentAiServiceEvent::aiServiceEvent)
+                .filteredOn(AiServiceResponseReceivedEvent.class::isInstance)
+                .map(AiServiceResponseReceivedEvent.class::cast)
+                .allSatisfy(event -> assertThat(event.response().tokenUsage()).isNotNull())
+                .isNotEmpty();
     }
 
     private static ToolProvider buildDemoTools() {
@@ -91,15 +125,15 @@ public class SingleAgentIT {
         @Override
         public void beforeAgentInvocation(AgentRequest request) {
             BEFORE_AGENT_INVOKED.set(true);
-            System.out.println(tag + " beforeAgentInvocation agent=" + request.agent().name()
-                    + " inputs=" + request.inputs());
+            System.out.println(
+                    tag + " beforeAgentInvocation agent=" + request.agent().name() + " inputs=" + request.inputs());
         }
 
         @Override
         public void afterAgentInvocation(AgentResponse response) {
             AFTER_AGENT_INVOKED.set(true);
-            System.out.println(tag + " afterAgentInvocation agent=" + response.agent().name()
-                    + " output=" + response.output());
+            System.out.println(
+                    tag + " afterAgentInvocation agent=" + response.agent().name() + " output=" + response.output());
         }
 
         @Override

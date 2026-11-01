@@ -13,7 +13,6 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -25,7 +24,6 @@ import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -116,14 +114,35 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Set<EmbeddingParameter<?>> supportedParameters() {
-        return Set.of(EmbeddingRequestParameters.INPUT_TYPE);
+        if (multimodal) {
+            return Set.of(
+                    EmbeddingRequestParameters.INPUT_TYPE,
+                    VoyageAiEmbeddingRequestParameters.TRUNCATION); // the multimodal request has no encoding_format
+        }
+        return Set.of(
+                EmbeddingRequestParameters.INPUT_TYPE,
+                VoyageAiEmbeddingRequestParameters.TRUNCATION,
+                VoyageAiEmbeddingRequestParameters.ENCODING_FORMAT);
+    }
+
+    @Override
+    public EmbeddingRequestParameters defaultRequestParameters() {
+        return VoyageAiEmbeddingRequestParameters.builder()
+                .truncation(truncation)
+                .encodingFormat(multimodal ? null : encodingFormat)
+                .build();
     }
 
     @Override
     public dev.langchain4j.model.embedding.response.EmbeddingResponse doEmbed(
             dev.langchain4j.model.embedding.request.EmbeddingRequest request) {
 
-        String effectiveInputType = getOrDefault(toVoyageInputType(request.inputType()), inputType);
+        EmbeddingRequestParameters parameters = request.parameters();
+        String effectiveInputType = getOrDefault(toVoyageInputType(parameters.inputType()), inputType);
+        Boolean effectiveTruncation =
+                getOrDefault(parameters.parameter(VoyageAiEmbeddingRequestParameters.TRUNCATION), truncation);
+        String effectiveEncodingFormat =
+                getOrDefault(parameters.parameter(VoyageAiEmbeddingRequestParameters.ENCODING_FORMAT), encodingFormat);
 
         List<Embedding> embeddings = new ArrayList<>();
         int totalTokens = 0;
@@ -139,7 +158,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         .inputs(batch.stream().map(this::toMultimodalInput).collect(toList()))
                         .model(modelName)
                         .inputType(effectiveInputType)
-                        .truncation(truncation)
+                        .truncation(effectiveTruncation)
                         .build();
                 wireResponse = withRetryMappingExceptions(() -> client.multimodalEmbed(wireRequest), maxRetries);
             } else {
@@ -147,8 +166,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         .input(batch.stream().map(EmbeddingInput::text).collect(toList()))
                         .model(modelName)
                         .inputType(effectiveInputType)
-                        .truncation(truncation)
-                        .encodingFormat(encodingFormat)
+                        .truncation(effectiveTruncation)
+                        .encodingFormat(effectiveEncodingFormat)
                         .build();
                 wireResponse = withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
             }
@@ -180,10 +199,12 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         if (content instanceof ImageContent imageContent) {
             var image = imageContent.image();
             if (image.url() != null) {
-                return MultimodalEmbeddingRequest.ContentBlock.imageUrl(image.url().toString());
+                return MultimodalEmbeddingRequest.ContentBlock.imageUrl(
+                        image.url().toString());
             }
             if (image.base64Data() != null) {
-                String dataUrl = "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
+                String dataUrl =
+                        "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
                 return MultimodalEmbeddingRequest.ContentBlock.imageBase64(dataUrl);
             }
             throw new UnsupportedFeatureException("ImageContent must have either a URL or base64 data");

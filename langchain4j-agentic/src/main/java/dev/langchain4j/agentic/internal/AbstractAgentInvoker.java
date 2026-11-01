@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.planner.AgentCondition;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -79,6 +80,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return agent.activationCondition();
+    }
+
+    @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
         return AgentUtil.agentInvocationArguments(agenticScope, arguments());
     }
@@ -132,6 +138,16 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
         return "MethodAgentInvoker[" +
                 "method=" + method + ", " +
                 "agentInstance=" + agent + ']';
+    }
+
+    @Override
+    public boolean compensateOnError() {
+        return agent.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        agent.enableCrossAgentCompensation();
     }
 
     @Override

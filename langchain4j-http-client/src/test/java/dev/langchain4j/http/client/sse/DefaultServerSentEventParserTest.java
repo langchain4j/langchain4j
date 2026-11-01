@@ -1,6 +1,10 @@
 package dev.langchain4j.http.client.sse;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -14,6 +18,13 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -131,6 +142,48 @@ class DefaultServerSentEventParserTest {
     }
 
     @Test
+    void shouldPreserveAdditionalLeadingWhitespaceInData() {
+
+        // given
+        String input = "data:   indented\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "  indented")), any());
+    }
+
+    @Test
+    void shouldPreserveTrailingWhitespaceInData() {
+
+        // given
+        String input = "data: trailing  \n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "trailing  ")), any());
+    }
+
+    @Test
+    void shouldNotRemoveAnyCharacterWhenDataHasNoLeadingSpace() {
+
+        // given
+        String input = "data:nospace\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "nospace")), any());
+    }
+
+    @Test
     void shouldHandleIOException() {
 
         // given
@@ -147,5 +200,274 @@ class DefaultServerSentEventParserTest {
 
         // then
         verify(listener).onError(simulatedIoException);
+    }
+
+    // ---------- parse(InputStream) edge cases ----------
+
+    @Test
+    void parse_stops_emitting_after_the_listener_cancels() {
+        String input = "data: first\n\ndata: second\n\ndata: third\n\n";
+        List<ServerSentEvent> received = new ArrayList<>();
+        ServerSentEventListener cancelling = new ServerSentEventListener() {
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                received.add(event);
+                context.parsingHandle().cancel();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {}
+        };
+
+        parser.parse(new ByteArrayInputStream(input.getBytes(UTF_8)), cancelling);
+
+        assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
+    }
+
+    @Test
+    void parse_does_not_report_error_when_cancelled_while_waiting_for_next_event() throws Exception {
+        // a stream that delivers one event, then blocks (like a live HTTP response)
+        // and fails with IOException once it is closed, as the JDK HTTP client does
+        CountDownLatch waitingForNextEvent = new CountDownLatch(1);
+        CountDownLatch closed = new CountDownLatch(1);
+        InputStream liveStream = new InputStream() {
+
+            private final ByteArrayInputStream firstEvent = new ByteArrayInputStream("data: first\n\n".getBytes(UTF_8));
+
+            @Override
+            public int read() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                if (firstEvent.available() > 0) {
+                    return firstEvent.read(b, off, len);
+                }
+                waitingForNextEvent.countDown();
+                try {
+                    closed.await(10, SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new IOException("closed");
+            }
+
+            @Override
+            public void close() {
+                closed.countDown();
+            }
+        };
+
+        List<ServerSentEvent> received = new CopyOnWriteArrayList<>();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CompletableFuture<ServerSentEventParsingHandle> parsingHandle = new CompletableFuture<>();
+        ServerSentEventListener listener = new ServerSentEventListener() {
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                received.add(event);
+                parsingHandle.complete(context.parsingHandle());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                errors.add(throwable);
+            }
+        };
+
+        Thread parsingThread = new Thread(() -> parser.parse(liveStream, listener));
+        parsingThread.setDaemon(true);
+        parsingThread.start();
+
+        // cancel from another thread while the parser is blocked waiting for the next event
+        ServerSentEventParsingHandle handle = parsingHandle.get(10, SECONDS);
+        assertThat(waitingForNextEvent.await(10, SECONDS)).isTrue();
+        handle.cancel();
+        parsingThread.join(SECONDS.toMillis(10));
+
+        assertThat(parsingThread.isAlive()).isFalse();
+        assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
+        assertThat(errors).isEmpty();
+    }
+
+    @Test
+    void parse_does_not_emit_event_read_after_cancellation() {
+        // simulates cancel() arriving from another thread right after the next event has been read
+        AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
+        InputStream stream = new InputStream() {
+
+            private int reads;
+
+            @Override
+            public int read() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                byte[] chunk = switch (reads++) {
+                    case 0 -> "data: first\n\ndata: second\n".getBytes(UTF_8);
+                    case 1 -> {
+                        parsingHandle.get().cancel();
+                        yield "\n".getBytes(UTF_8); // the blank line that completes the second event
+                    }
+                    default -> null;
+                };
+                if (chunk == null) {
+                    return -1;
+                }
+                System.arraycopy(chunk, 0, b, off, chunk.length);
+                return chunk.length;
+            }
+        };
+
+        List<ServerSentEvent> received = new ArrayList<>();
+        ServerSentEventListener listener = new ServerSentEventListener() {
+            @Override
+            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                received.add(event);
+                parsingHandle.set(context.parsingHandle());
+            }
+
+            @Override
+            public void onError(Throwable throwable) {}
+        };
+
+        parser.parse(stream, listener);
+
+        assertThat(received).containsExactly(new ServerSentEvent(null, "first"));
+    }
+
+    @Test
+    void parse_handles_cr_and_crlf_line_endings() {
+        // \r\n and bare \r are both handled by BufferedReader.readLine()
+        String input = "event: e\r\ndata: a\r\n\r\ndata: b\r\rdata: c\r\r";
+        parser.parse(new ByteArrayInputStream(input.getBytes(UTF_8)), listener);
+
+        verify(listener).onEvent(eq(new ServerSentEvent("e", "a")), any());
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "b")), any());
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "c")), any());
+    }
+
+    @Test
+    void parse_trims_event_field_and_strips_one_leading_space_from_data() {
+        // Note: event field values are trimmed fully, data field values lose only a single leading space.
+        String input = "event:   spaced-event   \ndata:   spaced value   \n\n";
+        parser.parse(new ByteArrayInputStream(input.getBytes(UTF_8)), listener);
+
+        verify(listener).onEvent(eq(new ServerSentEvent("spaced-event", "  spaced value   ")), any());
+    }
+
+    // ---------- incremental() ----------
+
+    private static ByteBuffer buf(String s) {
+        return ByteBuffer.wrap(s.getBytes(UTF_8));
+    }
+
+    @Test
+    void incremental_trims_event_field_and_strips_one_leading_space_from_data() {
+        // Must match parse(InputStream): the two parsers may not diverge on whitespace handling.
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+
+        assertThat(incremental.feed(buf("event:   spaced-event   \ndata:   spaced value   \n\n")))
+                .containsExactly(new ServerSentEvent("spaced-event", "  spaced value   "));
+    }
+
+    @Test
+    void a_parser_that_does_not_support_incremental_parsing_reports_it_as_not_async() {
+        ServerSentEventParser blockingOnly = (body, listener) -> {};
+
+        assertThatThrownBy(blockingOnly::incremental)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
+                .hasMessageContaining("Incremental parsing not supported");
+    }
+
+    @Test
+    void incremental_parses_single_event_in_one_chunk() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: hello\n\n")))
+                .containsExactly(new ServerSentEvent(null, "hello"));
+        assertThat(incremental.flush()).isEmpty();
+    }
+
+    @Test
+    void incremental_parses_event_split_across_chunks() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("da"))).isEmpty();
+        assertThat(incremental.feed(buf("ta: hel"))).isEmpty();
+        assertThat(incremental.feed(buf("lo\n\n"))).containsExactly(new ServerSentEvent(null, "hello"));
+    }
+
+    @Test
+    void incremental_handles_crlf_line_endings() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("event: e\r\ndata: a\r\n\r\n")))
+                .containsExactly(new ServerSentEvent("e", "a"));
+    }
+
+    @Test
+    void incremental_parses_multiple_events() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: one\n\ndata: two\n\ndata: three\n\n")))
+                .containsExactly(
+                        new ServerSentEvent(null, "one"),
+                        new ServerSentEvent(null, "two"),
+                        new ServerSentEvent(null, "three"));
+    }
+
+    @Test
+    void incremental_joins_multiline_data() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: a\ndata: b\ndata: c\n\n")))
+                .containsExactly(new ServerSentEvent(null, "a\nb\nc"));
+    }
+
+    @Test
+    void incremental_ignores_comment_id_and_retry_lines() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("id: 1\nretry: 5000\n: a comment\ndata: x\n\n")))
+                .containsExactly(new ServerSentEvent(null, "x"));
+    }
+
+    @Test
+    void incremental_flush_emits_trailing_event_without_terminating_blank_line() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: a\n\ndata: b\n"))).containsExactly(new ServerSentEvent(null, "a"));
+        assertThat(incremental.flush()).containsExactly(new ServerSentEvent(null, "b"));
+    }
+
+    @Test
+    void incremental_flush_completes_a_pending_partial_line() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: no newline yet"))).isEmpty();
+        assertThat(incremental.flush()).containsExactly(new ServerSentEvent(null, "no newline yet"));
+    }
+
+    @Test
+    void incremental_flush_returns_empty_when_nothing_is_pending() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        assertThat(incremental.feed(buf("data: x\n\n"))).containsExactly(new ServerSentEvent(null, "x"));
+        assertThat(incremental.flush()).isEmpty();
+    }
+
+    @Test
+    void incremental_decodes_utf8_multibyte_char_split_across_chunks() {
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+        // "é" is 0xC3 0xA9 in UTF-8; split inside the character.
+        byte[] all = "data: café\n\n".getBytes(UTF_8);
+        int split = indexOf(all, (byte) 0xC3) + 1;
+
+        assertThat(incremental.feed(ByteBuffer.wrap(all, 0, split))).isEmpty();
+        assertThat(incremental.feed(ByteBuffer.wrap(all, split, all.length - split)))
+                .containsExactly(new ServerSentEvent(null, "café"));
+    }
+
+    private static int indexOf(byte[] arr, byte b) {
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] == b) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

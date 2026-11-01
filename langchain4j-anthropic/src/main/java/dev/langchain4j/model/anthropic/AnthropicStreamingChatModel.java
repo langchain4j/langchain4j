@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
@@ -11,6 +12,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EP
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -33,12 +35,15 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -62,6 +67,7 @@ import org.slf4j.Logger;
  */
 public class AnthropicStreamingChatModel implements StreamingChatModel {
 
+
     private final AnthropicClient client;
     private final String thinkingDisplay;
     private final List<ChatModelListener> listeners;
@@ -73,6 +79,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
+    private final int streamingBufferSize;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -94,6 +101,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -127,6 +137,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
                 .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
+                .cacheAutomatically(getOrDefault(builder.cacheAutomatically, anthropicDefaults.cacheAutomatically()))
+                .cacheTtl(getOrDefault(builder.cacheTtl, anthropicDefaults.cacheTtl()))
                 .thinkingType(getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType()))
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
@@ -166,6 +178,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private List<ToolSpecification> toolSpecifications;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
+        private Boolean cacheAutomatically;
+        private String cacheTtl;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private String thinkingDisplay;
@@ -191,6 +205,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean returnCacheDiagnostics;
+        private Integer streamingBufferSize;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -201,6 +216,22 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults#DEFAULT_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size (must be greater than zero)
+         * @return {@code this}
+         * @since 1.20.0
+         */
+        @Experimental
+        public AnthropicStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -379,9 +410,12 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Enables prompt caching for {@link SystemMessage}s.
          * <p>
-         * When {@code true}, system messages are sent with the {@code cache_control} header to allow
-         * Anthropic to cache them across requests, reducing cost and latency for repeated prompts.
-         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * When {@code true}, the last system message is marked with {@code cache_control}, so that Anthropic caches
+         * the tools and system messages across requests, reducing cost and latency for repeated prompts.
+         * It works for any kind of usage, including independent calls without chat memory.
+         * To also cache a conversation whose history grows from one request to the next,
+         * enable {@code cacheAutomatically} as well.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheSystemMessages whether to cache system messages
          * @return {@code this}
@@ -394,15 +428,75 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         /**
          * Enables prompt caching for {@link ToolSpecification}s.
          * <p>
-         * When {@code true}, tool definitions are sent with the {@code cache_control} header to allow
-         * Anthropic to cache them across requests.
-         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * When {@code true}, the last tool definition is marked with {@code cache_control}, so that Anthropic caches
+         * the tool definitions across requests.
+         * To also cache a conversation whose history grows from one request to the next,
+         * enable {@code cacheAutomatically} as well.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheTools whether to cache tool definitions
          * @return {@code this}
          */
         public AnthropicStreamingChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
+            return this;
+        }
+
+        /**
+         * Enables automatic prompt caching of the conversation.
+         * <p>
+         * When {@code true}, Anthropic places a cache breakpoint on the last cacheable block of each request
+         * and moves it forward as the conversation grows, so that every request reads the whole previous
+         * conversation (tools, system messages and earlier messages) from the cache instead of processing it again.
+         * No message has to be marked for caching by hand, so it also works for AI Services and agents.
+         * <p>
+         * It only pays off when each request starts with everything the previous request sent, for example when
+         * an AI Service or an agent calls tools in a loop, or in a chat whose memory still holds all previous
+         * messages. When the beginning of the conversation changes on every request (for example, when a chat
+         * memory such as a full MessageWindowChatMemory evicts old messages on every turn, or for independent calls
+         * without chat memory), every request pays the cache write price and nothing is read back, which costs
+         * more than not caching at all.
+         * <p>
+         * When enabling it, enable {@code cacheSystemMessages} and {@code cacheTools} as well, to keep the system
+         * messages and tools cached even when the beginning of the conversation changes.
+         * Each of these options, as well as each message marked with the {@code cache_control} attribute,
+         * uses one of the 4 cache breakpoints Anthropic allows per request; a request with more is rejected.
+         * <p>
+         * This option is sent as a top-level {@code cache_control} field of the request. Anthropic-compatible
+         * gateways and proxies that do not support this field may reject the request or ignore the field.
+         * <p>
+         * Writing to the cache costs more than regular input tokens, and reading from it costs much less,
+         * so caching pays off when the same prefix is sent more than once within the cache TTL (see {@code cacheTtl}).
+         * Prompts shorter than the model-specific minimum are not cached. Disabled by default.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheAutomatically whether to enable automatic caching of the conversation
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder cacheAutomatically(Boolean cacheAutomatically) {
+            this.cacheAutomatically = cacheAutomatically;
+            return this;
+        }
+
+        /**
+         * Sets how long the cached prompt is kept: {@link AnthropicChatRequestParameters#CACHE_TTL_5M} (5 minutes,
+         * the default) or {@link AnthropicChatRequestParameters#CACHE_TTL_1H} (1 hour).
+         * <p>
+         * Applies to every cache breakpoint: system messages, tools, automatic conversation caching and
+         * messages marked with the {@code cache_control} attribute. It has no effect unless at least one of them
+         * is cached. The value is sent to Anthropic as is; a blank value is rejected.
+         * Each cache hit refreshes the TTL, so {@code "5m"} is enough when requests sharing the same prefix are
+         * less than 5 minutes apart. Use {@code "1h"} when they are further apart (for example, a user replying
+         * after 20 minutes, or batch processing). Writing to the 1-hour cache costs more than writing to
+         * the 5-minute one.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheTtl the cache TTL, {@link AnthropicChatRequestParameters#CACHE_TTL_5M} or
+         *                 {@link AnthropicChatRequestParameters#CACHE_TTL_1H}
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder cacheTtl(String cacheTtl) {
+            this.cacheTtl = cacheTtl;
             return this;
         }
 
@@ -423,13 +517,23 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Controls how thinking content is returned in the response stream.
+         * Controls whether the API streams readable thinking text next to the thinking signature.
          * <p>
-         * Valid values: {@code "summarized"} and {@code "omitted"}. On Claude Opus 4.7
-         * the server default is {@code "omitted"}; on earlier Opus/Sonnet models the
-         * default is {@code "summarized"}. Set to {@code "summarized"} explicitly on
-         * Opus 4.7+ to restore visible thinking text for UIs that stream it.
+         * Valid values:
+         * <ul>
+         *     <li>{@code "summarized"}: thinking blocks contain a readable summary of the reasoning.</li>
+         *     <li>{@code "omitted"}: thinking blocks contain an empty thinking text,
+         *     only the encrypted signature is returned.</li>
+         * </ul>
+         * When this is not set, the API picks a default that depends on the model:
+         * recent Claude models default to {@code "omitted"}, older ones to {@code "summarized"}.
+         * Set it to {@code "summarized"} whenever the thinking text itself is needed,
+         * for example in order to stream it to the end user.
+         * <p>
+         * The model thinks and is billed the same way in both cases;
+         * only the visibility of the thinking text changes.
          *
+         * @see <a href="https://platform.claude.com/docs/en/build-with-claude/thinking">Anthropic documentation</a>
          * @see #thinkingType(String)
          * @see #returnThinking(Boolean)
          */
@@ -448,9 +552,15 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
          * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Please note that {@link AiMessage#thinking()} stays empty and
+         * {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} is not invoked
+         * when the API returns no thinking text, which is the default for recent Claude models.
+         * See {@link #thinkingDisplay(String)}.
          *
          * @see #thinkingType(String)
          * @see #thinkingBudgetTokens(Integer)
+         * @see #thinkingDisplay(String)
          * @see #sendThinking(Boolean)
          */
         public AnthropicStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
@@ -590,8 +700,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the name of the specific tool the model must use when {@link ToolChoice}
-         * is set to {@link ToolChoice#REQUIRED}.
+         * Sets the name of the tool that the model is forced to call.
+         * <p>
+         * It can be set on its own; it does not require {@link #toolChoice(ToolChoice)}.
+         * When {@link #toolChoice(ToolChoice)} is set as well, the named tool takes precedence over it.
+         * It has no effect when the request contains no tools.
          *
          * @param toolChoiceName the name of the tool to force
          * @return {@code this}
@@ -813,15 +926,30 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ensureNotNull(handler, "handler");
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+        client.createMessage(anthropicRequest, toOptions(parameters), handler);
+    }
 
-        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+        AnthropicCreateMessageOptions options = toOptions(parameters);
+        return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
+    }
+
+    private AnthropicCreateMessageRequest toAnthropicRequest(
+            ChatRequest chatRequest, AnthropicChatRequestParameters parameters) {
+        validate(parameters);
+        return createAnthropicRequest(
                 chatRequest,
                 toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
                 getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
                 getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(parameters.cacheAutomatically(), false),
+                parameters.cacheTtl(),
                 true,
                 parameters.toolChoiceName(),
                 parameters.disableParallelToolUse(),
@@ -833,10 +961,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 this.strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
                 parameters.previousMessageId());
+    }
 
+    private AnthropicCreateMessageOptions toOptions(AnthropicChatRequestParameters parameters) {
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
-        client.createMessage(
-                anthropicRequest, new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults), handler);
+        return new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults);
     }
 
     @Override
