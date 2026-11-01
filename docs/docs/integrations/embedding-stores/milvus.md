@@ -11,13 +11,14 @@ sidebar_position: 14
 
 There are currently **two** Milvus integration modules. They are independent and can be used side by side.
 
-| Module | Milvus Java SDK | Capabilities | Status |
+| Module | Milvus Java SDK client API | Capabilities | Status |
 |---|---|---|---|
-| `langchain4j-milvus` | v1 (`MilvusServiceClient`) | Dense vector search | Legacy. Built on the deprecated v1 SDK. |
-| `langchain4j-milvus-v2` | v2 (`MilvusClientV2`) | Dense **+ sparse + hybrid** search (incl. built-in BM25) | Current. Recommended for new projects. |
+| `langchain4j-milvus` | `MilvusServiceClient` (v1 API) | Dense vector search | Legacy. Built on the older v1 client API. |
+| `langchain4j-milvus-v2` | `MilvusClientV2` (v2 API) | Dense **+ sparse + hybrid** search (incl. built-in BM25) | Current. Recommended for new projects. |
 
 :::note Transitional naming — this will change in LangChain4j 2.0
-The `-v2` suffix refers to the **Milvus SDK version**, not to a version of this module. It is temporary.
+The `-v2` suffix refers to the `MilvusClientV2` API of the Milvus Java SDK, not to a version of this module
+or of the Milvus server. It is temporary.
 
 In **LangChain4j 2.0** the legacy `langchain4j-milvus` module will be **removed**, and `langchain4j-milvus-v2`
 will be **renamed to `langchain4j-milvus`** (the Maven artifact, the `...milvus.v2` package, and the `MilvusV2*`
@@ -33,7 +34,7 @@ coordinates, imports, and class names. A migration guide will be provided with t
 
 ## `langchain4j-milvus-v2` (recommended)
 
-Built on the current Milvus Java SDK v2. Supports dense vector search, sparse vector search, and hybrid
+Built on the `MilvusClientV2` API of the Milvus Java SDK. Supports dense vector search, sparse vector search, and hybrid
 (dense + sparse) search — including Milvus' built-in BM25 full-text sparse vectors.
 
 ### Maven Dependency
@@ -153,13 +154,15 @@ You can also pass your own `MilvusClientV2` instance via `.milvusClient(client)`
 ### Compatibility
 
 - Milvus Server **2.5.x or later** is recommended (BM25 full-text search requires 2.5+; hybrid search requires 2.4+).
+- Its integration tests run nightly against Milvus 2.6 and 3.x.
+- The store reads the Milvus server version once, when it is created; restart the application after upgrading the Milvus server to a new major version.
 - Java 17+
 
 ---
 
 ## `langchain4j-milvus` (legacy)
 
-Built on the Milvus Java SDK v1. Supports dense vector search only. It will be removed in LangChain4j 2.0
+Built on the older `MilvusServiceClient` (v1) API of the Milvus Java SDK. Supports dense vector search only. It will be removed in LangChain4j 2.0
 (see the note above); new projects should prefer `langchain4j-milvus-v2`.
 
 ### Maven Dependency
@@ -227,6 +230,10 @@ MilvusEmbeddingStore store = MilvusEmbeddingStore.builder()
     .vectorFieldName("vector")                 // Vector field name
     .build();
 ```
+
+### Compatibility
+
+- The store reads the Milvus server version once, when it is created; restart the application after upgrading the Milvus server to a new major version.
 
 ---
 

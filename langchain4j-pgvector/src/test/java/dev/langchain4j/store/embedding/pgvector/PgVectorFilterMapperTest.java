@@ -15,12 +15,17 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PgVectorFilterMapperTest {
+
+    enum Status {
+        ACTIVE
+    }
 
     private final JSONFilterMapper jsonMapper = new JSONFilterMapper("metadata");
     private final ColumnFilterMapper columnMapper = new ColumnFilterMapper();
@@ -204,9 +209,8 @@ class PgVectorFilterMapperTest {
 
         WhereClause whereClause = jsonMapper.map(filter);
 
-        // there is no SQL type for a map, so the database rejects the cast; the value itself is only bound
         assertThat(whereClause.sql())
-                .isEqualTo("(metadata->>'tenant')::null is not null and (metadata->>'tenant')::null = ?");
+                .isEqualTo("(metadata->>'tenant')::text is not null and (metadata->>'tenant')::text = ?");
         assertThat(whereClause.parameters()).containsExactly("{x') or 1=1 --=}");
     }
 
@@ -245,6 +249,33 @@ class PgVectorFilterMapperTest {
                 .isEqualTo("age::int > ? and price::numeric <= ?"
                         + " and (count::numeric is null or count::numeric != ?)");
         assertThat(whereClause.parameters()).containsExactly("18", "9.99", "7");
+    }
+
+    @Test
+    void enumAndDateValues_shouldBeCastToText_jsonMapper() {
+        Filter filter = new IsEqualTo("status", Status.ACTIVE)
+                .and(new IsGreaterThanOrEqualTo("created_on", LocalDate.of(2026, 10, 30)));
+
+        WhereClause whereClause = jsonMapper.map(filter);
+
+        assertThat(whereClause.sql())
+                .isEqualTo("(metadata->>'status')::text is not null and (metadata->>'status')::text = ?"
+                        + " and (metadata->>'created_on')::text >= ?")
+                .doesNotContain("::null");
+        assertThat(whereClause.parameters()).containsExactly("ACTIVE", "2026-10-30");
+    }
+
+    @Test
+    void enumAndDateValues_shouldBeCastToText_columnMapper() {
+        Filter filter = new IsNotEqualTo("status", Status.ACTIVE)
+                .and(new IsLessThan("created_on", LocalDate.of(2026, 10, 30)));
+
+        WhereClause whereClause = columnMapper.map(filter);
+
+        assertThat(whereClause.sql())
+                .isEqualTo("(status::text is null or status::text != ?) and created_on::text < ?")
+                .doesNotContain("::null");
+        assertThat(whereClause.parameters()).containsExactly("ACTIVE", "2026-10-30");
     }
 
     @Test

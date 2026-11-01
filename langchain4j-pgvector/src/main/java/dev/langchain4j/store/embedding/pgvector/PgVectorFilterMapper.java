@@ -34,10 +34,12 @@ abstract class PgVectorFilterMapper {
                     new SimpleEntry<>(BigDecimal.class, "numeric"),
                     new SimpleEntry<>(String.class, "text"),
                     new SimpleEntry<>(UUID.class, "uuid"),
-                    new SimpleEntry<>(Boolean.class, "boolean"),
-                    // Default
-                    new SimpleEntry<>(Object.class, "text"))
+                    new SimpleEntry<>(Boolean.class, "boolean"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    static String sqlType(Class<?> valueType) {
+        return SQL_TYPE_MAP.getOrDefault(valueType, "text");
+    }
 
     public WhereClause map(Filter filter) {
         List<String> parameters = new ArrayList<>();
