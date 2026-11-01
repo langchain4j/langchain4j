@@ -1,15 +1,21 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
-import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
-import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
 import com.ibm.watsonx.ai.embedding.EmbeddingService;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 
@@ -32,6 +38,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingService embeddingService;
     private final String modelName;
+    private final List<EmbeddingModelListener> listeners;
 
     private WatsonxEmbeddingModel(Builder builder) {
 
@@ -52,11 +59,17 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .verifySsl(builder.verifySsl)
                 .build();
         this.modelName = builder.modelName;
+        this.listeners = copy(builder.listeners);
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        return embedAll(textSegments, null);
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return WATSONX;
     }
 
     @Override
@@ -64,8 +77,18 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
         return this.modelName;
     }
 
+    @Override
+    public EmbeddingResponse doEmbed(EmbeddingRequest request) {
+        List<String> inputs =
+                request.inputs().stream().map(EmbeddingInput::text).toList();
+        return embed(inputs, null);
+    }
+
     /**
      * Embeds the text content of a list of TextSegment using the specified {@link EmbeddingParameters}.
+     *
+     * <p>The registered {@link EmbeddingModelListener}s are notified around the call, as they are for every other
+     * embedding method.
      *
      * @param textSegments the text segments to embed.
      * @param parameters the embedding parameters to use.
@@ -75,15 +98,19 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         if (isNull(textSegments) || textSegments.isEmpty()) return Response.from(List.of());
 
-        List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+            List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
+            EmbeddingResponse response = embed(inputs, parameters);
+            return Response.from(response.embeddings(), response.metadata().tokenUsage());
+        });
+    }
 
-        EmbeddingResponse response =
+    private EmbeddingResponse embed(List<String> inputs, EmbeddingParameters parameters) {
+
+        com.ibm.watsonx.ai.embedding.EmbeddingResponse response =
                 WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> embeddingService.embed(inputs, parameters));
 
-        return Response.from(response.results().stream()
-                .map(Result::embedding)
-                .map(Embedding::from)
-                .toList());
+        return Converter.toEmbeddingResponse(response, modelName);
     }
 
     /**
@@ -111,6 +138,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
+        private List<EmbeddingModelListener> listeners;
 
         private Builder() {}
 
@@ -122,6 +150,17 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
          */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Sets the {@link EmbeddingModelListener}s notified around every embedding request.
+         *
+         * @param listeners the listeners to register
+         * @return {@code this}
+         */
+        public Builder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

@@ -27,6 +27,7 @@ public class AiServiceTokenStreamParameters {
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
+    private final Executor completeResponseProcessingExecutor;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
@@ -39,6 +40,7 @@ public class AiServiceTokenStreamParameters {
         this.toolArgumentsErrorHandler = builder.toolArgumentsErrorHandler;
         this.toolExecutionErrorHandler = builder.toolExecutionErrorHandler;
         this.toolExecutor = builder.toolExecutor;
+        this.completeResponseProcessingExecutor = builder.completeResponseProcessingExecutor;
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
         this.invocationContext = builder.invocationContext;
@@ -123,6 +125,14 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * @see Builder#completeResponseProcessingExecutor(Executor)
+     * @since 1.23.0
+     */
+    public Executor completeResponseProcessingExecutor() {
+        return completeResponseProcessingExecutor;
+    }
+
+    /**
      * @return the retrieved contents
      */
     public List<Content> retrievedContents() {
@@ -182,6 +192,7 @@ public class AiServiceTokenStreamParameters {
         private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
         private ToolExecutionErrorHandler toolExecutionErrorHandler;
         private Executor toolExecutor;
+        private Executor completeResponseProcessingExecutor;
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private InvocationContext invocationContext;
@@ -294,6 +305,38 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder toolExecutor(Executor toolExecutor) {
             this.toolExecutor = toolExecutor;
+            return this;
+        }
+
+        /**
+         * Sets the executor that processes each complete response received from the {@code StreamingChatModel}:
+         * updating the chat memory, executing the requested tools (or, when {@link #toolExecutor(Executor)} is set,
+         * waiting for their results), sending the next request to the model, running the output guardrails,
+         * firing the AI Service listener events and invoking
+         * {@link TokenStream#onIntermediateResponse(java.util.function.Consumer)} and
+         * {@link TokenStream#onCompleteResponse(java.util.function.Consumer)}.
+         * Partial responses are still delivered on the thread of the {@code StreamingChatModel}.
+         * <p>
+         * If not set (or {@code null}), the response is processed on the thread that delivers it, which is usually
+         * a thread of the HTTP client used by the {@code StreamingChatModel}.
+         * Use this executor when that thread must not be blocked (e.g., an event loop thread)
+         * and the processing can block (e.g., a tool, a chat memory store or an output guardrail doing I/O).
+         * The executor can also decide per task whether to run it on the calling thread.
+         * The context captured with {@link dev.langchain4j.spi.ExecutorProvider#captureContext()} when the AI Service
+         * was invoked is restored on the executor's thread.
+         * LangChain4j never shuts the executor down.
+         * <p>
+         * Anything thrown while processing the response, including an {@link Error}, is passed to
+         * {@link TokenStream#onError(java.util.function.Consumer)}. So is an exception thrown by the executor itself
+         * (e.g., {@link java.util.concurrent.RejectedExecutionException}), on the thread that delivered the response.
+         * <p>
+         * Ignored by {@link AiServiceStreamingEventPublisher}, which does not block the thread that delivers
+         * the response.
+         *
+         * @since 1.23.0
+         */
+        public Builder completeResponseProcessingExecutor(Executor completeResponseProcessingExecutor) {
+            this.completeResponseProcessingExecutor = completeResponseProcessingExecutor;
             return this;
         }
 

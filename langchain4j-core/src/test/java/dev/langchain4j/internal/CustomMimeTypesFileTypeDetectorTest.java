@@ -55,6 +55,18 @@ class CustomMimeTypesFileTypeDetectorTest {
     }
 
     @Test
+    void should_return_a_mime_type_for_m4a_from_default_mapping() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType("audio.m4a");
+
+        // then
+        assertThat(mimeType).isEqualTo("audio/m4a");
+    }
+
+    @Test
     void should_return_a_mime_type_from_default_mapping_from_string() {
         // given
         CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();

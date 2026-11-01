@@ -105,9 +105,11 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
+On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
+See the Windows note on the [In-process (ONNX)](/integrations/embedding-models/in-process) page.
 
 2. Let's load your documents:
 ```java
@@ -628,6 +630,28 @@ Currently, the following `Filter` types/operations are supported:
 -  `Not`
 -  `Or`
 
+A comparison value must be a `String`, `UUID`, `Boolean`, `Integer`, `Long`, `Float`, `Double`,
+`Byte`, `Short`, `BigInteger`, `BigDecimal`, an enum, or a date/time value:
+`LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`, `ZonedDateTime`, `Instant`,
+`Year`, `YearMonth`, `MonthDay`, `java.util.Date`, `java.sql.Date`, `java.sql.Time` or `java.sql.Timestamp`.
+A `Float` or `Double` must be a finite number, not `NaN` or infinite.
+For `IsIn` and `IsNotIn`, this applies to every value in the collection.
+Any other value, for example a nested `List`, a `Map`, a `Character` or `Double.NaN`,
+is rejected with an `IllegalArgumentException` when the `Filter` is created.
+
+`Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),
+so compare with a value of the same type as the stored one, for example an enum by its name:
+
+```java
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+
+Filter filter = metadataKey("category").isEqualTo(category.name());
+```
+
+The other types are for stores that also hold data written outside LangChain4j,
+and are passed to the store as they are.
+Individual embedding stores may support only some of these value types.
+
 :::note
 Not all embedding stores support filtering by `Metadata`,
 please see the "Filtering by Metadata" column [here](https://docs.langchain4j.dev/integrations/embedding-stores/).
@@ -998,6 +1022,10 @@ It routes each `Query` to all configured `ContentRetriever`s.
 #### Language Model Query Router
 `LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
 
+#### Decision Model Query Router
+`DecisionModelQueryRouter` uses a [decision model](/tutorials/decision-models) to decide which `ContentRetriever`s
+can help answer the given `Query`. When none can, no retrieval is performed.
+
 ### Content Aggregator
 The `ContentAggregator` is responsible for aggregating multiple ranked lists of `Content` from:
 - multiple `Query`s
@@ -1011,6 +1039,7 @@ Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langc
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
+A [decision model](/tutorials/decision-models#re-ranking-retrieved-content) can also be used, with `DecisionScoringModel`.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
@@ -1160,6 +1189,14 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+
+:::note
+The whole retrieval graph has asynchronous counterparts (`augmentAsync`, `retrieveAsync`, `routeAsync`,
+`aggregateAsync`), so RAG does not have to block a thread. A component that has not implemented its counterpart
+fails loudly by default rather than silently blocking; opt in to offloading it instead with
+`offloadBlocking(true)` on `DefaultRetrievalAugmentor` or `EmbeddingStoreContentRetriever`.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Examples
 

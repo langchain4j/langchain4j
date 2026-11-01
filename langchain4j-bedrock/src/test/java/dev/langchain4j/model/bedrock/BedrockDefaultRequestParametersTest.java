@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
@@ -38,11 +39,13 @@ class BedrockDefaultRequestParametersTest {
         return BedrockChatRequestParameters.builder()
                 .responseFormat(ResponseFormat.JSON)
                 .serviceTier(BedrockServiceTier.PRIORITY)
+                .requestMetadata(Map.of("team", "platform"))
                 .build();
     }
 
     private static void assertDefaultRequestParametersPreserved(BedrockChatRequestParameters parameters) {
         assertThat(parameters.responseFormat()).isEqualTo(ResponseFormat.JSON);
         assertThat(parameters.serviceTier()).isEqualTo(BedrockServiceTier.PRIORITY);
+        assertThat(parameters.requestMetadata()).isEqualTo(Map.of("team", "platform"));
     }
 }

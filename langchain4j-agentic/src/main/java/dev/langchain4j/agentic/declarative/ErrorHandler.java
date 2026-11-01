@@ -11,6 +11,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as an error handler for a workflow agent.
  * The annotated method must be static, an {@link ErrorContext} as argument and return an instance of {@link ErrorRecoveryResult}.
+ * Besides the {@link ErrorContext}, it can declare parameters resolved through a {@link SupplierParameterResolver}.
  * It will be invoked when an error occurs during the agent's operation, allowing for custom error handling logic.
  * <p>
  * Example:

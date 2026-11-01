@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
+import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
@@ -241,6 +242,50 @@ public class WatsonxDeploymentChatModelTest {
                                 .modelName("my-model")
                                 .build())
                         .build());
+    }
+
+    @Test
+    void should_throw_exception_for_chat_request_with_moderations() {
+
+        var moderation = ChatModeration.builder().pii(p -> p.input(true)).build();
+
+        var chatModel = WatsonxDeploymentChatModel.builder()
+                .baseUrl("https://test.com")
+                .deploymentId("deployment-id")
+                .apiKey("api-key")
+                .build();
+
+        var ex = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> chatModel.chat(ChatRequest.builder()
+                        .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                        .parameters(WatsonxChatRequestParameters.builder()
+                                .moderations(moderation)
+                                .build())
+                        .build()));
+
+        assertEquals("The 'moderations' parameter is not supported by the on-demand deployments", ex.getMessage());
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(WatsonxChatRequestParameters.builder()
+                                .moderations(moderation)
+                                .build())
+                        .build());
+    }
+
+    @Test
+    void should_not_expose_the_moderations_setter() throws Exception {
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> WatsonxDeploymentChatModel.Builder.class.getMethod("moderations", ChatModeration.class));
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> WatsonxDeploymentStreamingChatModel.Builder.class.getMethod("moderations", ChatModeration.class));
     }
 
     @Test

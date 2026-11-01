@@ -1,11 +1,8 @@
 package dev.langchain4j.model.huggingface;
 
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 class HuggingFaceJsonUtils {
 
@@ -13,21 +10,16 @@ class HuggingFaceJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().setVisibility(FIELD, ANY);
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
+            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
+            .build());
 
     static String toJson(Object object) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.toJson(object);
     }
 
-    static <T> T fromJson(String jsonStr, TypeReference<T> typeReference) {
-        try {
-            return OBJECT_MAPPER.readValue(jsonStr, typeReference);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+    static <T> T fromJson(String jsonStr, Class<T> type) {
+        return CODEC.fromJson(jsonStr, type);
     }
 }

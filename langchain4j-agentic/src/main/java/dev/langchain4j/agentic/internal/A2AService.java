@@ -3,10 +3,24 @@ package dev.langchain4j.agentic.internal;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface A2AService {
 
+    Logger LOG = LoggerFactory.getLogger(A2AService.class);
+
     <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass);
+
+    default <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, String tenant, Class<T> agentServiceClass) {
+        if (tenant != null && !tenant.isEmpty()) {
+            LOG.warn(
+                    "A2AService implementation {} does not support the tenant parameter; tenant '{}' will be ignored. Override a2aBuilder(url, tenant, class) to support multi-tenancy.",
+                    getClass().getName(),
+                    tenant);
+        }
+        return a2aBuilder(a2aServerUrl, agentServiceClass);
+    }
 
     Optional<AgentExecutor> methodToAgentExecutor(InternalAgent a2aClient, Method method);
 

@@ -8,4 +8,13 @@ public interface A2AClientInstance extends InternalAgent {
     String[] inputKeys();
 
     AgentCard agentCard();
+
+    /**
+     * Returns the tenant associated with this A2A client instance, or {@code null}
+     * if no tenant was configured. When non-null, this tenant is sent automatically
+     * with every message.
+     */
+    default String tenant() {
+        return null;
+    }
 }

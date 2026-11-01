@@ -1398,7 +1398,7 @@ class GoogleAiGeminiBatchChatModelTest {
     private static GeminiGenerateContentResponse toGeminiResponse(ChatResponse chatResponse) {
         var part = GeminiPart.builder().text(chatResponse.aiMessage().text()).build();
         var content = new GeminiContent(List.of(part), "model");
-        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null);
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null, null);
         var usageMetadata = GeminiUsageMetadata.builder()
                 .promptTokenCount(chatResponse.metadata().tokenUsage().inputTokenCount())
                 .candidatesTokenCount(chatResponse.metadata().tokenUsage().outputTokenCount())
@@ -1406,7 +1406,7 @@ class GoogleAiGeminiBatchChatModelTest {
                 .build();
 
         return new GeminiGenerateContentResponse(
-                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata, null);
+                chatResponse.id(), chatResponse.metadata().modelName(), List.of(candidate), usageMetadata, null, null);
     }
 
     private GoogleAiGeminiBatchChatModel createSubject() {

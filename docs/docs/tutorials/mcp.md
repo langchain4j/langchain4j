@@ -1,13 +1,20 @@
 # Model Context Protocol (MCP)
 
+:::note
+An MCP client can execute tools without blocking a thread via `executeToolAsync(...)`, used by the asynchronous
+and reactive AI Service modes.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
+
 LangChain4j supports the Model Context Protocol (MCP) to communicate with
 MCP compliant servers that can provide and execute tools. General
 information about the protocol can be found at the [MCP
 website](https://modelcontextprotocol.io/).
 
 :::note
-Looking to build an MCP **stdio server** in Java?
-The server implementation lives in LangChain4j Community. See [Building a Java MCP stdio server](./mcp-stdio-server).
+Looking to build an MCP **server** in Java?
+See [Building a Java MCP server](./mcp-stdio-server).
 :::
 
 The protocol specifies two types of transport, both of these are supported:
@@ -46,6 +53,11 @@ McpTransport transport = StdioMcpTransport.builder()
     .build();
 ```
 
+If the server needs to run in a particular project directory, configure
+`.workingDirectory(Path.of("/path/to/project"))` on the stdio transport builder.
+The directory applies to the server subprocess on both startup and restart. When
+omitted, the subprocess inherits the current process's working directory.
+
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
 ```java
@@ -62,6 +74,88 @@ for receiving server-initiated notifications and requests. Enable it with `.subs
 With the modern protocol (2026-07-28), notifications are received via `subscriptions/listen` instead.
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
+
+#### Custom HTTP client
+
+By default, the Streamable HTTP transport sends its requests with the JDK HTTP client
+(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in). You can use any other
+[HTTP client](./customizable-http-client.md) instead, for example to reuse a proxy or
+TLS setup. Pass its builder:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .httpClientBuilder(OkHttpClient.builder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ZERO)) // no read timeout: MCP streams can stay idle for a long time
+        .build();
+```
+
+If you exclude `langchain4j-http-client-jdk` from your dependencies, you must set
+`httpClientBuilder(...)` or `httpClient(...)`.
+
+The HTTP client must support streaming responses (`HttpClient.stream(request, parser)`).
+The JDK, OkHttp and Apache clients do. The Spring `RestClient` integration supports it only
+when `spring-webflux` is on the classpath. With a client that does not support streaming,
+every MCP request fails.
+
+Things to know when you use your own HTTP client:
+
+- **TLS, HTTP version and redirects** are configured on the HTTP client. The transport options
+  `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(true)` work only with the default
+  JDK client. Combining them with `httpClientBuilder(...)` or `httpClient(...)` fails when the
+  transport is built.
+- **Redirects:** the transport does not follow redirects by default, but OkHttp and Apache do.
+  On a redirect, they can send your custom headers (for example an API key) and the request body
+  to another host. If you don't need redirects, turn them off on the client, for example
+  `OkHttpClient.builder().okHttpClientBuilder(new okhttp3.OkHttpClient.Builder().followRedirects(false))`.
+- **Timeouts:** the transport `timeout(...)` is the connection timeout. With `httpClientBuilder(...)`,
+  it is set on the builder you pass in; without it, the client keeps its own connection timeout.
+  The transport never sets a read timeout, so the client's own read timeout applies. MCP responses
+  and notification streams can stay idle for a long time, so turn the read timeout off or make it
+  long. OkHttp's default read timeout is only 10 seconds.
+- **Executor:** if you set the transport `executor(...)`, responses and notifications are handled on it.
+  It is also used to schedule reconnects of the subsidiary channel. The HTTP client still sends
+  requests on its own threads.
+- **Slow callbacks:** the default JDK client reads a response only as fast as the transport handles it,
+  so a slow progress or notification callback pauses reading. If you pass your own `JdkHttpClient`
+  builder, call `.streamingBackpressure(true)` on it to get the same behavior. Other clients buffer
+  a limited number of events and fail the response when the buffer is full.
+- **Error responses:** when the server answers with an error status, for example `404` for an expired
+  session, the JDK, OkHttp and Apache clients report it as soon as the response headers arrive. The
+  transport then fails the request, or starts a new session, right away. Other clients may report the
+  error only after they have read the whole response body.
+
+Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
+closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client
+between several transports, build it yourself and pass it with `.httpClient(client)`. The transport
+then never closes it, and you cannot set `timeout(...)` on the transport.
+
+#### Per-call context
+
+Some applications keep per-request information in thread-local context, for example a tracing span,
+the SLF4J MDC or a security context. The Streamable HTTP transport prepares requests and handles
+responses on other threads, so this context would normally be lost there.
+
+To keep it, register an `ExecutorProvider` that implements `captureContext()`, as described in
+[Controlling the executor and propagating context](./non-blocking.md#controlling-the-executor-and-propagating-context).
+The transport then captures the context of the thread that sends a request or initializes the
+connection. It restores that context while it prepares the request (including calling your
+`customHeaders(...)` supplier) and while it handles the response.
+Without such a provider, nothing is captured.
+
+Some work is not started by a request of yours. It uses the context captured when the connection
+was initialized:
+
+- the `notifications/initialized` message sent after initialization,
+- the automatic re-initialization after the server reports an expired session (a 404 response),
+- the subsidiary SSE channel and its reconnects.
+
+`DefaultMcpClient` initializes the connection when it is built, so build it in a context that is
+valid for the whole connection, not in the context of a single user request.
+
+The transport restores the context only for its own work. A custom HTTP client must propagate it
+across any threads it starts itself.
 
 For the WebSocket transport:
 ```java
@@ -335,9 +429,18 @@ so they are stored in the chat memory together with the message.
 Keep this in mind when the chat memory is persisted, and see
 [Tool Result Attributes](/tutorials/tools#tool-result-attributes) for more details.
 
-If the tool returns an application-level error, the call ends with a `ToolExecutionException`
-and the `_meta` of the failed response is not available.
-It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
+If the tool returns an application-level error (`"isError": true` in the tool result), the call ends with an
+`McpApplicationErrorException`, a subclass of `ToolExecutionException`, and the `_meta` of the failed response
+is not available. It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete
+raw response.
+
+An application-level error is how an MCP server tells the *model* that a tool did not succeed, so its text is
+written for the LLM. `McpApplicationErrorException` therefore implements `ToolErrorVisibleToLlm`: with a tool
+execution error handler that honors it, such as `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`,
+the server's text is sent to the LLM and it can react to it. With that handler, a protocol error, which means
+the call itself went wrong, fails the AI Service invocation, and so does an application-level error without
+any text, which is a plain `ToolExecutionException`.
+See [Error Handling](/tutorials/tools#error-handling).
 
 ### Tool parameters carried as HTTP headers
 
@@ -413,7 +516,7 @@ callback for received log messages. If you create your own implementation of
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
     .transport(transport)
-    .logMessageHandler(new MyLogMessageHandler())
+    .logHandler(new MyLogMessageHandler())
     .build();
 ```
 
@@ -541,6 +644,23 @@ long subId = mcpClient.subscribeToResources(List.of("file:///status", "file:///c
 // later, unsubscribe using the subscription ID
 mcpClient.unsubscribeFromResources(subId);
 ```
+
+The server has to confirm a subscription before it may send anything on it, so
+`subscribeToResources` blocks until that confirmation arrives. If the server rejects the
+subscription, declines the requested URIs, or stays silent, the call throws instead of
+returning a subscription ID that would never deliver anything. Use `resourcesTimeout` to
+control how long the client waits for the confirmation:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .resourcesTimeout(Duration.ofSeconds(10))  // default: 60 seconds
+    .build();
+```
+
+Because the call blocks, do not invoke it from inside an `onResourceUpdated` callback:
+those callbacks run on the thread that reads messages from the server, which is the same
+thread that would have to deliver the confirmation.
 
 For list-change notifications (tool list, prompt list, resource list changes),
 the client subscribes automatically by default. You can control this via

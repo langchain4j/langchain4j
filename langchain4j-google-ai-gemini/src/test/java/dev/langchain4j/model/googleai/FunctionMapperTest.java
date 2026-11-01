@@ -499,4 +499,19 @@ class FunctionMapperTest {
         return toString.replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
                 .replaceFirst(", \\)$", ")");
     }
+
+    @Test
+    void should_write_built_in_tools_as_empty_objects() {
+        GeminiTool tool = new GeminiTool(
+                null,
+                new GeminiTool.GeminiCodeExecution(),
+                new GeminiTool.GeminiGoogleSearchRetrieval(),
+                new GeminiTool.GeminiUrlContext(),
+                null);
+
+        assertThat(Json.toJsonWithoutIndent(tool))
+                .contains("\"codeExecution\":{}")
+                .contains("\"google_search\":{}")
+                .contains("\"urlContext\":{}");
+    }
 }

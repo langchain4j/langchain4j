@@ -63,7 +63,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
             }
         }
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         String deferLoadingKey = "defer_loading";
 
@@ -138,7 +138,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
             }
         }
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel chatModel = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

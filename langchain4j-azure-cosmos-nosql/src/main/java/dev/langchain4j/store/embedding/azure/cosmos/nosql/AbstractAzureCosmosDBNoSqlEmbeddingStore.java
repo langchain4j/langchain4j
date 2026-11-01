@@ -337,7 +337,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                             String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
 
                             // Run a reactive query to fetch the document by ID
-                            String query = String.format("SELECT * FROM c WHERE c.id = '%s'", id);
+                            SqlQuerySpec query =
+                                    new SqlQuerySpec("SELECT * FROM c WHERE c.id = @id", new SqlParameter("@id", id));
                             CosmosPagedFlux<JsonNode> queryFlux =
                                     this.container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
 
@@ -416,7 +417,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                         + "VectorDistance(c.%s, @embedding) as score FROM c",
                 embeddingField));
         if (request.filter() != null) {
-            queryBuilder.append(" AND").append(filterMapper.map(request.filter()));
+            queryBuilder.append(" WHERE ").append(filterMapper.map(request.filter()));
         }
         queryBuilder.append(String.format(" ORDER BY VectorDistance(c.%s, @embedding)", embeddingField));
 

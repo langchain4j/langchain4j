@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool.search.simple;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -178,8 +179,8 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
             if (e == null) throw new ToolArgumentsException(message);
             throw new ToolArgumentsException(message, e);
         } else {
-            if (e == null) throw new ToolExecutionException(message);
-            throw new ToolExecutionException(message, e);
+            if (e == null) throw new LlmVisibleToolExecutionException(message);
+            throw new LlmVisibleToolExecutionException(message, e);
         }
     }
 

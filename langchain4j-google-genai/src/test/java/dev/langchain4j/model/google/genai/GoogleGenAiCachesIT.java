@@ -30,7 +30,7 @@ class GoogleGenAiCachesIT {
 
         CachedContent created;
         try {
-            created = caches.createCache("gemini-2.5-flash", messages, Duration.ofMinutes(5));
+            created = caches.createCache("gemini-3.8-flash", messages, Duration.ofMinutes(5));
         } catch (ClientException e) {
             // explicit context caching is not offered on the free tier (storage limit = 0); skip there
             if (e.getMessage() != null && e.getMessage().contains("FreeTier")) {

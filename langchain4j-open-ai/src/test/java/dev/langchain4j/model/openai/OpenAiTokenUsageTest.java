@@ -1,9 +1,9 @@
 package dev.langchain4j.model.openai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiTokenUsageTest {
 
@@ -269,5 +269,91 @@ class OpenAiTokenUsageTest {
         assertThat(result.inputTokenCount()).isEqualTo(15); // null + 15 = 15
         assertThat(result.outputTokenCount()).isEqualTo(20); // 20 + null = 20
         assertThat(result.totalTokenCount()).isEqualTo(40); // null + 40 = 40
+    }
+
+    @Test
+    void should_add_cache_write_tokens() {
+        // given
+        OpenAiTokenUsage tokenUsage1 = OpenAiTokenUsage.builder()
+                .inputTokenCount(10)
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(5)
+                        .cacheWriteTokens(100)
+                        .build())
+                .build();
+
+        OpenAiTokenUsage tokenUsage2 = OpenAiTokenUsage.builder()
+                .inputTokenCount(15)
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(7)
+                        .cacheWriteTokens(200)
+                        .build())
+                .build();
+
+        // when
+        OpenAiTokenUsage result = tokenUsage1.add(tokenUsage2);
+
+        // then
+        assertThat(result.inputTokensDetails().cachedTokens()).isEqualTo(12);
+        assertThat(result.inputTokensDetails().cacheWriteTokens()).isEqualTo(300);
+    }
+
+    @Test
+    void should_keep_cache_write_tokens_null_when_neither_side_reports_it() {
+        // given
+        OpenAiTokenUsage tokenUsage1 = OpenAiTokenUsage.builder()
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(5)
+                        .build())
+                .build();
+
+        OpenAiTokenUsage tokenUsage2 = OpenAiTokenUsage.builder()
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(7)
+                        .build())
+                .build();
+
+        // when
+        OpenAiTokenUsage result = tokenUsage1.add(tokenUsage2);
+
+        // then
+        assertThat(result.inputTokensDetails().cacheWriteTokens()).isNull();
+    }
+
+    @Test
+    void should_add_cache_write_tokens_when_only_one_side_reports_it() {
+        // given
+        OpenAiTokenUsage tokenUsage1 = OpenAiTokenUsage.builder()
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cacheWriteTokens(1024)
+                        .build())
+                .build();
+
+        OpenAiTokenUsage tokenUsage2 = OpenAiTokenUsage.builder()
+                .inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                        .cachedTokens(7)
+                        .build())
+                .build();
+
+        // when
+        OpenAiTokenUsage result = tokenUsage1.add(tokenUsage2);
+
+        // then
+        assertThat(result.inputTokensDetails().cacheWriteTokens()).isEqualTo(1024);
+    }
+
+    @Test
+    void should_distinguish_input_token_details_by_cache_write_tokens() {
+        OpenAiTokenUsage.InputTokensDetails withCacheWriteTokens = OpenAiTokenUsage.InputTokensDetails.builder()
+                .cachedTokens(5)
+                .cacheWriteTokens(1024)
+                .build();
+        OpenAiTokenUsage.InputTokensDetails withoutCacheWriteTokens =
+                OpenAiTokenUsage.InputTokensDetails.builder().cachedTokens(5).build();
+
+        assertThat(withCacheWriteTokens)
+                .isNotEqualTo(withoutCacheWriteTokens)
+                .doesNotHaveSameHashCodeAs(withoutCacheWriteTokens)
+                .hasToString("OpenAiTokenUsage.InputTokensDetails { cachedTokens = 5, cacheWriteTokens = 1024 }");
     }
 }

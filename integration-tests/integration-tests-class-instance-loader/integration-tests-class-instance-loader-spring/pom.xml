@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-integration-tests-parent</artifactId>
-        <version>1.20.0-beta30-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -30,6 +30,14 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <!-- Imported first so that it wins over the Jackson version managed by the framework BOM below -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -49,7 +57,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

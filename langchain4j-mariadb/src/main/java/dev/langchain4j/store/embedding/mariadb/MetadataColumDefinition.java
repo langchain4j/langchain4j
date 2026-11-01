@@ -38,7 +38,7 @@ public record MetadataColumDefinition(String fullDefinition, String escapedName,
                     .substring(fieldName.length())
                     .trim()
                     .split(" ")[0]
-                    .toLowerCase();
+                    .toLowerCase(Locale.ROOT);
 
             if (!fieldName.startsWith("`") && sqlKeywords.contains(unescapedName.toLowerCase(Locale.ROOT))) {
                 // if field name is a reserved keywords, force quote

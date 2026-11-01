@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import dev.langchain4j.internal.ValidationUtils;
-
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -29,13 +29,14 @@ public class MetadataColumDefinition {
     public static MetadataColumDefinition from(String sqlDefinition) {
         String fullDefinition = ValidationUtils.ensureNotNull(sqlDefinition, "Metadata column definition");
         List<String> tokens = Arrays.stream(fullDefinition.split(" "))
-                .filter(s -> !s.isEmpty()).collect(Collectors.toList());
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
         if (tokens.size() < 2) {
-            throw new IllegalArgumentException("Definition format should be: column type" +
-                    " [ NULL | NOT NULL ] [ UNIQUE ] [ DEFAULT value ]");
+            throw new IllegalArgumentException(
+                    "Definition format should be: column type" + " [ NULL | NOT NULL ] [ UNIQUE ] [ DEFAULT value ]");
         }
         String name = tokens.get(0);
-        String type = tokens.get(1).toLowerCase();
+        String type = tokens.get(1).toLowerCase(Locale.ROOT);
         return new MetadataColumDefinition(fullDefinition, name, type);
     }
 

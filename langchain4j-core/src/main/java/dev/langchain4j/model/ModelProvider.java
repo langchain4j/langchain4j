@@ -19,5 +19,6 @@ public enum ModelProvider {
     COHERE,
     VOYAGE_AI,
     JINA,
+    TYPESAFE,
     OTHER
 }

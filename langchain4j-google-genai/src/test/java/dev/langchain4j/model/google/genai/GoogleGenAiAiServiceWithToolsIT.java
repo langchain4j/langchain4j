@@ -13,7 +13,7 @@ class GoogleGenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     protected List<ChatModel> models() {
         return Collections.singletonList(GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .temperature(0.0)
                 .build());
     }
@@ -21,5 +21,15 @@ class GoogleGenAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Override
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel chatModel) {
         // Disabled: Google Gen AI model sometimes struggles with correctly forming nested POJO arguments
+    }
+
+    @Override
+    protected boolean supportsRecursion() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportsMultimodalToolResults() {
+        return true;
     }
 }

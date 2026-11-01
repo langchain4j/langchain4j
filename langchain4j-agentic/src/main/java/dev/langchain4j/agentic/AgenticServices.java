@@ -1,20 +1,28 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCondition;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePredicate;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkNoDecisionSuppliers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureDecisionAgent;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParameterCount;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.isDecisionAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
@@ -31,19 +39,24 @@ import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -59,14 +72,18 @@ import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.decision.DecisionModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -128,6 +145,23 @@ public class AgenticServices {
      */
     public static <T> AgentBuilder<T, AgentBuilder<T, ?>> agentBuilder(Class<T> agentServiceClass) {
         return new AgentBuilder<>(agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for a decision agent: an agent whose implementation is a single call to a
+     * {@link DecisionModel} instead of a chat model. The agent is defined by a
+     * Decision Service interface whose method also carries {@link Agent @Agent}: its arguments are read from the
+     * {@link AgenticScope} and sent to the decision model as the input,
+     * its return type defines the question(s), and the typed answer is written to the output key. See
+     * {@link DecisionAgentBuilder} for the details.
+     *
+     * @param agentServiceClass the decision agent interface
+     * @return a new DecisionAgentBuilder instance
+     * @since 1.23.0
+     */
+    @Experimental
+    public static <T> DecisionAgentBuilder<T> decisionAgentBuilder(Class<T> agentServiceClass) {
+        return new DecisionAgentBuilder<>(agentServiceClass);
     }
 
     /**
@@ -266,7 +300,17 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static A2AClientBuilder<UntypedAgent> a2aBuilder(String a2aServerUrl) {
-        return a2aBuilder(a2aServerUrl, UntypedAgent.class);
+        return a2aBuilder(a2aServerUrl, (String) null);
+    }
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @param tenant the A2A agent tenant
+     * @return a new A2AClientBuilder instance
+     */
+    public static A2AClientBuilder<UntypedAgent> a2aBuilder(String a2aServerUrl, String tenant) {
+        return a2aBuilder(a2aServerUrl, tenant, UntypedAgent.class);
     }
 
     /**
@@ -278,18 +322,79 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.
+     * This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @param tenant the A2A agent tenant
+     * @param agentServiceClass the class of the agent service
+     * @return a new A2AClientBuilder instance
+     */
+    public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, String tenant, Class<T> agentServiceClass) {
+        return A2AService.get().a2aBuilder(a2aServerUrl, tenant, agentServiceClass);
     }
 
     public interface DeclarativeAgentCreationContext<T> {
         Class<T> agentServiceClass();
 
+        /**
+         * The builder of the AI agent being created, or {@code null} when it is a decision agent.
+         */
         AgentBuilder<T, ?> agentBuilder();
+
+        /**
+         * The builder of the decision agent being created, or {@code null} when it is an AI agent.
+         */
+        default DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return null;
+        }
     }
 
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
+    @Internal
+    public static final class DefaultDeclarativeDecisionAgentCreationContext<T>
+            implements DeclarativeAgentCreationContext<T> {
+
+        private final Class<T> agentServiceClass;
+        private final DecisionAgentBuilder<T> decisionAgentBuilder;
+
+        public DefaultDeclarativeDecisionAgentCreationContext(
+                Class<T> agentServiceClass, DecisionAgentBuilder<T> decisionAgentBuilder) {
+            this.agentServiceClass = agentServiceClass;
+            this.decisionAgentBuilder = decisionAgentBuilder;
+        }
+
+        @Override
+        public Class<T> agentServiceClass() {
+            return agentServiceClass;
+        }
+
+        @Override
+        public AgentBuilder<T, ?> agentBuilder() {
+            return null;
+        }
+
+        @Override
+        public DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return decisionAgentBuilder;
+        }
+    }
+
+    /**
+     * The hooks through which an integration takes part in the creation of a declarative agentic system.
+     * <p>
+     * The {@code configurator} is called for every agent of the system, AI agents and decision agents alike, with
+     * a {@link DeclarativeAgentCreationContext}. For an AI agent its {@code agentBuilder()} is set and its
+     * {@code decisionAgentBuilder()} is {@code null}, for a decision agent it is the other way round, so a
+     * configurator must check which builder it received before using it. The {@code agentInstanceFactory} is
+     * applied to both kinds of agents.
+     */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
@@ -298,8 +403,7 @@ public class AgenticServices {
 
         private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {});
 
-        public AgentConfigurator(
-                Consumer<DeclarativeAgentCreationContext<?>> configurator) {
+        public AgentConfigurator(Consumer<DeclarativeAgentCreationContext<?>> configurator) {
             this(configurator, null, null, null);
         }
 
@@ -361,6 +465,10 @@ public class AgenticServices {
                 return createA2AClient(agentServiceClass, a2aClientMethod.get());
             }
 
+            if (isDecisionAgent(agentServiceClass)) {
+                return createDecisionAgent(agentServiceClass, agentConfigurator);
+            }
+
             var agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
             configureAgent(agentServiceClass, chatModel, agentBuilder, agentConfigurator);
             agent = agentBuilder.build();
@@ -377,9 +485,11 @@ public class AgenticServices {
         return selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                                && method.getReturnType() == ChatModel.class
-                                && method.getParameterCount() == 0)
-                .map(method -> (ChatModel) invokeStatic(method))
+                                && frameworkParameterCount(agentServiceClass, method) == 0)
+                .map(method -> {
+                    checkReturnType(method, ChatModel.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class);
+                })
                 .orElse(null);
     }
 
@@ -436,8 +546,12 @@ public class AgenticServices {
     }
 
     private static void buildAgentSpecs(
-            Method agentMethod, String name, String description, String outputKey,
-            boolean compensateOnError, AgenticService<?, ?> builder) {
+            Method agentMethod,
+            String name,
+            String description,
+            String outputKey,
+            boolean compensateOnError,
+            AgenticService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
             builder.name(name);
         } else {
@@ -516,7 +630,7 @@ public class AgenticServices {
                     })
                     .ifPresent(method -> builder.subAgent(
                             method.getAnnotation(ActivationCondition.class).description(),
-                            agenticScopePredicate(method),
+                            agenticScopePredicate(agentServiceClass, method),
                             createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
@@ -713,7 +827,7 @@ public class AgenticServices {
 
         Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
         if (registryAgentMethod.isPresent()) {
-            return createRegistryAgent(registryAgentMethod.get());
+            return createRegistryAgent(agentServiceClass, registryAgentMethod.get());
         }
 
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
@@ -721,13 +835,21 @@ public class AgenticServices {
             return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
         }
 
+        if (isDecisionAgent(agentServiceClass)) {
+            return agentToExecutor(createDecisionAgent(agentServiceClass, agentConfigurator));
+        }
+
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
+                checkNoDecisionSuppliers(agentServiceClass);
+                ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, agenticMethod);
                 return nonAiAgentToExecutor(
                         new AgenticScopeFunction<>(scope -> invokeStatic(
                                 agenticMethod,
-                                agentInvocationArguments(scope, agenticMethod).positionalArgs())),
+                                parameters
+                                        .invocationArguments(scope, Map.of(), true)
+                                        .positionalArgs())),
                         agenticMethod);
             }
         }
@@ -735,11 +857,28 @@ public class AgenticServices {
         return null;
     }
 
+    private static <T> T createDecisionAgent(Class<T> agentServiceClass, AgentConfigurator agentConfigurator) {
+        DecisionAgentBuilder<T> builder = DecisionAgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
+        configureDecisionAgent(agentServiceClass, builder, agentConfigurator);
+        if (!builder.hasDecisionModel()) {
+            throw new AgenticSystemConfigurationException("DecisionModel not provided for the decision agent "
+                    + agentServiceClass.getName()
+                    + ". Please provide one with a static method annotated with @DecisionModelSupplier.");
+        }
+        return builder.build();
+    }
+
     private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
     }
 
-    private static AgentExecutor createRegistryAgent(Method registryMethod) {
+    private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
+        if (activationCondition(agentServiceClass) != null) {
+            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
+                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
+                    + "Set the activation condition when building the agent registered as '"
+                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+        }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
         return agentToExecutor(agent);
@@ -748,24 +887,30 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
-        var a2aClientBuilder = a2aBuilder(a2aServerUrl, agentServiceClass)
+        // checked before creating the builder, which fetches the agent card from the server
+        Optional<ResolvedParameters> customizer = selectMethod(
+                        agentServiceClass, method -> method.isAnnotationPresent(A2AClientCustomizer.class))
+                .map(method -> ResolvedParameters.of(agentServiceClass, method).checkFrameworkParameters(Object.class));
+        var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
+
+        a2aClientBuilder
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
-
-        selectMethod(agentServiceClass,
-                     method ->
-                                method.isAnnotationPresent(A2AClientCustomizer.class)
-                                        && method.getParameterCount() == 1)
-                .ifPresent(method ->
-                        a2aClientBuilder.clientCustomizer( cb -> invokeStatic(method, cb)));
+        AgentCondition a2aActivationCondition = activationCondition(agentServiceClass);
+        if (a2aActivationCondition != null) {
+            a2aClientBuilder.activationCondition(
+                    a2aActivationCondition.description(), a2aActivationCondition.predicate());
+        }
+        customizer.ifPresent(parameters -> a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
                     checkReturnType(method, AgentListener.class);
-                    a2aClientBuilder.listener(invokeStatic(method));
+                    a2aClientBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, method, AgentListener.class));
                 });
 
         return a2aClientBuilder.build();
@@ -773,8 +918,8 @@ public class AgenticServices {
 
     private static String resolveA2AServerUrl(Class<?> agentServiceClass, A2AClientAgent a2aClient) {
         String annotationUrl = a2aClient.a2aServerUrl();
-        Optional<Method> supplierMethod = selectMethod(agentServiceClass,
-                method -> method.isAnnotationPresent(A2AServerUrlSupplier.class) && method.getParameterCount() == 0);
+        Optional<Method> supplierMethod =
+                selectMethod(agentServiceClass, method -> method.isAnnotationPresent(A2AServerUrlSupplier.class));
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(
@@ -783,7 +928,7 @@ public class AgenticServices {
 
         if (supplierMethod.isPresent()) {
             checkReturnType(supplierMethod.get(), String.class);
-            return invokeStatic(supplierMethod.get());
+            return invokeSupplierWithResolvers(agentServiceClass, supplierMethod.get(), String.class);
         }
 
         if (!isNullOrBlank(annotationUrl)) {
@@ -799,9 +944,11 @@ public class AgenticServices {
 
         Object mcpClient = selectMethod(
                         agentServiceClass,
-                        method ->
-                                method.isAnnotationPresent(McpClientSupplier.class) && method.getParameterCount() == 0)
-                .map(method -> invokeStatic(method))
+                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                .map(method -> {
+                    checkReturnType(method, Object.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
+                })
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
@@ -814,20 +961,28 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
+        AgentCondition mcpActivationCondition = activationCondition(agentServiceClass);
+        if (mcpActivationCondition != null) {
+            mcpClientBuilder.activationCondition(
+                    mcpActivationCondition.description(), mcpActivationCondition.predicate());
+        }
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
                     checkReturnType(method, AgentListener.class);
-                    mcpClientBuilder.listener(invokeStatic(method));
+                    mcpClientBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, method, AgentListener.class));
                 });
 
         return agentToExecutor(mcpClientBuilder.build());
     }
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
+        checkNoDecisionSuppliers(agentServiceClass);
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
 
-        List<AgentArgument> methodArguments = argumentsFromMethod(method).stream()
+        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
+        List<AgentArgument> methodArguments = parameters.frameworkArguments().stream()
                 .filter(arg -> !arg.name().startsWith("@"))
                 .toList();
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
@@ -836,17 +991,24 @@ public class AgenticServices {
                 .async(humanInTheLoop.async())
                 .inputs(methodArguments.isEmpty() ? null : methodArguments)
                 .responseProvider(scope -> invokeStatic(
-                        method, agentInvocationArguments(scope, method).positionalArgs()));
+                        method,
+                        parameters.invocationArguments(scope, Map.of(), true).positionalArgs()));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(listenerMethod -> {
                     checkReturnType(listenerMethod, AgentListener.class);
-                    humanInTheLoopBuilder.listener(invokeStatic(listenerMethod));
+                    humanInTheLoopBuilder.listener(
+                            invokeSupplierWithResolvers(agentServiceClass, listenerMethod, AgentListener.class));
                 });
 
         String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
         AgentInvoker agentInvoker = nonAiAgentInvoker(
-                method, name, humanInTheLoop.description(), humanInTheLoop.outputKey(), humanInTheLoop.async());
+                parameters,
+                name,
+                humanInTheLoop.description(),
+                humanInTheLoop.outputKey(),
+                humanInTheLoop.async(),
+                activationCondition(agentServiceClass));
         return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }
 
@@ -928,8 +1090,169 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * Creates a builder for a non-AI agent whose logic is a function of the {@link AgenticScope}. Unlike an
+     * {@link #agentAction(AgenticScopeAction.NonThrowingConsumer) agentAction}, the resulting agent can be given a
+     * name, a description, typed input keys and an output key, so that it can also be used as a subagent of a
+     * supervisor or of any other planner that relies on this metadata.
+     *
+     * @param function the function computing the agent's result from the AgenticScope
+     * @return a new NonAiAgentBuilder instance
+     */
+    public static <T> NonAiAgentBuilder<T> nonAiAgentBuilder(
+            AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function) {
+        return new NonAiAgentBuilder<>(function);
+    }
+
+    public static class NonAiAgentBuilder<T> {
+        private final AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function;
+        private String name;
+        private String description = "";
+        private List<AgentArgument> inputs = List.of();
+        private String outputKey;
+        private Type outputType = Object.class;
+        private boolean async;
+        private AgentListener listener;
+        private AgentCondition activationCondition;
+
+        private NonAiAgentBuilder(AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function) {
+            this.function = function;
+        }
+
+        /**
+         * Sets the agent name used for identification in multi-agent systems. If not set, the name of the
+         * {@link AgenticScopeFunction#accept(AgenticScope)} method is used, as for an agentAction.
+         */
+        public NonAiAgentBuilder<T> name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * Sets a human-readable description of what this agent does, used by planners and orchestrators.
+         */
+        public NonAiAgentBuilder<T> description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        /**
+         * Declares the keys of the AgenticScope that this agent reads. Before invoking the function, each input is
+         * read from the AgenticScope, converted to its declared type and written back, so that the function can
+         * read it with the expected type. If an input without default value is missing the invocation fails with a
+         * {@link dev.langchain4j.agentic.agent.MissingArgumentException}.
+         */
+        public NonAiAgentBuilder<T> inputs(AgentArgument... inputs) {
+            this.inputs = List.of(inputs);
+            return this;
+        }
+
+        public NonAiAgentBuilder<T> inputKey(Class<?> type, String name) {
+            return inputs(new AgentArgument(type, name));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(Class<?> type1, String name1, Class<?> type2, String name2) {
+            return inputs(new AgentArgument(type1, name1), new AgentArgument(type2, name2));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(
+                Class<?> type1, String name1, Class<?> type2, String name2, Class<?> type3, String name3) {
+            return inputs(
+                    new AgentArgument(type1, name1), new AgentArgument(type2, name2), new AgentArgument(type3, name3));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(
+                Class<?> type1,
+                String name1,
+                Class<?> type2,
+                String name2,
+                Class<?> type3,
+                String name3,
+                Class<?> type4,
+                String name4) {
+            return inputs(
+                    new AgentArgument(type1, name1),
+                    new AgentArgument(type2, name2),
+                    new AgentArgument(type3, name3),
+                    new AgentArgument(type4, name4));
+        }
+
+        /**
+         * Sets the key under which this agent's result is stored in the {@link AgenticScope}.
+         */
+        public NonAiAgentBuilder<T> outputKey(String outputKey) {
+            this.outputKey = outputKey;
+            return this;
+        }
+
+        /**
+         * Sets the output key using a {@link TypedKey} class for type-safe scope access.
+         */
+        public NonAiAgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
+            return outputKey(keyName(outputKey));
+        }
+
+        /**
+         * Sets the type of the result produced by this agent. Since the generic type of the function is erased at
+         * runtime, it defaults to {@link Object}.
+         */
+        public NonAiAgentBuilder<T> outputType(Type outputType) {
+            this.outputType = outputType;
+            return this;
+        }
+
+        /**
+         * Controls whether this agent executes asynchronously within an agentic system.
+         */
+        public NonAiAgentBuilder<T> async(boolean async) {
+            this.async = async;
+            return this;
+        }
+
+        /**
+         * Adds a listener notified of this agent's invocations.
+         */
+        public NonAiAgentBuilder<T> listener(AgentListener listener) {
+            this.listener = ComposedAgentListener.compose(this.listener, listener);
+            return this;
+        }
+
+        /**
+         * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system.
+         * When the condition is false the agent is skipped, without writing anything to the {@link AgenticScope}.
+         * It can be evaluated more than once, so it must be free of side effects.
+         */
+        public NonAiAgentBuilder<T> activationCondition(Predicate<AgenticScope> activationCondition) {
+            return activationCondition("<unknown>", activationCondition);
+        }
+
+        /**
+         * Sets the condition, with its description, under which this agent runs when it is invoked as a subagent of
+         * an agentic system. When the condition is false the agent is skipped, without writing anything to the
+         * {@link AgenticScope}. It can be evaluated more than once, so it must be free of side effects.
+         */
+        public NonAiAgentBuilder<T> activationCondition(
+                String description, Predicate<AgenticScope> activationCondition) {
+            this.activationCondition = new AgentCondition(description, activationCondition);
+            return this;
+        }
+
+        public AgenticScopeFunction<T> build() {
+            return new AgenticScopeFunction<>(
+                    function, name, description, inputs, outputKey, outputType, async, listener, activationCondition);
+        }
+    }
+
     public static class AgenticScopeFunction<T> {
         private final NonThrowingFunction<AgenticScope, T> function;
+        private final String name;
+        private final String description;
+        private final List<AgentArgument> inputs;
+        private final String outputKey;
+        private final Type outputType;
+        private final boolean async;
+        private final AgentListener listener;
+        private final AgentCondition activationCondition;
 
         @FunctionalInterface
         public interface NonThrowingFunction<A, B> {
@@ -937,7 +1260,28 @@ public class AgenticServices {
         }
 
         private AgenticScopeFunction(NonThrowingFunction<AgenticScope, T> function) {
+            this(function, null, "", List.of(), null, Object.class, false, null, null);
+        }
+
+        private AgenticScopeFunction(
+                NonThrowingFunction<AgenticScope, T> function,
+                String name,
+                String description,
+                List<AgentArgument> inputs,
+                String outputKey,
+                Type outputType,
+                boolean async,
+                AgentListener listener,
+                AgentCondition activationCondition) {
             this.function = function;
+            this.name = name;
+            this.description = description;
+            this.inputs = inputs;
+            this.outputKey = outputKey;
+            this.outputType = outputType;
+            this.async = async;
+            this.listener = listener;
+            this.activationCondition = activationCondition;
         }
 
         @Agent
@@ -947,6 +1291,38 @@ public class AgenticServices {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public String description() {
+            return description;
+        }
+
+        public List<AgentArgument> inputs() {
+            return inputs;
+        }
+
+        public String outputKey() {
+            return outputKey;
+        }
+
+        public Type outputType() {
+            return outputType;
+        }
+
+        public boolean async() {
+            return async;
+        }
+
+        public AgentListener listener() {
+            return listener;
+        }
+
+        public AgentCondition activationCondition() {
+            return activationCondition;
         }
     }
 }

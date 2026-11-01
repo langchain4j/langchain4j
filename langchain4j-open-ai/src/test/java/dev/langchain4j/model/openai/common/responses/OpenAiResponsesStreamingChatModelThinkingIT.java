@@ -138,7 +138,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -205,7 +205,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

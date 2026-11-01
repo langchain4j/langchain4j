@@ -23,7 +23,7 @@ class ParsingUtils {
         }
 
         if (isJsonObject(text)) {
-            Map<?, ?> map = Json.fromJson(text, Map.class);
+            Map<?, ?> map = parseJsonObjectOrThrow(text, type.getTypeName());
             if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type);
             }
@@ -51,7 +51,7 @@ class ParsingUtils {
                 return parseCollectionValues(values, parser, emptyCollectionSupplier, type);
             }
         } else if (isJsonObject(text)) {
-            Map<?, ?> map = Json.fromJson(text, Map.class);
+            Map<?, ?> map = parseJsonObjectOrThrow(text, type);
             if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type, null);
             }
@@ -65,6 +65,15 @@ class ParsingUtils {
         }
 
         return parseLines(text, parser, emptyCollectionSupplier, type);
+    }
+
+    private static Map<?, ?> parseJsonObjectOrThrow(String text, String type) {
+        try {
+            return Json.fromJson(text, Map.class);
+        } catch (RuntimeException e) {
+            // unlike a JSON array, text that opens with "{" and does not parse is unusable, so there is no fallback
+            throw outputParsingException(text, type, e);
+        }
     }
 
     private static Collection<?> parseJsonArrayOrNull(String text) {

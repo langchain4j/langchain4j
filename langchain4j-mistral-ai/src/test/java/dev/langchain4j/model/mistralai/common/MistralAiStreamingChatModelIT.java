@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai.common;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
 
@@ -20,8 +21,13 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName("mistral-medium-2508")
+            .modelName(MISTRAL_LARGE_LATEST)
+            // Without a cap, some tool-calling prompts send the model into a repetition loop that runs
+            // until it errors out, burning thousands of output tokens. 2000 is far above what any
+            // passing test needs.
+            .maxTokens(2000)
             .temperature(0.0)
+            .strictJsonSchema(true)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
@@ -48,7 +54,9 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "mistral-small-latest";
+        // Must differ from the model above, and must be a name Mistral echoes back unchanged:
+        // retired ids such as mistral-medium-2508 are silently served by their successor.
+        return "ministral-8b-latest";
     }
 
     @Override

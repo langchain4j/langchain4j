@@ -1,6 +1,7 @@
 package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
@@ -80,7 +81,8 @@ public class ToolSpecifications {
      */
     public static List<ToolSpecification> toolSpecificationsFrom(Class<?> classWithTools) {
         List<ToolSpecification> toolSpecifications = allConcreteMethods(classWithTools).stream()
-                .filter(method -> method.isAnnotationPresent(Tool.class))
+                .map(method -> getAnnotatedMethod(method, Tool.class))
+                .flatMap(Optional::stream)
                 .map(ToolSpecifications::toolSpecificationFrom)
                 .collect(toList());
         validateSpecifications(toolSpecifications);
@@ -126,14 +128,35 @@ public class ToolSpecifications {
     public static ToolSpecification toolSpecificationFrom(Method method) {
         Tool tool = method.getAnnotation(Tool.class);
         return ToolSpecification.builder()
-                .name(getName(tool, method))
+                .name(toolNameFrom(method))
                 .description(getDescription(tool))
                 .parameters(parametersFrom(method.getParameters()))
                 .metadata(getMetadata(tool))
                 .build();
     }
 
-    private static String getName(Tool tool, Method method) {
+    /**
+     * Returns the name under which the given method is exposed to the LLM.
+     * <p>
+     * A tool is named after the Java method that implements it:
+     * <pre>{@code
+     * @Tool
+     * String currentTime() { ... } // the LLM sees a tool named "currentTime"
+     * }</pre>
+     * unless the {@link Tool#name()} attribute is set, in which case that name is used instead:
+     * <pre>{@code
+     * @Tool(name = "current_time")
+     * String currentTime() { ... } // the LLM sees a tool named "current_time"
+     * }</pre>
+     * This is the name the LLM uses when it asks for the tool to be executed, so it is also
+     * the name carried by the resulting {@link ToolExecutionRequest}.
+     *
+     * @param method the method annotated with @{@link Tool}.
+     * @return the name of the tool.
+     * @since 1.21.0
+     */
+    public static String toolNameFrom(Method method) {
+        Tool tool = method.getAnnotation(Tool.class);
         return isNullOrBlank(tool.name()) ? method.getName() : tool.name();
     }
 

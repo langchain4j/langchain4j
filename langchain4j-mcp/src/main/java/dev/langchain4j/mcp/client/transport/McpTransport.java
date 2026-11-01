@@ -1,12 +1,24 @@
 package dev.langchain4j.mcp.client.transport;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * The transport contract between the MCP client and a server connection.
+ *
+ * <p>Responses cross this interface as unparsed JSON text, so that a transport does not need a JSON
+ * library. A transport registers each request it sends with
+ * {@link McpOperationHandler#expectResponse(Long, CompletableFuture)} and passes every message it
+ * receives to {@link McpOperationHandler#onMessage(String)}.
+ *
+ * <p>Besides the lifecycle methods, a transport implements three methods:
+ * {@link #sendInitializeRequest(McpInitializeRequest)}, {@link #sendRequest(McpCallContext)} and
+ * {@link #sendMessage(McpCallContext)}. The overloads that take a bare {@link McpClientMessage}
+ * wrap it in a {@link McpCallContext} without per-call headers or {@code _meta}.
+ */
 public interface McpTransport extends Closeable {
 
     /**
@@ -16,36 +28,42 @@ public interface McpTransport extends Closeable {
     void start(McpOperationHandler messageHandler);
 
     /**
-     * Sends the "initialize" message to the MCP server to negotiate
-     * capabilities, supported protocol version etc. When this method
-     * returns successfully, the transport is fully initialized and ready to
-     * be used. This has to be called AFTER the "start" method.
-     * Only used with the legacy MCP protocol (versions up to 2025-11-25).
-     * Modern protocol uses {@code server/discover} instead.
+     * Sends the MCP {@code InitializeRequest} and returns the server's response as unparsed JSON
+     * text, so that a transport does not need a JSON library. This has to be called AFTER the
+     * "start" method; when it returns successfully, the transport is ready to be used. Only used
+     * with the legacy MCP protocol (versions up to 2025-11-25); the modern protocol uses
+     * {@code server/discover}.
      */
-    CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
+    CompletableFuture<String> sendInitializeRequest(McpInitializeRequest request);
 
     /**
-     * Executes an operation that expects a response from the server.
+     * Sends a JSON-RPC request and returns the server's response as unparsed JSON text. The context
+     * carries the message and its per-call headers and {@code _meta}, which the transport applies.
      */
-    CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
+    CompletableFuture<String> sendRequest(McpCallContext context);
 
     /**
-     * Executes an operation that expects a response from the server.
+     * Sends a JSON-RPC request that carries no per-call headers or {@code _meta}, and returns the
+     * server's response as unparsed JSON text.
      */
-    CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context);
+    default CompletableFuture<String> sendRequest(McpClientMessage request) {
+        return sendRequest(new McpCallContext(null, request));
+    }
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * Sends a message that does not expect a reply - in MCP terms a notification, or a
+     * response to a server-initiated request. The context carries the message and its per-call
+     * headers and {@code _meta}, which the transport applies.
      */
-    void executeOperationWithoutResponse(McpClientMessage request);
+    void sendMessage(McpCallContext context);
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * Sends a message that does not expect a reply and carries no per-call headers or
+     * {@code _meta}.
      */
-    void executeOperationWithoutResponse(McpCallContext context);
+    default void sendMessage(McpClientMessage request) {
+        sendMessage(new McpCallContext(null, request));
+    }
 
     /**
      * Performs transport-specific health checks, if applicable. This is called

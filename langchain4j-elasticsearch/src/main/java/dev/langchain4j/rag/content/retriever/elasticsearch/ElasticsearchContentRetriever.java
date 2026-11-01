@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.retriever.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -68,11 +69,23 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
             final int maxResults,
             final double minScore,
             final Filter filter) {
+        this(configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter, null);
+    }
+
+    private ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            RestClient restClient,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            final int maxResults,
+            final double minScore,
+            final Filter filter,
+            final Refresh refresh) {
         this.embeddingModel = embeddingModel;
         this.maxResults = maxResults;
         this.minScore = minScore;
         this.filter = filter;
-        this.initialize(configuration, restClient, indexName);
+        this.initialize(configuration, restClient, indexName, refresh);
     }
 
     /**
@@ -95,11 +108,23 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
             final int maxResults,
             final double minScore,
             final Filter filter) {
+        this(configuration, client, indexName, embeddingModel, maxResults, minScore, filter, null);
+    }
+
+    private ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            final int maxResults,
+            final double minScore,
+            final Filter filter,
+            final Refresh refresh) {
         this.embeddingModel = embeddingModel;
         this.maxResults = maxResults;
         this.minScore = minScore;
         this.filter = filter;
-        this.initialize(configuration, client, indexName);
+        this.initialize(configuration, client, indexName, refresh);
     }
 
     @Override
@@ -162,6 +187,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         private int maxResults = DEFAULT_MAX_RESULTS;
         private double minScore;
         private Filter filter;
+        private Refresh refresh;
 
         /**
          * @param restClient Elasticsearch RestClient.
@@ -221,15 +247,29 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
             return this;
         }
 
+        /**
+         * Controls when documents written or removed by ID become visible to search.
+         * Searches and filtered removal are not affected.
+         *
+         * @param refresh {@link Refresh#False} (default) leaves refreshing to Elasticsearch,
+         *                {@link Refresh#True} refreshes immediately after the request, and
+         *                {@link Refresh#WaitFor} waits for a refresh before the request returns.
+         * @return builder
+         */
+        public Builder refresh(Refresh refresh) {
+            this.refresh = refresh;
+            return this;
+        }
+
         public ElasticsearchContentRetriever build() {
             if (client != null) {
                 return new ElasticsearchContentRetriever(
-                        configuration, client, indexName, embeddingModel, maxResults, minScore, filter);
+                        configuration, client, indexName, embeddingModel, maxResults, minScore, filter, refresh);
             }
             log.warn(
                     "Using RestClient is deprecated and will be removed in future versions. Please use Elasticsearch Client instead (see client() method).");
             return new ElasticsearchContentRetriever(
-                    configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter);
+                    configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter, refresh);
         }
     }
 }

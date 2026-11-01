@@ -197,6 +197,13 @@ public interface McpClientListener {
     default void afterResourcesSubscribe(McpCallContext context, long subscriptionId, List<String> uris) {}
 
     /**
+     * Called when subscribing to resources fails, either because the server rejected the
+     * {@code subscriptions/listen} request or because it never acknowledged it in time.
+     * Only used with MCP protocol 2026-07-28 and later.
+     */
+    default void onResourcesSubscribeError(McpCallContext context, Throwable error) {}
+
+    /**
      * Called before unsubscribing from resources via subscription ID.
      * Only used with MCP protocol 2026-07-28 and later.
      *
@@ -317,6 +324,14 @@ public interface McpClientListener {
     default void onNotificationCancelled(long requestId, String reason) {}
 
     // ========== Server-initiated requests ==========
+
+    /**
+     * Called when the server sends a request or a notification to the client, before the client handles it.
+     * Called for every such message, in addition to the more specific callbacks for the known ones
+     * (for example {@link #onNotificationResourceUpdated(String)}), and unlike them, it gives access to the whole
+     * message, including its JSON-RPC ID and {@code _meta}.
+     */
+    default void onServerMessage(McpServerMessageContext context) {}
 
     /**
      * Called when the server sends a {@code ping} request and the client responds.

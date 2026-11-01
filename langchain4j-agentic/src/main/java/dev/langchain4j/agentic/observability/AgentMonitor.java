@@ -115,14 +115,7 @@ public class AgentMonitor implements AgentListener {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
-        if (execution.done()) {
-            ongoingExecutions.remove(memoryId, execution);
-            synchronized (successfulExecutions) {
-                successfulExecutions
-                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
-                        .add(execution);
-            }
-        }
+        finalizeExecution(memoryId, execution);
     }
 
     @Override
@@ -131,13 +124,37 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            if (execution.ongoingInvocations().isEmpty()) {
-                ongoingExecutions.remove(memoryId, execution);
-                synchronized (failedExecutions) {
-                    failedExecutions
-                            .computeIfAbsent(memoryId, k -> new ArrayList<>())
-                            .add(execution);
-                }
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    @Override
+    public void onAgentSkipped(AgentSkipped agentSkipped) {
+        MonitoredExecution execution =
+                ongoingExecutions.get(agentSkipped.agenticScope().memoryId());
+        if (execution != null) {
+            execution.onAgentSkipped(agentSkipped);
+        }
+    }
+
+    private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+        if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
+            return;
+        }
+        if (!ongoingExecutions.remove(memoryId, execution)) {
+            return;
+        }
+        if (execution.done()) {
+            synchronized (successfulExecutions) {
+                successfulExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
+        } else {
+            synchronized (failedExecutions) {
+                failedExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
             }
         }
     }
