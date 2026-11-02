@@ -874,10 +874,10 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             // and score is in the range [0..1] with 1 being a perfect match,
             // so transform the minScore to cosine distance with `2 - 2 * minScore`
             case COSINE -> 2d - 2d * score;
-            // Inner product is in the range [-infinity..infinity] with higher values being a better match,
-            // so use the inverse sigmoid function to turn the score back to a distance
-            case INNER_PRODUCT -> Math.log(score) - Math.log(1d - score);
-            case NEGATIVE_INNER_PRODUCT -> -(Math.log(score) - Math.log(1d - score));
+            // Inner product is in the range [-1..1] for normalized embeddings with higher values being a better match,
+            // so transform the minScore to inner product with `2 * minScore - 1`
+            case INNER_PRODUCT -> 2d * score - 1d;
+            case NEGATIVE_INNER_PRODUCT -> 1d - 2d * score;
             // Other distance metrics are a better match the lower the value is,
             // so use the inverse of the distance + 1 as score
             case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / score - 1d;
@@ -890,10 +890,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             // and score is in the range [0..1] with 1 being a perfect match,
             // so transform the distance to a score with `1 - (distance / 2)`
             case COSINE -> 1d - (distance / 2d);
-            // Inner product is in the range [-infinity..infinity] with higher values being a better match,
-            // so use the sigmoid function to turn this into a score
-            case INNER_PRODUCT -> 1d / (1d + Math.exp(-distance));
-            case NEGATIVE_INNER_PRODUCT -> 1d / (1d + Math.exp(distance));
+            // Inner product is in the range [-1..1] for normalized embeddings with higher values being a better match,
+            // so transform it to a score with `(1 + distance) / 2`, which is the cosine score for normalized embeddings.
+            // Embeddings that are not normalized can go beyond that range, so the score is limited to [0..1]
+            case INNER_PRODUCT -> Math.min(1d, Math.max(0d, (1d + distance) / 2d));
+            case NEGATIVE_INNER_PRODUCT -> Math.min(1d, Math.max(0d, (1d - distance) / 2d));
             // Other distance metrics are a better match the lower the value is,
             // so use the inverse of the distance + 1 as score
             case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / (1d + distance);

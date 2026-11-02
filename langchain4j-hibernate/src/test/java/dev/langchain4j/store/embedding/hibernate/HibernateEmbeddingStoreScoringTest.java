@@ -25,6 +25,7 @@ import org.hibernate.query.criteria.JpaOrder;
 import org.hibernate.query.criteria.JpaParameterExpression;
 import org.hibernate.query.criteria.JpaPath;
 import org.hibernate.query.criteria.JpaRoot;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -74,17 +75,40 @@ class HibernateEmbeddingStoreScoringTest {
         }
     }
 
+    @Test
+    void should_score_inner_product_like_cosine_for_normalized_embeddings() throws Exception {
+        final HibernateEmbeddingStore<?> store = store();
+
+        for (double innerProduct : new double[] {-1d, -0.5d, 0d, 0.3d, 0.8d, 1d}) {
+            // For normalized embeddings, the cosine distance is 1 - inner product
+            final double cosineScore = scoreFromDistance(store, 1d - innerProduct, DistanceFunction.COSINE);
+
+            assertThat(scoreFromDistance(store, innerProduct, DistanceFunction.INNER_PRODUCT))
+                    .isCloseTo(cosineScore, offset(1e-9d));
+            assertThat(scoreFromDistance(store, -innerProduct, DistanceFunction.NEGATIVE_INNER_PRODUCT))
+                    .isCloseTo(cosineScore, offset(1e-9d));
+        }
+    }
+
+    @Test
+    void should_limit_the_inner_product_score_for_embeddings_that_are_not_normalized() throws Exception {
+        final HibernateEmbeddingStore<?> store = store();
+
+        assertThat(scoreFromDistance(store, 3d, DistanceFunction.INNER_PRODUCT)).isEqualTo(1d);
+        assertThat(scoreFromDistance(store, -3d, DistanceFunction.INNER_PRODUCT)).isEqualTo(0d);
+        assertThat(scoreFromDistance(store, -3d, DistanceFunction.NEGATIVE_INNER_PRODUCT))
+                .isEqualTo(1d);
+        assertThat(scoreFromDistance(store, 3d, DistanceFunction.NEGATIVE_INNER_PRODUCT))
+                .isEqualTo(0d);
+    }
+
     @ParameterizedTest
-    @EnumSource(
-            value = DistanceFunction.class,
-            names = {"INNER_PRODUCT", "NEGATIVE_INNER_PRODUCT"})
-    void should_never_reach_a_perfect_score_for_an_unbounded_distance(DistanceFunction distanceFunction)
+    @EnumSource(DistanceFunction.class)
+    void should_translate_a_perfect_min_score_to_a_finite_distance(DistanceFunction distanceFunction)
             throws Exception {
         final HibernateEmbeddingStore<?> store = store();
 
-        // Documented on DistanceFunction: the inner product is mapped with a sigmoid, so a minimum score
-        // of exactly 1 asks for a distance no result can reach
-        assertThat(scoreToDistance(store, 1d, distanceFunction)).isInfinite();
+        assertThat(scoreToDistance(store, 1d, distanceFunction)).isFinite();
     }
 
     @ParameterizedTest

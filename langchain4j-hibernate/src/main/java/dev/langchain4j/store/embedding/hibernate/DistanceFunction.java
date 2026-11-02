@@ -35,17 +35,18 @@ public enum DistanceFunction {
     /**
      * The INNER_PRODUCT distance function.
      * <p>
-     * Unlike the other distance functions, the inner product is unbounded, so it cannot be mapped onto the
-     * {@code 0..1} relevance score that a search result reports in a linear way. A sigmoid function is used instead,
-     * which means a score of exactly {@code 1} is never reached: searching with a minimum score of {@code 1} always
-     * returns no results. Use a value below {@code 1}, for example {@code 0.9}.
+     * The score of a match is {@code (1 + inner product) / 2}. Most embedding models return normalized embeddings
+     * (with a length of {@code 1}). For those, this is the same score as with {@link #COSINE}.
+     * <p>
+     * For embeddings that are not normalized, the inner product can be above {@code 1} or below {@code -1}.
+     * The score is then limited to {@code 1} or {@code 0}, so several matches can have the same score.
+     * The matches are still ordered by their inner product.
      */
     INNER_PRODUCT,
     /**
      * The NEGATIVE_INNER_PRODUCT distance function.
      * <p>
-     * The same score mapping as for {@link #INNER_PRODUCT} applies, so a minimum score of exactly {@code 1} also
-     * returns no results here.
+     * The score of a match is computed from the inner product in the same way as for {@link #INNER_PRODUCT}.
      */
     NEGATIVE_INNER_PRODUCT,
     /**
