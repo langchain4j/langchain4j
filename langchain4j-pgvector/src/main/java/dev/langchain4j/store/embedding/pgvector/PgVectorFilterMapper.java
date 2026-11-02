@@ -10,8 +10,10 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -156,6 +158,12 @@ abstract class PgVectorFilterMapper {
     abstract String formatKeyAsString(String key);
 
     private static String formatValue(Object value, List<String> parameters) {
+        if (value instanceof Timestamp || (value != null && value.getClass() == Date.class)) {
+            throw new UnsupportedOperationException(format(
+                    "Unsupported filter value type: %s. Its text is not ISO-8601, so it never matches a stored date."
+                            + " Use a java.time type (for example Instant or LocalDateTime) or a String instead",
+                    value.getClass().getName()));
+        }
         parameters.add(String.valueOf(value));
         return "?";
     }
