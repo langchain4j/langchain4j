@@ -58,10 +58,13 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 throw e;
             }
             case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
-            case RETURN_RESULT ->
-                plannerAlreadyNotified
-                        ? recoveryResult.result()
-                        : completeAgentInvocation(recoveryResult.result(), agenticScope, invokedAgent, planner, args);
+            case RETURN_RESULT -> {
+                if (plannerAlreadyNotified) {
+                    yield recoveryResult.result();
+                }
+                agenticScope.registerContext(agentInvoker, invokedAgent, null, recoveryResult.result());
+                yield completeAgentInvocation(recoveryResult.result(), agenticScope, planner, args);
+            }
         };
     }
 
@@ -87,7 +90,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             }
 
             Object response = agentResponse(agenticScope, invokedAgent, planner, args, async);
-            return completeAgentInvocation(response, agenticScope, invokedAgent, planner, args);
+            return completeAgentInvocation(response, agenticScope, planner, args);
         } catch (AgenticSystemSuspendedException e) {
             if (planner != null) {
                 planner.onSubagentSuspended();
@@ -126,11 +129,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     private Object completeAgentInvocation(
-            Object response,
-            DefaultAgenticScope agenticScope,
-            Object invokedAgent,
-            PlannerExecutor planner,
-            AgentInvocationArguments args) {
+            Object response, DefaultAgenticScope agenticScope, PlannerExecutor planner, AgentInvocationArguments args) {
         ActivationConditions.clearActivation(this, agenticScope);
         String outputKey = agentInvoker.outputKey();
         if (outputKey != null && !outputKey.isBlank()) {
@@ -141,7 +140,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         Map<String, Object> namedArgs = args != null ? args.namedArgs() : Map.of();
         AgentInvocation agentInvocation = new AgentInvocation(
                 type(), name(), agentId(), namedArgs, isSerializable(response) ? response : "<unknown>");
-        agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
+        agenticScope.registerAgentInvocation(agentInvocation);
         if (planner != null) {
             planner.onSubagentInvoked(agentInvocation);
         }

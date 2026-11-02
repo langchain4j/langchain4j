@@ -103,7 +103,12 @@ jobs:
           ## retried once, as a transient Maven Central failure would otherwise skip all tests of this job
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
+          ## kill a module's test JVM after 2 h (with a thread dump in target/*-reports), so that a hung test
+          ## does not cost the rest of the modules (the slowest module, langchain4j-google-ai-gemini, takes ~80 min)
           mvn -B -U verify ${{ steps.jackson3.outputs.profile }} \
+            -Dsurefire.timeout=7200 \
+            -Dfailsafe.timeout=7200 \
+            -Dsurefire.timeout.jstack.enabled=true \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \

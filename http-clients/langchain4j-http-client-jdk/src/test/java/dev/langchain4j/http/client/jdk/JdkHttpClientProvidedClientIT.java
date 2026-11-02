@@ -130,7 +130,7 @@ class JdkHttpClientProvidedClientIT {
     }
 
     @Test
-    void wrappers_sharing_a_real_client_should_support_concurrent_requests_and_remain_usable_after_a_timeout()
+    void wrappers_sharing_a_real_client_should_support_concurrent_requests_and_remain_usable_after_wrapper_close()
             throws Exception {
         try (RecordingHttpServer recordingServer = new RecordingHttpServer()) {
             JdkHttpClient shortTimeoutClient = JdkHttpClient.builder()
@@ -153,6 +153,9 @@ class JdkHttpClientProvidedClientIT {
                     .hasCauseInstanceOf(TimeoutException.class);
             assertThat(recordingServer.awaitConcurrentRequests()).isTrue();
             assertThat(recordingServer.maxActiveRequests()).isGreaterThanOrEqualTo(2);
+
+            shortTimeoutClient.close();
+            longTimeoutClient.close();
 
             java.net.http.HttpResponse<String> response = sharedClient.send(
                     java.net.http.HttpRequest.newBuilder(URI.create(recordingServer.url("/after")))

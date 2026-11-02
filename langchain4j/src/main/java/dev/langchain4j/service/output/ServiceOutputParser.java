@@ -48,6 +48,10 @@ public class ServiceOutputParser {
             return null;
         }
 
+        if (rawClass == ChatResponse.class) {
+            return chatResponse;
+        }
+
         AiMessage aiMessage = chatResponse.aiMessage();
         if (rawClass == AiMessage.class) {
             return aiMessage;
@@ -116,11 +120,22 @@ public class ServiceOutputParser {
         return formatInstructions;
     }
 
-    private static boolean schemaNotRequired(Class<?> type) {
-        return type == String.class
-                || type == AiMessage.class
-                || type == TokenStream.class
+    /**
+     * Whether the given raw class is a LangChain4j type (e.g. {@link ChatResponse}) that AI Services
+     * take from the model response themselves, without asking the LLM to produce it.
+     * For such types, no output format instructions and no JSON schema are sent to the LLM.
+     * Image return types are detected separately.
+     */
+    public static boolean isReturnedAsIs(Class<?> type) {
+        return type == AiMessage.class
+                || type == ChatResponse.class
                 || type == Response.class
+                || type == TokenStream.class;
+    }
+
+    private static boolean schemaNotRequired(Class<?> type) {
+        return isReturnedAsIs(type)
+                || type == String.class
                 || type == Map.class
                 || type == void.class
                 || type == Void.class;

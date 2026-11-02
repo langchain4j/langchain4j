@@ -5,13 +5,11 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToSc
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
-import dev.langchain4j.mcp.client.McpToolResultExtractor;
+import dev.langchain4j.mcp.client.McpToolResultConverter;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
@@ -24,7 +22,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-class McpToolResultExtractorStdioLegacyIT {
+class McpToolResultConverterStdioLegacyIT {
 
 
     private static DefaultMcpClient client;
@@ -33,55 +31,47 @@ class McpToolResultExtractorStdioLegacyIT {
     static void setup() {
         skipTestsIfJbangNotAvailable();
 
-        McpToolResultExtractor extractor = new McpToolResultExtractor() {
-            @Override
-            public ToolExecutionResult extract(JsonNode content, boolean isError) {
-                if (content.isEmpty()) {
-                    return ToolExecutionResult.builder()
-                            .isError(isError)
-                            .resultText("")
-                            .build();
-                }
-
-                String type = content.get(0).get("type").asText();
-
-                if ("text".equals(type) && content.size() == 1) {
-                    try {
-                        Map<String, Object> map = McpJson.convert(
-                                McpJson.parse(
-                                        content.get(0).get("text").asText()),
-                                Map.class);
-                        return ToolExecutionResult.builder()
-                                .isError(isError)
-                                .result(map)
-                                .resultText(content.get(0).get("text").asText())
-                                .build();
-                    } catch (Exception ignored) {
-                        return ToolExecutionResult.builder()
-                                .isError(isError)
-                                .resultText(content.get(0).get("text").asText())
-                                .build();
-                    }
-                }
-
-                if ("image".equals(type)) {
-                    return ToolExecutionResult.builder()
-                            .isError(isError)
-                            .resultContents(List.of(ImageContent.from(
-                                    content.get(0).get("data").asText(),
-                                    content.get(0).get("mimeType").asText())))
-                            .build();
-                }
-
+        McpToolResultConverter converter = (content, isError) -> {
+            if (content.isEmpty()) {
                 return ToolExecutionResult.builder()
                         .isError(isError)
-                        .resultContents(List.of(
-                                TextContent.from(content.get(0).get("text").asText()),
-                                ImageContent.from(
-                                        content.get(1).get("data").asText(),
-                                        content.get(1).get("mimeType").asText())))
+                        .resultText("")
                         .build();
             }
+
+            String type = (String) content.get(0).get("type");
+
+            if ("text".equals(type) && content.size() == 1) {
+                String text = (String) content.get(0).get("text");
+                try {
+                    return ToolExecutionResult.builder()
+                            .isError(isError)
+                            .result(McpJson.toMap(text))
+                            .resultText(text)
+                            .build();
+                } catch (Exception ignored) {
+                    return ToolExecutionResult.builder()
+                            .isError(isError)
+                            .resultText(text)
+                            .build();
+                }
+            }
+
+            if ("image".equals(type)) {
+                return ToolExecutionResult.builder()
+                        .isError(isError)
+                        .resultContents(List.of(ImageContent.from(
+                                (String) content.get(0).get("data"), (String) content.get(0).get("mimeType"))))
+                        .build();
+            }
+
+            return ToolExecutionResult.builder()
+                    .isError(isError)
+                    .resultContents(List.of(
+                            TextContent.from((String) content.get(0).get("text")),
+                            ImageContent.from(
+                                    (String) content.get(1).get("data"), (String) content.get(1).get("mimeType"))))
+                    .build();
         };
 
         McpTransport transport = new StdioMcpTransport.Builder()
@@ -97,7 +87,7 @@ class McpToolResultExtractorStdioLegacyIT {
         client = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
-                .toolResultExtractor(extractor)
+                .toolResultConverter(converter)
                 .protocolVersion("2025-11-25")
                 .build();
     }
@@ -110,7 +100,7 @@ class McpToolResultExtractorStdioLegacyIT {
     }
 
     @Test
-    void should_extract_json_text_content_with_custom_extractor() {
+    void should_extract_json_text_content_with_custom_converter() {
         ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
                 .name("jsonContent")
                 .arguments("{}")
@@ -121,7 +111,7 @@ class McpToolResultExtractorStdioLegacyIT {
     }
 
     @Test
-    void should_extract_image_content_with_custom_extractor() {
+    void should_extract_image_content_with_custom_converter() {
         ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
                 .name("imageContent")
                 .arguments("{}")
@@ -136,7 +126,7 @@ class McpToolResultExtractorStdioLegacyIT {
     }
 
     @Test
-    void should_extract_mixed_multimodal_content_with_custom_extractor() {
+    void should_extract_mixed_multimodal_content_with_custom_converter() {
         ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
                 .name("mixedContent")
                 .arguments("{}")
@@ -148,8 +138,8 @@ class McpToolResultExtractorStdioLegacyIT {
     }
 
     @Test
-    void should_not_apply_custom_extractor_to_structured_content() {
-        AtomicBoolean extractorCalled = new AtomicBoolean(false);
+    void should_not_apply_custom_converter_to_structured_content() {
+        AtomicBoolean converterCalled = new AtomicBoolean(false);
 
         McpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
@@ -165,8 +155,8 @@ class McpToolResultExtractorStdioLegacyIT {
                 .transport(transport)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .protocolVersion("2025-11-25")
-                .toolResultExtractor((content, isError) -> {
-                    extractorCalled.set(true);
+                .toolResultConverter((content, isError) -> {
+                    converterCalled.set(true);
                     return ToolExecutionResult.builder()
                             .isError(isError)
                             .resultText("wrong")
@@ -179,7 +169,7 @@ class McpToolResultExtractorStdioLegacyIT {
                     .arguments("{}")
                     .build());
 
-            assertThat(extractorCalled).isFalse();
+            assertThat(converterCalled).isFalse();
             assertThat(result.result()).isEqualTo(Map.of("value", 7, "status", "structured"));
             assertThat(result.resultText()).isEqualTo("{\"value\":7,\"status\":\"structured\"}");
         } catch (Exception e) {

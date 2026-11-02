@@ -285,7 +285,6 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             InternalAgent.class,
             AgenticScopeOwner.class,
             ChatMemoryAccess.class,
-            ChatMessagesAccess.class,
             AiServiceResponseReceivedListener.class
         };
     }

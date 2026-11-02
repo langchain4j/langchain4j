@@ -2,8 +2,6 @@ package dev.langchain4j.mcp.client.logging;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.McpJsonConversions;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.Map;
 import java.util.Objects;
@@ -26,15 +24,6 @@ public class McpLogMessage {
     }
 
     /**
-     * @deprecated use {@link #McpLogMessage(McpLogLevel, String, Object)}, which does not expose
-     * Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public McpLogMessage(McpLogLevel level, String logger, JsonNode data) {
-        this(level, logger, (Object) (data == null ? null : McpJsonConversions.toValue(data)));
-    }
-
-    /**
      * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message'
      * message, presented as plain values.
      */
@@ -43,17 +32,6 @@ public class McpLogMessage {
         McpLogLevel level = McpLogLevel.from(levelValue == null ? null : String.valueOf(levelValue));
         Object logger = params.get("logger");
         return new McpLogMessage(level, logger == null ? null : String.valueOf(logger), params.get("data"));
-    }
-
-    /**
-     * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message'
-     * message.
-     *
-     * @deprecated use {@link #fromMap(Map)}, which does not expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public static McpLogMessage fromJson(JsonNode json) {
-        return fromMap(McpJsonConversions.toMap(json));
     }
 
     public McpLogLevel level() {
@@ -89,14 +67,6 @@ public class McpLogMessage {
      */
     public Object dataAsObject() {
         return data;
-    }
-
-    /**
-     * @deprecated use {@link #dataAsMap()} or {@link #dataAsJson()}.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public JsonNode data() {
-        return data == null ? null : McpJson.parse(McpJson.serialize(data));
     }
 
     @Override
