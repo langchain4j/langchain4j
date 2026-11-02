@@ -189,6 +189,9 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
     }
 
     @Override
