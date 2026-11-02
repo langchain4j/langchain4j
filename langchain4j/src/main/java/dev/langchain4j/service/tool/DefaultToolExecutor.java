@@ -426,6 +426,9 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (parameterClass == String.class || parameterClass.isEnum() || parameterClass == UUID.class) {
             return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
         }
+        if ((parameterClass == char.class || parameterClass == Character.class) && defaultValue.length() == 1) {
+            return defaultValue.charAt(0);
+        }
         Object jsonParsed;
         try {
             jsonParsed = Json.fromJson(defaultValue, Object.class);
@@ -521,6 +524,12 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         if (parameterClass == UUID.class) {
             return UUID.fromString(argument.toString());
+        }
+
+        if ((parameterClass == char.class || parameterClass == Character.class)
+                && argument instanceof String string
+                && string.length() == 1) {
+            return string.charAt(0);
         }
 
         if (argument instanceof String) {
