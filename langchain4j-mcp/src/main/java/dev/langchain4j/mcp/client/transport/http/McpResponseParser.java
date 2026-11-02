@@ -19,8 +19,12 @@ import java.util.List;
  * The transport handles JSON responses and retains its SSE field handling, including {@code id} and {@code retry},
  * which would otherwise be lost when parsing with the default SSE parser.
  * Line endings are retained separately so that non-SSE response bodies can be reconstructed without modification.
+ * A line longer than {@link #MAX_LINE_FRAGMENT_BYTES} is passed on in several {@linkplain Line#partial() partial}
+ * fragments, so that the transport, rather than this parser, decides how much of a line it is willing to buffer.
  */
 final class McpResponseParser implements ServerSentEventParser {
+
+    static final int MAX_LINE_FRAGMENT_BYTES = 64 * 1024;
 
     @Override
     public void parse(InputStream httpResponseBody, ServerSentEventListener listener) {
@@ -61,14 +65,35 @@ final class McpResponseParser implements ServerSentEventParser {
     static final class Line extends ServerSentEvent {
 
         private final String ending;
+        private final boolean partial;
+        private final int byteLength;
 
-        private Line(String data, String ending) {
+        private Line(String data, String ending, boolean partial, int byteLength) {
             super(null, data);
             this.ending = ending;
+            this.partial = partial;
+            this.byteLength = byteLength;
         }
 
+        /**
+         * The line terminator, or an empty string for a partial fragment or a final line without a terminator.
+         */
         String ending() {
             return ending;
+        }
+
+        /**
+         * Whether this is a fragment of a longer line that continues in the next {@link Line}.
+         */
+        boolean partial() {
+            return partial;
+        }
+
+        /**
+         * The length of {@link #data()} in UTF-8 bytes, excluding the line terminator.
+         */
+        int byteLength() {
+            return byteLength;
         }
     }
 
@@ -97,6 +122,12 @@ final class McpResponseParser implements ServerSentEventParser {
                 } else {
                     // UTF-8 continuation bytes cannot contain CR or LF. Decode only complete lines so that
                     // multi-byte characters split across chunks remain intact, without rescanning buffered bytes.
+                    // A long line is split before a byte that starts a character, which keeps fragments decodable;
+                    // a run of continuation bytes longer than any valid character is invalid UTF-8 and split anyway.
+                    if (pending.size() >= MAX_LINE_FRAGMENT_BYTES
+                            && ((next & 0xC0) != 0x80 || pending.size() >= MAX_LINE_FRAGMENT_BYTES + 3)) {
+                        lines.add(fragment());
+                    }
                     pending.write(next);
                 }
             }
@@ -113,7 +144,13 @@ final class McpResponseParser implements ServerSentEventParser {
         }
 
         private Line line(String ending) {
-            var line = new Line(pending.toString(UTF_8), ending);
+            var line = new Line(pending.toString(UTF_8), ending, false, pending.size());
+            pending.reset();
+            return line;
+        }
+
+        private Line fragment() {
+            var line = new Line(pending.toString(UTF_8), "", true, pending.size());
             pending.reset();
             return line;
         }

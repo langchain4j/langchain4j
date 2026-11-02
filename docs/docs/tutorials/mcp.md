@@ -75,6 +75,11 @@ With the modern protocol (2026-07-28), notifications are received via `subscript
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
+**_NOTE:_** A single message received over an SSE stream, in a response to a request or on the subsidiary channel,
+can be at most 20 MiB by default. If the server sends a larger message, the transport closes the stream: the pending
+request fails, and the subsidiary channel reconnects. This keeps a misbehaving server from filling the client's memory.
+Use `.maxSseMessageSize(bytes)` on the builder to change the limit.
+
 #### Custom HTTP client
 
 By default, the Streamable HTTP transport sends its requests with the JDK HTTP client

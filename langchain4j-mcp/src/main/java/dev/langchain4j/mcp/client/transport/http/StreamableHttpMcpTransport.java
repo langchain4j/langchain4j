@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.http;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -49,6 +50,7 @@ import org.slf4j.LoggerFactory;
 public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
+    private static final int DEFAULT_MAX_SSE_MESSAGE_SIZE = 20 * 1024 * 1024;
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
@@ -67,6 +69,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     // Subsidiary SSE channel fields
     private final boolean subsidiaryChannelEnabled;
+    private final int maxSseMessageSize;
     private volatile Runnable onFailureCallback;
     private volatile boolean subsidiaryChannelEstablished;
     private final AtomicReference<String> subsidiaryLastEventId = new AtomicReference<>();
@@ -85,6 +88,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
+        maxSseMessageSize = builder.maxSseMessageSize == null
+                ? DEFAULT_MAX_SSE_MESSAGE_SIZE
+                : ensureGreaterThanZero(builder.maxSseMessageSize, "maxSseMessageSize");
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         responseExecutor = builder.executor;
         if (builder.httpClientBuilder != null && builder.httpClient != null) {
@@ -546,6 +552,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final StringBuilder body = new StringBuilder();
         private final StringBuilder sseData = new StringBuilder();
         private boolean sseDataPresent;
+        private long sseDataBytes;
+        private final StringBuilder sseLine = new StringBuilder();
+        private long sseLineBytes;
         private volatile Flow.Subscription subscription;
         private boolean sseResponse;
         private boolean responseReceived;
@@ -611,7 +620,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                             errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
-                        handleSseLine(line.data());
+                        handleSseFragment(line);
                     } else {
                         body.append(line.data()).append(line.ending());
                     }
@@ -644,7 +653,34 @@ public class StreamableHttpMcpTransport implements McpTransport {
             }
         }
 
-        private void handleSseLine(String line) {
+        /**
+         * Reassembles lines that the parser split into fragments, failing the exchange once the data of the
+         * current event and the line being read exceed {@code maxSseMessageSize}, so that a server cannot
+         * make the client buffer an unbounded amount of data.
+         */
+        private void handleSseFragment(McpResponseParser.Line fragment) {
+            sseLineBytes += fragment.byteLength();
+            if (sseDataBytes + sseLineBytes > maxSseMessageSize) {
+                LOG.warn(
+                        "SSE message from {} exceeds the maximum size of {} bytes, closing the stream",
+                        url,
+                        maxSseMessageSize);
+                handleError(new IllegalStateException("SSE message exceeds the maximum size of " + maxSseMessageSize
+                        + " bytes; use StreamableHttpMcpTransport.Builder.maxSseMessageSize to raise the limit"));
+                return;
+            }
+            sseLine.append(fragment.data());
+            if (fragment.partial()) {
+                return;
+            }
+            String line = sseLine.toString();
+            long lineBytes = sseLineBytes;
+            sseLine.setLength(0);
+            sseLineBytes = 0;
+            handleSseLine(line, lineBytes);
+        }
+
+        private void handleSseLine(String line, long lineBytes) {
             if (future != null && future.isCancelled()) {
                 return;
             }
@@ -658,8 +694,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 // (https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation)
                 if (sseDataPresent) {
                     sseData.append('\n');
+                    sseDataBytes++;
                 }
                 sseData.append(line, 5, line.length());
+                sseDataBytes += lineBytes - 5;
                 sseDataPresent = true;
             } else if (opened != null && line.startsWith("id:")) {
                 subsidiaryLastEventId.set(line.substring(3).trim());
@@ -679,6 +717,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
             String data = sseData.toString();
             sseData.setLength(0);
             sseDataPresent = false;
+            sseDataBytes = 0;
             try {
                 operationHandler.onMessage(data);
             } catch (RuntimeException e) {
@@ -864,6 +903,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
         private boolean followRedirects = false;
+        private Integer maxSseMessageSize;
 
         /**
          * Supplies the HTTP backend used for all requests, including the subsidiary SSE channel.
@@ -1049,6 +1089,23 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder subsidiaryChannel(boolean subsidiaryChannelEnabled) {
             this.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
+            return this;
+        }
+
+        /**
+         * The maximum size, in bytes, of a single message received over an SSE stream, i.e. the data of one
+         * SSE event. This applies to SSE responses to requests as well as to the subsidiary SSE channel.
+         * When a server sends a larger message, the transport closes the stream: a pending request fails
+         * and the subsidiary channel reconnects. This protects the client against servers that send
+         * an endless line or event, which would otherwise be buffered in memory until it runs out.
+         * Defaults to 20 MiB.
+         *
+         * @param maxSseMessageSize the maximum message size in bytes, must be greater than zero
+         * @return this builder
+         * @since 1.24.0
+         */
+        public StreamableHttpMcpTransport.Builder maxSseMessageSize(int maxSseMessageSize) {
+            this.maxSseMessageSize = maxSseMessageSize;
             return this;
         }
 
