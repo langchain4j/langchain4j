@@ -78,7 +78,7 @@
             // the Milvus test image is a plain string, which no built-in manager detects
             "customType": "regex",
             "managerFilePatterns": [
-                "/^langchain4j-milvus(-v2)?/src/test/java/.+IT\\.java$/",
+                "/^langchain4j-(hibernate-)?milvus(-v2)?/src/test/java/.+IT\\.java$/",
                 "/^\\.github/workflows/.+\\.ya?ml$/"
             ],
             "matchStrings": ["(?<depName>milvusdb/milvus):(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],

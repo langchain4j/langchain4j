@@ -2,11 +2,12 @@ package dev.langchain4j.store.embedding.hibernate.milvus;
 
 import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.DistanceFunction;
+import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 
 /**
  * The database kind for using Milvus.
  *
- * @see dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore.BaseBuilder#databaseKind(DatabaseKind)
+ * @see HibernateEmbeddingStore.BaseBuilder#databaseKind(DatabaseKind)
  */
 public final class MilvusDatabaseKind implements DatabaseKind {
 

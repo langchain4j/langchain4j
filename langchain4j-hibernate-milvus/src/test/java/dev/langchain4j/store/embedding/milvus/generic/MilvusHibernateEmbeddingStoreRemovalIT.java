@@ -20,9 +20,11 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer(MILVUS_DOCKER_IMAGE).withEnv("DEPLOY_MODE", "STANDALONE");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

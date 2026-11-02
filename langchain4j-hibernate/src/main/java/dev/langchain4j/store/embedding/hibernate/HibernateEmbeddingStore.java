@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.hibernate;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -58,7 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.UUID;
@@ -212,7 +212,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         this.databaseKind = ensureNotNull(databaseKind, "databaseKind");
         this.entityClass = ensureNotNull(entityClass, "entityClass");
         this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
-        this.queryHints = Objects.requireNonNullElse(queryHints, Collections.emptyMap());
+        this.queryHints = copy(queryHints);
         this.entityPersister = sessionFactory
                 .unwrap(SessionFactoryImplementor.class)
                 .getRuntimeMetamodels()
@@ -553,7 +553,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
             }
-            applyHints(selectionQuery);
+            applyHints(selectionQuery, queryHints);
             return selectionQuery.getResultList();
         });
     }
@@ -619,7 +619,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
             }
-            applyHints(selectionQuery);
+            applyHints(selectionQuery, queryHints);
             return transformToSearchResult(selectionQuery.getResultList());
         });
     }
@@ -655,15 +655,16 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 selectionQuery.setParameter("minDistance", scoreToDistance(minScore, distanceFunction));
             }
             selectionQuery.setMaxResults(maxResults);
-            applyHints(selectionQuery);
+            applyHints(selectionQuery, queryHints);
             return transformToSearchResult(selectionQuery.getResultList());
         });
     }
 
-    private void applyHints(SelectionQuery<?> selectionQuery) {
+    static void applyHints(SelectionQuery<?> selectionQuery, Map<String, Object> queryHints) {
         for (Map.Entry<String, Object> entry : queryHints.entrySet()) {
-            if (HibernateHints.HINT_QUERY_DATABASE.equals(entry.getKey()) && entry.getValue() instanceof List<?> list) {
-                for (Object hintValue : list) {
+            if (HibernateHints.HINT_QUERY_DATABASE.equals(entry.getKey())
+                    && entry.getValue() instanceof Collection<?> hintValues) {
+                for (Object hintValue : hintValues) {
                     selectionQuery.setHint(HibernateHints.HINT_QUERY_DATABASE, hintValue);
                 }
             } else {
@@ -1539,6 +1540,24 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Sets query hints that are applied to every similarity search ({@code search(...)} and {@code query(...)}).
+         * They are not applied when embeddings are added or removed.
+         * <p>
+         * Each entry is passed to Hibernate's {@link SelectionQuery#setHint(String, Object)}.
+         * The value of {@link HibernateHints#HINT_QUERY_DATABASE} is written into the generated query,
+         * so it is specific to one database. To pass more than one such database hint,
+         * use a {@link Collection} of {@code String}s as the value.
+         * <p>
+         * For example, a Milvus search only sees embeddings that were added just before it
+         * when it uses the strong consistency level:
+         * <pre>{@code
+         * .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
+         * }</pre>
+         *
+         * @param queryHints the query hints, or {@code null} for none
+         * @return this builder
+         */
         public Builder<E> queryHints(Map<String, Object> queryHints) {
             this.queryHints = queryHints;
             return this;
@@ -1690,6 +1709,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     + ", embeddedTextAttributeName=" + this.embeddedTextAttributeName
                     + ", unmappedMetadataAttributeName=" + this.unmappedMetadataAttributeName
                     + ", metadataAttributeNames=" + Arrays.toString(this.metadataAttributeNames)
+                    + ", queryHints=" + this.queryHints
                     + ")";
         }
     }
@@ -1810,6 +1830,24 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Sets query hints that are applied to every similarity search ({@code search(...)} and {@code query(...)}).
+         * They are not applied when embeddings are added or removed.
+         * <p>
+         * Each entry is passed to Hibernate's {@link SelectionQuery#setHint(String, Object)}.
+         * The value of {@link HibernateHints#HINT_QUERY_DATABASE} is written into the generated query,
+         * so it is specific to one database. To pass more than one such database hint,
+         * use a {@link Collection} of {@code String}s as the value.
+         * <p>
+         * For example, a Milvus search only sees embeddings that were added just before it
+         * when it uses the strong consistency level:
+         * <pre>{@code
+         * .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
+         * }</pre>
+         *
+         * @param queryHints the query hints, or {@code null} for none
+         * @return this builder
+         */
         public BaseBuilder<E> queryHints(Map<String, Object> queryHints) {
             this.queryHints = queryHints;
             return this;
@@ -1910,6 +1948,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        @Override
         public DynamicBuilder queryHints(Map<String, Object> queryHints) {
             super.queryHints(queryHints);
             return this;
@@ -1925,7 +1964,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, jdbcUrl);
             } else {
                 final String jdbcUrl = ensureNotBlank(this.jdbcUrl, "jdbcUrl");
-                databaseKind = DatabaseKind.determineDatabaseKind(jdbcUrl);
+                databaseKind =
+                        this.databaseKind != null ? this.databaseKind : DatabaseKind.determineDatabaseKind(jdbcUrl);
                 if (databaseKind == null) {
                     throw new IllegalArgumentException("Can't determine DatabaseKind for JDBC URL: " + jdbcUrl);
                 }
@@ -1963,6 +2003,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     + ", createTable=" + this.createTable
                     + ", dropTableFirst=" + this.dropTableFirst
                     + ", distanceFunction=" + this.distanceFunction
+                    + ", queryHints=" + this.queryHints
                     + ")";
         }
     }
@@ -2031,6 +2072,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        @Override
         public DynamicDatasourceBuilder queryHints(Map<String, Object> queryHints) {
             super.queryHints(queryHints);
             return this;
@@ -2064,6 +2106,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     + ", createTable=" + this.createTable
                     + ", dropTableFirst=" + this.dropTableFirst
                     + ", distanceFunction=" + this.distanceFunction
+                    + ", queryHints=" + this.queryHints
                     + ")";
         }
     }

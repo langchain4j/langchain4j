@@ -34,9 +34,11 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer(MILVUS_DOCKER_IMAGE).withEnv("DEPLOY_MODE", "STANDALONE");
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -79,6 +81,34 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Test
+    void should_use_explicit_database_kind_with_jdbc_url() {
+        String jdbcUrl = "jdbc:milvus://" + databaseContainer.getHost() + ":" + databaseContainer.getMappedPort(19530)
+                + "/default";
+        HibernateEmbeddingStore<?> store = HibernateEmbeddingStore.dynamicBuilder()
+                .jdbcUrl(jdbcUrl)
+                .databaseKind(MilvusDatabaseKind.INSTANCE)
+                .table("test_" + UUID.randomUUID().toString().replace("-", ""))
+                .dimension(embeddingModel.dimension())
+                .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
+                .createTable(true)
+                .dropTableFirst(true)
+                .build();
+        try {
+            Embedding embedding = embeddingModel.embed("hello").content();
+            String id = store.add(embedding, TextSegment.from("hello"));
+
+            EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                    .queryEmbedding(embedding)
+                    .maxResults(1)
+                    .build());
+
+            assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+        } finally {
+            store.close();
+        }
     }
 
     @Test

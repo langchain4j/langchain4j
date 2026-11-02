@@ -13,7 +13,6 @@
     <name>LangChain4j :: Integration :: Hibernate :: Milvus</name>
 
     <properties>
-        <hibernate.version>7.4.14.Final</hibernate.version>
         <hibernate-nosql.version>1.0.0.Alpha3</hibernate-nosql.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
@@ -24,7 +23,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -44,7 +43,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
