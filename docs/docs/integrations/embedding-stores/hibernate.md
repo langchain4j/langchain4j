@@ -70,7 +70,7 @@ To configure it, use either `HibernateEmbeddingStore.dynamicBuilder()` or `Hiber
 | `createTable`       | Specifies whether to automatically create the embeddings table.                                                                                                                                                                                                                                                                                                                                | `false`       | Optional                                                                                                                                                                                                                                                                                                                                     |
 | `dropTableFirst`    | Specifies whether to drop the table before recreating it (useful for tests).                                                                                                                                                                                                                                                                                                                   | `false`       | Optional                                                                                                                                                                                                                                                                                                                                     |
 | `distanceFunction`  | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul>                                                                                                 | `COSINE`      | Optional. If not set, a default configuration is used with `COSINE`.                                                                                                                                                                                                                                                                         |
-| `queryHints`        | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. See the Milvus section below. | None          | Optional |
+| `queryHints`        | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. A hint set here replaces the default hint of the database kind with the same name. See the Milvus section below. | None (Milvus: session consistency level) | Optional |
 
 ### Entity store
 
@@ -89,7 +89,7 @@ To configure it, use either `HibernateEmbeddingStore.builder()`.
 | `unmappedMetadataAttributeName` | Specifies the name of the entity attribute that represents the JSON column where unmapped metadata is stored.                                                                                                                                                                                  | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@UnmappedMetadata`                                                                                                          |
 | `metadataAttributeNames`        | Specifies the names of the entity attributes that are explicitly mapped to text metadata.                                                                                                                                                                                                      | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@MetadataAttribute`                                                                                                         |
 | `distanceFunction`              | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul> | `COSINE`      | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddingVector` and the `distance` value is used, or if that is missing, the default configuration is used with `COSINE`. |
-| `queryHints`                    | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. See the Milvus section below. | None          | Optional |
+| `queryHints`                    | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. A hint set here replaces the default hint of the database kind with the same name. See the Milvus section below. | None (Milvus: session consistency level) | Optional |
 
 ## Examples
 
@@ -593,6 +593,30 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+
+EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
+        .databaseKind(MilvusDatabaseKind.INSTANCE)
+        .host("localhost")
+        .port(19530)
+        .database("default")
+        .table("my_collection")
+        .dimension(384)
+        .createTable(true)
+        .build();
+```
+
+Every search uses the Milvus session consistency level by default: a search sees all embeddings that your application
+added or removed before it, without waiting for changes made by other applications. Embeddings that another
+application adds, for example a separate ingestion job, become searchable after a short delay.
+
+If a search must also see the embeddings that other applications added just before it, use the strong consistency
+level. It adds some latency to every search:
+
+```java
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
 import java.util.Map;
 import org.hibernate.jpa.HibernateHints;
 import org.hibernate.milvus.MilvusDatabaseHints;
@@ -609,10 +633,8 @@ EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuil
         .build();
 ```
 
-By default, a Milvus search may not see embeddings that were added just before it. The `queryHints()` line above
-makes every search use the strong consistency level: a search then sees all embeddings added before it, at the cost
-of some extra latency. Leave it out if your application can accept that new embeddings become searchable after a
-short delay.
+The `HibernateHints.HINT_QUERY_DATABASE` hint that you set replaces the default one, so it must contain the
+consistency level you want.
 
 A Milvus server can run without authentication. In that case, leave out `user()` and `password()`, as above.
 

@@ -3,6 +3,9 @@ package dev.langchain4j.store.embedding.hibernate.milvus;
 import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.DistanceFunction;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
+import java.util.Map;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
 
 /**
  * The database kind for using Milvus.
@@ -30,6 +33,18 @@ public final class MilvusDatabaseKind implements DatabaseKind {
     @Override
     public String getSetupSql() {
         return null; // Milvus needs no extension or feature flag to be enabled before vectors can be used
+    }
+
+    /**
+     * Returns the Milvus session consistency level, so that a search sees all embeddings that this application added
+     * or removed before it. Without a consistency level, Milvus uses the default level of the collection, and a search
+     * right after {@code add(...)} can miss the new embeddings.
+     *
+     * @return the session consistency level as a {@link HibernateHints#HINT_QUERY_DATABASE} hint
+     */
+    @Override
+    public Map<String, Object> defaultQueryHints() {
+        return Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=SESSION");
     }
 
     @Override

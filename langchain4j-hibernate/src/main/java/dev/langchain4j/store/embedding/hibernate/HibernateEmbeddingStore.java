@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.hibernate;
 
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -212,7 +211,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         this.databaseKind = ensureNotNull(databaseKind, "databaseKind");
         this.entityClass = ensureNotNull(entityClass, "entityClass");
         this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
-        this.queryHints = copy(queryHints);
+        this.queryHints = withDefaultHints(this.databaseKind.defaultQueryHints(), queryHints);
         this.entityPersister = sessionFactory
                 .unwrap(SessionFactoryImplementor.class)
                 .getRuntimeMetamodels()
@@ -658,6 +657,14 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             applyHints(selectionQuery, queryHints);
             return transformToSearchResult(selectionQuery.getResultList());
         });
+    }
+
+    static Map<String, Object> withDefaultHints(Map<String, Object> defaultHints, Map<String, Object> queryHints) {
+        final Map<String, Object> hints = new LinkedHashMap<>(getOrDefault(defaultHints, Map.of()));
+        if (queryHints != null) {
+            hints.putAll(queryHints);
+        }
+        return Collections.unmodifiableMap(hints);
     }
 
     static void applyHints(SelectionQuery<?> selectionQuery, Map<String, Object> queryHints) {
@@ -1550,13 +1557,16 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
          * so it is specific to one database. To pass more than one such database hint,
          * use a {@link Collection} of {@code String}s as the value.
          * <p>
-         * For example, a Milvus search only sees embeddings that were added just before it
-         * when it uses the strong consistency level:
+         * A database kind can add default hints, see {@link DatabaseKind#defaultQueryHints()}.
+         * A hint set here replaces the default hint with the same name.
+         * For example, a Milvus search uses the session consistency level by default, so it sees the embeddings
+         * that this application added just before it. To also see the embeddings that other applications
+         * added just before it, use the strong consistency level:
          * <pre>{@code
          * .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
          * }</pre>
          *
-         * @param queryHints the query hints, or {@code null} for none
+         * @param queryHints the query hints, or {@code null} for only the default hints of the database kind
          * @return this builder
          */
         public Builder<E> queryHints(Map<String, Object> queryHints) {
@@ -1840,13 +1850,16 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
          * so it is specific to one database. To pass more than one such database hint,
          * use a {@link Collection} of {@code String}s as the value.
          * <p>
-         * For example, a Milvus search only sees embeddings that were added just before it
-         * when it uses the strong consistency level:
+         * A database kind can add default hints, see {@link DatabaseKind#defaultQueryHints()}.
+         * A hint set here replaces the default hint with the same name.
+         * For example, a Milvus search uses the session consistency level by default, so it sees the embeddings
+         * that this application added just before it. To also see the embeddings that other applications
+         * added just before it, use the strong consistency level:
          * <pre>{@code
          * .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
          * }</pre>
          *
-         * @param queryHints the query hints, or {@code null} for none
+         * @param queryHints the query hints, or {@code null} for only the default hints of the database kind
          * @return this builder
          */
         public BaseBuilder<E> queryHints(Map<String, Object> queryHints) {

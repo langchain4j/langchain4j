@@ -23,8 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.hibernate.jpa.HibernateHints;
-import org.hibernate.milvus.MilvusDatabaseHints;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -54,8 +52,6 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .database("default")
                 .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(embeddingModel.dimension())
-                .queryHints(
-                        Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();
@@ -84,6 +80,21 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Test
+    void should_find_an_embedding_right_after_adding_it() {
+        // no wait between add() and search(): the default session consistency level of MilvusDatabaseKind
+        // makes the search see the embedding that was just added
+        Embedding embedding = embeddingModel.embed("hello").content();
+        String id = embeddingStore.add(embedding, TextSegment.from("hello"));
+
+        EmbeddingSearchResult<TextSegment> result = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .build());
+
+        assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+    }
+
+    @Test
     void should_use_explicit_database_kind_with_jdbc_url() {
         String jdbcUrl = "jdbc:milvus://" + databaseContainer.getHost() + ":" + databaseContainer.getMappedPort(19530)
                 + "/default";
@@ -92,7 +103,6 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .databaseKind(MilvusDatabaseKind.INSTANCE)
                 .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(embeddingModel.dimension())
-                .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();
