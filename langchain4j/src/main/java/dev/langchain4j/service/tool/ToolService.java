@@ -651,13 +651,13 @@ public class ToolService {
         ChatRequest lastChatRequest = null;
         while (true) {
 
-            if (roundTripsLeft-- == 0) {
+            AiMessage aiMessage = chatResponse.aiMessage();
+
+            if (aiMessage.hasToolExecutionRequests() && roundTripsLeft-- == 0) {
                 throw runtime(
                         "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
                         maxToolCallingRoundTrips);
             }
-
-            AiMessage aiMessage = chatResponse.aiMessage();
 
             if (chatMemory != null) {
                 chatMemory.add(aiMessage);
@@ -874,13 +874,13 @@ public class ToolService {
                 return CompletableFuture.failedFuture(new CancellationException());
             }
 
-            if (roundTripsLeft == 0) {
+            AiMessage aiMessage = chatResponse.aiMessage();
+
+            if (aiMessage.hasToolExecutionRequests() && roundTripsLeft == 0) {
                 return CompletableFuture.failedFuture(runtime(
                         "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
                         maxToolCallingRoundTrips));
             }
-
-            AiMessage aiMessage = chatResponse.aiMessage();
 
             final List<ChatMessage> accumulator;
             final CompletionStage<Void> aiMessageAdded;
