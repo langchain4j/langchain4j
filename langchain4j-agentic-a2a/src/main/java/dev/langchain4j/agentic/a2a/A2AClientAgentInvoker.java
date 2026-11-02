@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.a2aproject.sdk.spec.AgentCard;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
@@ -32,7 +31,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final A2AClientInstance a2AClientInstance;
 
-    private final AgentCard agentCard;
     private final Method method;
 
     private InternalAgent parent;
@@ -40,7 +38,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
-        this.agentCard = a2AClientInstance.agentCard();
         this.agentId = name();
         this.arguments = arguments(a2AClientInstance);
     }
@@ -91,7 +88,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String name() {
-        return agentCard.name();
+        return a2AClientInstance.name();
     }
 
     @Override
@@ -101,7 +98,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String description() {
-        return agentCard.description();
+        return a2AClientInstance.description();
     }
 
     @Override

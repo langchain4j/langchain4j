@@ -889,13 +889,15 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
-        // checked before creating the builder, which fetches the agent card from the server
+        // checked before creating the builder, which validates the A2A server URL
         Optional<ResolvedParameters> customizer = selectMethod(
                         agentServiceClass, method -> method.isAnnotationPresent(A2AClientCustomizer.class))
                 .map(method -> ResolvedParameters.of(agentServiceClass, method).checkFrameworkParameters(Object.class));
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
+                .name(a2aClient.name())
+                .description(isNullOrBlank(a2aClient.description()) ? a2aClient.value() : a2aClient.description())
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))

@@ -63,7 +63,7 @@ class A2ATenantIdTest {
     @Test
     void tenantId_parameter_is_optional_in_invoker_arguments() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
 
         Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
         A2AClientAgentInvoker invoker = new A2AClientAgentInvoker(clientInstance, chatMethod);
@@ -81,7 +81,7 @@ class A2ATenantIdTest {
     @Test
     void preconfigured_tenant_argument_retains_default_value_in_arguments_list() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
         when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
 
         Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
@@ -99,7 +99,7 @@ class A2ATenantIdTest {
     @Test
     void preconfigured_tenant_produces_correct_positional_arg_count() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
         when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
 
         Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
@@ -118,7 +118,7 @@ class A2ATenantIdTest {
     @Test
     void scope_value_takes_precedence_over_preconfigured_tenant() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
         when(clientInstance.tenant()).thenReturn("pre-configured-tenant");
 
         Method chatMethod = TenantAwareAgent.class.getMethod("chat", String.class, String.class);
@@ -138,7 +138,7 @@ class A2ATenantIdTest {
     @Test
     void contextId_and_tenantId_parameters_are_both_optional_in_invoker_arguments() throws NoSuchMethodException {
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
 
         Method chatMethod = ContextAndTenantAgent.class.getMethod("chat", String.class, String.class, String.class);
         A2AClientAgentInvoker invoker = new A2AClientAgentInvoker(clientInstance, chatMethod);

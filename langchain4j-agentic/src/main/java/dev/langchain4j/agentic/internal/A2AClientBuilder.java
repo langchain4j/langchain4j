@@ -15,6 +15,33 @@ import java.util.function.Predicate;
 public interface A2AClientBuilder<T> {
 
     /**
+     * Sets the name of the agent, which is also its id in the reports, in the agents list sent to a supervisor and
+     * in the error handler context. When not set, a typed agent is named after its agent method and an untyped one
+     * gets a placeholder derived from the A2A server URL, so that the name is known without fetching the agent
+     * card, which happens only on the first invocation. The name never changes once the agent is built, even after
+     * the card has been fetched.
+     *
+     * @param name the name of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> name(String name) {
+        return this;
+    }
+
+    /**
+     * Sets the description of the agent, used by the supervisor and the other planners to decide when to invoke
+     * it. When not set, the description is read from the agent card, which is fetched on the first call to
+     * {@code description()}: for a subagent of a supervisor this happens on the first invocation of the supervisor,
+     * which then depends on the availability of the remote agent, so an explicit description is recommended there.
+     *
+     * @param description the description of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> description(String description) {
+        return this;
+    }
+
+    /**
      * Sets the state keys whose values will be sent as message parts to the remote agent.
      *
      * @param inputKeys the names of the input keys

@@ -25,7 +25,9 @@ public @interface A2AClientAgent {
     String a2aServerUrl() default "";
 
     /**
-     * Name of the agent. If not provided, method name will be used.
+     * Name of the agent. If not provided, method name will be used. The name is also the id of the agent in the
+     * reports and in the agents list sent to a supervisor, and it never comes from the agent card, which is fetched
+     * only when the agent is first invoked.
      *
      * @return name of the agent.
      */
@@ -34,6 +36,8 @@ public @interface A2AClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code description} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description is read from the agent card, which is then fetched the first time it is needed,
+     * for instance when a supervisor having this agent among its subagents is first invoked.
      *
      * @return description of the agent.
      */
@@ -42,6 +46,8 @@ public @interface A2AClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code value} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description is read from the agent card, which is then fetched the first time it is needed,
+     * for instance when a supervisor having this agent among its subagents is first invoked.
      *
      * @return description of the agent.
      */

@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.supervisor;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
@@ -8,6 +9,7 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -105,6 +107,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public void init(final InitPlanningContext initPlanningContext) {
+        checkSubagentsDescriptions(initPlanningContext);
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
         this.subagents = initPlanningContext.subagents();
@@ -115,6 +118,26 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
             this.responseAgent =
                     AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
+        }
+    }
+
+    /**
+     * The supervisor sends the description of each subagent to its model to decide which one to invoke next, so a
+     * subagent without a description cannot be chosen meaningfully: failing here, at the first invocation of the
+     * supervisor, is better than silently sending {@code null}. Reading the description of a remote agent, like an
+     * A2A one without an explicit description, may fetch it from the remote server at this point.
+     */
+    private static void checkSubagentsDescriptions(InitPlanningContext initPlanningContext) {
+        List<String> subagentsWithoutDescription = initPlanningContext.subagents().stream()
+                .filter(agent -> isNullOrBlank(agent.description()))
+                .map(AgentInstance::name)
+                .toList();
+        if (!subagentsWithoutDescription.isEmpty()) {
+            throw new AgenticSystemConfigurationException("The subagents " + subagentsWithoutDescription
+                    + " of the supervisor '"
+                    + initPlanningContext.plannerAgent().name()
+                    + "' have no description. The supervisor relies on the descriptions of its subagents to decide"
+                    + " which one to invoke, so provide one for each of them.");
         }
     }
 

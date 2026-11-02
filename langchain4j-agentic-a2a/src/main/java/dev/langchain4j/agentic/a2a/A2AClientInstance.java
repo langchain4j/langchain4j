@@ -7,12 +7,19 @@ public interface A2AClientInstance extends InternalAgent {
 
     String[] inputKeys();
 
+    /**
+     * Returns the agent card of the remote agent, fetching it from the A2A server if it has not been fetched yet.
+     * The card is normally fetched on the first invocation of the agent, so this call blocks until the fetch
+     * completes and can be used to warm up the agent, or to fail fast, before its first invocation.
+     *
+     * @throws A2AAgentCardException if the card cannot be fetched
+     */
     AgentCard agentCard();
 
     /**
-     * Returns the tenant associated with this A2A client instance, or {@code null}
-     * if no tenant was configured. When non-null, this tenant is sent automatically
-     * with every message.
+     * Returns the tenant configured for this A2A client instance, or the one of the agent card when the card
+     * has already been fetched, or {@code null} otherwise. It never fetches the card. When non-null, this
+     * tenant is sent automatically with every message.
      */
     default String tenant() {
         return null;
