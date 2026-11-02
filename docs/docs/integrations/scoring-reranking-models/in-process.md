@@ -21,7 +21,7 @@ By default, scoring (reranking) model uses the CPU.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 ```java
@@ -35,13 +35,21 @@ Double score = response.content();
 
 `OnnxScoringModel` implements `AutoCloseable`; close it when it is no longer needed to release its native resources.
 
+:::note Windows
+ONNX runtime needs version 14.40 or newer of the Microsoft Visual C++ runtime library `msvcp140.dll`.
+Many JDKs ship their own copy of this file in their `bin` folder, and Windows uses that copy first.
+If your JDK ships an older copy, the model fails to load, and the root cause of the error is
+`java.lang.UnsatisfiedLinkError: ...\onnxruntime.dll: A dynamic link library (DLL) initialization routine failed`.
+To fix it, update your JDK to a recent build that ships `msvcp140.dll` version 14.40 or newer.
+:::
+
 If you want to use the GPU, `onnxruntime_gpu` version can be found
 [here](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
     <exclusions>
         <exclusion>
             <groupId>com.microsoft.onnxruntime</groupId>

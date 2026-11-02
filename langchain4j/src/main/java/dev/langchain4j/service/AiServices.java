@@ -29,6 +29,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -113,7 +114,7 @@ import java.util.function.UnaryOperator;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@link String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
+ * - a {@link String}, an {@link AiMessage} or a {@link ChatResponse}, if you want to get the answer from the LLM as-is
  * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
  * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction

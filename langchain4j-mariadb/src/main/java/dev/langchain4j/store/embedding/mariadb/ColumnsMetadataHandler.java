@@ -111,7 +111,7 @@ class ColumnsMetadataHandler implements MetadataHandler {
     }
 
     @Override
-    public String whereClause(Filter filter) {
+    public WhereClause whereClause(Filter filter) {
         return filterMapper.map(filter);
     }
 

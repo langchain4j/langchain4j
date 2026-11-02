@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,16 +32,24 @@ import org.junit.jupiter.params.provider.MethodSource;
 class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
 
     private static final String PAYLOAD = "0] OR true OR c.id = [0";
+    private static final String PLACEHOLDER = "placeholder";
     private final AzureCosmosDBNoSqlFilterMapper mapper = new DefaultAzureCosmosDBNoSqlFilterMapper();
 
     @Test
     void rejects_list_value_instead_of_bypassing_trusted_tenant_filter() {
-        Filter filter =
-                new And(new IsEqualTo("metadata.tenant", "acme"), new IsEqualTo("metadata.category", List.of(PAYLOAD)));
+        Filter filter = new And(
+                new IsEqualTo("metadata.tenant", "acme"), unvalidatedIsEqualTo("metadata.category", List.of(PAYLOAD)));
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> mapper.map(filter))
                 .withMessageContaining("Unsupported comparison value type:");
+    }
+
+    @Test
+    void rejects_list_value_when_the_filter_is_created() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new IsEqualTo("metadata.category", List.of(PAYLOAD)))
+                .withMessageStartingWith("Unsupported type of comparisonValue with key 'metadata.category': ");
     }
 
     static Stream<Arguments> unsupportedValues() {
@@ -75,15 +84,13 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
         comparisonFilters(value).forEach(filter -> {
             assertThatIllegalArgumentException()
                     .isThrownBy(() -> mapper.map(filter))
-                    .withMessage("Unsupported comparison value type: "
-                            + value.getClass().getName());
+                    .withMessageStartingWith(expectedMessagePrefix(filter, value));
             Filter nested = new And(
                     new IsEqualTo("metadata.tenant", "acme"),
                     new Or(new IsEqualTo("status", "active"), new Not(filter)));
             assertThatIllegalArgumentException()
                     .isThrownBy(() -> mapper.map(nested))
-                    .withMessage("Unsupported comparison value type: "
-                            + value.getClass().getName());
+                    .withMessageStartingWith(expectedMessagePrefix(filter, value));
         });
     }
 
@@ -104,7 +111,15 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
         comparisonFilters(value)
                 .forEach(filter -> assertThatIllegalArgumentException()
                         .isThrownBy(() -> mapper.map(filter))
-                        .withMessage("Comparison value must be a finite number"));
+                        .withMessage(expectedNonFiniteMessage(filter)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonFiniteValues")
+    void filter_classes_reject_non_finite_numbers_before_mapping(Object value) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new IsEqualTo("key", value))
+                .withMessage("comparisonValue with key 'key' must be a finite number");
     }
 
     static Stream<Arguments> supportedValues() {
@@ -149,12 +164,15 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
     @Test
     void rejects_unsupported_elements_mixed_with_safe_in_values() {
         List<Object> values = List.of("safe", 1, List.of(PAYLOAD));
+        IsIn isIn = unvalidatedIsIn("key", values);
+        IsNotIn isNotIn = unvalidatedIsNotIn("key", values);
+
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> mapper.map(new IsIn("key", values)))
-                .withMessageContaining("Unsupported comparison value type:");
+                .isThrownBy(() -> mapper.map(isIn))
+                .withMessageStartingWith(expectedMessagePrefix(isIn, values.get(2)));
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> mapper.map(new IsNotIn("key", values)))
-                .withMessageContaining("Unsupported comparison value type:");
+                .isThrownBy(() -> mapper.map(isNotIn))
+                .withMessageStartingWith(expectedMessagePrefix(isNotIn, values.get(2)));
     }
 
     @Test
@@ -167,22 +185,100 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
                 .withMessage("comparisonValue cannot be null");
     }
 
+    // The filter classes reject unsupported values themselves, so the values are returned from overridden
+    // accessors to check that the mapper rejects them on its own.
     private static Stream<Filter> comparisonFilters(Object value) {
         Stream<Filter> filters = Stream.of(
-                new IsEqualTo("key", value),
-                new IsNotEqualTo("key", value),
-                new IsIn("key", List.of(value)),
-                new IsNotIn("key", List.of(value)));
+                unvalidatedIsEqualTo("key", value),
+                new IsNotEqualTo("key", PLACEHOLDER) {
+                    @Override
+                    public Object comparisonValue() {
+                        return value;
+                    }
+                },
+                unvalidatedIsIn("key", List.of(value)),
+                unvalidatedIsNotIn("key", List.of(value)));
         if (value instanceof Comparable<?> comparable) {
             return Stream.concat(
                     filters,
                     Stream.of(
-                            new IsGreaterThan("key", comparable),
-                            new IsGreaterThanOrEqualTo("key", comparable),
-                            new IsLessThan("key", comparable),
-                            new IsLessThanOrEqualTo("key", comparable)));
+                            new IsGreaterThan("key", PLACEHOLDER) {
+                                @Override
+                                public Comparable<?> comparisonValue() {
+                                    return comparable;
+                                }
+                            },
+                            new IsGreaterThanOrEqualTo("key", PLACEHOLDER) {
+                                @Override
+                                public Comparable<?> comparisonValue() {
+                                    return comparable;
+                                }
+                            },
+                            new IsLessThan("key", PLACEHOLDER) {
+                                @Override
+                                public Comparable<?> comparisonValue() {
+                                    return comparable;
+                                }
+                            },
+                            new IsLessThanOrEqualTo("key", PLACEHOLDER) {
+                                @Override
+                                public Comparable<?> comparisonValue() {
+                                    return comparable;
+                                }
+                            }));
         }
         return filters;
+    }
+
+    private static String expectedMessagePrefix(Filter filter, Object value) {
+        // The mapper maps IsNotEqualTo and IsNotIn by negating a new IsEqualTo or IsIn,
+        // so for these two the filter classes reject the value before the mapper's own check
+        if (filter instanceof IsNotEqualTo) {
+            return "Unsupported type of comparisonValue with key 'key': " + value.getClass().getName();
+        }
+        if (filter instanceof IsNotIn) {
+            return "Unsupported type of a value in comparisonValues with key 'key': " + value.getClass().getName();
+        }
+        return "Unsupported comparison value type: " + value.getClass().getName();
+    }
+
+    private static String expectedNonFiniteMessage(Filter filter) {
+        // The mapper maps IsNotEqualTo and IsNotIn by negating a new IsEqualTo or IsIn,
+        // so for these two the filter classes reject the value before the mapper's own check
+        if (filter instanceof IsNotEqualTo) {
+            return "comparisonValue with key 'key' must be a finite number";
+        }
+        if (filter instanceof IsNotIn) {
+            return "comparisonValues with key 'key' must contain only finite numbers";
+        }
+        return "Comparison value must be a finite number";
+    }
+
+    private static IsEqualTo unvalidatedIsEqualTo(String key, Object value) {
+        return new IsEqualTo(key, PLACEHOLDER) {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
+    }
+
+    private static IsIn unvalidatedIsIn(String key, Collection<?> values) {
+        return new IsIn(key, List.of(PLACEHOLDER)) {
+            @Override
+            public Collection<?> comparisonValues() {
+                return values;
+            }
+        };
+    }
+
+    private static IsNotIn unvalidatedIsNotIn(String key, Collection<?> values) {
+        return new IsNotIn(key, List.of(PLACEHOLDER)) {
+            @Override
+            public Collection<?> comparisonValues() {
+                return values;
+            }
+        };
     }
 
     private static class InjectedNumber extends Number implements Comparable<InjectedNumber> {

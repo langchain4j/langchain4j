@@ -1,6 +1,9 @@
 package dev.langchain4j.skills;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.condition.OS.WINDOWS;
 
 import java.io.IOException;
 import java.net.URL;
@@ -14,9 +17,13 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.io.TempDir;
 
 class ClassPathSkillLoaderTest {
+
+    private static final String SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS =
+            "creating symbolic links on Windows requires special privileges";
 
     @Test
     void should_load_all_skills_from_directory() {
@@ -127,7 +134,161 @@ class ClassPathSkillLoaderTest {
             assertThat(skills)
                     .extracting(Skill::name)
                     .containsExactlyInAnyOrder("greeting-user", "test-skill", "using-process-tool");
+            assertThat(skills)
+                    .filteredOn(skill -> skill.name().equals("greeting-user"))
+                    .singleElement()
+                    .satisfies(skill -> assertThat(skill.resources())
+                            .extracting(SkillResource::relativePath)
+                            .containsExactly("references/processing-result.md"));
         }
+    }
+
+    @Test
+    void should_load_files_whose_names_start_with_scripts_outside_of_scripts_directory(@TempDir Path tempDir)
+            throws IOException {
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        writeFile(skillDirectory.resolve("scripts/run.py"), "print('hello')");
+        writeFile(skillDirectory.resolve("scripts-guide.md"), "guide");
+
+        Skill skill = loadSkill(tempDir, "skills/my-skill");
+
+        assertThat(skill.resources()).extracting(SkillResource::relativePath).containsExactly("scripts-guide.md");
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_load_symbolic_link_pointing_inside_of_skill_directory(@TempDir Path tempDir) throws IOException {
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        writeFile(skillDirectory.resolve("references/v2.md"), "version 2");
+        Files.createSymbolicLink(skillDirectory.resolve("latest.md"), Path.of("references/v2.md"));
+
+        Skill skill = loadSkill(tempDir, "skills/my-skill");
+
+        assertThat(skill.resources())
+                .extracting(SkillResource::relativePath, SkillResource::content)
+                .containsExactlyInAnyOrder(tuple("latest.md", "version 2"), tuple("references/v2.md", "version 2"));
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_fail_when_resource_is_relative_symbolic_link_pointing_outside_of_skill_directory(
+            @TempDir Path tempDir) throws IOException {
+        writeFile(tempDir.resolve("outside.md"), "outside");
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        Files.createSymbolicLink(skillDirectory.resolve("notes.md"), Path.of("../../outside.md"));
+
+        assertThatThrownBy(() -> loadSkill(tempDir, "skills/my-skill"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("notes.md")
+                .hasMessageContaining("outside of the skill directory")
+                .hasMessageNotContaining("outside.md");
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_fail_when_resource_is_absolute_symbolic_link_pointing_outside_of_skill_directory(
+            @TempDir Path tempDir) throws IOException {
+        Path outside = writeFile(tempDir.resolve("outside.md"), "outside");
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        Files.createDirectories(skillDirectory.resolve("references"));
+        Files.createSymbolicLink(skillDirectory.resolve("references/notes.md"), outside.toAbsolutePath());
+
+        assertThatThrownBy(() -> loadSkill(tempDir, "skills/my-skill"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("notes.md")
+                .hasMessageContaining("outside of the skill directory")
+                .hasMessageNotContaining("outside.md");
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_fail_when_SKILL_md_is_symbolic_link_pointing_outside_of_skill_directory(@TempDir Path tempDir)
+            throws IOException {
+        writeSkill(tempDir.resolve("skills/my-skill2")); // shares the "my-skill" name prefix, but is a different directory
+        Path skillDirectory = Files.createDirectories(tempDir.resolve("skills/my-skill"));
+        Files.createSymbolicLink(skillDirectory.resolve("SKILL.md"), Path.of("../my-skill2/SKILL.md"));
+
+        assertThatThrownBy(() -> loadSkill(tempDir, "skills/my-skill"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("SKILL.md")
+                .hasMessageContaining("outside of the skill directory")
+                .hasMessageNotContaining("my-skill2");
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_fail_when_loading_all_skills_and_one_has_symbolic_link_pointing_outside_of_skill_directory(
+            @TempDir Path tempDir) throws IOException {
+        writeFile(tempDir.resolve("outside.md"), "outside");
+        writeSkill(tempDir.resolve("skills/valid-skill"));
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        Files.createSymbolicLink(skillDirectory.resolve("notes.md"), Path.of("../../outside.md"));
+
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
+
+            assertThatThrownBy(() -> ClassPathSkillLoader.loadSkills("skills", classLoader))
+                    .isExactlyInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("notes.md")
+                    .hasMessageContaining("outside of the skill directory");
+        }
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_not_follow_symbolic_link_to_directory_outside_of_skill_directory(@TempDir Path tempDir)
+            throws IOException {
+        writeFile(tempDir.resolve("outside/ref.md"), "outside");
+        Path skillDirectory = writeSkill(tempDir.resolve("skills/my-skill"));
+        Files.createSymbolicLink(skillDirectory.resolve("references"), Path.of("../../outside"));
+
+        Skill skill = loadSkill(tempDir, "skills/my-skill");
+
+        assertThat(skill.resources()).isEmpty();
+    }
+
+    @Test
+    @DisabledOnOs(value = WINDOWS, disabledReason = SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS)
+    void should_load_resources_when_skill_directory_is_symbolic_link(@TempDir Path tempDir) throws IOException {
+        Path realSkillDirectory = writeSkill(tempDir.resolve("shared/my-skill"));
+        writeFile(realSkillDirectory.resolve("references/ref.md"), "reference");
+        Path skillsDirectory = Files.createDirectories(tempDir.resolve("skills"));
+        Path skillDirectory =
+                Files.createSymbolicLink(skillsDirectory.resolve("my-skill"), Path.of("../shared/my-skill"));
+
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
+
+            List<Skill> skills = ClassPathSkillLoader.loadSkills("skills", classLoader);
+
+            assertThat(skills).singleElement().isInstanceOfSatisfying(FileSystemSkill.class, skill -> {
+                assertThat(skill.basePath()).isEqualTo(skillDirectory);
+                assertThat(skill.resources())
+                        .extracting(SkillResource::relativePath, SkillResource::content)
+                        .containsExactly(tuple("references/ref.md", "reference"));
+            });
+        }
+    }
+
+    private static Skill loadSkill(Path classpathRoot, String skillDirectoryOnClasspath) throws IOException {
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {classpathRoot.toUri().toURL()}, null)) {
+            return ClassPathSkillLoader.loadSkill(skillDirectoryOnClasspath, classLoader);
+        }
+    }
+
+    private static Path writeSkill(Path skillDirectory) throws IOException {
+        writeFile(skillDirectory.resolve("SKILL.md"), """
+                ---
+                name: %s
+                description: Test skill
+                ---
+
+                Instructions
+                """.formatted(skillDirectory.getFileName()));
+        return skillDirectory;
+    }
+
+    private static Path writeFile(Path file, String content) throws IOException {
+        Files.createDirectories(file.getParent());
+        return Files.writeString(file, content);
     }
 
     /**

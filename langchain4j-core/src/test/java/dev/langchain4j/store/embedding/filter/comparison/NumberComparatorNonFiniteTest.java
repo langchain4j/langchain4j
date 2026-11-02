@@ -11,7 +11,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * {@link Metadata} accepts {@link Float} and {@link Double} without excluding infinity and NaN, so numeric
- * filters have to return a boolean for those values instead of throwing.
+ * filters have to return a boolean for those stored values instead of throwing. Comparison values themselves
+ * are always finite, the filters reject anything else.
  *
  * <p>Infinities keep their natural ordering. NaN is not comparable to anything, not even to itself, so every
  * comparison involving it is false and only the negated filters match.
@@ -34,24 +35,6 @@ class NumberComparatorNonFiniteTest {
                     new IsLessThanOrEqualTo("score", FINITE).test(metadata);
                     new IsIn("score", List.of(FINITE)).test(metadata);
                     new IsNotIn("score", List.of(FINITE)).test(metadata);
-                })
-                .doesNotThrowAnyException();
-    }
-
-    @ParameterizedTest
-    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
-    void shouldNotThrowForNonFiniteComparisonValue(double value) {
-        Metadata metadata = metadata(FINITE);
-
-        assertThatCode(() -> {
-                    new IsEqualTo("score", value).test(metadata);
-                    new IsNotEqualTo("score", value).test(metadata);
-                    new IsGreaterThan("score", value).test(metadata);
-                    new IsGreaterThanOrEqualTo("score", value).test(metadata);
-                    new IsLessThan("score", value).test(metadata);
-                    new IsLessThanOrEqualTo("score", value).test(metadata);
-                    new IsIn("score", List.of(value)).test(metadata);
-                    new IsNotIn("score", List.of(value)).test(metadata);
                 })
                 .doesNotThrowAnyException();
     }
@@ -81,42 +64,14 @@ class NumberComparatorNonFiniteTest {
     }
 
     @Test
-    void shouldConsiderInfinityEqualToItself() {
-        Metadata metadata = metadata(Double.POSITIVE_INFINITY);
-
-        assertThat(new IsEqualTo("score", Double.POSITIVE_INFINITY).test(metadata))
+    void shouldOrderInfinityBeyondLargestFiniteValues() {
+        assertThat(new IsGreaterThan("score", Double.MAX_VALUE).test(metadata(Double.POSITIVE_INFINITY)))
                 .isTrue();
-        assertThat(new IsEqualTo("score", Double.NEGATIVE_INFINITY).test(metadata))
+        assertThat(new IsLessThan("score", -Double.MAX_VALUE).test(metadata(Double.NEGATIVE_INFINITY)))
+                .isTrue();
+        assertThat(new IsIn("score", List.of(FINITE, Double.MAX_VALUE)).test(metadata(Double.POSITIVE_INFINITY)))
                 .isFalse();
-        assertThat(new IsGreaterThan("score", Double.NEGATIVE_INFINITY).test(metadata))
-                .isTrue();
-        assertThat(new IsIn("score", List.of(FINITE, Double.POSITIVE_INFINITY)).test(metadata))
-                .isTrue();
-        assertThat(new IsNotIn("score", List.of(FINITE, Double.POSITIVE_INFINITY)).test(metadata))
-                .isFalse();
-    }
-
-    @Test
-    void shouldOrderFiniteValuesAgainstInfiniteComparisonValue() {
-        Metadata metadata = metadata(FINITE);
-
-        assertThat(new IsLessThan("score", Double.POSITIVE_INFINITY).test(metadata))
-                .isTrue();
-        assertThat(new IsGreaterThan("score", Double.NEGATIVE_INFINITY).test(metadata))
-                .isTrue();
-        assertThat(new IsEqualTo("score", Double.POSITIVE_INFINITY).test(metadata))
-                .isFalse();
-        assertThat(new IsIn("score", List.of(Double.POSITIVE_INFINITY)).test(metadata))
-                .isFalse();
-    }
-
-    @Test
-    void shouldOrderIntegralValuesAgainstInfiniteComparisonValue() {
-        Metadata metadata = new Metadata().put("score", Long.MAX_VALUE);
-
-        assertThat(new IsLessThan("score", Double.POSITIVE_INFINITY).test(metadata))
-                .isTrue();
-        assertThat(new IsGreaterThan("score", Double.NEGATIVE_INFINITY).test(metadata))
+        assertThat(new IsNotIn("score", List.of(FINITE, Double.MAX_VALUE)).test(metadata(Double.POSITIVE_INFINITY)))
                 .isTrue();
     }
 
@@ -136,43 +91,14 @@ class NumberComparatorNonFiniteTest {
     }
 
     @Test
-    void shouldNotMatchNaNComparisonValue() {
-        Metadata metadata = metadata(FINITE);
-
-        assertThat(new IsEqualTo("score", Double.NaN).test(metadata)).isFalse();
-        assertThat(new IsGreaterThan("score", Double.NaN).test(metadata)).isFalse();
-        assertThat(new IsGreaterThanOrEqualTo("score", Double.NaN).test(metadata))
-                .isFalse();
-        assertThat(new IsLessThan("score", Double.NaN).test(metadata)).isFalse();
-        assertThat(new IsLessThanOrEqualTo("score", Double.NaN).test(metadata)).isFalse();
-        assertThat(new IsIn("score", List.of(Double.NaN)).test(metadata)).isFalse();
-
-        assertThat(new IsNotEqualTo("score", Double.NaN).test(metadata)).isTrue();
-        assertThat(new IsNotIn("score", List.of(Double.NaN)).test(metadata)).isTrue();
-    }
-
-    @Test
-    void shouldNotConsiderNaNEqualToItself() {
+    void shouldNotOrderNaNAgainstLargestFiniteValues() {
         Metadata metadata = metadata(Double.NaN);
 
-        assertThat(new IsEqualTo("score", Double.NaN).test(metadata)).isFalse();
-        assertThat(new IsIn("score", List.of(Double.NaN)).test(metadata)).isFalse();
-
-        assertThat(new IsNotEqualTo("score", Double.NaN).test(metadata)).isTrue();
-        assertThat(new IsNotIn("score", List.of(Double.NaN)).test(metadata)).isTrue();
-    }
-
-    @Test
-    void shouldNotOrderNaNAgainstInfinity() {
-        Metadata metadata = metadata(Double.NaN);
-
-        assertThat(new IsGreaterThan("score", Double.POSITIVE_INFINITY).test(metadata))
+        assertThat(new IsGreaterThan("score", -Double.MAX_VALUE).test(metadata)).isFalse();
+        assertThat(new IsLessThan("score", Double.MAX_VALUE).test(metadata)).isFalse();
+        assertThat(new IsGreaterThanOrEqualTo("score", -Double.MAX_VALUE).test(metadata))
                 .isFalse();
-        assertThat(new IsLessThan("score", Double.POSITIVE_INFINITY).test(metadata))
-                .isFalse();
-        assertThat(new IsGreaterThan("score", Double.NEGATIVE_INFINITY).test(metadata))
-                .isFalse();
-        assertThat(new IsLessThan("score", Double.NEGATIVE_INFINITY).test(metadata))
+        assertThat(new IsLessThanOrEqualTo("score", Double.MAX_VALUE).test(metadata))
                 .isFalse();
     }
 
@@ -182,19 +108,17 @@ class NumberComparatorNonFiniteTest {
                 .isTrue();
         assertThat(new IsLessThan("score", 0.5f).test(metadata(Float.NEGATIVE_INFINITY)))
                 .isTrue();
-        assertThat(new IsEqualTo("score", Float.POSITIVE_INFINITY).test(metadata(Float.POSITIVE_INFINITY)))
-                .isTrue();
         assertThat(new IsEqualTo("score", 0.5f).test(metadata(Float.NaN))).isFalse();
         assertThat(new IsNotEqualTo("score", 0.5f).test(metadata(Float.NaN))).isTrue();
     }
 
     @Test
-    void shouldCompareFloatAndDoubleNonFiniteValues() {
-        assertThat(new IsEqualTo("score", Double.POSITIVE_INFINITY).test(metadata(Float.POSITIVE_INFINITY)))
+    void shouldCompareNonFiniteFloatMetadataWithDoubleValues() {
+        assertThat(new IsGreaterThan("score", Double.MAX_VALUE).test(metadata(Float.POSITIVE_INFINITY)))
                 .isTrue();
-        assertThat(new IsGreaterThan("score", Double.NEGATIVE_INFINITY).test(metadata(Float.POSITIVE_INFINITY)))
+        assertThat(new IsLessThan("score", -Double.MAX_VALUE).test(metadata(Float.NEGATIVE_INFINITY)))
                 .isTrue();
-        assertThat(new IsEqualTo("score", Double.NaN).test(metadata(Float.NaN))).isFalse();
+        assertThat(new IsEqualTo("score", 0.5d).test(metadata(Float.NaN))).isFalse();
     }
 
     @Test

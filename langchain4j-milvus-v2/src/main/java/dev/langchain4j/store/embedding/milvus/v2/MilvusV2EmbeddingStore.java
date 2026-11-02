@@ -60,6 +60,7 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_SPARSE_VECTOR_FIELD_NAME = "sparse_vector";
 
     private final MilvusClientV2 milvusClientV2;
+    private final MilvusServerVersion serverVersion;
     private final String collectionName;
     private final IndexParam.MetricType metricType;
     private final IndexParam.MetricType sparseMetricType;
@@ -85,6 +86,7 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
                         builder.databaseName);
 
         this.milvusClientV2 = ensureNotNull(client, "milvusClientV2");
+        this.serverVersion = MilvusServerVersion.from(this.milvusClientV2);
         this.collectionName = getOrDefault(builder.collectionName, "default");
         this.metricType = getOrDefault(builder.metricType, IndexParam.MetricType.COSINE);
         this.sparseMode = getOrDefault(builder.sparseMode, MilvusSparseMode.BM25);
@@ -246,11 +248,17 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
                     metricType,
                     sparseMetricType,
                     ranker,
-                    consistencyLevel);
+                    consistencyLevel,
+                    serverVersion);
             searchResp = CollectionOperationsExecutor.search(milvusClientV2, hybridSearchReq);
         } else {
             SearchReq searchReq = buildSearchRequest(
-                    embeddingSearchRequest, collectionName, fieldDefinition, metricType, consistencyLevel);
+                    embeddingSearchRequest,
+                    collectionName,
+                    fieldDefinition,
+                    metricType,
+                    consistencyLevel,
+                    serverVersion);
             searchResp = CollectionOperationsExecutor.search(milvusClientV2, searchReq);
         }
 
@@ -433,7 +441,9 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
         removeForVector(
-                this.milvusClientV2, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
+                this.milvusClientV2,
+                this.collectionName,
+                map(filter, this.fieldDefinition.getMetadataFieldName(), this.serverVersion));
     }
 
     /**
