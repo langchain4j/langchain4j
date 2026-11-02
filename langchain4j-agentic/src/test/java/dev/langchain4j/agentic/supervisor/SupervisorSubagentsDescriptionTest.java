@@ -6,11 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.concurrent.atomic.AtomicInteger;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,22 +15,11 @@ import org.junit.jupiter.api.Test;
  */
 class SupervisorSubagentsDescriptionTest {
 
-    /** A planner model that immediately reports the task as done, counting its calls. */
-    static class DonePlannerModel implements ChatModel {
-
-        private final AtomicInteger calls = new AtomicInteger();
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            calls.incrementAndGet();
-            return ChatResponse.builder().aiMessage(AiMessage.from("""
-                            {"agentName": "done", "arguments": {"response": "nothing to do"}}
-                            """)).build();
-        }
-
-        int calls() {
-            return calls.get();
-        }
+    /** A planner model that immediately reports the task as done. */
+    private static ChatModelMock donePlannerModel() {
+        return ChatModelMock.thatAlwaysResponds("""
+                {"agentName": "done", "arguments": {"response": "nothing to do"}}
+                """);
     }
 
     private static AgenticScopeFunction<String> agent(String name, String description) {
@@ -49,7 +34,7 @@ class SupervisorSubagentsDescriptionTest {
 
     @Test
     void supervisor_fails_at_its_first_invocation_when_subagents_have_no_description() {
-        DonePlannerModel plannerModel = new DonePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         // building succeeds: the check runs when the supervisor is invoked, like the rest of its initialization
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
@@ -62,12 +47,12 @@ class SupervisorSubagentsDescriptionTest {
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining("[first, second]")
                 .hasMessageContaining("have no description");
-        assertThat(plannerModel.calls()).isZero();
+        assertThat(plannerModel.requests()).isEmpty();
     }
 
     @Test
     void supervisor_with_described_subagents_plans_normally() {
-        DonePlannerModel plannerModel = new DonePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -75,6 +60,6 @@ class SupervisorSubagentsDescriptionTest {
                 .build();
 
         assertThat(supervisor.invoke("do something")).isEqualTo("nothing to do");
-        assertThat(plannerModel.calls()).isEqualTo(1);
+        assertThat(plannerModel.requests()).hasSize(1);
     }
 }

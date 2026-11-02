@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
@@ -24,11 +25,9 @@ import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.V;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -37,12 +36,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -159,21 +158,19 @@ class A2ALazyAgentCardTest {
         }
     }
 
-    /** A planner model that immediately reports the task as done, capturing the system prompt it received. */
-    static class DonePlannerModel implements ChatModel {
+    /** A planner model that immediately reports the task as done. */
+    private static ChatModelMock donePlannerModel() {
+        return ChatModelMock.thatAlwaysResponds("""
+                {"agentName": "done", "arguments": {"response": "nothing to fix"}}
+                """);
+    }
 
-        final AtomicReference<String> systemMessage = new AtomicReference<>();
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            chatRequest.messages().stream()
-                    .filter(SystemMessage.class::isInstance)
-                    .findFirst()
-                    .ifPresent(message -> systemMessage.compareAndSet(null, ((SystemMessage) message).text()));
-            return ChatResponse.builder().aiMessage(AiMessage.from("""
-                            {"agentName": "done", "arguments": {"response": "nothing to fix"}}
-                            """)).build();
-        }
+    private static String systemMessage(ChatModelMock plannerModel) {
+        return plannerModel.requests().get(0).messages().stream()
+                .filter(SystemMessage.class::isInstance)
+                .map(message -> ((SystemMessage) message).text())
+                .findFirst()
+                .orElseThrow();
     }
 
     /**
@@ -286,6 +283,12 @@ class A2ALazyAgentCardTest {
         String fix(@V("analysis") String analysis);
     }
 
+    public interface DescribedFixer {
+
+        @Agent(name = "fixer", description = "Applies a fix to the analyzed problem")
+        String fix(@V("analysis") String analysis);
+    }
+
     @Test
     void building_a_workflow_does_not_require_the_remote_agent_to_be_up() {
         // the issue's reproducer: the card used to be fetched here, failing the whole pipeline
@@ -327,6 +330,10 @@ class A2ALazyAgentCardTest {
         assertThatThrownBy(() -> AgenticServices.a2aBuilder("::not-a-url::", Fixer.class))
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining("::not-a-url::");
+        assertThatThrownBy(() -> AgenticServices.a2aBuilder("localhost:8080", Fixer.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("localhost:8080")
+                .hasMessageContaining("http or https");
     }
 
     @Test
@@ -344,15 +351,24 @@ class A2ALazyAgentCardTest {
     void the_card_is_fetched_once_across_concurrent_invocations() throws Exception {
         CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
         cardSource.delayMillis = 200;
-        useLazyA2AService(cardSource, replying("fixed"));
+        AtomicInteger clientCreations = new AtomicInteger();
+        useLazyA2AService(cardSource, card -> {
+            clientCreations.incrementAndGet();
+            return new ReplyingClient("fixed", card).client;
+        });
         Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
                 .outputKey("fix")
                 .build();
 
-        ExecutorService executor = Executors.newFixedThreadPool(8);
+        int invocations = 8;
+        CyclicBarrier start = new CyclicBarrier(invocations);
+        ExecutorService executor = Executors.newFixedThreadPool(invocations);
         try {
-            Callable<String> invocation = () -> fixer.fix("a broken build");
-            List<Future<String>> results = executor.invokeAll(Collections.nCopies(8, invocation));
+            Callable<String> invocation = () -> {
+                start.await(10, TimeUnit.SECONDS);
+                return fixer.fix("a broken build");
+            };
+            List<Future<String>> results = executor.invokeAll(Collections.nCopies(invocations, invocation));
             for (Future<String> result : results) {
                 assertThat(result.get(10, TimeUnit.SECONDS)).isEqualTo("fixed");
             }
@@ -360,6 +376,7 @@ class A2ALazyAgentCardTest {
             executor.shutdownNow();
         }
         assertThat(cardSource.fetches).hasValue(1);
+        assertThat(clientCreations).hasValue(1);
     }
 
     @Test
@@ -439,27 +456,78 @@ class A2ALazyAgentCardTest {
     }
 
     @Test
-    void untyped_agents_without_a_name_get_a_unique_placeholder_name() {
+    void untyped_agents_without_a_name_get_a_placeholder_name_derived_from_the_url() {
         CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
         useLazyA2AService(cardSource, replying("fixed"));
 
-        UntypedAgent first = AgenticServices.a2aBuilder("http://fixers.example.com:8080")
+        assertThat(untypedAgentName("http://fixers.example.com:8080")).isEqualTo("a2a-fixers.example.com-8080");
+        assertThat(untypedAgentName("http://fixers.example.com:8080")).isEqualTo("a2a-fixers.example.com-8080");
+        assertThat(untypedAgentName("http://fixers.example.com:8080/agents/fixer/"))
+                .isEqualTo("a2a-fixers.example.com-8080-agents-fixer");
+        assertThat(untypedAgentName("https://fixers.example.com")).isEqualTo("a2a-fixers.example.com");
+        assertThat(cardSource.fetches).hasValue(0);
+    }
+
+    private static String untypedAgentName(String a2aServerUrl) {
+        UntypedAgent agent = AgenticServices.a2aBuilder(a2aServerUrl)
                 .inputKeys("analysis")
                 .outputKey("fix")
                 .build();
-        UntypedAgent second = AgenticServices.a2aBuilder("http://fixers.example.com:8080/a2a")
-                .inputKeys("analysis")
+        return ((AgentInstance) agent).name();
+    }
+
+    @Test
+    void the_name_and_description_of_the_agent_annotation_are_used_without_fetching_the_card() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        useLazyA2AService(cardSource, replying("fixed"));
+
+        DescribedFixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", DescribedFixer.class)
                 .outputKey("fix")
                 .build();
-        UntypedAgent withoutPort = AgenticServices.a2aBuilder("https://fixers.example.com")
+
+        assertThat(((AgentInstance) fixer).name()).isEqualTo("fixer");
+        assertThat(((AgentInstance) fixer).description()).isEqualTo("Applies a fix to the analyzed problem");
+        assertThat(cardSource.fetches).hasValue(0);
+    }
+
+    @Test
+    void a_failed_fetch_of_the_description_throws_the_card_exception_itself() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.failing = true;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+
+        assertThatThrownBy(() -> ((AgentInstance) fixer).description())
+                .isExactlyInstanceOf(A2AAgentCardException.class)
+                .hasCauseInstanceOf(A2AClientError.class);
+    }
+
+    @Test
+    void a_missing_input_fails_before_the_card_is_fetched() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.failing = true;
+        useLazyA2AService(cardSource, replying("fixed"));
+        UntypedAgent fixer = AgenticServices.a2aBuilder("http://remote-host:8080")
                 .inputKeys("analysis")
                 .outputKey("fix")
                 .build();
 
-        assertThat(((AgentInstance) first).name()).isEqualTo("a2a-fixers.example.com-8080");
-        assertThat(((AgentInstance) second).name()).isEqualTo("a2a-fixers.example.com-8080-2");
-        assertThat(((AgentInstance) withoutPort).name()).isEqualTo("a2a-fixers.example.com");
+        assertThatThrownBy(() -> fixer.invoke(Map.of())).isInstanceOf(MissingArgumentException.class);
         assertThat(cardSource.fetches).hasValue(0);
+    }
+
+    @Test
+    void the_message_of_the_card_exception_hides_credentials_of_the_url() {
+        A2AAgentCardException exception = new A2AAgentCardException(
+                "fixer", "https://user:secret@remote-host:8080/a2a?key=token", new IOException("connection refused"));
+
+        assertThat(exception.getMessage())
+                .contains("https://remote-host:8080/a2a")
+                .doesNotContain("secret")
+                .doesNotContain("token");
+        assertThat(exception.a2aServerUrl()).isEqualTo("https://user:secret@remote-host:8080/a2a?key=token");
     }
 
     @Test
@@ -536,7 +604,7 @@ class A2ALazyAgentCardTest {
         Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
                 .outputKey("fix")
                 .build();
-        DonePlannerModel plannerModel = new DonePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -546,7 +614,7 @@ class A2ALazyAgentCardTest {
 
         assertThat(supervisor.invoke("fix the build")).isEqualTo("nothing to fix");
         assertThat(cardSource.fetches).hasValue(1);
-        assertThat(plannerModel.systemMessage.get()).contains("'fix$0', 'Fixes the analyzed problem'");
+        assertThat(systemMessage(plannerModel)).contains("'fix$0', 'Fixes the analyzed problem'");
     }
 
     @Test
@@ -557,7 +625,7 @@ class A2ALazyAgentCardTest {
                 .description("Applies a fix to the analyzed problem")
                 .outputKey("fix")
                 .build();
-        DonePlannerModel plannerModel = new DonePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -566,14 +634,14 @@ class A2ALazyAgentCardTest {
 
         assertThat(supervisor.invoke("fix the build")).isEqualTo("nothing to fix");
         assertThat(cardSource.fetches).hasValue(0);
-        assertThat(plannerModel.systemMessage.get()).contains("'fix$0', 'Applies a fix to the analyzed problem'");
+        assertThat(systemMessage(plannerModel)).contains("'fix$0', 'Applies a fix to the analyzed problem'");
     }
 
     @Test
     void a_supervisor_over_an_unreachable_subagent_without_description_fails_at_its_first_call() {
         FixAgent fixAgent = AgenticServices.createAgenticSystem(FixAgent.class, (ChatModel) null);
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
-                .chatModel(new DonePlannerModel())
+                .chatModel(donePlannerModel())
                 .subAgents(fixAgent)
                 .build();
 

@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.a2a;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -28,6 +29,7 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -41,11 +43,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -90,12 +91,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private final Class<T> agentServiceClass;
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
-    // Counts the nameless untyped agents built per A2A server host in this JVM, to give each a unique placeholder name
-    private static final Map<String, AtomicInteger> PLACEHOLDER_NAME_COUNTERS = new ConcurrentHashMap<>();
-
     private final String a2aServerUrl;
-    private final Supplier<AgentCard> agentCardSource;
+    private Supplier<AgentCard> agentCardSource;
     private final Function<AgentCard, Client> clientFactory;
+    private final ReentrantLock lazyInitLock = new ReentrantLock();
 
     // The agent card is fetched lazily, the first time it is needed, and the client is created from it at that
     // point, so that building an agentic system never depends on the availability of the remote agent
@@ -156,8 +155,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private static A2ACardResolver cardResolver(String a2aServerUrl, String tenant) {
+        A2ACardResolver cardResolver;
         try {
-            return A2ACardResolver.builder()
+            cardResolver = A2ACardResolver.builder()
                     .httpClient(A2AHttpClientFactory.create())
                     .baseUrl(a2aServerUrl)
                     .agentCardPath(null)
@@ -165,9 +165,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     .authHeaders(null)
                     .build();
         } catch (A2AClientError | IllegalArgumentException e) {
-            throw new AgenticSystemConfigurationException(
-                    "Invalid A2A server URL '" + a2aServerUrl + "': " + e.getMessage(), e);
+            String invalidValue = "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
+            throw new AgenticSystemConfigurationException("Invalid " + invalidValue + ": " + e.getMessage(), e);
         }
+        URI uri = URI.create(a2aServerUrl);
+        boolean httpScheme = "http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme());
+        if (!httpScheme || uri.getHost() == null) {
+            throw new AgenticSystemConfigurationException("Invalid A2A server URL '" + a2aServerUrl
+                    + "': it must be an absolute http or https URL, like http://localhost:8080");
+        }
+        return cardResolver;
     }
 
     /**
@@ -177,21 +184,34 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private AgentCard resolveAgentCard() {
         AgentCard card = agentCard;
         if (card == null) {
-            synchronized (this) {
+            lockForLazyInit();
+            try {
                 card = agentCard;
                 if (card == null) {
                     card = fetchAgentCard();
                     agentCard = card;
+                    agentCardSource = null;
                 }
+            } finally {
+                lazyInitLock.unlock();
             }
         }
         return card;
     }
 
+    private void lockForLazyInit() {
+        try {
+            lazyInitLock.lockInterruptibly();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new A2AAgentCardException(name(), a2aServerUrl, e);
+        }
+    }
+
     private AgentCard fetchAgentCard() {
         try {
             return agentCardSource.get();
-        } catch (A2AClientError e) {
+        } catch (RuntimeException e) {
             throw new A2AAgentCardException(name(), a2aServerUrl, e);
         }
     }
@@ -199,12 +219,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private Client client() {
         Client client = a2aClient;
         if (client == null) {
-            synchronized (this) {
+            lockForLazyInit();
+            try {
                 client = a2aClient;
                 if (client == null) {
                     client = clientFactory.apply(resolveAgentCard());
                     a2aClient = client;
                 }
+            } finally {
+                lazyInitLock.unlock();
             }
         }
         return client;
@@ -230,6 +253,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
 
+        if (description == null) {
+            description = agentMethod().map(DefaultA2AClientBuilder::annotatedDescription).orElse(null);
+        }
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out
         agentId();
 
@@ -242,7 +268,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
-            return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            try {
+                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof Error error) {
+                    throw error;
+                }
+                throw (Exception) e.getCause();
+            }
         }
 
         if (method.getDeclaringClass() == A2AClientInstance.class) {
@@ -303,7 +336,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         String taskId = null;
         // Per-call tenant extracted from the @A2ATenantId-annotated parameter at invocation time.
         // Falls back to the instance-level tenant (from @A2AClientAgent.tenant() or the agent card URL).
-        String callTenant = effectiveTenant();
+        String callTenant = null;
         String contextIdKey = null;
         String taskIdKey = null;
 
@@ -338,6 +371,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     parts.add(new TextPart(args[i].toString()));
                 }
             }
+        }
+
+        if (callTenant == null) {
+            callTenant = effectiveTenant();
         }
 
         Message.Builder messageBuilder =
@@ -695,9 +732,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     /**
-     * The name is always known locally, without fetching the agent card: it is the explicit one, else the name of
-     * the agent method for a typed agent, else a unique placeholder derived from the A2A server URL. It never
-     * changes afterwards, not even when the card is fetched, because the agent id is derived from it.
+     * The name is always known locally, without fetching the agent card: it is the explicit one, else the one of the
+     * annotation of the agent method, else the name of that method for a typed agent, else a placeholder derived
+     * from the A2A server URL. It never changes afterwards, not even when the card is fetched, because the agent id
+     * is derived from it.
      */
     @Override
     public String name() {
@@ -708,48 +746,81 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private String defaultName() {
-        if (agentServiceClass != UntypedAgent.class) {
-            Optional<String> agentMethodName = agentMethodName();
-            if (agentMethodName.isPresent()) {
-                return agentMethodName.get();
-            }
+        Optional<Method> agentMethod = agentMethod();
+        if (agentMethod.isPresent()) {
+            String annotatedName = annotatedName(agentMethod.get());
+            return isNullOrBlank(annotatedName) ? agentMethod.get().getName() : annotatedName;
         }
         AgentCard card = agentCard;
         return card != null ? card.name() : placeholderName(a2aServerUrl);
     }
 
-    private Optional<String> agentMethodName() {
+    private Optional<Method> agentMethod() {
+        if (agentServiceClass == UntypedAgent.class) {
+            return Optional.empty();
+        }
         Optional<Method> agentMethod = AgentUtil.getAnnotatedMethodOnClass(agentServiceClass, Agent.class)
                 .or(() -> AgentUtil.getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class));
         if (agentMethod.isPresent()) {
-            return agentMethod.map(Method::getName);
+            return agentMethod;
         }
         List<Method> abstractMethods = Stream.of(agentServiceClass.getMethods())
                 .filter(method -> Modifier.isAbstract(method.getModifiers()))
                 .toList();
-        return abstractMethods.size() == 1 ? Optional.of(abstractMethods.get(0).getName()) : Optional.empty();
+        return abstractMethods.size() == 1 ? Optional.of(abstractMethods.get(0)) : Optional.empty();
     }
 
+    private static String annotatedName(Method agentMethod) {
+        Agent agent = agentMethod.getAnnotation(Agent.class);
+        if (agent != null) {
+            return agent.name();
+        }
+        A2AClientAgent a2aClientAgent = agentMethod.getAnnotation(A2AClientAgent.class);
+        return a2aClientAgent != null ? a2aClientAgent.name() : null;
+    }
+
+    private static String annotatedDescription(Method agentMethod) {
+        Agent agent = agentMethod.getAnnotation(Agent.class);
+        if (agent != null) {
+            return firstNonBlank(agent.description(), agent.value());
+        }
+        A2AClientAgent a2aClientAgent = agentMethod.getAnnotation(A2AClientAgent.class);
+        return a2aClientAgent != null ? firstNonBlank(a2aClientAgent.description(), a2aClientAgent.value()) : null;
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (!isNullOrBlank(first)) {
+            return first;
+        }
+        return isNullOrBlank(second) ? null : second;
+    }
+
+    /**
+     * A name derived from the host, port and path of the A2A server URL, like {@code a2a-remote-host-8080-agents-fixer}
+     * for {@code http://remote-host:8080/agents/fixer}: the same URL always gives the same name, and agents sharing
+     * it inside an agentic system are told apart by the index suffix of their agent id.
+     */
     static String placeholderName(String a2aServerUrl) {
-        String baseName = "a2a-" + hostAndPort(a2aServerUrl);
-        int count = PLACEHOLDER_NAME_COUNTERS
-                .computeIfAbsent(baseName, k -> new AtomicInteger())
-                .incrementAndGet();
-        return count == 1 ? baseName : baseName + "-" + count;
-    }
-
-    private static String hostAndPort(String a2aServerUrl) {
         if (a2aServerUrl != null) {
             try {
                 URI uri = URI.create(a2aServerUrl);
                 if (uri.getHost() != null) {
-                    return uri.getPort() < 0 ? uri.getHost() : uri.getHost() + "-" + uri.getPort();
+                    StringBuilder placeholder = new StringBuilder("a2a-").append(uri.getHost());
+                    if (uri.getPort() >= 0) {
+                        placeholder.append('-').append(uri.getPort());
+                    }
+                    if (uri.getPath() != null) {
+                        Stream.of(uri.getPath().split("/"))
+                                .filter(segment -> !segment.isEmpty())
+                                .forEach(segment -> placeholder.append('-').append(segment));
+                    }
+                    return placeholder.toString();
                 }
             } catch (IllegalArgumentException e) {
                 LOG.debug("Cannot derive a name from the A2A server URL {}", a2aServerUrl, e);
             }
         }
-        return "agent";
+        return "a2a-agent";
     }
 
     @Override

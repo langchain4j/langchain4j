@@ -896,8 +896,6 @@ public class AgenticServices {
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
-                .name(a2aClient.name())
-                .description(isNullOrBlank(a2aClient.description()) ? a2aClient.value() : a2aClient.description())
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
