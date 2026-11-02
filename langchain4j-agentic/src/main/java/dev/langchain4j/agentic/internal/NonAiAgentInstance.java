@@ -22,6 +22,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final String outputKey;
     private final boolean async;
     private final boolean optional;
+    private final boolean detached;
     private final List<AgentArgument> arguments;
     private final AgentCondition activationCondition;
 
@@ -66,6 +67,32 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
             List<AgentArgument> arguments,
             AgentListener listener,
             AgentCondition activationCondition) {
+        this(
+                type,
+                name,
+                description,
+                outputType,
+                outputKey,
+                async,
+                optional,
+                false,
+                arguments,
+                listener,
+                activationCondition);
+    }
+
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            boolean optional,
+            boolean detached,
+            List<AgentArgument> arguments,
+            AgentListener listener,
+            AgentCondition activationCondition) {
         this.type = type;
         this.name = name;
         this.agentId = name;
@@ -74,6 +101,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         this.outputKey = outputKey;
         this.async = async;
         this.optional = optional;
+        this.detached = detached;
         this.arguments = arguments;
         this.listener = listener;
         this.activationCondition = activationCondition;
@@ -137,6 +165,11 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     }
 
     @Override
+    public boolean detached() {
+        return detached;
+    }
+
+    @Override
     public boolean optional() {
         return optional;
     }
@@ -187,6 +220,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
                 && Objects.equals(this.outputKey, that.outputKey)
                 && this.async == that.async
                 && this.optional == that.optional
+                && this.detached == that.detached
                 && Objects.equals(this.arguments, that.arguments)
                 && Objects.equals(this.listener, that.listener)
                 && Objects.equals(this.activationCondition, that.activationCondition);
@@ -202,6 +236,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
                 outputKey,
                 async,
                 optional,
+                detached,
                 arguments,
                 listener,
                 activationCondition);
@@ -216,7 +251,8 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
                 + outputType + ", " + "outputKey="
                 + outputKey + ", " + "async="
                 + async + ", " + "optional="
-                + optional + ", " + "arguments="
+                + optional + ", " + "detached="
+                + detached + ", " + "arguments="
                 + arguments + ", " + "listener="
                 + listener + ", " + "activationCondition="
                 + activationCondition + ']';

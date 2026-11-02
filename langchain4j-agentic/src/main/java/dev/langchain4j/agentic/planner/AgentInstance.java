@@ -21,6 +21,15 @@ public interface AgentInstance {
 
     boolean async();
 
+    /**
+     * Whether this agent runs in the background, detached from the invocation of the root of its agentic system: the
+     * root returns without waiting for it, and its {@link dev.langchain4j.agentic.scope.AgenticScope} is kept alive
+     * until it completes. A detached agent always runs asynchronously, whatever {@link #async()} returns.
+     */
+    default boolean detached() {
+        return false;
+    }
+
     default boolean optional() {
         return false;
     }
@@ -41,6 +50,7 @@ public interface AgentInstance {
     List<AgentArgument> arguments();
 
     AgentInstance parent();
+
     List<AgentInstance> subagents();
 
     default boolean leaf() {

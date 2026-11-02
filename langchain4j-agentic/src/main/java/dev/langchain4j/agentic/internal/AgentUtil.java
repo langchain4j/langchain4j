@@ -127,6 +127,8 @@ public class AgentUtil {
                 function.outputType(),
                 function.outputKey(),
                 function.async(),
+                false,
+                function.detached(),
                 function.inputs(),
                 function.listener(),
                 function.activationCondition());
@@ -140,7 +142,14 @@ public class AgentUtil {
         String outputKey = AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey());
         return new AgentExecutor(
                 nonAiAgentInvoker(
-                        agent, agenticMethod, name, description, outputKey, annotation.async(), annotation.optional()),
+                        agent,
+                        agenticMethod,
+                        name,
+                        description,
+                        outputKey,
+                        annotation.async(),
+                        annotation.optional(),
+                        annotation.detached()),
                 agent);
     }
 
@@ -151,7 +160,8 @@ public class AgentUtil {
             String description,
             String outputKey,
             boolean async,
-            boolean optional) {
+            boolean optional,
+            boolean detached) {
         if (agent instanceof AgentSpecsProvider spec) {
             return AgentInvoker.fromSpec(spec, agenticMethod, name);
         }
@@ -165,17 +175,24 @@ public class AgentUtil {
                     outputKey,
                     async,
                     optional,
+                    detached,
                     DeclarativeUtil.activationCondition(agentClass));
         }
         // the parameters of an agent passed as an instance are not provided by a SupplierParameterResolver
-        return nonAiAgentInvoker(
-                agenticMethod,
-                name,
-                description,
-                outputKey,
-                async,
-                optional,
-                DeclarativeUtil.activationCondition(agent.getClass()));
+        return AgentInvoker.fromMethod(
+                new NonAiAgentInstance(
+                        agenticMethod.getDeclaringClass(),
+                        name,
+                        description,
+                        agenticMethod.getGenericReturnType(),
+                        outputKey,
+                        async,
+                        optional,
+                        detached,
+                        argumentsFromMethod(agenticMethod),
+                        null,
+                        DeclarativeUtil.activationCondition(agent.getClass())),
+                agenticMethod);
     }
 
     public static AgentInvoker nonAiAgentInvoker(
@@ -219,6 +236,18 @@ public class AgentUtil {
             boolean async,
             boolean optional,
             AgentCondition activationCondition) {
+        return nonAiAgentInvoker(parameters, name, description, outputKey, async, optional, false, activationCondition);
+    }
+
+    private static AgentInvoker nonAiAgentInvoker(
+            ResolvedParameters parameters,
+            String name,
+            String description,
+            String outputKey,
+            boolean async,
+            boolean optional,
+            boolean detached,
+            AgentCondition activationCondition) {
         Method agenticMethod = parameters.method();
         NonAiAgentInstance agentInstance = new NonAiAgentInstance(
                 agenticMethod.getDeclaringClass(),
@@ -228,6 +257,7 @@ public class AgentUtil {
                 outputKey,
                 async,
                 optional,
+                detached,
                 parameters.frameworkArguments(),
                 null,
                 activationCondition);

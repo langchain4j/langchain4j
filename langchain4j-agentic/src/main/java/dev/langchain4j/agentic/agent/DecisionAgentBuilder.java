@@ -88,6 +88,7 @@ public class DecisionAgentBuilder<T> {
     String description;
     String outputKey;
     boolean async;
+    boolean detached;
     boolean optional;
     AgentCondition activationCondition;
 
@@ -147,6 +148,7 @@ public class DecisionAgentBuilder<T> {
         }
         this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
         this.async = agent.async();
+        this.detached = agent.detached();
         this.optional = agent.optional();
 
         if (configureDeclarativeAgent) {
@@ -284,6 +286,17 @@ public class DecisionAgentBuilder<T> {
      */
     public DecisionAgentBuilder<T> async(boolean async) {
         this.async = async;
+        return this;
+    }
+
+    /**
+     * Controls whether this agent runs in the background, detached from the invocation of the root agent of the
+     * agentic system. A detached agent is always asynchronous.
+     *
+     * @see Agent#detached()
+     */
+    public DecisionAgentBuilder<T> detached(boolean detached) {
+        this.detached = detached;
         return this;
     }
 

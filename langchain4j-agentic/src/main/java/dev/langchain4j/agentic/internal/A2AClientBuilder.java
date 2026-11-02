@@ -40,6 +40,21 @@ public interface A2AClientBuilder<T> {
     A2AClientBuilder<T> async(boolean async);
 
     /**
+     * Sets whether the agent runs in the background, detached from the invocation of the root agent of the agentic
+     * system: the root returns without waiting for the remote agent. A detached agent is always asynchronous.
+     *
+     * @param detached {@code true} to run detached from the root invocation
+     * @return this builder for method chaining
+     * @throws UnsupportedOperationException if {@code detached} is {@code true} and this builder does not support it
+     */
+    default A2AClientBuilder<T> detached(boolean detached) {
+        if (detached) {
+            throw new UnsupportedOperationException(getClass().getName() + " does not support detached agents");
+        }
+        return this;
+    }
+
+    /**
      * Sets an {@link AgentListener} for observing agent invocations.
      *
      * @param agentListener the listener to attach

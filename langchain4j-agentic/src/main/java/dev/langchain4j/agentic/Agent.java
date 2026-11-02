@@ -152,11 +152,23 @@ public @interface Agent {
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
      * The root agent of the agentic system waits anyway for the completion of all its asynchronous subagents before returning,
-     * and it is reported to its listeners as completed, or as failed if one of them failed, only after all of them.
+     * and it is reported to its listeners as completed, or as failed if one of them failed, only after all of them,
+     * unless they are {@link #detached()}.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * If true, the agent runs in the background, detached from the invocation of the root agent of the agentic
+     * system: the root returns without waiting for it, while its {@link dev.langchain4j.agentic.scope.AgenticScope}
+     * is kept alive until it completes. Its result is written to the scope and notified to the listeners when it
+     * completes, and its failure is notified to them without affecting the root. A detached agent is always
+     * asynchronous, so it is meant to be the last one of a workflow: an agent reading its output waits for it.
+     *
+     * @return true if the agent should run detached from the root invocation, false otherwise.
+     */
+    boolean detached() default false;
 
     /**
      * If true, the agent's execution will be silently skipped when any of its arguments is missing in the agentic scope,

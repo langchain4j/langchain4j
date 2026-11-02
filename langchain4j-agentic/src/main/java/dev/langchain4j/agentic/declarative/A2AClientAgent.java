@@ -1,10 +1,9 @@
 package dev.langchain4j.agentic.declarative;
 
-import dev.langchain4j.agentic.Agent;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -69,6 +68,15 @@ public @interface A2AClientAgent {
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * If true, the remote agent runs in the background, detached from the invocation of the root agent of the
+     * agentic system: the root returns without waiting for it. A detached agent is always asynchronous.
+     *
+     * @return true if the agent should run detached from the root invocation, false otherwise.
+     * @see Agent#detached()
+     */
+    boolean detached() default false;
 
     /**
      * Tenant identifier to include in every A2A message sent by this agent.

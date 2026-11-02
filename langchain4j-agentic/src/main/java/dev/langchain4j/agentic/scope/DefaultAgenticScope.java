@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.internal.UserMessageTransformer;
@@ -34,10 +35,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -67,6 +70,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
     private final transient List<CompensableExecution> compensableExecutions =
             Collections.synchronizedList(new ArrayList<>());
+    private final transient Set<AsyncResponse<?>> detachedResponses = ConcurrentHashMap.newKeySet();
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -282,22 +286,56 @@ public class DefaultAgenticScope implements AgenticScope {
     public void rootCallStarted(AgenticScopeRegistry registry) {}
 
     /**
-     * Waits for the responses of all the asynchronous agents still pending in the state, replacing them with the
-     * actual ones, and rethrows the failure of the first one that failed.
+     * Waits for the responses of all the asynchronous agents still pending in the state, but the detached ones,
+     * replacing them with the actual ones, and rethrows the failure of the first one that failed.
      */
     public void awaitPendingResponses() {
         Map.copyOf(state).forEach((key, value) -> {
-            if (value instanceof DelayedResponse<?> pending) {
+            if (value instanceof DelayedResponse<?> pending && !detachedResponses.contains(pending)) {
                 writeState(key, pending.blockingGet());
             }
         });
+    }
+
+    /**
+     * Registers the response of a detached agent, which the end of the root call does not wait for.
+     */
+    public void registerDetachedResponse(AsyncResponse<?> response) {
+        detachedResponses.add(response);
+    }
+
+    public boolean hasPendingDetachedResponses() {
+        for (AsyncResponse<?> response : detachedResponses) {
+            if (!response.isDone()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Runs the action once all the detached agents started so far have completed, successfully or not, right away
+     * when none of them is pending.
+     */
+    public void whenDetachedResponsesComplete(Runnable action) {
+        List<CompletableFuture<?>> futures = new ArrayList<>();
+        for (AsyncResponse<?> response : detachedResponses) {
+            futures.add(response.future());
+        }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
+                .whenComplete(new BiConsumer<Void, Throwable>() {
+                    @Override
+                    public void accept(Void ignored, Throwable failure) {
+                        action.run();
+                    }
+                });
     }
 
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
         // ensure that all pending async operations are completed before ending the root call, tolerating the ones
         // that failed: their error has already been reported, and awaitPendingResponses rethrows it when needed
         Map.copyOf(state).forEach((key, value) -> {
-            if (value instanceof DelayedResponse<?> pending) {
+            if (value instanceof DelayedResponse<?> pending && !detachedResponses.contains(pending)) {
                 try {
                     writeState(key, pending.blockingGet());
                 } catch (RuntimeException e) {
@@ -306,15 +344,49 @@ public class DefaultAgenticScope implements AgenticScope {
                 }
             }
         });
+        compensableExecutions.clear();
 
+        if (detachedResponses.isEmpty()) {
+            release(registry, agentListener);
+            return;
+        }
+        whenDetachedResponsesComplete(new Runnable() {
+            @Override
+            public void run() {
+                settleDetachedResponses();
+                release(registry, agentListener);
+            }
+        });
+    }
+
+    private void release(AgenticScopeRegistry registry, AgentListener agentListener) {
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId, agentListener);
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
+    }
 
-        compensableExecutions.clear();
+    /**
+     * Replaces the completed responses of the detached agents with their actual values, unless another value has
+     * been written to their keys in the meantime. A failed one is removed: nobody waits for it, so it is logged here.
+     */
+    private void settleDetachedResponses() {
+        for (Map.Entry<String, Object> entry : Map.copyOf(state).entrySet()) {
+            if (entry.getValue() instanceof AsyncResponse<?> response && detachedResponses.remove(response)) {
+                Object value = null;
+                try {
+                    value = response.blockingGet();
+                } catch (RuntimeException e) {
+                    LOG.warn("The detached agent writing the '{}' key failed", entry.getKey(), e);
+                }
+                if (state.get(entry.getKey()) == response) {
+                    writeState(entry.getKey(), value);
+                }
+            }
+        }
+        detachedResponses.clear();
     }
 
     private void flush(AgenticScopeRegistry registry) {

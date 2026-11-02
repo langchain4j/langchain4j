@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.observability;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -150,6 +151,15 @@ public class AgentMonitor implements AgentListener {
 
     private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
         if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
+            return;
+        }
+        if (execution.agenticScope() instanceof DefaultAgenticScope scope && scope.hasPendingDetachedResponses()) {
+            scope.whenDetachedResponsesComplete(new Runnable() {
+                @Override
+                public void run() {
+                    finalizeExecution(memoryId, execution);
+                }
+            });
             return;
         }
         if (!ongoingExecutions.remove(memoryId, execution)) {

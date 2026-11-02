@@ -13,6 +13,10 @@ public class AsyncResponse<T> implements DelayedResponse<T> {
                 CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutor());
     }
 
+    public CompletableFuture<T> future() {
+        return futureResponse;
+    }
+
     @Override
     public boolean isDone() {
         return futureResponse.isDone();

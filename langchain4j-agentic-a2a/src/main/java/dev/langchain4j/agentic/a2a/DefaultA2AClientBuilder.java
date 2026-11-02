@@ -90,6 +90,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private String[] inputKeys;
     private String outputKey;
     private boolean async;
+    private boolean detached;
 
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
@@ -540,6 +541,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
+    public DefaultA2AClientBuilder<T> detached(boolean detached) {
+        this.detached = detached;
+        return this;
+    }
+
+    @Override
     public DefaultA2AClientBuilder<T> listener(AgentListener agentListener) {
         this.agentListener = compose(this.agentListener, agentListener);
         return this;
@@ -628,6 +635,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public boolean async() {
         return async;
+    }
+
+    @Override
+    public boolean detached() {
+        return detached;
     }
 
     @Override

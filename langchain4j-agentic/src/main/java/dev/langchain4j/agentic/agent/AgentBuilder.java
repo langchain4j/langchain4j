@@ -94,6 +94,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     String description;
     String outputKey;
     boolean async;
+    boolean detached;
     boolean optional;
     AgentCondition activationCondition;
 
@@ -173,6 +174,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         this.outputKey = AgentUtil.outputKey(agent.outputKey(), agent.typedOutputKey());
 
         this.async = agent.async();
+        this.detached = agent.detached();
         this.optional = agent.optional();
         this.compensateOnError = agent.compensateOnError();
         if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
@@ -712,13 +714,27 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * Controls whether this agent executes asynchronously within an agentic system.
      * The root agent of the agentic system waits anyway for the completion of all its asynchronous subagents before
      * returning, and it is reported to its listeners as completed, or as failed if one of them failed, only after
-     * all of them.
+     * all of them, unless they are {@link #detached(boolean) detached}.
      *
      * @param async {@code true} to run asynchronously
      * @return {@code this}
      */
     public B async(boolean async) {
         this.async = async;
+        return (B) this;
+    }
+
+    /**
+     * Controls whether this agent runs in the background, detached from the invocation of the root agent of the
+     * agentic system: the root returns without waiting for it, while its {@link AgenticScope} is kept alive until it
+     * completes. A detached agent is always asynchronous.
+     *
+     * @param detached {@code true} to run detached from the root invocation
+     * @return {@code this}
+     * @see Agent#detached()
+     */
+    public B detached(boolean detached) {
+        this.detached = detached;
         return (B) this;
     }
 

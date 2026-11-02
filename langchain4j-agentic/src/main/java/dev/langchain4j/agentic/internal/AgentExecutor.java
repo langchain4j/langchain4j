@@ -29,11 +29,15 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
 
     public Object execute(DefaultAgenticScope agenticScope, PlannerExecutor planner) {
-        return execute(agenticScope, planner, agentInvoker.async());
+        return execute(agenticScope, planner, runsAsync());
+    }
+
+    private boolean runsAsync() {
+        return agentInvoker.async() || agentInvoker.detached();
     }
 
     public Object syncExecute(DefaultAgenticScope agenticScope, PlannerExecutor planner) {
-        if (agentInvoker.async()) {
+        if (runsAsync()) {
             LOG.info("Executing '{}' agent in a sync way even if declared as async", agentInvoker.name());
         }
         return execute(agenticScope, planner, false);
@@ -154,13 +158,17 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             AgentInvocationArguments args,
             boolean async) {
         if (async) {
-            return new AsyncResponse<>(() -> {
+            AsyncResponse<Object> response = new AsyncResponse<>(() -> {
                 try {
                     return agentInvoker.invoke(agenticScope, invokedAgent, args);
                 } catch (AgentInvocationException e) {
                     return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
                 }
             });
+            if (detached()) {
+                agenticScope.registerDetachedResponse(response);
+            }
+            return response;
         }
 
         Object response = agentInvoker.invoke(agenticScope, invokedAgent, args);
@@ -218,6 +226,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public boolean async() {
         return agentInvoker.async();
+    }
+
+    @Override
+    public boolean detached() {
+        return agentInvoker.detached();
     }
 
     @Override

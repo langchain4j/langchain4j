@@ -269,6 +269,11 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
     }
 
     @Override
+    public boolean detached() {
+        return builder.detached;
+    }
+
+    @Override
     public boolean optional() {
         return builder.optional;
     }

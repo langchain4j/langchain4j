@@ -56,6 +56,11 @@ abstract class AbstractAgentInstance implements AgentInstance {
     }
 
     @Override
+    public boolean detached() {
+        return delegate.detached();
+    }
+
+    @Override
     public boolean optional() {
         return delegate.optional();
     }

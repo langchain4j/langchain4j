@@ -668,7 +668,7 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-The root agent of the agentic system, on the other hand, always waits for the completion of all the asynchronous agents started during its invocation before returning. For the same reason, its `afterAgentInvocation` is notified to its listeners, and its invocation is recorded as completed by the `AgentMonitor`, only after the ones of all its asynchronous subagents, even when one of them starts after the agent that invoked it has already completed, as it can happen with a busy executor. An asynchronous agent whose failure is not handled by an error handler makes the root invocation fail, exactly like a synchronous one would do, with its `onAgentInvocationError` notified to the listeners.
+The root agent of the agentic system, on the other hand, waits for the completion of all the asynchronous agents started during its invocation before returning, unless they are [detached](#detached-agents). For the same reason, its `afterAgentInvocation` is notified to its listeners, and its invocation is recorded as completed by the `AgentMonitor`, only after the ones of all its asynchronous subagents, even when one of them starts after the agent that invoked it has already completed, as it can happen with a busy executor. An asynchronous agent whose failure is not handled by an error handler makes the root invocation fail, exactly like a synchronous one would do, with its `onAgentInvocationError` notified to the listeners.
 
 For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
@@ -708,6 +708,26 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
+
+### Detached agents
+
+Sometimes the root agent shouldn't wait for an asynchronous agent at all, for instance when the last step of a workflow triggers a long running side effect, like a remote coding agent, while the caller only needs the result of the previous steps. For this purpose an agent can be flagged as detached, with `.detached(true)` on its builder, or with `@Agent(detached = true)` and `@A2AClientAgent(detached = true)` in the declarative API. A detached agent is always asynchronous, but the root agent returns without waiting for it, while the `AgenticScope` is kept alive, and evicted or persisted, only when it completes.
+
+```java
+public interface RemediationAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "remediation", detached = true)
+    String remediate(@V("analysis") String analysis);
+}
+
+public interface RolloutAgent {
+
+    @SequenceAgent(outputKey = "decision", subAgents = { RolloutAnalyst.class, RemediationAgent.class })
+    String decide(@V("metrics") String metrics);
+}
+```
+
+The result of a detached agent is written to the `AgenticScope` and notified to the `afterAgentInvocation` of its listeners as soon as it completes, and its failure is notified to their `onAgentInvocationError` without affecting the root agent, which has already returned. The `AgentMonitor` records it in the execution of the root agent, which is reported as completed only when all its detached agents are. Since an agent reading the output of a detached one waits for it anyway, a detached agent is meant to be the last one of a workflow.
 
 ## Streaming agents
 

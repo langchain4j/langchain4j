@@ -900,7 +900,8 @@ public class AgenticServices {
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
-                .async(a2aClient.async());
+                .async(a2aClient.async())
+                .detached(a2aClient.detached());
         AgentCondition a2aActivationCondition = activationCondition(agentServiceClass);
         if (a2aActivationCondition != null) {
             a2aClientBuilder.activationCondition(
@@ -1114,6 +1115,7 @@ public class AgenticServices {
         private String outputKey;
         private Type outputType = Object.class;
         private boolean async;
+        private boolean detached;
         private AgentListener listener;
         private AgentCondition activationCondition;
 
@@ -1212,6 +1214,17 @@ public class AgenticServices {
         }
 
         /**
+         * Controls whether this agent runs in the background, detached from the invocation of the root agent of the
+         * agentic system. A detached agent is always asynchronous.
+         *
+         * @see Agent#detached()
+         */
+        public NonAiAgentBuilder<T> detached(boolean detached) {
+            this.detached = detached;
+            return this;
+        }
+
+        /**
          * Adds a listener notified of this agent's invocations.
          */
         public NonAiAgentBuilder<T> listener(AgentListener listener) {
@@ -1241,7 +1254,16 @@ public class AgenticServices {
 
         public AgenticScopeFunction<T> build() {
             return new AgenticScopeFunction<>(
-                    function, name, description, inputs, outputKey, outputType, async, listener, activationCondition);
+                    function,
+                    name,
+                    description,
+                    inputs,
+                    outputKey,
+                    outputType,
+                    async,
+                    detached,
+                    listener,
+                    activationCondition);
         }
     }
 
@@ -1253,6 +1275,7 @@ public class AgenticServices {
         private final String outputKey;
         private final Type outputType;
         private final boolean async;
+        private final boolean detached;
         private final AgentListener listener;
         private final AgentCondition activationCondition;
 
@@ -1262,7 +1285,7 @@ public class AgenticServices {
         }
 
         private AgenticScopeFunction(NonThrowingFunction<AgenticScope, T> function) {
-            this(function, null, "", List.of(), null, Object.class, false, null, null);
+            this(function, null, "", List.of(), null, Object.class, false, false, null, null);
         }
 
         private AgenticScopeFunction(
@@ -1273,6 +1296,7 @@ public class AgenticServices {
                 String outputKey,
                 Type outputType,
                 boolean async,
+                boolean detached,
                 AgentListener listener,
                 AgentCondition activationCondition) {
             this.function = function;
@@ -1282,6 +1306,7 @@ public class AgenticServices {
             this.outputKey = outputKey;
             this.outputType = outputType;
             this.async = async;
+            this.detached = detached;
             this.listener = listener;
             this.activationCondition = activationCondition;
         }
@@ -1317,6 +1342,10 @@ public class AgenticServices {
 
         public boolean async() {
             return async;
+        }
+
+        public boolean detached() {
+            return detached;
         }
 
         public AgentListener listener() {

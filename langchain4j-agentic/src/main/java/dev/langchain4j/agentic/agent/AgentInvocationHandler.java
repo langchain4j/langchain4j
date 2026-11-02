@@ -386,6 +386,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     @Override
+    public boolean detached() {
+        return builder.detached;
+    }
+
+    @Override
     public boolean optional() {
         return builder.optional;
     }

@@ -130,6 +130,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public boolean detached() {
+        return a2AClientInstance.detached();
+    }
+
+    @Override
     public Method method() {
         return method;
     }
