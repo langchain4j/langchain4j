@@ -13,7 +13,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,10 +22,10 @@ import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
@@ -37,6 +36,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceConfigurationError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A JSON codec implementation using Jackson for serialization and deserialization.
@@ -46,6 +48,8 @@ import java.util.Optional;
  */
 @Internal
 class JacksonJsonCodec implements Json.JsonCodec {
+
+    private static final Logger log = LoggerFactory.getLogger(JacksonJsonCodec.class);
 
     private final ObjectMapper objectMapper;
 
@@ -140,15 +144,31 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
                 .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
-                .build()
-                .findAndRegisterModules()
-                .registerModule(module);
+                .build();
+
+        try {
+            mapper.findAndRegisterModules();
+        } catch (ServiceConfigurationError e) {
+            log.warn("Failed to find and register Jackson modules via Thread Context ClassLoader", e);
+            try {
+                ClassLoader fallbackClassLoader = JacksonJsonCodec.class.getClassLoader();
+                if (fallbackClassLoader != null
+                        && fallbackClassLoader != Thread.currentThread().getContextClassLoader()) {
+                    mapper.registerModules(ObjectMapper.findModules(fallbackClassLoader));
+                }
+            } catch (ServiceConfigurationError fallbackError) {
+                log.warn("Failed to find and register Jackson modules via fallback ClassLoader", fallbackError);
+            }
+        }
+
+        mapper.registerModule(module);
 
         // Make sealed interfaces/classes deserializable as polymorphic types without the user
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
     }
 
