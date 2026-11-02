@@ -53,7 +53,7 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     builder.cosmosFullTextPolicy,
                     builder.vectorStoreThroughput,
                     builder.azureCosmosDBSearchQueryType,
-                    null);
+                    builder.filterMapper);
         } else {
             this.initialize(
                     builder.endpoint,
@@ -67,7 +67,7 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     builder.cosmosFullTextPolicy,
                     builder.vectorStoreThroughput,
                     builder.azureCosmosDBSearchQueryType,
-                    null);
+                    builder.filterMapper);
         }
 
         this.embeddingModel = builder.embeddingModel;
@@ -224,6 +224,7 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
         private Integer maxResults;
         private Double minScore;
         private Filter filter;
+        private AzureCosmosDBNoSqlFilterMapper filterMapper;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -297,6 +298,18 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
 
         public Builder filter(Filter filter) {
             this.filter = filter;
+            return this;
+        }
+
+        /**
+         * Sets the mapper used to translate filters into Cosmos DB NoSQL predicates in every search mode.
+         * Defaults to {@link DefaultAzureCosmosDBNoSqlFilterMapper}, which maps standard comparisons to metadata.
+         *
+         * @param filterMapper the filter mapper, or {@code null} to use the default
+         * @return this builder instance
+         */
+        public Builder filterMapper(AzureCosmosDBNoSqlFilterMapper filterMapper) {
+            this.filterMapper = filterMapper;
             return this;
         }
 

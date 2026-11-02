@@ -12,7 +12,7 @@ import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
-public class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreIT {
+public class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String DATABASE_NAME = "test_database_langchain_java";
     private static final String CONTAINER_NAME = "test_embedding_container";
@@ -43,6 +43,11 @@ public class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Override
+    protected boolean supportsContains() {
+        return true;
     }
 
     @AfterEach
@@ -69,7 +74,7 @@ public class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreIT {
         CosmosVectorEmbedding embedding = new CosmosVectorEmbedding();
         embedding.setPath("/embedding");
         embedding.setDataType(CosmosVectorDataType.FLOAT32);
-        embedding.setEmbeddingDimensions(1536);
+        embedding.setEmbeddingDimensions(embeddingModel.dimension());
         embedding.setDistanceFunction(CosmosVectorDistanceFunction.COSINE);
         vectorEmbeddingPolicy.setCosmosVectorEmbeddings(List.of(embedding));
         return vectorEmbeddingPolicy;

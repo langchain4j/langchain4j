@@ -10,6 +10,7 @@ import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
 import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.cosmos.nosql.AzureCosmosDBNoSqlFilterMapper;
+import dev.langchain4j.rag.content.retriever.azure.cosmos.nosql.DefaultAzureCosmosDBNoSqlFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 /**
@@ -179,6 +180,13 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             return this;
         }
 
+        /**
+         * Sets the mapper used to translate filters into Cosmos DB NoSQL predicates.
+         * Defaults to {@link DefaultAzureCosmosDBNoSqlFilterMapper}, which maps standard comparisons to metadata.
+         *
+         * @param filterMapper the filter mapper, or {@code null} to use the default
+         * @return this builder instance
+         */
         public Builder filterMapper(AzureCosmosDBNoSqlFilterMapper filterMapper) {
             this.filterMapper = filterMapper;
             return this;
