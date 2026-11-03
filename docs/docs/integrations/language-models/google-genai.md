@@ -758,32 +758,21 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
 
 ## File API
 
-The Google Gen AI integration provides the `GoogleGenAiFiles` utility to upload and manage files on Google's servers. This is particularly useful for passing large multimodal inputs (like long videos, audio files, or extensive PDFs) that might exceed standard request limits.
+Use `GoogleGenAiFiles` to upload and manage files with the Gemini File API. The path-based upload detects the MIME type and returns a `com.google.genai.types.File` with the upload metadata.
 
 ```java
+import com.google.genai.types.File;
+import dev.langchain4j.model.google.genai.GoogleGenAiFiles;
+import java.nio.file.Path;
+
 GoogleGenAiFiles fileApi = GoogleGenAiFiles.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .build();
 
-String uploadedFileUri = fileApi.uploadFile(
-    Paths.get("path/to/my-video.mp4"), 
-    "video/mp4", 
-    "My Video Demo"
-);
-
-// You can now use this URI in your chat requests
-ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
-    .build();
-
-ChatResponse response = gemini.chat(ChatRequest.builder()
-    .messages(UserMessage.from(
-        VideoContent.from(uploadedFileUri, "video/mp4"),
-        TextContent.from("What happens in this video?")
-    ))
-    .build());
+File uploadedFile = fileApi.uploadFile(Path.of("path/to/my-video.mp4"), "My Video Demo");
 ```
+
+The chat model currently forwards only `gs://` media URIs as file references. It tries to download other media URLs, including the HTTPS URI returned by the File API, and send their contents inline. To use an uploaded file by reference, use the Gemini SDK directly. For inline media with the chat model, see [Multimodality](#multimodality-audio-video-pdf).
 
 ## Multimodality (Audio, Video, PDF)
 
