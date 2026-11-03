@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.22.0-beta32'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.23.0-beta33'```
 
 ## APIs
 
@@ -249,6 +249,18 @@ or
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
 ```
 
+A filter value must be one of the [supported comparison value types](/tutorials/rag#filter).
+An enum or date/time attribute can be filtered by the value itself, or by its text form,
+which the store converts to the type of the attribute:
+the name of an enum constant, or the ISO-8601 text of a `LocalDate` or an `Instant`.
+
+```java
+new IsEqualTo("status", Status.PUBLISHED)                                         // an enum attribute
+new IsGreaterThan("publishedOn", LocalDate.of(2024, 1, 1))                        // a LocalDate attribute
+MetadataFilterBuilder.metadataKey("status").isEqualTo(Status.PUBLISHED.name())    // an enum attribute, as text
+MetadataFilterBuilder.metadataKey("updatedAt").isLessThan("2024-03-15T10:00:00Z") // an Instant attribute, as text
+```
+
 Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
 
 ```java
@@ -350,6 +362,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -389,10 +403,10 @@ String promptWithContext = String.format("""
 // Send to LLM with context
 ChatModel chatModel = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName("gpt-4")
+        .modelName("gpt-6.1-sol")
         .build();
 
-String answer = chatModel.generate(promptWithContext);
+String answer = chatModel.chat(promptWithContext);
 System.out.println("Answer: " + answer);
 ```
 

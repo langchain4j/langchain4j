@@ -1,12 +1,16 @@
 package dev.langchain4j.agentic.declarative;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeAgentCreationContext;
+import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeDecisionAgentCreationContext;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
@@ -18,8 +22,11 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.service.decision.Decide;
+import dev.langchain4j.service.decision.ThresholdContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
@@ -63,6 +70,8 @@ public class DeclarativeUtil {
             boolean allowNullChatModel,
             AgentBuilder<?, ?> agentBuilder,
             AgenticServices.AgentConfigurator agentConfigurator) {
+        checkNoDecisionSuppliers(agentType);
+
         getAnnotatedMethodOnClass(agentType, ToolsSupplier.class).ifPresent(method -> {
             checkReturnType(method, Object.class);
             Object tools = invokeSupplierWithResolvers(agentType, method, Object.class);
@@ -172,6 +181,101 @@ public class DeclarativeUtil {
     }
 
     /**
+     * Whether the given type is a decision agent: an interface whose {@link Agent @Agent}
+     * method is annotated with {@link Decide @Decide}, or which declares a {@link DecisionModelSupplier} method.
+     */
+    public static boolean isDecisionAgent(Class<?> agentType) {
+        if (!agentType.isInterface()) {
+            return false;
+        }
+        Method agentMethod = validateAgentClass(agentType, false);
+        if (agentMethod == null) {
+            return false;
+        }
+        return agentMethod.isAnnotationPresent(Decide.class)
+                || getAnnotatedMethodOnClass(agentType, DecisionModelSupplier.class)
+                        .isPresent();
+    }
+
+    public static void configureDecisionAgent(Class<?> agentType, DecisionAgentBuilder<?> builder) {
+        configureDecisionAgent(agentType, builder, AgenticServices.AgentConfigurator.empty());
+    }
+
+    /**
+     * Applies the declarative configuration of the given decision agent interface to its builder: the
+     * {@link DecisionModelSupplier}, the {@link DecisionThresholdSupplier}, the {@link AgentListenerSupplier}, the
+     * {@link ActivationCondition} and the agent configurator.
+     *
+     * @throws AgenticSystemConfigurationException if the interface also declares a {@link ChatModelSupplier} or a
+     * {@link StreamingChatModelSupplier}
+     */
+    public static void configureDecisionAgent(
+            Class<?> agentType, DecisionAgentBuilder<?> builder, AgenticServices.AgentConfigurator agentConfigurator) {
+        for (Class<? extends Annotation> chatModelAnnotation :
+                List.of(ChatModelSupplier.class, StreamingChatModelSupplier.class)) {
+            if (getAnnotatedMethodOnClass(agentType, chatModelAnnotation).isPresent()) {
+                throw new AgenticSystemConfigurationException(
+                        "The decision agent " + agentType.getName()
+                                + " declares a method annotated with @" + chatModelAnnotation.getSimpleName()
+                                + ": a decision agent uses a decision model, provided with @DecisionModelSupplier, and no chat model");
+            }
+        }
+
+        getAnnotatedMethodOnClass(agentType, DecisionModelSupplier.class).ifPresent(method -> {
+            checkReturnType(method, DecisionModel.class);
+            if (frameworkParameterCount(agentType, method) > 0) {
+                builder.decisionModelProvider(agenticScopeFunction(agentType, method, DecisionModel.class));
+            } else {
+                builder.decisionModel(invokeSupplierWithResolvers(agentType, method, DecisionModel.class));
+            }
+        });
+
+        getAnnotatedMethodOnClass(agentType, DecisionThresholdSupplier.class).ifPresent(method -> {
+            if (method.getReturnType() != double.class && method.getReturnType() != Double.class) {
+                throw new IllegalArgumentException("Method " + method + " must return double");
+            }
+            ResolvedParameters threshold =
+                    ResolvedParameters.of(agentType, method).checkFrameworkParameters(ThresholdContext.class);
+            builder.thresholdProvider(context -> threshold.invoke(context));
+        });
+
+        getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class).ifPresent(method -> {
+            checkReturnType(method, AgentListener.class);
+            builder.listener(invokeSupplierWithResolvers(agentType, method, AgentListener.class));
+        });
+
+        AgentCondition activationCondition = activationCondition(agentType);
+        if (activationCondition != null) {
+            builder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
+
+        if (agentConfigurator.agentInstanceFactory() != null) {
+            builder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+
+        agentConfigurator.configurator().accept(new DefaultDeclarativeDecisionAgentCreationContext(agentType, builder));
+    }
+
+    /**
+     * Checks that the given type, built as an agent of another kind, declares no method annotated with
+     * {@link DecisionModelSupplier} or {@link DecisionThresholdSupplier}, which would be silently ignored.
+     *
+     * @throws AgenticSystemConfigurationException if it does
+     */
+    public static void checkNoDecisionSuppliers(Class<?> agentType) {
+        for (Class<? extends Annotation> decisionAnnotation :
+                List.of(DecisionModelSupplier.class, DecisionThresholdSupplier.class)) {
+            if (getAnnotatedMethodOnClass(agentType, decisionAnnotation).isPresent()) {
+                throw new AgenticSystemConfigurationException("The agent " + agentType.getName()
+                        + " declares a method annotated with @" + decisionAnnotation.getSimpleName()
+                        + ", but it is not built as a decision agent: a decision agent is an interface with an @Agent method "
+                        + "annotated with @Decide, or declaring a @DecisionModelSupplier, built with "
+                        + "AgenticServices.decisionAgentBuilder or by the declarative API");
+            }
+        }
+    }
+
+    /**
      * Checks that the given method can return an instance of the expected type: its return type must be a subtype or
      * a supertype, like {@code Object}, of the expected one.
      *
@@ -214,6 +318,7 @@ public class DeclarativeUtil {
     }
 
     public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        checkNoDecisionSuppliers(agentServiceClass);
         buildBeforeCall(agentServiceClass).ifPresent(builder::beforeCall);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildListener(agentServiceClass, builder);

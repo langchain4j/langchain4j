@@ -31,7 +31,7 @@ class MilvusV2ContainsStringIT {
     private static final String COLLECTION_NAME = "contains_string_test";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+    private static final MilvusContainer milvus = new MilvusContainer(MilvusV2EmbeddingStoreIT.MILVUS_DOCKER_IMAGE)
             .withEnv("DEPLOY_MODE", "STANDALONE")
             .withEnv("MILVUS_MODE", "standalone")
             .withEnv("ETCD_USE_EMBED", "true")

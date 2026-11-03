@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pgvector</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-pgvector:1.22.0-beta32'```
+```implementation 'dev.langchain4j:langchain4j-pgvector:1.23.0-beta33'```
 
 ## APIs
 
@@ -193,6 +193,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -230,10 +232,10 @@ String promptWithContext = String.format("""
 // Send to LLM with context
 ChatModel chatModel = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName("gpt-4")
+        .modelName("gpt-6.1-sol")
         .build();
 
-String answer = chatModel.generate(promptWithContext);
+String answer = chatModel.chat(promptWithContext);
 System.out.println("Answer: " + answer);
 ```
 

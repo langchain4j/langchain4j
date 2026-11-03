@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DefaultInvocationContext implements InvocationContext {
 
     private final UUID invocationId;
+    private final UUID parentInvocationId;
     private final String interfaceName;
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
@@ -41,6 +42,7 @@ public class DefaultInvocationContext implements InvocationContext {
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
+        this.parentInvocationId = builder.parentInvocationId();
         this.interfaceName = builder.interfaceName();
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
@@ -69,6 +71,11 @@ public class DefaultInvocationContext implements InvocationContext {
     @Override
     public UUID invocationId() {
         return invocationId;
+    }
+
+    @Override
+    public UUID parentInvocationId() {
+        return parentInvocationId;
     }
 
     @Override
@@ -132,6 +139,7 @@ public class DefaultInvocationContext implements InvocationContext {
         if (object == null || getClass() != object.getClass()) return false;
         DefaultInvocationContext that = (DefaultInvocationContext) object;
         return Objects.equals(invocationId, that.invocationId)
+                && Objects.equals(parentInvocationId, that.parentInvocationId)
                 && Objects.equals(interfaceName, that.interfaceName)
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
@@ -149,6 +157,7 @@ public class DefaultInvocationContext implements InvocationContext {
     public int hashCode() {
         return Objects.hash(
                 invocationId,
+                parentInvocationId,
                 interfaceName,
                 methodName,
                 methodArguments,
@@ -166,6 +175,7 @@ public class DefaultInvocationContext implements InvocationContext {
     public String toString() {
         return "DefaultInvocationContext{" +
                 "invocationId=" + invocationId +
+                ", parentInvocationId=" + parentInvocationId +
                 ", interfaceName='" + interfaceName + '\'' +
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +

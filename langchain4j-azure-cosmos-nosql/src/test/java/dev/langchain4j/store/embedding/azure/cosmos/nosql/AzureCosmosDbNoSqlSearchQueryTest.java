@@ -142,14 +142,25 @@ class AzureCosmosDbNoSqlSearchQueryTest {
     @ParameterizedTest
     @EnumSource(AzureCosmosDBSearchQueryType.class)
     void should_reject_non_scalar_values_before_querying_in_every_search_mode(AzureCosmosDBSearchQueryType searchType) {
-        Filter filter = new And(
-                new IsEqualTo("metadata.tenant", "acme"),
-                new IsEqualTo("metadata.category", List.of("0] OR true OR c.id = [0")));
+        // The filter classes reject such values themselves; the overridden accessor checks the store on its own
+        Filter filter = new And(new IsEqualTo("metadata.tenant", "acme"), new IsEqualTo("metadata.category", "x") {
+            @Override
+            public Object comparisonValue() {
+                return List.of("0] OR true OR c.id = [0");
+            }
+        });
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> search(searchType, filter))
                 .withMessageContaining("Unsupported comparison value type:");
         verifyNoInteractions(container);
+    }
+
+    @Test
+    void should_reject_non_scalar_values_when_the_filter_is_created() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new IsEqualTo("metadata.category", List.of("0] OR true OR c.id = [0")))
+                .withMessageStartingWith("Unsupported type of comparisonValue with key 'metadata.category': ");
     }
 
     private void search(AzureCosmosDBSearchQueryType searchType, Filter filter) throws Exception {

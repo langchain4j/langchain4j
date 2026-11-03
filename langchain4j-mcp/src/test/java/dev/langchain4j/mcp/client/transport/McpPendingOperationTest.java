@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client.transport;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -34,14 +35,59 @@ class McpPendingOperationTest {
     }
 
     @Test
+    void cancelling_pending_future_removes_registration() {
+        Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
+        McpOperationHandler handler = handler(pending);
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        handler.expectResponse(42L, future);
+        assertThat(pending).containsEntry(42L, future);
+
+        assertThat(future.cancel(true)).isTrue();
+        assertThat(pending).doesNotContainKey(42L);
+    }
+
+    @Test
+    void registering_already_cancelled_future_removes_registration() {
+        Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
+        McpOperationHandler handler = handler(pending);
+        CompletableFuture<String> future = new CompletableFuture<>();
+        future.cancel(true);
+
+        handler.expectResponse(42L, future);
+
+        assertThat(pending).doesNotContainKey(42L);
+    }
+
+    @Test
+    void cancelling_replaced_future_preserves_replacement_and_its_response() {
+        Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
+        McpOperationHandler handler = handler(pending);
+        CompletableFuture<String> oldFuture = new CompletableFuture<>();
+        CompletableFuture<String> replacement = new CompletableFuture<>();
+
+        handler.expectResponse(42L, oldFuture);
+        handler.expectResponse(42L, replacement);
+        oldFuture.cancel(true);
+
+        assertThat(pending).containsEntry(42L, replacement);
+
+        String response = "{\"jsonrpc\":\"2.0\",\"id\":42,\"result\":{\"tools\":[]}}";
+        handler.onMessage(response);
+
+        assertThat(replacement.isDone()).isTrue();
+        assertThat(replacement.getNow(null)).isEqualTo(response);
+        assertThat(pending).doesNotContainKey(42L);
+    }
+
+    @Test
     void server_cancellation_should_fail_a_raw_operation() {
         Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
         McpOperationHandler handler = handler(pending);
         CompletableFuture<String> future = new CompletableFuture<>();
         handler.expectResponse(5L, future);
 
-        handler.onMessage(
-                """
+        handler.onMessage("""
                 {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":5,"reason":"stop"}}""");
 
         assertThat(future).isCompletedExceptionally();
@@ -61,14 +107,19 @@ class McpPendingOperationTest {
 
     @Test
     void transport_failure_should_fail_a_raw_operation() {
-        Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
+        // A non-concurrent map: failing the futures while iterating must not trigger the
+        // cancellation cleanup in expectResponse, which would throw ConcurrentModificationException.
+        Map<Long, CompletableFuture<String>> pending = new HashMap<>();
         McpOperationHandler handler = handler(pending);
-        CompletableFuture<String> future = new CompletableFuture<>();
-        handler.expectResponse(9L, future);
+        CompletableFuture<String> first = new CompletableFuture<>();
+        CompletableFuture<String> second = new CompletableFuture<>();
+        handler.expectResponse(9L, first);
+        handler.expectResponse(10L, second);
 
         handler.cancelAllPendingOperations("connection lost");
 
-        assertThat(future).isCompletedExceptionally();
+        assertThat(first).isCompletedExceptionally();
+        assertThat(second).isCompletedExceptionally();
         assertThat(pending).isEmpty();
     }
 }

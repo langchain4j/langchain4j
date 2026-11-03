@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
@@ -199,7 +200,7 @@ class HtmlReportGeneratorTest {
                                         .arguments("{}")
                                         .build()),
                                 AiMessage.from("It is noon"))
-                        .withModelNames("tool-calling-model", "answering-model"))
+                        .withModelNames("answering-model", "answering-model"))
                 .tools(new Clock())
                 .build();
         AgentMonitor monitor = new AgentMonitor();
@@ -213,10 +214,9 @@ class HtmlReportGeneratorTest {
         String html = HtmlReportGenerator.generateExecution(monitor);
 
         assertThat(html).contains("<th>Duration</th><th>Model</th><th>Tokens</th>");
-        // only the AI agent row shows a model, the one of its last LLM call, not the sequence or the tool rows
+        // only the AI agent row shows a model, not the sequence or the tool rows
         assertThat(countMatches(html, Pattern.quote("<td class=\"wf-dur\">answering-model</td>")))
                 .isEqualTo(1);
-        assertThat(html).doesNotContain("tool-calling-model");
 
         // the rows of the sequence, of the AI agent and of its tool execution all have a cell per column
         String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
@@ -225,6 +225,35 @@ class HtmlReportGeneratorTest {
         for (int i = 1; i < rows.length; i++) {
             assertThat(countMatches(rows[i], "<td")).isEqualTo(7);
         }
+    }
+
+    @Test
+    void does_not_show_a_model_next_to_the_tokens_of_llm_calls_answered_by_different_models() {
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
+                                        .id("1")
+                                        .name("time")
+                                        .arguments("{}")
+                                        .build()),
+                                AiMessage.from("It is noon"))
+                        .withModelNames("tool-calling-model", "answering-model")
+                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
+                .tools(new Clock())
+                .build();
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.sequenceBuilder(Workflow.class)
+                .subAgents(assistant)
+                .outputKey("answer")
+                .listener(monitor)
+                .build()
+                .run("what time is it?");
+
+        String html = HtmlReportGenerator.generateExecution(monitor);
+
+        // the tokens column shows the total of both LLM calls, so no single model can be credited with it
+        assertThat(html).doesNotContain("tool-calling-model").doesNotContain("answering-model");
+        assertThat(html).contains("<td class=\"wf-dur\">155</td>");
     }
 
     private static int countMatches(String html, String regex) {
