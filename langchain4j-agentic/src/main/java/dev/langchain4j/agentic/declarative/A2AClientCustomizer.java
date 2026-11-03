@@ -16,7 +16,9 @@ import java.lang.annotation.Target;
  * after the agent card has been fetched, allowing transport, interceptors, streaming,
  * and other low-level configuration to be specified declaratively.
  * Besides the {@code ClientBuilder}, it can declare parameters resolved through a
- * {@link SupplierParameterResolver}, which are resolved at that same moment.
+ * {@link SupplierParameterResolver}, which are resolved when the agent is built, like the parameters of
+ * the other supplier methods, and not when the client is created: a value resolved per request, like a
+ * token, is the one of the thread building the agent and not the one of the first caller.
  * <p>
  * Example:
  * <pre>{@code

@@ -15,9 +15,12 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.InternalAgent;
@@ -695,5 +698,65 @@ class A2ALazyAgentCardTest {
         assertThat(fixAgent.as(A2AClientInstance.class).agentCard().name()).isEqualTo("remote-fixer");
         assertThat(cardSource.fetches).hasValue(1);
         assertThatThrownBy(() -> fixAgent.as(OtherAgentInstance.class)).isInstanceOf(ClassCastException.class);
+    }
+
+    /** The tokens the customizer below was invoked with. */
+    static final List<String> CUSTOMIZER_TOKENS = new CopyOnWriteArrayList<>();
+
+    public interface FixAgentWithResolvedCustomizerParameter {
+
+        @A2AClientAgent(outputKey = "fix")
+        String applyFix(@V("analysis") String analysis);
+
+        @A2AServerUrlSupplier
+        static String a2aServerUrl() {
+            return UNREACHABLE_A2A_SERVER_URL;
+        }
+
+        @A2AClientCustomizer
+        static void customize(ClientBuilder cb, String token) {
+            CUSTOMIZER_TOKENS.add(token);
+            cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+        }
+    }
+
+    @Test
+    @Timeout(60)
+    void the_resolved_parameters_of_the_client_customizer_are_resolved_when_the_agent_is_built() {
+        AgentCard cardOfUnreachableAgent = card(
+                "remote-fixer",
+                "Fixes the analyzed problem",
+                new AgentInterface("JSONRPC", UNREACHABLE_A2A_SERVER_URL, ""));
+        CardSource cardSource = new CardSource(cardOfUnreachableAgent);
+        useLazyA2AService(cardSource, null);
+        // a resolver providing a per-request value, like a token, to the String parameter of the customizer
+        AtomicInteger resolutions = new AtomicInteger();
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(Context context) {
+                return context.supplierMethod().isAnnotationPresent(A2AClientCustomizer.class)
+                        && context.parameter().getType() == String.class;
+            }
+
+            @Override
+            public Object resolve(Context context) {
+                return "token-" + resolutions.incrementAndGet();
+            }
+        });
+        CUSTOMIZER_TOKENS.clear();
+        try {
+            FixAgentWithResolvedCustomizerParameter fixAgent = AgenticServices.createAgenticSystem(
+                    FixAgentWithResolvedCustomizerParameter.class, (ChatModel) null);
+            // the parameter is resolved on the thread building the agent, as for the other supplier methods
+            assertThat(resolutions).hasValue(1);
+            assertThat(CUSTOMIZER_TOKENS).isEmpty();
+
+            // the customizer runs with that value when the client is created on the first invocation
+            assertThatThrownBy(() -> fixAgent.applyFix("a broken build")).isNotInstanceOf(A2AAgentCardException.class);
+            assertThat(CUSTOMIZER_TOKENS).containsExactly("token-1");
+            assertThat(resolutions).hasValue(1);
+        } finally {
+            DeclarativeUtil.getSupplierParameterResolvers().clear();
+        }
     }
 }
