@@ -89,7 +89,7 @@ class GeminiService {
             final Duration timeout,
             final @Nullable Supplier<Map<String, String>> customHeadersSupplier) {
         this.apiKey = apiKey;
-        this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
+        this.baseUrl = stripTrailingSlash(getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT));
         this.customHeadersSupplier = customHeadersSupplier;
         final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = builder.connectTimeout(
@@ -320,6 +320,10 @@ class GeminiService {
             builder.body(Json.toJson(body));
         }
         return builder.build();
+    }
+
+    private static String stripTrailingSlash(String url) {
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
     private static String buildUrl(String baseUrl, StringPair... pairs) {
