@@ -7,17 +7,13 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
-import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +21,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -47,23 +42,10 @@ class AiServicesNestedInvocationTest {
         CompletableFuture<String> chatAsync(String message);
     }
 
-    interface StreamingAssistant {
-        TokenStream chat(String message);
-
-        Flow.Publisher<String> chatReactive(String message);
-    }
-
     enum Execution {
         SYNC,
         ASYNC,
         PARALLEL
-    }
-
-    enum Mode {
-        SYNC,
-        ASYNC,
-        TOKEN_STREAM,
-        REACTIVE
     }
 
     @ParameterizedTest
@@ -163,93 +145,28 @@ class AiServicesNestedInvocationTest {
         assertChildrenNestedInParent(children, parents, childCalls.get());
     }
 
-    @ParameterizedTest
-    @EnumSource(Mode.class)
-    void should_nest_summaries_of_ai_services_called_by_the_chat_memory_provider(Mode mode) throws Exception {
+    @Test
+    void should_link_but_not_nest_summaries_of_ai_services_called_by_the_chat_memory_provider() {
+        // The provider runs before the AiServiceStartedEvent, so the child ends before the parent is tracked
         var children = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         Assistant child = childAssistant(children);
-
-        String answer = invokeParent(
-                mode,
-                memoryId -> {
+        Assistant parent = AiServices.builder(Assistant.class)
+                .chatModel(new ChatModelMock("parent answer"))
+                .chatMemoryProvider(memoryId -> {
                     child.chat("create a chat memory");
                     return MessageWindowChatMemory.withMaxMessages(10);
-                },
-                (AiServiceInvocationSummaryListener) parents::add);
-
-        assertThat(answer).isEqualTo("parent answer");
-
-        assertChildrenNestedInParent(children, parents, 1);
-    }
-
-    @ParameterizedTest
-    @EnumSource(Mode.class)
-    void should_call_the_chat_memory_provider_after_the_invocation_has_started(Mode mode) throws Exception {
-        // An AI Service called by a provider that runs before the AiServiceStartedEvent cannot be nested
-        var calls = new CopyOnWriteArrayList<String>();
-
-        invokeParent(
-                mode,
-                memoryId -> {
-                    calls.add("chat memory provider");
-                    return MessageWindowChatMemory.withMaxMessages(10);
-                },
-                (AiServiceStartedListener) event -> calls.add("started"));
-
-        assertThat(calls).containsExactly("started", "chat memory provider");
-    }
-
-    private static String invokeParent(Mode mode, ChatMemoryProvider chatMemoryProvider, AiServiceListener<?> listener)
-            throws Exception {
-        if (mode == Mode.SYNC || mode == Mode.ASYNC) {
-            Assistant parent = AiServices.builder(Assistant.class)
-                    .chatModel(new ChatModelMock("parent answer"))
-                    .chatMemoryProvider(chatMemoryProvider)
-                    .registerListeners(listener)
-                    .build();
-            return mode == Mode.ASYNC ? parent.chatAsync("question").get(10, SECONDS) : parent.chat("question");
-        }
-
-        StreamingAssistant parent = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("parent ", "answer"))
-                .chatMemoryProvider(chatMemoryProvider)
-                .registerListeners(listener)
+                })
+                .registerListener((AiServiceInvocationSummaryListener) parents::add)
                 .build();
-        CompletableFuture<String> answer = new CompletableFuture<>();
-        if (mode == Mode.TOKEN_STREAM) {
-            parent.chat("question")
-                    .onPartialResponse(partialResponse -> {})
-                    .onCompleteResponse(
-                            response -> answer.complete(response.aiMessage().text()))
-                    .onError(answer::completeExceptionally)
-                    .start();
-        } else {
-            StringBuilder text = new StringBuilder();
-            parent.chatReactive("question").subscribe(new Flow.Subscriber<>() {
 
-                @Override
-                public void onSubscribe(Flow.Subscription subscription) {
-                    subscription.request(Long.MAX_VALUE);
-                }
+        assertThat(parent.chat("question")).isEqualTo("parent answer");
 
-                @Override
-                public void onNext(String token) {
-                    text.append(token);
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    answer.completeExceptionally(error);
-                }
-
-                @Override
-                public void onComplete() {
-                    answer.complete(text.toString());
-                }
-            });
-        }
-        return answer.get(10, SECONDS);
+        assertThat(parents).hasSize(1);
+        assertThat(children).hasSize(1);
+        assertThat(children.get(0).invocationContext().parentInvocationId())
+                .isEqualTo(parents.get(0).invocationContext().invocationId());
+        assertThat(parents.get(0).events()).noneMatch(AiServiceInvocationSummaryEvent.class::isInstance);
     }
 
     private static Assistant childAssistant(List<AiServiceInvocationSummaryEvent> children) {

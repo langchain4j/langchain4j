@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Internal
 public class ChatMemoryService {
@@ -44,12 +42,12 @@ public class ChatMemoryService {
     /**
      * Returns the chat memory of the given invocation, wrapped so that every call to it (and so to its
      * {@code ChatMemoryStore}) runs as work of that invocation: an AI Service invoked from there gets it as its
-     * parent invocation. The {@link ChatMemoryProvider} is called the same way, when the chat memory is first used
-     * rather than here: the invocation uses it only after its {@code AiServiceStartedEvent}, so an AI Service invoked
-     * by the provider ends while the invocation is already tracked, and its summary is nested in the invocation's one.
+     * parent invocation. The {@link ChatMemoryProvider} is called the same way.
      */
     public ChatMemory getOrCreateInvocationChatMemory(InvocationContext invocationContext) {
-        return new InvocationChatMemory(this, invocationContext);
+        ChatMemory chatMemory = CurrentInvocation.callWith(
+                invocationContext, () -> getOrCreateChatMemory(invocationContext.chatMemoryId()));
+        return new InvocationChatMemory(chatMemory, invocationContext);
     }
 
     /**
@@ -83,102 +81,67 @@ public class ChatMemoryService {
         return chatMemories.values();
     }
 
-    private static final class InvocationChatMemory implements ChatMemory {
-
-        private final ChatMemoryService chatMemoryService;
-        private final InvocationContext invocationContext;
-        private final Lock resolutionLock = new ReentrantLock();
-        private volatile ChatMemory delegate;
-
-        private InvocationChatMemory(ChatMemoryService chatMemoryService, InvocationContext invocationContext) {
-            this.chatMemoryService = chatMemoryService;
-            this.invocationContext = invocationContext;
-        }
-
-        private ChatMemory delegate() {
-            ChatMemory chatMemory = delegate;
-            if (chatMemory != null) {
-                return chatMemory;
-            }
-            // Resolved by one thread at a time, so that the invocation keeps using a single chat memory even if it
-            // is evicted while being resolved. A lock rather than synchronized, as the provider may block.
-            resolutionLock.lock();
-            try {
-                chatMemory = delegate;
-                if (chatMemory == null) {
-                    chatMemory = CurrentInvocation.callWith(
-                            invocationContext,
-                            () -> chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId()));
-                    delegate = chatMemory;
-                }
-                return chatMemory;
-            } finally {
-                resolutionLock.unlock();
-            }
-        }
+    private record InvocationChatMemory(ChatMemory delegate, InvocationContext invocationContext)
+            implements ChatMemory {
 
         @Override
         public Object id() {
-            return delegate().id();
+            return delegate.id();
         }
 
         @Override
         public void add(ChatMessage message) {
-            run(() -> delegate().add(message));
+            run(() -> delegate.add(message));
         }
 
         @Override
         public void add(ChatMessage... messages) {
-            run(() -> delegate().add(messages));
+            run(() -> delegate.add(messages));
         }
 
         @Override
         public void add(Iterable<ChatMessage> messages) {
-            run(() -> delegate().add(messages));
+            run(() -> delegate.add(messages));
         }
 
         @Override
         public void set(ChatMessage... messages) {
-            run(() -> delegate().set(messages));
+            run(() -> delegate.set(messages));
         }
 
         @Override
         public void set(Iterable<ChatMessage> messages) {
-            run(() -> delegate().set(messages));
+            run(() -> delegate.set(messages));
         }
 
         @Override
         public List<ChatMessage> messages() {
-            return CurrentInvocation.callWith(
-                    invocationContext, () -> delegate().messages());
+            return CurrentInvocation.callWith(invocationContext, delegate::messages);
         }
 
         @Override
         public CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
-            return CurrentInvocation.callWith(
-                    invocationContext, () -> delegate().addAsync(messages));
+            return CurrentInvocation.callWith(invocationContext, () -> delegate.addAsync(messages));
         }
 
         @Override
         public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-            return CurrentInvocation.callWith(
-                    invocationContext, () -> delegate().setAsync(messages));
+            return CurrentInvocation.callWith(invocationContext, () -> delegate.setAsync(messages));
         }
 
         @Override
         public CompletableFuture<List<ChatMessage>> messagesAsync() {
-            return CurrentInvocation.callWith(
-                    invocationContext, () -> delegate().messagesAsync());
+            return CurrentInvocation.callWith(invocationContext, delegate::messagesAsync);
         }
 
         @Override
         public void clear() {
-            run(() -> delegate().clear());
+            run(delegate::clear);
         }
 
         @Override
         public String toString() {
-            return delegate().toString();
+            return delegate.toString();
         }
 
         private void run(Runnable action) {

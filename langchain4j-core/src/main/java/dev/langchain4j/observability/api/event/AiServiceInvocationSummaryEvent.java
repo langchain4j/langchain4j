@@ -12,7 +12,8 @@ import java.util.List;
  * or {@link AiServiceCancelledEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every
  * event sharing its {@link InvocationContext#invocationId()}), in the order they were fired, starting with the
  * {@link AiServiceStartedEvent} and ending with the {@link AiServiceCompletedEvent}, {@link AiServiceErrorEvent} or
- * {@link AiServiceCancelledEvent}. Summaries of nested invocations are included when those invocations end.
+ * {@link AiServiceCancelledEvent}. It also contains the summaries of nested invocations (with their own invocation
+ * ids), added when those invocations end.
  * <p>
  * A few things to keep in mind:
  * <ul>
@@ -35,7 +36,7 @@ import java.util.List;
  *         has its own invocation id and carries the enclosing invocation's id in
  *         {@link InvocationContext#parentInvocationId()}. Its summary is appended to the parent's events when it ends,
  *         and is still fired independently to its own listeners. A child that ends before the parent's
- *         {@link AiServiceStartedEvent} (for example one called by a system message provider) or after the parent
+ *         {@link AiServiceStartedEvent} (for example one called by the chat memory provider or a system message provider) or after the parent
  *         has ended is not included.
  *     </li>
  *     <li>
