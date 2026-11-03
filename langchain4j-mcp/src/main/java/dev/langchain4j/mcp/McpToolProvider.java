@@ -206,7 +206,7 @@ public class McpToolProvider implements ToolProvider {
             }
         }
         if (resourcesAsToolsPresenter != null) {
-            List<McpClient> mcpClientsUnmodifiable = Collections.unmodifiableList(mcpClients);
+            List<McpClient> mcpClientsUnmodifiable = Collections.unmodifiableList(consideredMcpClients);
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);
