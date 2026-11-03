@@ -301,8 +301,12 @@ public class DefaultAgenticScope implements AgenticScope {
      */
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener, boolean failed) {
         // ensure that all pending streaming and deferred responses are completed before ending the root call
+        List<String> stillRunning = new ArrayList<>();
         Map.copyOf(state).forEach((key, value) -> {
             if (value instanceof AsyncResponse<?> unread) {
+                if (!unread.isDone()) {
+                    stillRunning.add(key);
+                }
                 if (!failed) {
                     unread.onComplete(completed -> logUnreadFailure(key, completed));
                 }
@@ -310,6 +314,12 @@ public class DefaultAgenticScope implements AgenticScope {
                 writeState(key, pending.blockingGet());
             }
         });
+        if (!stillRunning.isEmpty()) {
+            LOG.debug(
+                    "Root call on AgenticScope '{}' ended without waiting for the asynchronous agents producing {}, still running",
+                    memoryId,
+                    stillRunning);
+        }
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
