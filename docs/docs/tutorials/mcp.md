@@ -63,6 +63,14 @@ With the modern protocol (2026-07-28), notifications are received via `subscript
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
+**_NOTE:_** A single message received from the server can be at most 20 MiB by default: the data of one event
+on an SSE stream (in a response or on the subsidiary channel), or the whole body of any other response, such as
+a JSON response. If the server sends a larger message, the transport closes the stream and drops the message:
+the pending request fails, and the subsidiary channel reconnects. This keeps a misbehaving server from filling
+the client's memory. The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+takes about a third more than its raw size. To change the limit, set it on the builder, for example
+`.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()
@@ -71,6 +79,10 @@ McpTransport transport = WebSocketMcpTransport.builder()
         .logRequests(true)
         .build();
 ```
+
+**_NOTE:_** As with the Streamable HTTP transport, a single message received from the server can be at most
+20 MiB by default. If the server sends a larger message, the transport closes the connection and all pending
+requests fail. To change the limit, set it on the builder, for example `.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
 
 For the Docker stdio transport, you first need to add a module to your pom.xml:
 

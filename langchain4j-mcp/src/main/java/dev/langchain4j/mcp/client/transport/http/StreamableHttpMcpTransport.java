@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.http;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,7 +24,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -42,8 +42,10 @@ import org.slf4j.LoggerFactory;
 
 public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
+    private static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
     private final String url;
+    private final int maxMessageSize;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
     private final boolean logRequests;
@@ -72,6 +74,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
+        maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
         logResponses = builder.logResponses;
         trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
         Duration timeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
@@ -325,11 +329,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                     () -> activeStreamSubscribers.remove(holder[0]));
                             holder[0] = subscriber;
                             activeStreamSubscribers.add(subscriber);
-                            return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
+                            return MaxMessageSizeBodySubscribers.lines(subscriber, maxMessageSize);
                         } else {
                             // the server has returned a regular HTTP response
                             return HttpResponse.BodySubscribers.mapping(
-                                    HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8), responseBody -> {
+                                    MaxMessageSizeBodySubscribers.string(maxMessageSize), responseBody -> {
                                         if (logResponses) {
                                             trafficLog.info("Response: {}", responseBody);
                                         }
@@ -407,7 +411,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                         subsidiaryChannelEstablished = true;
                         LOG.debug("Subsidiary SSE channel established");
                         result.complete(null);
-                        return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
+                        return MaxMessageSizeBodySubscribers.lines(subscriber, maxMessageSize);
                     } else {
                         if (firstAttempt) {
                             LOG.warn(
@@ -499,6 +503,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
         private boolean followRedirects = false;
+        private Integer maxMessageSize;
 
         /**
          * The URL of the MCP server.
@@ -625,6 +630,28 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder subsidiaryChannel(boolean subsidiaryChannelEnabled) {
             this.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
+            return this;
+        }
+
+        /**
+         * The maximum size, in bytes, of a single message received from the server: the data of one event
+         * on an SSE stream, or the whole body of any other response, such as a JSON response.
+         * This applies to every response, including the subsidiary SSE channel.
+         * When a server sends a larger message, the transport closes the stream: a pending request fails
+         * and the subsidiary channel reconnects.
+         * This protects the client against servers that send
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
+         * Defaults to 20 MiB.
+         *
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
+         * @return this builder
+         * @since 1.19.6
+         */
+        public StreamableHttpMcpTransport.Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
             return this;
         }
 
