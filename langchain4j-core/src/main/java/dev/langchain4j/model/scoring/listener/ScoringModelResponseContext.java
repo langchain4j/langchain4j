@@ -15,7 +15,7 @@ import java.util.Map;
  * The attributes can be used to pass data between the methods of a {@link ScoringModelListener}, or between
  * multiple listeners.
  *
- * @since 1.23.0
+ * @since 1.24.0
  */
 @Experimental
 public final class ScoringModelResponseContext {
@@ -68,7 +68,7 @@ public final class ScoringModelResponseContext {
     /**
      * Builder for {@link ScoringModelResponseContext}.
      *
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Experimental
     public static final class Builder {

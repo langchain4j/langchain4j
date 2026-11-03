@@ -85,7 +85,7 @@ public interface ScoringModel {
      *
      * @param request the documents to score, the query, and the per-call parameters.
      * @return the scores, in the order of {@link ScoringRequest#documents()}, and the response metadata.
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Experimental
     default ScoringResponse score(ScoringRequest request) {
@@ -121,7 +121,7 @@ public interface ScoringModel {
      *
      * @param request the request, with the default parameters already applied.
      * @return the scores, in the order of {@link ScoringRequest#documents()}, and the response metadata.
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Experimental
     default ScoringResponse doScore(ScoringRequest request) {
@@ -233,7 +233,7 @@ public interface ScoringModel {
      * {@link #scoreAsync(ScoringRequest)}, after each successful call and when a call fails. Listeners are configured
      * on the builder of the scoring model. Defaults to an empty list.
      *
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Experimental
     default List<ScoringModelListener> listeners() {
@@ -244,7 +244,7 @@ public interface ScoringModel {
      * The {@link ModelProvider} of this scoring model (for example {@link ModelProvider#COHERE}). It is made
      * available to the {@link #listeners() listeners}. Defaults to {@link ModelProvider#OTHER}.
      *
-     * @since 1.23.0
+     * @since 1.24.0
      */
     @Experimental
     default ModelProvider provider() {

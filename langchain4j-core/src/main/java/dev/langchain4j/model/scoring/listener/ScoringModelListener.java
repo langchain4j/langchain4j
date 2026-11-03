@@ -21,7 +21,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
  * the call, which can be an I/O thread: do not block in listeners). Exceptions thrown by a listener are logged and
  * ignored, so a failing listener never breaks the scoring call.
  *
- * @since 1.23.0
+ * @since 1.24.0
  */
 @Experimental
 public interface ScoringModelListener {
