@@ -38,6 +38,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final VoyageAiClient client;
     private final Integer maxRetries;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer topK;
     private final Boolean truncation;
     private final List<ScoringModelListener> listeners;
@@ -58,6 +59,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         // Below attributes are force to non-null
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         // Below attributes can be null
         this.truncation = truncation;
         this.topK = topK;
@@ -78,6 +80,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         // Below attributes are force to non-null
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         // Below attributes can be null
         this.truncation = builder.truncation;
         this.topK = builder.topK;
@@ -97,7 +100,7 @@ public class VoyageAiScoringModel implements ScoringModel {
 
     @Override
     public ScoringRequestParameters defaultRequestParameters() {
-        return ScoringRequestParameters.builder().modelName(modelName).build();
+        return defaultRequestParameters;
     }
 
     @Override

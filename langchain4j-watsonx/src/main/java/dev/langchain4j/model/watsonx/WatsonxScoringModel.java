@@ -41,6 +41,7 @@ public class WatsonxScoringModel implements ScoringModel {
 
     private final RerankService rerankService;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final List<ScoringModelListener> listeners;
 
     private WatsonxScoringModel(Builder builder) {
@@ -62,12 +63,13 @@ public class WatsonxScoringModel implements ScoringModel {
                 .verifySsl(builder.verifySsl)
                 .build();
         modelName = builder.modelName;
+        defaultRequestParameters = ScoringRequestParameters.builder().modelName(modelName).build();
         listeners = copy(builder.listeners);
     }
 
     @Override
     public ScoringRequestParameters defaultRequestParameters() {
-        return ScoringRequestParameters.builder().modelName(modelName).build();
+        return defaultRequestParameters;
     }
 
     @Override

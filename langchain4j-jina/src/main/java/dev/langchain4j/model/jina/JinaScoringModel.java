@@ -36,6 +36,7 @@ public class JinaScoringModel implements ScoringModel {
 
     private final JinaClient client;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer maxRetries;
     private final List<ScoringModelListener> listeners;
 
@@ -56,6 +57,7 @@ public class JinaScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.listeners = List.of();
     }
@@ -71,6 +73,7 @@ public class JinaScoringModel implements ScoringModel {
                 .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
     }
@@ -81,7 +84,7 @@ public class JinaScoringModel implements ScoringModel {
 
     @Override
     public ScoringRequestParameters defaultRequestParameters() {
-        return ScoringRequestParameters.builder().modelName(modelName).build();
+        return defaultRequestParameters;
     }
 
     @Override

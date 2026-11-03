@@ -37,6 +37,7 @@ public class CohereScoringModel implements ScoringModel {
 
     private final CohereClient client;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer maxRetries;
     private final List<ScoringModelListener> listeners;
 
@@ -59,6 +60,7 @@ public class CohereScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = modelName;
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.listeners = List.of();
     }
@@ -75,6 +77,7 @@ public class CohereScoringModel implements ScoringModel {
                 .logger(builder.logger)
                 .build();
         this.modelName = builder.modelName;
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
     }
@@ -94,7 +97,7 @@ public class CohereScoringModel implements ScoringModel {
 
     @Override
     public ScoringRequestParameters defaultRequestParameters() {
-        return ScoringRequestParameters.builder().modelName(modelName).build();
+        return defaultRequestParameters;
     }
 
     @Override
