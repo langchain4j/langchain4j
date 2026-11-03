@@ -331,7 +331,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Object memoryId = invocationContext.chatMemoryId();
                         ChatMemory chatMemory = context.hasChatMemory()
-                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                                ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
                                 : null;
 
                         InvocationContext prologueContext = invocationContext;
@@ -452,7 +452,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     ? (UserMessage) augmentationResult.chatMessage()
                                                     : originalUserMessage);
                                     GuardrailRequestParams commonGuardrailParam = GuardrailRequestParams.builder()
-                                            .chatMemory(chatMemory)
+                                            .chatMemory(ChatMemoryService.unwrap(chatMemory))
                                             .augmentationResult(augmentationResult)
                                             .userMessageTemplate(userMessageTemplate)
                                             .invocationContext(baseInvocationContext)
@@ -604,7 +604,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                         ? (UserMessage) augmentationResult.chatMessage()
                                                         : originalUserMessage);
                                         commonGuardrailParam = GuardrailRequestParams.builder()
-                                                .chatMemory(reactiveChatMemory)
+                                                .chatMemory(ChatMemoryService.unwrap(reactiveChatMemory))
                                                 .augmentationResult(augmentationResult)
                                                 .userMessageTemplate(userMessageTemplate)
                                                 .invocationContext(subscriptionContext)
@@ -772,7 +772,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
-                                .chatMemory(chatMemory)
+                                .chatMemory(ChatMemoryService.unwrap(chatMemory))
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
                                 .invocationContext(invocationContext)

@@ -48,6 +48,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.PartialToolCallEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.ToolCompensatedEvent;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -709,7 +710,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             }
 
             GuardrailRequestParams guardrailParams =
-                    commonGuardrailParams.toBuilder().chatMemory(getMemory()).build();
+                    commonGuardrailParams.toBuilder().chatMemory(ChatMemoryService.unwrap(getMemory())).build();
 
             ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
                     chatExecutor,
@@ -770,7 +771,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
         private ChatMemory getMemory() {
             return context.hasChatMemory()
-                    ? context.chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId())
+                    ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
                     : temporaryMemory;
         }
 

@@ -112,7 +112,7 @@ public abstract sealed class AbstractGuardrailExecutor<
         }
     }
 
-    private static InvocationContext invocationContextOf(GuardrailRequest<?> request) {
+    static InvocationContext invocationContextOf(GuardrailRequest<?> request) {
         return request.requestParams() == null ? null : request.requestParams().invocationContext();
     }
 

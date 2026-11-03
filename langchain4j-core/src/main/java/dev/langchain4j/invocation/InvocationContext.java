@@ -40,13 +40,14 @@ public interface InvocationContext {
      * <li>an input or output guardrail</li>
      * <li>a component of the retrieval augmentor (for example a query transformer or a content retriever)</li>
      * <li>the system or user message provider, or the system message transformer</li>
+     * <li>the chat memory (including its {@code ChatMemoryStore}) or the chat memory provider</li>
      * <li>the moderation model</li>
      * <li>the {@code chatRequestTransformer}</li>
      * </ul>
      * <p>
      * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
      * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), from any
-     * other part of an AI Service (for example its chat memory), when there is no parent, or when this
+     * other part of an AI Service (for example your own {@code ChatModel} implementation), when there is no parent, or when this
      * {@code InvocationContext} implementation does not track it.
      * <p>
      * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed

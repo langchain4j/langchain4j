@@ -18,6 +18,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.internal.CurrentInvocation;
@@ -53,6 +54,7 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -61,6 +63,7 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -74,6 +77,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -90,6 +94,11 @@ class AiServiceInvocationEventsTest {
     interface StreamingAssistant {
 
         TokenStream chat(String message);
+    }
+
+    interface AssistantWithChatMemoryAccess extends ChatMemoryAccess {
+
+        String chat(@MemoryId String memoryId, @dev.langchain4j.service.UserMessage String message);
     }
 
     interface AsyncAssistant {
@@ -2267,6 +2276,370 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
+    void should_record_parent_invocation_of_ai_service_called_by_chat_memory_provider() {
+        Assistant inner = innerAssistant();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatMemoryProvider(memoryId -> {
+                    inner.chat("create a chat memory");
+                    return MessageWindowChatMemory.withMaxMessages(10);
+                })
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertInnerInvocationHasOuterAsParent();
+    }
+
+    @Test
+    void should_record_parent_invocation_of_ai_service_called_by_chat_memory_store() {
+        Assistant inner = innerAssistant();
+        AtomicInteger innerCalls = new AtomicInteger();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(new InMemoryChatMemoryStore() {
+
+                            @Override
+                            public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+                                innerCalls.incrementAndGet();
+                                inner.chat("summarize the conversation");
+                                super.updateMessages(memoryId, messages);
+                            }
+                        })
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        outer.chat("Hello");
+
+        assertThat(innerCalls.get()).isPositive();
+        assertInnerInvocationsHaveOuterAsParent(innerCalls.get());
+    }
+
+    @Test
+    void should_not_record_parent_of_ai_service_called_by_chat_memory_store_used_by_your_own_code() {
+        Assistant inner = innerAssistant();
+        AtomicBoolean callInner = new AtomicBoolean();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(new InMemoryChatMemoryStore() {
+
+                    @Override
+                    public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+                        if (callInner.get()) {
+                            inner.chat("summarize the conversation");
+                        }
+                        super.updateMessages(memoryId, messages);
+                    }
+                })
+                .build();
+        AssistantWithChatMemoryAccess outer = AiServices.builder(AssistantWithChatMemoryAccess.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatMemoryProvider(memoryId -> chatMemory)
+                .registerListeners(listeners())
+                .build();
+        outer.chat("user-1", "Hello");
+
+        callInner.set(true);
+        ChatMemory accessed = outer.getChatMemory("user-1");
+        accessed.add(UserMessage.from("added by your own code"));
+
+        assertThat(accessed).isSameAs(chatMemory);
+        assertNoInvocationHasParent();
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_invocation() {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .tools(new Tools())
+                .contentRetriever(query -> List.of(Content.from("source")))
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assistant.chat("Hello");
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_async_invocation() throws Exception {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .tools(new Tools())
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .contentRetriever(query -> List.of(Content.from("source")))
+                        .offloadBlocking(true)
+                        .build())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assistant.chat("Hello").get(5, SECONDS);
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_token_stream_invocation() throws Exception {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                .tools(new Tools())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        start(assistant.chat("Hello")).get(5, SECONDS);
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_reactive_invocation() throws Exception {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                .tools(new Tools())
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .contentRetriever(query -> List.of(Content.from("source")))
+                        .offloadBlocking(true)
+                        .build())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        consume(assistant.chat("Hello")).get(5, SECONDS);
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_invocation_when_output_guardrail_reprompts() {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .outputGuardrails(repromptingOnce())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(assistant.chat("Hello")).isEqualTo("good");
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_async_invocation_when_output_guardrail_reprompts() throws Exception {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .outputGuardrails(repromptingOnce())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(assistant.chat("Hello").get(5, SECONDS)).isEqualTo("good");
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_invocation_when_output_guardrail_removes_violating_message() {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("bad"))
+                .outputGuardrails(removingViolatingMessage())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hello")).isInstanceOf(OutputGuardrailException.class);
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    @Test
+    void should_access_chat_memory_inside_the_async_invocation_when_output_guardrail_removes_violating_message() {
+        InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("bad"))
+                .outputGuardrails(removingViolatingMessage())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(store)
+                        .build())
+                .registerListeners(listeners())
+                .build();
+
+        assertThat(assistant.chat("Hello"))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(OutputGuardrailException.class);
+
+        assertChatMemoryAccessedOnlyInsideTheInvocation(store);
+    }
+
+    private static OutputGuardrail removingViolatingMessage() {
+        return new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                return fatalWithMessageRemoval("bad answer");
+            }
+
+            @Override
+            public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+    }
+
+    @Test
+    void should_pass_chat_memory_of_chat_memory_provider_to_guardrails() {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
+        AssistantWithChatMemoryAccess assistant = AiServices.builder(AssistantWithChatMemoryAccess.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .inputGuardrails(recordingChatMemory(seenByGuardrails))
+                .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
+                .chatMemoryProvider(memoryId -> chatMemory)
+                .build();
+
+        assistant.chat("user-1", "Hello");
+
+        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
+                .isSameAs(chatMemory));
+    }
+
+    @Test
+    void should_pass_configured_chat_memory_to_guardrails() {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .inputGuardrails(recordingChatMemory(seenByGuardrails))
+                .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
+                .chatMemory(chatMemory)
+                .build();
+
+        assistant.chat("Hello");
+
+        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
+                .isSameAs(chatMemory));
+    }
+
+    @Test
+    void should_pass_configured_chat_memory_to_guardrails_of_async_invocation() throws Exception {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .inputGuardrails(recordingChatMemory(seenByGuardrails))
+                .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
+                .chatMemory(chatMemory)
+                .build();
+
+        assistant.chat("Hello").get(5, SECONDS);
+
+        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
+                .isSameAs(chatMemory));
+    }
+
+    @Test
+    void should_pass_configured_chat_memory_to_guardrails_of_token_stream_invocation() throws Exception {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer")))
+                .inputGuardrails(recordingChatMemory(seenByGuardrails))
+                .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
+                .chatMemory(chatMemory)
+                .build();
+
+        start(assistant.chat("Hello")).get(5, SECONDS);
+
+        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
+                .isSameAs(chatMemory));
+    }
+
+    @Test
+    void should_pass_configured_chat_memory_to_guardrails_of_reactive_invocation() throws Exception {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
+        ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer")))
+                .inputGuardrails(recordingChatMemory(seenByGuardrails))
+                .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
+                .chatMemory(chatMemory)
+                .build();
+
+        consume(assistant.chat("Hello")).get(5, SECONDS);
+
+        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
+                .isSameAs(chatMemory));
+    }
+
+    private static InputGuardrail recordingChatMemory(List<ChatMemory> seenByGuardrails) {
+        return new InputGuardrail() {
+            @Override
+            public InputGuardrailResult validate(InputGuardrailRequest request) {
+                seenByGuardrails.add(request.requestParams().chatMemory());
+                return success();
+            }
+
+            @Override
+            public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+    }
+
+    private static OutputGuardrail recordingChatMemoryOfOutput(List<ChatMemory> seenByGuardrails) {
+        return new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+                seenByGuardrails.add(request.requestParams().chatMemory());
+                return success();
+            }
+
+            @Override
+            public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+    }
+
+    @Test
     void should_not_record_parent_of_ai_service_called_by_listener_of_ai_service_called_by_tool() {
         Assistant calledByListener = innerAssistant();
         AiServiceListener<AiServiceCompletedEvent> callingInner = new AiServiceListener<>() {
@@ -2673,6 +3046,35 @@ class AiServiceInvocationEventsTest {
                 .filteredOn(event -> event != withoutParent.get(0))
                 .extracting(event -> event.invocationContext().parentInvocationId())
                 .containsOnly(outerId);
+    }
+
+    private void assertChatMemoryAccessedOnlyInsideTheInvocation(InvocationRecordingChatMemoryStore store) {
+        UUID invocationId = events(AiServiceStartedEvent.class).get(0).invocationContext().invocationId();
+        assertThat(store.invocationIds).isNotEmpty().containsOnly(invocationId);
+    }
+
+    static class InvocationRecordingChatMemoryStore extends InMemoryChatMemoryStore {
+
+        // the async methods of InMemoryChatMemoryStore call these ones
+        final List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+
+        @Override
+        public List<ChatMessage> getMessages(Object memoryId) {
+            invocationIds.add(CurrentInvocation.invocationId());
+            return super.getMessages(memoryId);
+        }
+
+        @Override
+        public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+            invocationIds.add(CurrentInvocation.invocationId());
+            super.updateMessages(memoryId, messages);
+        }
+
+        @Override
+        public void deleteMessages(Object memoryId) {
+            invocationIds.add(CurrentInvocation.invocationId());
+            super.deleteMessages(memoryId);
+        }
     }
 
     private void assertNoInvocationHasParent() {

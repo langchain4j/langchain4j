@@ -192,12 +192,13 @@ The inner invocation is linked to the outer one when it is called from one of th
 - an input or output guardrail (`inputGuardrails`, `outputGuardrails`)
 - a component of the retrieval augmentor (`retrievalAugmentor`, `contentRetriever`), for example a query transformer, a query router or a content retriever
 - the system or user message provider (`systemMessageProvider`, `userMessageProvider`) or the system message transformer (`systemMessageTransformer`)
+- the chat memory (`chatMemory`, `chatMemoryProvider`), including its `ChatMemoryStore`, for example a chat memory that summarizes old messages with an AI Service
 - the moderation model (`moderationModel`)
 - the `chatRequestTransformer`
 
 `parentInvocationId()` is `null`:
 - for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
-- for an AI Service called from any other part, for example from the chat memory
+- for an AI Service called from any other part, for example from your own `ChatModel` implementation
 - when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
 
 Limits:
