@@ -115,7 +115,7 @@ public class AgentMonitor implements AgentListener {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
-        finalizeExecution(memoryId, execution);
+        finalizeExecution(memoryId, execution, false);
     }
 
     @Override
@@ -124,7 +124,7 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            finalizeExecution(memoryId, execution);
+            finalizeExecution(memoryId, execution, true);
         }
     }
 
@@ -137,14 +137,16 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
-    private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+    private void finalizeExecution(Object memoryId, MonitoredExecution execution, boolean failed) {
         if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
             return;
         }
         if (!ongoingExecutions.remove(memoryId, execution)) {
             return;
         }
-        if (execution.done()) {
+        // the root call does not wait for an asynchronous agent whose result nobody reads, so the failure of such an
+        // agent can be the last event of an execution already completed, which is then recorded as failed
+        if (execution.done() && !failed) {
             synchronized (successfulExecutions) {
                 successfulExecutions
                         .computeIfAbsent(memoryId, k -> new ArrayList<>())

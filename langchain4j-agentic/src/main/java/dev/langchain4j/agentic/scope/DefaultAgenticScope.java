@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.internal.UserMessageTransformer;
@@ -73,6 +74,13 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
+    /**
+     * The registry where a persistent scope is saved again when an asynchronous agent, which the root call does not
+     * wait for, completes after the end of that call: set at the end of the root call and cleared at the start of
+     * the next one, so that it also tells whether the root call ended, see {@link #asyncEnded(String, AsyncResponse)}.
+     */
+    private transient volatile AgenticScopeRegistry registryAfterRootCall;
+
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
             .and(Predicate.not(DefaultAgenticScope::isFuture))
@@ -116,7 +124,9 @@ public class DefaultAgenticScope implements AgenticScope {
     public DefaultAgenticScope serializableCopy() {
         DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
         state.forEach((key, value) -> {
-            if (isSerializable(value)) {
+            // the response of an asynchronous agent is left out while it is still running or when it failed, since
+            // the scope can be saved without waiting for it: its result takes its place when it completes
+            if (isSerializable(value) && !(value instanceof AsyncResponse)) {
                 copy.state.put(key, value);
             }
         });
@@ -279,12 +289,15 @@ public class DefaultAgenticScope implements AgenticScope {
                         : List.of(new AgentMessage(agentName, agentId, userMessage), agentAiMessage));
     }
 
-    public void rootCallStarted(AgenticScopeRegistry registry) {}
+    public void rootCallStarted(AgenticScopeRegistry registry) {
+        registryAfterRootCall = null;
+    }
 
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
-        // ensure that all pending async operations are completed before ending the root call
+        // ensure that all pending streaming and deferred responses are completed before ending the root call, while
+        // the asynchronous agents whose result nobody read are left running: the root call does not wait for them
         Map.copyOf(state).forEach((key, value) -> {
-            if (value instanceof DelayedResponse<?> pending) {
+            if (value instanceof DelayedResponse<?> pending && !(value instanceof AsyncResponse<?>)) {
                 writeState(key, pending.blockingGet());
             }
         });
@@ -293,10 +306,40 @@ public class DefaultAgenticScope implements AgenticScope {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId, agentListener);
         } else if (kind == Kind.PERSISTENT) {
+            // saved now without the results still pending, and again when each of them arrives
             flush(registry);
+            registryAfterRootCall = registry;
         }
 
         compensableExecutions.clear();
+    }
+
+    /**
+     * Completes an asynchronous agent, on the thread of its executor. Its result replaces the response under its
+     * output key, if the key still holds that response, as reading it would have done, while a failure is left in
+     * place, so that reading it still fails. A persistent scope whose root call already ended is then saved again,
+     * with the result.
+     */
+    public void asyncEnded(String outputKey, AsyncResponse<?> response) {
+        if (outputKey != null && !outputKey.isBlank() && !response.isFailed()) {
+            Object result = response.blockingGet();
+            withReadLock(() -> {
+                if (result == null) {
+                    state.remove(outputKey, response);
+                } else {
+                    state.replace(outputKey, response, result);
+                }
+            });
+        }
+        AgenticScopeRegistry registry = registryAfterRootCall;
+        if (registry != null) {
+            try {
+                flush(registry);
+            } catch (RuntimeException e) {
+                LOG.error(
+                        "Failed to save AgenticScope '{}' after the completion of its asynchronous agent", memoryId, e);
+            }
+        }
     }
 
     private void flush(AgenticScopeRegistry registry) {

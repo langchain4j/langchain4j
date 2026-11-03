@@ -707,6 +707,21 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+The root call of the agentic system does not wait either for an asynchronous agent whose result nobody reads: it returns as soon as the other agents are done, while that agent is still running, and the `AgenticScope` is finalized only when it completes. This makes it possible to delegate a long side task to the last agent of a workflow, like a fix delegated to a remote coding agent that takes minutes, while the workflow returns its own result in seconds:
+
+```java
+RolloutAnalysis analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysis.class)
+        .subAgents(dataCollector, scorer, remediation) // remediation is an A2A agent built with .async(true)
+        .outputKey("decision")
+        .listener(remediationListener)
+        .build();
+
+String decision = analysis.analyze(rollout); // returns while the remediation is still running
+```
+
+The result of such an agent is reported, when it completes, to the `afterAgentInvocation` of its `AgentListener`, which is the way to consume it, and it is also written to the `AgenticScope` under the output key of the agent, where a later root call on the same memory id can read it. Its failure is handled by the error handler of the agentic system, on the thread of the agent, and reported to the `onAgentInvocationError` of its listener, while the root call has already returned its result and no compensation runs for it; an `AgentMonitor` records such an execution as failed. An ephemeral `AgenticScope` is destroyed at the end of the root call as usual, while the asynchronous agents still running keep writing their results to it, where the caller can read them through a `ResultWithAgenticScope`, and a persistent one is saved at the end of the root call without the pending results and again when each of them completes. Asynchronous agents run on the default executor of LangChain4j, so their pending work is lost when the JVM exits. Note that the `output` function or the output key of the root agent reads the `AgenticScope` like any other agent does: an asynchronous agent whose result they read is awaited before the root call returns, as in the evening planner example above.
+
 ## Streaming agents
 
 In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 

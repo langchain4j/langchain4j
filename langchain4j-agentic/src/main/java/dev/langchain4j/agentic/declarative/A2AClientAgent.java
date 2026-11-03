@@ -65,6 +65,10 @@ public @interface A2AClientAgent {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     * Its result is awaited only where it is read, by another agent taking it as input or by the output function or
+     * output key of the agentic system: the root call does not wait for an asynchronous agent whose result nobody
+     * reads, but returns while it is still running, and the result or the failure of that agent is then reported
+     * only to its {@link dev.langchain4j.agentic.observability.AgentListener}.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
