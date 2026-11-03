@@ -2,12 +2,15 @@ package dev.langchain4j.rag;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.VirtualThreadUtils;
+import dev.langchain4j.invocation.InvocationContext;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -16,6 +19,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
+import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Metadata;
@@ -25,12 +29,14 @@ import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class DefaultRetrievalAugmentorAsyncTest {
@@ -407,5 +413,62 @@ class DefaultRetrievalAugmentorAsyncTest {
             invocations++;
             return super.aggregate(queryToContents);
         }
+    }
+
+    @Test
+    void should_run_the_content_injector_as_work_of_the_invocation() throws Exception {
+
+        // given
+        InvocationContext invocationContext =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        AtomicReference<UUID> seen = new AtomicReference<>();
+        ContentInjector injector = (contents, chatMessage) -> {
+            seen.set(CurrentInvocation.invocationId());
+            return chatMessage;
+        };
+        DefaultRetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(completingOnAnotherThread())
+                .contentRetriever(new ContentRetriever() {
+
+                    @Override
+                    public List<Content> retrieve(Query query) {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                        return CompletableFuture.completedFuture(List.of(Content.from("source")));
+                    }
+                })
+                .contentInjector(injector)
+                .build();
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.builder()
+                .chatMessage(userMessage)
+                .invocationContext(invocationContext)
+                .build();
+
+        // when
+        augmentor.augmentAsync(new AugmentationRequest(userMessage, metadata)).get(5, SECONDS);
+
+        // then
+        assertThat(seen.get()).isEqualTo(invocationContext.invocationId());
+    }
+
+    private static QueryTransformer completingOnAnotherThread() {
+        return new QueryTransformer() {
+
+            @Override
+            public Collection<Query> transform(Query query) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<Collection<Query>> transformAsync(Query query) {
+                // completes on another thread, so that the next stages run there
+                return CompletableFuture.supplyAsync(
+                        () -> List.of(query), CompletableFuture.delayedExecutor(50, MILLISECONDS));
+            }
+        };
     }
 }

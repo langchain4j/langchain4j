@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
@@ -80,9 +81,10 @@ public non-sealed class OutputGuardrailExecutor
             }
 
             if (++attempt < maxAttempts) {
+                var invocationContext = invocationContextOf(accumulatedRequest);
                 var chatMessages = Optional.ofNullable(
                                 accumulatedRequest.requestParams().chatMemory())
-                        .map(ChatMemory::messages)
+                        .map(memory -> CurrentInvocation.callWith(invocationContext, memory::messages))
                         .orElseGet(ArrayList::new);
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
@@ -160,7 +162,8 @@ public non-sealed class OutputGuardrailExecutor
             if (nextAttempt < maxAttempts) {
                 ChatMemory memory = accumulatedRequest.requestParams().chatMemory();
                 CompletableFuture<List<ChatMessage>> memoryMessages = memory != null
-                        ? chain.track(memory.messagesAsync())
+                        ? chain.track(CurrentInvocation.callWith(
+                                invocationContextOf(accumulatedRequest), memory::messagesAsync))
                         : CompletableFuture.completedFuture(new ArrayList<>());
                 return memoryMessages.thenCompose(currentMessages -> {
                     var chatMessages = new ArrayList<>(currentMessages);
@@ -204,7 +207,8 @@ public non-sealed class OutputGuardrailExecutor
         if (memory == null) {
             return CompletableFuture.completedFuture(null);
         }
-        return memory.messagesAsync().thenCompose(current -> {
+        var invocationContext = invocationContextOf(request);
+        return CurrentInvocation.callWith(invocationContext, memory::messagesAsync).thenCompose(current -> {
             var messages = new ArrayList<>(current);
             var it = messages.listIterator(messages.size());
             while (it.hasPrevious()) {
@@ -214,7 +218,7 @@ public non-sealed class OutputGuardrailExecutor
                     break;
                 }
             }
-            return memory.setAsync(messages);
+            return CurrentInvocation.callWith(invocationContext, () -> memory.setAsync(messages));
         });
     }
 
@@ -227,6 +231,13 @@ public non-sealed class OutputGuardrailExecutor
             return;
         }
         // Remove the last AiMessage — the one that failed the guardrail
+        CurrentInvocation.callWith(invocationContextOf(request), () -> {
+            removeLastAiMessage(memory);
+            return null;
+        });
+    }
+
+    private static void removeLastAiMessage(ChatMemory memory) {
         var messages = new java.util.ArrayList<>(memory.messages());
         var it = messages.listIterator(messages.size());
         while (it.hasPrevious()) {

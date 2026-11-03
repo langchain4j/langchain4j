@@ -85,8 +85,11 @@ public class MyAiServiceCompletedListener implements AiServiceCompletedListener 
         InvocationContext invocationContext = event.invocationContext();
         Optional<Object> result = event.result();
 
-        // The invocationId will be the same for all events related to the same LLM invocation
+        // The invocationId will be the same for all events related to the same AI Service invocation
         UUID invocationId = invocationContext.invocationId();
+        // If this AI Service was called from inside another AI Service invocation (for example from one of its tools or guardrails):
+        // the invocationId of that outer invocation; otherwise null (see "Linking nested invocations" below)
+        UUID parentInvocationId = invocationContext.parentInvocationId();
         String aiServiceInterfaceName = invocationContext.interfaceName();
         String aiServiceMethodName = invocationContext.methodName();
         List<Object> aiServiceMethodArgs = invocationContext.methodArguments();
@@ -128,9 +131,79 @@ A few things to keep in mind:
 - If an asynchronous or streaming invocation is canceled, it ends with an `AiServiceCancelledEvent`, and the `AiServiceInvocationSummaryEvent` contains the events fired up until the cancellation, ending with the `AiServiceCancelledEvent`.
 - Events fired for an invocation after it has ended (for example `ToolCompensatedEvent`s fired once a canceled invocation has been rolled back) are not included.
 - An AI Service invoked while another AI Service invocation is in progress (for example, from within a tool) is a separate invocation with its own `invocationId`. It results in its own `AiServiceInvocationSummaryEvent` rather than being nested inside the outer one.
+- To link such an inner invocation to the outer one, use `InvocationContext.parentInvocationId()`, see [Linking nested invocations](#linking-nested-invocations).
 - For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` fails because of a configuration error (for example, a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation.
 - Each subscription to the reactive stream returned by an AI Service method, and each call of `TokenStream.start()`, is a separate invocation with its own `invocationId`, so it results in its own `AiServiceInvocationSummaryEvent`, also when several subscriptions run at the same time. A second `start()` of the same `TokenStream` reuses the retrieved contents, the input guardrails and the messages prepared when the AI Service method was called, so its summary contains no `RetrievalAugmentedEvent` and no input guardrail events: only the model call, the tools and the output guardrails run again.
 - An `AiServiceInvocationSummaryEvent` is fired by the registrar itself. Trying to fire one via `AiServiceListenerRegistrar.fireEvent` results in an `IllegalArgumentException`.
+
+### Linking nested invocations
+
+An AI Service is often called from inside another AI Service, for example from one of its tools.
+Each of the two calls is a separate invocation, with its own `invocationId` and its own events.
+To link them, the `InvocationContext` of the inner invocation has `parentInvocationId()` (experimental):
+the `invocationId` of the outer invocation, or `null` if there is none.
+
+```java
+interface Assistant {
+    String chat(String message);
+}
+
+interface Translator {
+    String translate(String text);
+}
+
+class TranslationTools {
+
+    private final Translator translator;
+
+    TranslationTools(Translator translator) {
+        this.translator = translator;
+    }
+
+    @Tool("Translates a text to English")
+    String translateToEnglish(String text) {
+        return translator.translate(text); // the inner invocation
+    }
+}
+
+// Collects the summaries of inner invocations, grouped by the invocation that called them
+Map<UUID, List<AiServiceInvocationSummaryEvent>> innerByOuter = new ConcurrentHashMap<>();
+AiServiceInvocationSummaryListener listener = summary -> {
+    UUID parentInvocationId = summary.invocationContext().parentInvocationId();
+    if (parentInvocationId != null) {
+        innerByOuter.computeIfAbsent(parentInvocationId, id -> new CopyOnWriteArrayList<>()).add(summary);
+    }
+};
+
+Translator translator = AiServices.builder(Translator.class)
+        .chatModel(chatModel)
+        .registerListener(listener)
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(new TranslationTools(translator))
+        .registerListener(listener)
+        .build();
+```
+
+The inner invocation is linked to the outer one when it is called from one of these parts of the outer AI Service:
+- a tool (`tools`, `toolProvider`), a tool error handler (`toolExecutionErrorHandler`, `toolArgumentsErrorHandler`) or the strategy for hallucinated tool names (`hallucinatedToolNameStrategy`)
+- an input or output guardrail (`inputGuardrails`, `outputGuardrails`)
+- a component of the retrieval augmentor (`retrievalAugmentor`, `contentRetriever`), for example a query transformer, a query router or a content retriever
+- the system or user message provider (`systemMessageProvider`, `userMessageProvider`) or the system message transformer (`systemMessageTransformer`)
+- the chat memory (`chatMemory`, `chatMemoryProvider`), including its `ChatMemoryStore`, for example a chat memory that summarizes old messages with an AI Service
+- the moderation model (`moderationModel`)
+- the `chatRequestTransformer`
+
+`parentInvocationId()` is `null`:
+- for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
+- for an AI Service called from any other part, for example from your own `ChatModel` implementation
+- when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
+
+Limits:
+- It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that implementation (for example through `AiServicesFactory`) return `null` until they add support for it, also for AI Services they create through `AiServices.builder(...)`.
+- Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor are not linked yet. An agent called from a tool of another agent is.
 
 ### Creating your own events and listeners
 
@@ -418,9 +491,10 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - If an exception is thrown from one of the `ModerationModelListener` methods,
   it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 
-## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
+## RAG Observability (EmbeddingModel, EmbeddingStore, ContentRetriever and ScoringModel)
 
-`EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
+`EmbeddingModel`, `EmbeddingStore`, `ContentRetriever` and `ScoringModel` (used to re-rank retrieved contents) can be
+instrumented with listeners to observe:
 - Latency (measure duration using `attributes`)
 - Payloads (e.g., `EmbeddingSearchRequest.queryEmbedding()` and retrieved matches/contents)
 - Errors
@@ -570,13 +644,97 @@ observedRetriever.retrieve(Query.from("my query"));
 
 A `ContentRetrieverListener` observes each call of one content retriever. To receive the final contents that an AI Service adds to the user message, once per invocation, use a `RetrievalAugmentedListener` (see [Listening for an event](#listening-for-an-event)).
 
+### ScoringModel listener
+
+A `ScoringModel` scores texts against a query, for example to re-rank retrieved contents with a
+`ReRankingContentAggregator`. Implement `ScoringModelListener`:
+
+```java
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
+import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
+import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
+
+public class MyScoringModelListener implements ScoringModelListener {
+
+    @Override
+    public void onRequest(ScoringModelRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+        // requestContext.scoringRequest() exposes the texts being scored (documents()), the query() and the
+        // modelName() (null when the model sets none). requestContext.modelProvider() identifies the provider.
+    }
+
+    @Override
+    public void onResponse(ScoringModelResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.scoringResponse():
+        // scores() (one per document, in the same order), modelName() and tokenUsage().
+        // The unit of tokenUsage() depends on the provider: Cohere reports billed search units, not tokens.
+    }
+
+    @Override
+    public void onError(ScoringModelErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners via the model builder's `listeners(...)` method:
+
+```java
+import dev.langchain4j.model.cohere.CohereScoringModel;
+import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
+import java.util.List;
+
+ScoringModel scoringModel = CohereScoringModel.builder()
+        .apiKey(System.getenv("COHERE_API_KEY"))
+        .modelName("rerank-v3.5")
+        .listeners(List.of(new MyScoringModelListener()))
+        .build();
+
+ScoringResponse response = scoringModel.score(ScoringRequest.builder()
+        .documents(List.of("Paris is the capital of France", "Berlin is the capital of Germany"))
+        .query("What is the capital of France?")
+        .build());
+```
+
+The listener is notified around `score(ScoringRequest)` and its asynchronous counterpart `scoreAsync(ScoringRequest)`.
+`CohereScoringModel`, `JinaScoringModel`, `VoyageAiScoringModel`, `WatsonxScoringModel` and `DecisionScoringModel`
+support `listeners(...)`. For these models, the listener is also notified when you call `scoreAll(...)` or
+`score(text, query)`, so it observes the scoring done by a `ReRankingContentAggregator` as well. One exception:
+`WatsonxScoringModel.scoreAll(segments, query, parameters)` (with `RerankParameters`) does not notify listeners;
+use `score(ScoringRequest)` to observe calls with per-request parameters.
+Other scoring models (for example the in-process ONNX and Vertex AI ones) do not support listeners yet.
+
+`DecisionScoringModel` is backed by a decision model: the `tokenUsage()` of its response is the sum of the decision
+calls, which the listeners of the decision model already observe one by one. When you add up token usage, do not count
+both.
+
+The `modelName()` of the response is the model that the provider reports in its response. `JinaScoringModel`,
+`VoyageAiScoringModel` and `WatsonxScoringModel` report it. `CohereScoringModel` does not, so its response has the
+model name that was requested. `DecisionScoringModel` has the model name reported by its decision model.
+
 ### How listeners work
 
 - Listeners are specified as a `List` and are called in the order of iteration.
 - Listeners are called synchronously and in the same thread.
+- For the asynchronous calls of an `EmbeddingModel` or a `ScoringModel` (`embedAsync(...)`, `scoreAsync(...)`),
+  `onResponse()` and `onError()` are called
+  on the thread that completes the call, which can be an I/O thread: do not block in them, for example hand slow work
+  such as writing to a database over to another thread.
 - `onRequest()` is called right before executing the underlying operation.
 - `onResponse()` is called once after successful completion.
 - `onError()` is called once if an exception is thrown by the underlying operation.
+- When you cancel the future of an asynchronous `EmbeddingModel` or `ScoringModel` call, neither `onResponse()` nor
+  `onError()` is called.
+- When an `EmbeddingModel` or a `ScoringModel` has no asynchronous implementation, its asynchronous call fails with an
+  `AsyncNotSupportedException`, which is passed to `onError()`. Listeners that count errors may want to leave it out.
+  A RAG component built with `offloadBlocking(true)` then runs the synchronous call on another thread, and the
+  listeners observe it as a separate call. Without `offloadBlocking(true)`, the RAG call fails with an
+  `UnsupportedFeatureException`.
 - If an exception is thrown from one of the listener methods, it will be logged at the `WARN` level and ignored.
 - The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
   listener, as well as between multiple listeners.

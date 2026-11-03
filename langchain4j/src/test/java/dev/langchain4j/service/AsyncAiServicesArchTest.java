@@ -82,7 +82,7 @@ class AsyncAiServicesArchTest {
             entry(HttpClient.class.getName(), Set.of("send")),
             entry(ChatModel.class.getName(), Set.of("chat", "doChat")),
             entry(EmbeddingModel.class.getName(), Set.of("embed", "embedAll")),
-            entry(ScoringModel.class.getName(), Set.of("score", "scoreAll")),
+            entry(ScoringModel.class.getName(), Set.of("score", "scoreAll", "doScore")),
             entry(ModerationModel.class.getName(), Set.of("moderate")));
 
     /**

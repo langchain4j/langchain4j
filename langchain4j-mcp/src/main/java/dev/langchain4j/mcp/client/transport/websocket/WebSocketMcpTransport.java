@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.websocket;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.mcp.client.McpCallContext;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class WebSocketMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(WebSocketMcpTransport.class);
+    static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
     private final String url;
     private final McpHeadersSupplier headersSupplier;
     private final boolean logResponses;
@@ -39,6 +41,7 @@ public class WebSocketMcpTransport implements McpTransport {
     private volatile McpOperationHandler operationHandler;
     private volatile McpInitializeRequest initializeRequest;
     private final Duration connectTimeout;
+    private final int maxMessageSize;
     private volatile SSLContext sslContext;
     private volatile HttpClient httpClient;
     private final Executor executor;
@@ -52,6 +55,8 @@ public class WebSocketMcpTransport implements McpTransport {
         this.logRequests = builder.logRequests;
         this.trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
         this.connectTimeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
+        this.maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
         this.headersSupplier = getOrDefault(builder.headersSupplier, (i) -> Map.of());
         this.executor = builder.executor;
         this.sslContext = builder.sslContext;
@@ -125,7 +130,8 @@ public class WebSocketMcpTransport implements McpTransport {
                             // so all running operations were lost anyway.
                             webSocketRef.set(null);
                         },
-                        actionOnFailure));
+                        actionOnFailure,
+                        maxMessageSize));
         // if the initialize method was already called and we know the necessary data for initialization, schedule
         // a new initialization right away
         if (this.initializeRequest != null) {
@@ -271,6 +277,7 @@ public class WebSocketMcpTransport implements McpTransport {
         private Duration timeout;
         private SSLContext sslContext;
         private McpHeadersSupplier headersSupplier;
+        private Integer maxMessageSize;
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
@@ -328,6 +335,25 @@ public class WebSocketMcpTransport implements McpTransport {
 
         public Builder headersSupplier(McpHeadersSupplier headersSupplier) {
             this.headersSupplier = headersSupplier;
+            return this;
+        }
+
+        /**
+         * The maximum size, in bytes, of a single message received from the server.
+         * When a server sends a larger message, the transport closes the connection with status 1009
+         * (message too big) and all pending requests fail. This protects the client against servers that send
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
+         * Defaults to 20 MiB.
+         *
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
+         * @return this builder
+         * @since 1.24.0
+         */
+        public Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
             return this;
         }
 

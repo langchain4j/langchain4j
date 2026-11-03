@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -119,14 +120,59 @@ class McpResponseParserTest {
         String body = "x".repeat(100_000) + "🦋";
         byte[] bytes = body.getBytes(UTF_8);
         var incremental = parser.incremental();
+        List<ServerSentEvent> actual = new ArrayList<>();
         for (int offset = 0; offset < bytes.length; offset += 31) {
             var chunk = ByteBuffer.allocateDirect(Math.min(31, bytes.length - offset));
             chunk.put(bytes, offset, chunk.capacity()).flip();
-            assertThat(incremental.feed(chunk)).isEmpty();
+            actual.addAll(incremental.feed(chunk));
             assertThat(chunk.hasRemaining()).isFalse();
         }
+        actual.addAll(incremental.flush());
 
-        assertThat(incremental.flush()).extracting(ServerSentEvent::data).containsExactly(body);
+        assertThat(actual).hasSize(2);
+        assertThat(((McpResponseParser.Line) actual.get(0)).partial()).isTrue();
+        assertThat(((McpResponseParser.Line) actual.get(1)).partial()).isFalse();
+        assertThat(reconstruct(actual)).isEqualTo(body);
+    }
+
+    @Test
+    void splits_long_lines_into_bounded_fragments_at_character_boundaries() {
+        int max = McpResponseParser.MAX_LINE_FRAGMENT_BYTES;
+        // two-byte characters, offset by one byte so that a fragment cannot end exactly at the limit
+        String line = "x" + "ž".repeat(max * 2);
+        String body = line + "\nnext\n";
+
+        List<ServerSentEvent> lines = parse(body);
+
+        assertThat(reconstruct(lines)).isEqualTo(body);
+        assertThat(lines).allSatisfy(event -> {
+            var fragment = (McpResponseParser.Line) event;
+            assertThat(fragment.byteLength()).isEqualTo(fragment.data().getBytes(UTF_8).length);
+            assertThat(fragment.byteLength()).isLessThanOrEqualTo(max + 3);
+        });
+        assertThat(lines)
+                .extracting(event -> ((McpResponseParser.Line) event).partial())
+                .containsExactly(true, true, true, false, false);
+        assertThat(lines).extracting(ServerSentEvent::data).last().isEqualTo("next");
+    }
+
+    @Test
+    void bounds_fragments_of_invalid_utf8() {
+        byte[] bytes = new byte[McpResponseParser.MAX_LINE_FRAGMENT_BYTES * 3];
+        Arrays.fill(bytes, (byte) 0x80);
+        var incremental = parser.incremental();
+
+        List<ServerSentEvent> lines = new ArrayList<>(incremental.feed(ByteBuffer.wrap(bytes)));
+        lines.addAll(incremental.flush());
+
+        assertThat(lines).hasSizeGreaterThan(1);
+        assertThat(lines)
+                .allSatisfy(event -> assertThat(((McpResponseParser.Line) event).byteLength())
+                        .isLessThanOrEqualTo(McpResponseParser.MAX_LINE_FRAGMENT_BYTES + 3));
+        assertThat(lines.stream()
+                        .mapToInt(event -> ((McpResponseParser.Line) event).byteLength())
+                        .sum())
+                .isEqualTo(bytes.length);
     }
 
     @Test

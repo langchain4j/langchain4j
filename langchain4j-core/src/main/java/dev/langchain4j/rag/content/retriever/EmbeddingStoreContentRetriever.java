@@ -14,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -384,7 +385,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     InvocationContext invocationContext =
                             query.metadata() != null ? query.metadata().invocationContext() : null;
                     return CompletableFuture.supplyAsync(
-                            blockingCall,
+                            () -> CurrentInvocation.callWith(invocationContext, blockingCall),
                             CapturedContextSupport.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
