@@ -22,9 +22,6 @@ import static dev.langchain4j.internal.Utils.copy;
  *
  * <p>These options are <em>not</em> sent to the LLM provider; they are purely
  * for the LangChain4j invocation chain (listeners, hooks, etc.).
- * A model that implements {@code chat(ChatRequest)} instead of {@code doChat} is called without them, while its
- * listeners still get them. So an option added here must never change the request sent to the provider: such an
- * option would be silently ignored by these models.
  *
  * @since 1.13.0
  */
@@ -53,15 +50,6 @@ public class ChatRequestOptions {
     @Experimental
     public UUID invocationId() {
         return invocationId;
-    }
-
-    /**
-     * Whether a call with these options may fall back to the model's {@code chat} method without options, when the
-     * model does not implement {@code doChat}. {@link #EMPTY} means that the call already comes from that method,
-     * so falling back to it again would loop.
-     */
-    boolean allowFallbackToChatWithoutOptions() {
-        return this != EMPTY;
     }
 
     public static Builder builder() {

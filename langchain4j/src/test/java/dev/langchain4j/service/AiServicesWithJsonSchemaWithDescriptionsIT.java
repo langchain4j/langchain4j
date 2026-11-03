@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -36,8 +35,6 @@ import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithJsonSchemaWithDescriptionsIT.PersonExtractor3.MaritalStatus.SINGLE;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -101,7 +98,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.height).isEqualTo(1.78);
         assertThat(person.married).isFalse();
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -126,7 +123,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -167,7 +164,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.address.city).isEqualTo("Langley Falls");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -191,7 +188,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -231,7 +228,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.maritalStatus).isEqualTo(SINGLE);
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -251,7 +248,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -285,7 +282,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -305,7 +302,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -339,7 +336,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -359,7 +356,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -393,7 +390,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -413,7 +410,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -456,7 +453,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.pets[0].name).isEqualTo("Peanut");
         assertThat(person.pets[1].name).isEqualTo("Muffin");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -483,7 +480,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -526,7 +523,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.pets.get(0).name).isEqualTo("Peanut");
         assertThat(person.pets.get(1).name).isEqualTo("Muffin");
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -553,7 +550,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -587,7 +584,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                 new Pet("Muffin")
         )));
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -614,7 +611,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -654,7 +651,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -677,7 +674,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -717,7 +714,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -740,7 +737,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -780,7 +777,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -803,7 +800,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 
 
@@ -846,7 +843,7 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
         assertThat(person.birthDateTime)
                 .isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43, 26));
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -899,6 +896,6 @@ class AiServicesWithJsonSchemaWithDescriptionsIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 }

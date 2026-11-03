@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -22,8 +21,6 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,7 +79,7 @@ class AiServicesWithJsonSchemaWithRequiredIT {
         assertThat(person.name).isEqualTo("Klaus");
         assertThat(person.age).isEqualTo(37);
 
-        verify(model).chat(eq(ChatRequest.builder()
+        verify(model).chat(ChatRequest.builder()
                 .messages(singletonList(userMessage(text)))
                 .responseFormat(ResponseFormat.builder()
                         .type(JSON)
@@ -95,6 +92,6 @@ class AiServicesWithJsonSchemaWithRequiredIT {
                                         .build())
                                 .build())
                         .build())
-                .build()), any(ChatRequestOptions.class));
+                .build());
     }
 }

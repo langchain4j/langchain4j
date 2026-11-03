@@ -8,13 +8,10 @@ import static dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT.P
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -83,7 +80,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.married).isFalse();
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -97,7 +94,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -159,7 +156,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.localDate).isNull();
 
         verify(spyModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -200,7 +197,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(spyModel).supportedCapabilities();
     }
 
@@ -247,7 +244,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.billingAddress.city).isEqualTo("New York");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -268,7 +265,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -307,7 +304,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.maritalStatus).isEqualTo(SINGLE);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -319,7 +316,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -353,7 +350,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -369,7 +366,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -403,7 +400,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -419,7 +416,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -453,7 +450,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.favouriteColors).containsExactly("orange", "green");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -469,7 +466,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -510,7 +507,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.pets[1].name).isEqualTo("Muffin");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -528,7 +525,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -569,7 +566,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.pets.get(1).name).isEqualTo("Muffin");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -587,7 +584,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -618,7 +615,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person).isEqualTo(new Person("Klaus", Set.of(new Pet("Peanut"), new Pet("Muffin"))));
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -636,7 +633,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -676,7 +673,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor10.Group.A, PersonExtractor10.Group.C);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -698,7 +695,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -738,7 +735,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor11.Group.A, PersonExtractor11.Group.C);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -760,7 +757,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -800,7 +797,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.groups).containsExactlyInAnyOrder(PersonExtractor12.Group.A, PersonExtractor12.Group.C);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -822,7 +819,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -863,7 +860,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.birthDateTime).isEqualTo(LocalDateTime.of(1976, 8, 12, 14, 43));
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(userMessage(text))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -948,7 +945,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -981,7 +978,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.name).isEqualTo("Klaus");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -996,7 +993,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1035,7 +1032,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         String reference = generateUUIDFrom(Person.class.getName());
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1065,7 +1062,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1101,7 +1098,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(person.id).isEqualTo(UUID.fromString("567b229a-6b0a-4f1e-9006-448cd9dfbfda"));
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1113,7 +1110,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1143,7 +1140,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(isAMan).isTrue();
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract if the person from the following text is a man: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1156,7 +1153,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1184,7 +1181,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(isAMan).isTrue();
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract if the person from the following text is a man: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1197,7 +1194,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1226,7 +1223,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(numberOfPeople).isEqualTo(2);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract number of people mentioned in the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1239,7 +1236,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1268,7 +1265,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(numberOfPeople).isEqualTo(2);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract number of people mentioned in the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1281,7 +1278,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1310,7 +1307,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(numberOfPeople).isEqualTo(2);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract number of people mentioned in the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1323,7 +1320,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1352,7 +1349,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(numberOfPeople).isEqualTo(2);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract number of people mentioned in the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1365,7 +1362,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1393,7 +1390,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(temperatureInMunich).isEqualTo(-0.5f);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract temperature in Munich from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1406,7 +1403,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1434,7 +1431,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(temperatureInMunich).isEqualTo(-0.5f);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract temperature in Munich from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1447,7 +1444,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1475,7 +1472,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(temperatureInMunich).isEqualTo(-0.5);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract temperature in Munich from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1488,7 +1485,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1516,7 +1513,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(temperatureInMunich).isEqualTo(-0.5);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(
                                 userMessage("Extract temperature in Munich from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1529,7 +1526,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1575,7 +1572,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(people.get(1).married).isTrue();
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1596,7 +1593,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1631,7 +1628,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(people.get(1).name).isEqualTo("Francine");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(List.of(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1649,7 +1646,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1680,7 +1677,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(names.get(1)).contains("Franny");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(
                                 singletonList(userMessage("Extract names of people from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1698,7 +1695,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1729,7 +1726,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(names).hasSize(2).contains("Klaus").contains("Franny");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(
                                 singletonList(userMessage("Extract names of people from the following text: " + text)))
                         .responseFormat(ResponseFormat.builder()
@@ -1747,7 +1744,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1792,7 +1789,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                         && person.married);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1813,7 +1810,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1847,7 +1844,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(maritalStatus).isEqualTo(MaritalStatus.SINGLE);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1859,7 +1856,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1894,7 +1891,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(maritalStatuses).containsExactly(MaritalStatus.SINGLE, MaritalStatus.MARRIED, MaritalStatus.MARRIED);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1912,7 +1909,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -1948,7 +1945,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                 .containsExactlyInAnyOrder(Weather.SUNNY, Weather.WINDY, Weather.RAINY, Weather.CLOUDY);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -1966,7 +1963,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -2007,7 +2004,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(dog.breed()).containsIgnoringCase("Labrador");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -2046,7 +2043,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -2074,7 +2071,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(animals).hasAtLeastOneElementOfType(Cat.class);
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -2117,7 +2114,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 
@@ -2149,7 +2146,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         assertThat(dog.breed()).containsIgnoringCase("Labrador");
 
         verify(model)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(singletonList(userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
@@ -2188,7 +2185,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                 .build())
                                         .build())
                                 .build())
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(model).supportedCapabilities();
     }
 

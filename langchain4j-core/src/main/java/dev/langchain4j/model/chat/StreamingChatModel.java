@@ -2,10 +2,10 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -37,13 +37,6 @@ import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
  * such as {@link StreamingChatResponseHandler#onPartialResponse(PartialResponse, PartialResponseContext)}.
  * When using {@link #chat(ChatRequest)}, which returns a {@link Publisher},
  * cancel the {@link Subscription} instead.
- * <p>
- * Implementations should override {@link #doChat(ChatRequest, StreamingChatResponseHandler)} (and
- * {@link #doChat(ChatRequest)} for the reactive API), not the {@code chat(...)} methods: the default {@code chat(...)}
- * methods apply the default request parameters, notify the {@link ChatModelListener}s and then call {@code doChat}.
- * AI Services call {@link #chat(ChatRequest, ChatRequestOptions, StreamingChatResponseHandler)} and
- * {@link #chat(ChatRequest, ChatRequestOptions)}, so an override of a {@code chat(...)} method without options is used
- * by them only when the corresponding {@code doChat} method is not implemented.
  *
  * @see ChatModel
  * @see StreamingHandle
@@ -62,13 +55,6 @@ public interface StreamingChatModel {
 
     /**
      * Sends a streaming chat request with additional invocation options.
-     * <p>
-     * If the model does not implement {@link #doChat(ChatRequest, StreamingChatResponseHandler)} (it overrides
-     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} instead), the call falls back to
-     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} without the options, and the {@link #listeners()} are
-     * notified of its response or error. A model that also notifies its listeners by hand in its own method then
-     * reports each call twice; it should implement {@link #doChat(ChatRequest, StreamingChatResponseHandler)}
-     * instead.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -144,29 +130,11 @@ public interface StreamingChatModel {
         };
 
         onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
-        try {
-            doChat(finalChatRequest, observingHandler);
-        } catch (DoChatNotImplementedException notImplemented) {
-            if (!notImplemented.isThrownBy(this) || !effectiveOptions.allowFallbackToChatWithoutOptions()) {
-                throw notImplemented;
-            }
-            chat(request, observingHandler);
-        }
+        doChat(finalChatRequest, observingHandler);
     }
 
-    /**
-     * The provider-specific implementation of {@link #chat(ChatRequest, StreamingChatResponseHandler)}, called by
-     * {@link #chat(ChatRequest, ChatRequestOptions, StreamingChatResponseHandler)} after the default request
-     * parameters are applied and the {@link ChatModelListener}s are notified.
-     * <p>
-     * The default throws a {@link UnsupportedFeatureException}. A model that overrides
-     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} instead of this method still works when it is called
-     * with {@link ChatRequestOptions}: the call then falls back to
-     * {@link #chat(ChatRequest, StreamingChatResponseHandler)}, without the options.
-     */
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        throw new DoChatNotImplementedException(
-                "doChat(ChatRequest, StreamingChatResponseHandler) is not implemented by " + getClass().getName(), this);
+        throw new RuntimeException("Not implemented");
     }
 
     /**
@@ -222,26 +190,6 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-        return chat(request, ChatRequestOptions.EMPTY);
-    }
-
-    /**
-     * As {@link #chat(ChatRequest)}, with additional invocation options.
-     * <p>
-     * If the model does not implement {@link #doChat(ChatRequest)} (it overrides {@link #chat(ChatRequest)}
-     * instead), the call falls back to {@link #chat(ChatRequest)} without the options, and the {@link #listeners()}
-     * are notified of its response or error. A model that implements neither fails with an
-     * {@link AsyncNotSupportedException}, as without options.
-     *
-     * @param request a {@link ChatRequest}, containing all the inputs to the LLM
-     * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
-     * @return a {@link Publisher} of {@link ChatModelStreamingEvent}s
-     * @since 1.24.0
-     */
-    @Experimental
-    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request, ChatRequestOptions options) {
-
-        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
@@ -251,41 +199,25 @@ public interface StreamingChatModel {
         List<ChatModelListener> listeners = listeners();
 
         ModelProvider provider = provider();
-        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
+        UUID invocationId = CurrentInvocation.invocationId();
 
         return new Publisher<ChatModelStreamingEvent>() {
 
             @Override
             public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
 
-                Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+                Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
                 Publisher<ChatModelStreamingEvent> innerPublisher;
                 try {
+                    onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
                     innerPublisher = doChat(finalChatRequest);
                 } catch (Throwable error) {
-                    onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
                     ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
                     downstream.onSubscribe(EMPTY_SUBSCRIPTION);
                     downstream.onError(error);
                     return;
                 }
-
-                if (AsyncNotSupported.isFailingPublisher(innerPublisher)
-                        && effectiveOptions.allowFallbackToChatWithoutOptions()) {
-                    try {
-                        innerPublisher = chat(request);
-                    } catch (Throwable error) {
-                        onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
-                        ChatModelListenerUtils.onError(
-                                error, finalChatRequest, provider, attributes, invocationId, listeners);
-                        downstream.onSubscribe(EMPTY_SUBSCRIPTION);
-                        downstream.onError(error);
-                        return;
-                    }
-                }
-
-                onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
 
                 innerPublisher.subscribe(new Subscriber<>() {
 

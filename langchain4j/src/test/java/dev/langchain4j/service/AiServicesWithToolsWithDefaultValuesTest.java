@@ -2,8 +2,6 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -18,7 +16,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.math.BigDecimal;
@@ -885,7 +882,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
         assistant.chat("call the tool");
 
-        verify(chatModelMock, atLeastOnce()).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
+        verify(chatModelMock, atLeastOnce()).chat(chatRequestCaptor.capture());
         ToolSpecification spec =
                 chatRequestCaptor.getValue().parameters().toolSpecifications().get(0);
         assertThat(spec.parameters().required()).containsExactly("arg0");

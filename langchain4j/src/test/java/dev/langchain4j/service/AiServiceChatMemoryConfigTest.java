@@ -4,13 +4,10 @@ import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +47,7 @@ class AiServiceChatMemoryConfigTest {
                 .build();
         // when-then
         assertThat(aiService.chat("1", "Hello")).isEqualTo("Berlin");
-        verify(chatModel).chat(eq(chatRequest("Hello")), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequest("Hello"));
     }
 
     @Test
@@ -81,7 +78,7 @@ class AiServiceChatMemoryConfigTest {
 
         // when-then
         assertThat(aiService.chat("", "request")).isEqualTo("Berlin");
-        verify(chatModel).chat(eq(chatRequest("request")), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequest("request"));
     }
 
     @Test
@@ -96,8 +93,8 @@ class AiServiceChatMemoryConfigTest {
         assertThat(aiService.chat("id1", "request")).isEqualTo("Berlin");
         assertThat(aiService.chat("id2", "data")).isEqualTo("Berlin");
 
-        verify(chatModel).chat(eq(chatRequest("request")), any(ChatRequestOptions.class));
-        verify(chatModel).chat(eq(chatRequest("data")), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequest("request"));
+        verify(chatModel).chat(chatRequest("data"));
     }
 
     @Test
@@ -131,6 +128,6 @@ class AiServiceChatMemoryConfigTest {
 
         // when-then
         assertThat(aiService.chat("   ", "request")).isEqualTo("Berlin");
-        verify(chatModel).chat(eq(chatRequest("request")), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequest("request"));
     }
 }

@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatRequestOptions;
@@ -108,17 +109,13 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-        return chat(request, ChatRequestOptions.EMPTY);
-    }
-
-    @Override
-    public Publisher<ChatModelStreamingEvent> chat(ChatRequest request, ChatRequestOptions options) {
         ensureNotNull(request, "request");
-        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(options);
+        UUID invocationId = CurrentInvocation.invocationId();
         return downstream -> {
             DeferredSubscription subscription = new DeferredSubscription(downstream);
             downstream.onSubscribe(subscription);
-            CompletableFuture<String> route = selector.selectAsync(request, options);
+            CompletableFuture<String> route = CurrentInvocation.callWithId(
+                    invocationId, () -> selector.selectAsync(request, ChatRequestOptions.EMPTY));
             subscription.setRouting(route);
             route.whenComplete((routeName, routingError) -> {
                 if (subscription.isCancelled()) {
@@ -129,8 +126,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                     return;
                 }
                 try {
-                    selector.model(routeName)
-                            .chat(request, RouteSelector.withRoute(options, routeName, invocationId))
+                    CurrentInvocation.callWithId(invocationId, () -> selector.model(routeName).chat(request))
                             .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
                 } catch (Throwable error) {
                     downstream.onError(error);

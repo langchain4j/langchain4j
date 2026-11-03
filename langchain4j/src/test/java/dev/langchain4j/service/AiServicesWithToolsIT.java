@@ -13,7 +13,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOf
 import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
@@ -45,7 +44,6 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -240,16 +238,16 @@ class AiServicesWithToolsIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
         assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
@@ -311,16 +309,16 @@ class AiServicesWithToolsIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         verify(spyChatModel)
-                .chatAsync(eq(ChatRequest.builder()
+                .chatAsync(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         verify(spyChatModel)
-                .chatAsync(eq(ChatRequest.builder()
+                .chatAsync(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
     }
 
     static class AsyncTransactionService {
@@ -545,22 +543,22 @@ class AiServicesWithToolsIT {
         assertThat(((AiMessage) messages.get(5)).text()).contains("11.1", "22.2");
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
     }
 
     @ParameterizedTest
@@ -635,16 +633,16 @@ class AiServicesWithToolsIT {
         assertThat(((AiMessage) messages.get(4)).text()).contains("11.1", "22.2");
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
 
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2), messages.get(3))
                         .toolSpecifications(EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
     }
 
     @ParameterizedTest
@@ -836,15 +834,15 @@ class AiServicesWithToolsIT {
 
         List<ChatMessage> messages = chatMemory.messages();
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(IntegerListProcessor.EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
     }
 
     static class StringArrayProcessor {
@@ -896,15 +894,15 @@ class AiServicesWithToolsIT {
 
         List<ChatMessage> messages = chatMemory.messages();
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0))
                         .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
         verify(spyChatModel)
-                .chat(eq(ChatRequest.builder()
+                .chat(ChatRequest.builder()
                         .messages(messages.get(0), messages.get(1), messages.get(2))
                         .toolSpecifications(StringArrayProcessor.EXPECTED_SPECIFICATION)
-                        .build()), any(ChatRequestOptions.class));
+                        .build());
     }
 
     @ParameterizedTest
@@ -977,7 +975,7 @@ class AiServicesWithToolsIT {
         verify(spyChatModel, atLeastOnce()).chat(argThat((ChatRequest request) -> {
             ToolSpecification toolSpec = request.toolSpecifications().get(0);
             return toolSpec.parameters().properties().containsKey("command");
-        }), any(ChatRequestOptions.class));
+        }));
 
         // verify that the tool method is called with the expected argument value
         verify(bashTool).runBash("ls -la");
@@ -1403,7 +1401,7 @@ class AiServicesWithToolsIT {
         // then
         verify(spyModel)
                 .chat(argThat((ChatRequest chatRequest) ->
-                        chatRequest.toolSpecifications().isEmpty()), any(ChatRequestOptions.class));
+                        chatRequest.toolSpecifications().isEmpty()));
 
         // given
         InvocationParameters invocationParameters2 = new InvocationParameters();
@@ -1415,7 +1413,7 @@ class AiServicesWithToolsIT {
         // then
         verify(spyModel)
                 .chat(argThat((ChatRequest chatRequest) ->
-                        chatRequest.toolSpecifications().size() == 1), any(ChatRequestOptions.class));
+                        chatRequest.toolSpecifications().size() == 1));
     }
 
     private static Map<String, Object> toMap(String arguments) {
@@ -1460,7 +1458,7 @@ class AiServicesWithToolsIT {
         assertThat(toolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T001\"}");
         assertThat(toolExecution.result()).isEqualTo("11.1");
 
-        verify(spyChatModel, times(2)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
+        verify(spyChatModel, times(2)).chat(any(ChatRequest.class));
     }
 
     @ParameterizedTest
@@ -1500,7 +1498,7 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatModel, times(2)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
+        verify(spyChatModel, times(2)).chat(any(ChatRequest.class));
     }
 
     @ParameterizedTest
@@ -1538,7 +1536,7 @@ class AiServicesWithToolsIT {
         assertThat(secondToolExecution.request().arguments()).isEqualToIgnoringWhitespace("{\"arg0\": \"T002\"}");
         assertThat(secondToolExecution.result()).contains("22.2");
 
-        verify(spyChatModel, times(3)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
+        verify(spyChatModel, times(3)).chat(any(ChatRequest.class));
     }
 
     @ParameterizedTest
@@ -1920,7 +1918,7 @@ class AiServicesWithToolsIT {
                 .chat(argThat((ChatRequest request) -> request.toolSpecifications().stream()
                                 .anyMatch(t -> t.name().equals("getWeather"))
                         && request.toolSpecifications().stream()
-                                .anyMatch(t -> t.name().equals("getTime"))), any(ChatRequestOptions.class));
+                                .anyMatch(t -> t.name().equals("getTime"))));
     }
 
     @Test
@@ -1985,11 +1983,11 @@ class AiServicesWithToolsIT {
 
         inOrder.verify(spyChatModel)
                 .chat(argThat((ChatRequest request) ->
-                        containsTool(request, "getWeather") && !containsTool(request, "getTime")), any(ChatRequestOptions.class));
+                        containsTool(request, "getWeather") && !containsTool(request, "getTime")));
 
         inOrder.verify(spyChatModel)
                 .chat(argThat((ChatRequest request) ->
-                        containsTool(request, "getWeather") && containsTool(request, "getTime")), any(ChatRequestOptions.class));
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -2055,7 +2053,7 @@ class AiServicesWithToolsIT {
 
         verify(spyChatModel, times(2))
                 .chat(argThat((ChatRequest request) ->
-                        containsTool(request, "getWeather") && containsTool(request, "getTime")), any(ChatRequestOptions.class));
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -2103,7 +2101,7 @@ class AiServicesWithToolsIT {
                     .findFirst()
                     .orElse(null);
             return toolResult != null && toolResult.text().equals("null");
-        }), any(ChatRequestOptions.class));
+        }));
     }
 
     @Test
@@ -2149,7 +2147,7 @@ class AiServicesWithToolsIT {
                     .findFirst()
                     .orElse(null);
             return toolResult != null && toolResult.text().equals("null");
-        }), any(ChatRequestOptions.class));
+        }));
     }
 
     @Test
@@ -2198,7 +2196,7 @@ class AiServicesWithToolsIT {
             return toolResult != null
                     && toolResult.contents().size() == 1
                     && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
-        }), any(ChatRequestOptions.class));
+        }));
     }
 
     @Test
@@ -2245,7 +2243,7 @@ class AiServicesWithToolsIT {
                     .findFirst()
                     .orElse(null);
             return toolResult != null && toolResult.text().equals("null");
-        }), any(ChatRequestOptions.class));
+        }));
     }
 
     @Test
@@ -2294,7 +2292,7 @@ class AiServicesWithToolsIT {
             return toolResult != null
                     && toolResult.text().contains("Camera is broken")
                     && Boolean.TRUE.equals(toolResult.isError());
-        }), any(ChatRequestOptions.class));
+        }));
     }
 
     sealed interface Animal permits Dog, Cat {}

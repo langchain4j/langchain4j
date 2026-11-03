@@ -183,6 +183,25 @@ class AiServiceModelListenerInvocationIdTest {
     }
 
     @Test
+    void model_called_by_a_token_stream_handler_on_the_thread_of_the_model_call_should_get_no_invocation_id() {
+        ChatModel modelUsedByHandler = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("an", "swer").streamingOnCallingThread())
+                .build();
+        CompletableFuture<String> done = new CompletableFuture<>();
+
+        assistant
+                .chat("Hello")
+                .onPartialResponse(token -> modelUsedByHandler.chat("about " + token))
+                .onCompleteResponse(response -> done.complete(modelUsedByHandler.chat("judge this")))
+                .onError(done::completeExceptionally)
+                .start();
+
+        assertThat(done).succeedsWithin(5, SECONDS);
+        assertThat(modelInvocationIds).hasSize(6).containsOnlyNulls();
+    }
+
+    @Test
     void model_called_by_a_token_stream_handler_should_get_no_invocation_id() {
         ChatModel modelUsedByHandler = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
@@ -201,16 +220,7 @@ class AiServiceModelListenerInvocationIdTest {
     }
 
     @Test
-    void ai_service_should_work_with_a_model_that_overrides_chat_instead_of_doChat() {
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer").overridingChatInsteadOfDoChat())
-                .build();
-
-        assertThat(assistant.chat("Hello")).isEqualTo("answer");
-    }
-
-    @Test
-    void ai_service_should_not_use_chat_override_of_a_model_that_implements_doChat() {
+    void ai_service_should_use_chat_override_of_a_model() {
         List<String> seenByOverride = new CopyOnWriteArrayList<>();
         ChatModel model = new ChatModelMock("answer") {
             @Override
@@ -223,8 +233,38 @@ class AiServiceModelListenerInvocationIdTest {
                 AiServices.builder(Assistant.class).chatModel(model).build();
 
         assertThat(assistant.chat("Hello")).isEqualTo("answer");
-        // AI Services call chat(ChatRequest, ChatRequestOptions), which runs doChat, so this override is not used
-        assertThat(seenByOverride).isEmpty();
+        assertThat(seenByOverride).containsExactly("chat(ChatRequest)");
+    }
+
+    @Test
+    void ai_service_called_by_the_chat_model_should_get_the_invocation_as_parent() {
+        List<AiServiceStartedEvent> started = new CopyOnWriteArrayList<>();
+        AiServiceListener<AiServiceStartedEvent> recording = new AiServiceListener<>() {
+            @Override
+            public Class<AiServiceStartedEvent> getEventClass() {
+                return AiServiceStartedEvent.class;
+            }
+
+            @Override
+            public void onEvent(AiServiceStartedEvent event) {
+                started.add(event);
+            }
+        };
+        Assistant inner = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .registerListener(recording)
+                .build();
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(new ChatModelMock(request -> AiMessage.from(inner.chat("help"))))
+                .registerListener(recording)
+                .build();
+
+        assertThat(outer.chat("Hello")).isEqualTo("inner answer");
+
+        assertThat(started).hasSize(2);
+        assertThat(started.get(0).invocationContext().parentInvocationId()).isNull();
+        assertThat(started.get(1).invocationContext().parentInvocationId())
+                .isEqualTo(started.get(0).invocationContext().invocationId());
     }
 
     @Test

@@ -6,20 +6,12 @@ import dev.langchain4j.model.chat.ChatRequestOptions;
 import java.util.UUID;
 
 /**
- * Creates the {@link ChatRequestOptions} an AI Service passes to its own chat model calls, so that the listeners of
- * the model get the {@link InvocationContext#invocationId()} of the invocation, and resolves the id that the listeners
- * get.
+ * Resolves the {@link InvocationContext#invocationId()} that the listeners of a chat model call get.
  */
 @Internal
 public final class InvocationChatRequestOptions {
 
     private InvocationChatRequestOptions() {}
-
-    public static ChatRequestOptions from(InvocationContext invocationContext) {
-        return ChatRequestOptions.builder()
-                .invocationId(invocationContext == null ? null : invocationContext.invocationId())
-                .build();
-    }
 
     /**
      * @return the invocation id that the listeners of a chat model call get: the one in the given options (which can

@@ -191,51 +191,6 @@ class ListenerInvocationIdTest {
     }
 
     @Test
-    void publisher_chat_listener_should_get_the_invocation_id_and_attributes_passed_in_the_options() {
-        RecordingChatModelListener listener = new RecordingChatModelListener();
-        StreamingChatModel model =
-                StreamingChatModelMock.thatAlwaysStreams("hel", "lo").withListeners(listener);
-        UUID passed = UUID.randomUUID();
-        ChatRequestOptions options = ChatRequestOptions.builder()
-                .invocationId(passed)
-                .addListenerAttribute("key", "value")
-                .build();
-
-        CurrentInvocation.callWith(invocationContext(), () -> {
-            subscribe(model.chat(CHAT_REQUEST, options));
-            return null;
-        });
-
-        assertThat(listener.invocationIds).containsExactly(passed, passed);
-        assertThat(listener.attributes).hasSize(2).allSatisfy(attributes -> assertThat(attributes)
-                .containsEntry("key", "value"));
-    }
-
-    @Test
-    void routed_publisher_listener_should_get_the_invocation_id_and_attributes_passed_in_the_options() {
-        RecordingChatModelListener listener = new RecordingChatModelListener();
-        StreamingChatModel routed =
-                StreamingChatModelMock.thatAlwaysStreams("hel", "lo").withListeners(listener);
-        StreamingChatModel router = RoutingStreamingChatModel.builder()
-                .route("only", routed)
-                .defaultRoute("only")
-                .router(asyncRouteTo("only"))
-                .build();
-        UUID passed = UUID.randomUUID();
-        ChatRequestOptions options = ChatRequestOptions.builder()
-                .invocationId(passed)
-                .addListenerAttribute("key", "value")
-                .build();
-
-        subscribe(router.chat(CHAT_REQUEST, options));
-
-        assertThat(listener.invocationIds).containsExactly(passed, passed);
-        assertThat(listener.attributes).hasSize(2).allSatisfy(attributes -> assertThat(attributes)
-                .containsEntry("key", "value")
-                .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "only"));
-    }
-
-    @Test
     void routed_model_listener_should_get_the_invocation_id_passed_in_the_options() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
         ChatModel routed = ChatModelMock.thatAlwaysResponds("hello").withListeners(listener);
@@ -460,7 +415,7 @@ class ListenerInvocationIdTest {
         InvocationContext invocation = invocationContext();
 
         Flow.Publisher<ChatModelStreamingEvent> publisher =
-                CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST, ChatRequestOptions.builder().build()));
+                CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST));
         assertThat(CompletableFuture.runAsync(() -> subscribe(publisher))).succeedsWithin(5, SECONDS);
 
         assertThat(listener.invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
@@ -479,7 +434,7 @@ class ListenerInvocationIdTest {
         InvocationContext invocation = invocationContext();
 
         Flow.Publisher<ChatModelStreamingEvent> publisher =
-                CurrentInvocation.callWith(invocation, () -> router.chat(CHAT_REQUEST, ChatRequestOptions.builder().build()));
+                CurrentInvocation.callWith(invocation, () -> router.chat(CHAT_REQUEST));
         assertThat(CompletableFuture.runAsync(() -> subscribe(publisher))).succeedsWithin(5, SECONDS);
 
         assertThat(listener.invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
@@ -519,7 +474,7 @@ class ListenerInvocationIdTest {
         InvocationContext invocation = invocationContext();
 
         Flow.Publisher<ChatModelStreamingEvent> publisher =
-                CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST, ChatRequestOptions.builder().build()));
+                CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST));
         CompletableFuture<Void> subscribed = CompletableFuture.runAsync(() -> assertThatThrownBy(() -> subscribe(publisher)));
 
         assertThat(subscribed).succeedsWithin(5, SECONDS);

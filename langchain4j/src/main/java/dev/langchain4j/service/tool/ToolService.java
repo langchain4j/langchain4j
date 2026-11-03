@@ -30,7 +30,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -635,7 +634,7 @@ public class ToolService {
                 chatMemory,
                 invocationContext,
                 toolServiceContext,
-                request -> context.chatModel.chat(request, InvocationChatRequestOptions.from(invocationContext)));
+                context.chatModel::chat);
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -728,7 +727,8 @@ public class ToolService {
             parameters = next.parameters();
 
             lastChatRequest = next.chatRequest();
-            chatResponse = chatModelInvoker.apply(next.chatRequest());
+            chatResponse = CurrentInvocation.callWith(
+                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
@@ -780,7 +780,7 @@ public class ToolService {
                 invocationContext,
                 toolServiceContext,
                 cancellation,
-                request -> context.chatModel.chatAsync(request, InvocationChatRequestOptions.from(invocationContext)));
+                context.chatModel::chatAsync);
     }
 
     /**
@@ -1051,7 +1051,8 @@ public class ToolService {
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
             lastChatRequest = next.chatRequest();
-            CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
+            CompletableFuture<ChatResponse> nextModelCall = CurrentInvocation.callWith(
+                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
                 nextModelCall.cancel(true);

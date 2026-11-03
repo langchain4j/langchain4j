@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
@@ -26,9 +25,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -408,13 +405,13 @@ class SkillsTest {
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "update_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
                         && containsTool(request, "update_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -469,12 +466,12 @@ class SkillsTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -485,7 +482,7 @@ class SkillsTest {
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -562,13 +559,13 @@ class SkillsTest {
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ), any(ChatRequestOptions.class));
+        ));
 
         // After activating weather skill: get_weather should appear, get_time should NOT
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -636,7 +633,7 @@ class SkillsTest {
                         && containsTool(request, "reset")
                         && containsTool(request, "poll")
                         && !containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         // after activation: normal tools still present alongside skill-scoped tool
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
@@ -644,7 +641,7 @@ class SkillsTest {
                         && containsTool(request, "process")
                         && containsTool(request, "generate")
                         && containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -739,7 +736,7 @@ class SkillsTest {
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "reorder_item")
                         && !containsTool(request, "generate_report")
-        ), any(ChatRequestOptions.class));
+        ));
 
         // after activation(s): all unique tools present, no duplicates
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
@@ -750,7 +747,7 @@ class SkillsTest {
                     && toolNames.contains("reorder_item")
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
-        }), any(ChatRequestOptions.class));
+        }));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -766,7 +763,7 @@ class SkillsTest {
                     && toolNames.contains("reorder_item")
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
-        }), any(ChatRequestOptions.class));
+        }));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -823,7 +820,7 @@ class SkillsTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
-        ), any(ChatRequestOptions.class));
+        ));
 
         // subsequent calls: query_inventory visible, no duplicates
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
@@ -831,7 +828,7 @@ class SkillsTest {
                     .filter(t -> t.name().equals("query_inventory"))
                     .count();
             return containsTool(request, "query_inventory") && count == 1;
-        }), any(ChatRequestOptions.class));
+        }));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -875,7 +872,7 @@ class SkillsTest {
         // LLM call 1: activate_skill with invalid name
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
-        ), any(ChatRequestOptions.class));
+        ));
 
         // LLM call 2: error message sent back containing available skill names
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -884,7 +881,7 @@ class SkillsTest {
                         .map(msg -> (ToolExecutionResultMessage) msg)
                         .anyMatch(msg -> msg.text().contains("'inventory'")
                                 && msg.text().contains("non-existent"))
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }

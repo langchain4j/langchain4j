@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -13,7 +12,6 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -180,7 +178,7 @@ class AiServiceTokenStreamTest {
 
         ArgumentCaptor<StreamingChatResponseHandler> handlerCaptor =
                 ArgumentCaptor.forClass(StreamingChatResponseHandler.class);
-        verify(streamingModel).chat(any(ChatRequest.class), any(ChatRequestOptions.class), handlerCaptor.capture());
+        verify(streamingModel).chat(any(ChatRequest.class), handlerCaptor.capture());
         StreamingChatResponseHandler handler = handlerCaptor.getValue();
 
         handler.onUnmappedRawEvent(rawEvent);

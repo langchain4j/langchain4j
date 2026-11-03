@@ -2,15 +2,12 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -88,7 +85,7 @@ public class AiServicesWithCustomContentInjectorTest {
         // when
         myAiService.chat("How many lamas are there in this image?");
         ArgumentCaptor<ChatRequest> chatRequestCaptor = ArgumentCaptor.forClass(ChatRequest.class);
-        verify(chatModel).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequestCaptor.capture());
 
         dev.langchain4j.data.message.UserMessage userMessage = (dev.langchain4j.data.message.UserMessage)
                 chatRequestCaptor.getValue().messages().get(0);
@@ -130,7 +127,7 @@ public class AiServicesWithCustomContentInjectorTest {
         // when
         myAiService.chat("How many lamas are there in this image?");
         ArgumentCaptor<ChatRequest> chatRequestCaptor = ArgumentCaptor.forClass(ChatRequest.class);
-        verify(chatModel).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
+        verify(chatModel).chat(chatRequestCaptor.capture());
 
         dev.langchain4j.data.message.UserMessage userMessage = (dev.langchain4j.data.message.UserMessage)
                 chatRequestCaptor.getValue().messages().get(0);

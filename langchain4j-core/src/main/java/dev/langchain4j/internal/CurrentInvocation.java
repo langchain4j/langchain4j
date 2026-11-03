@@ -30,11 +30,19 @@ public final class CurrentInvocation {
      * previous one. Does nothing special when the invocation context is {@code null}.
      */
     public static <T> T callWith(InvocationContext invocationContext, Supplier<T> action) {
-        if (invocationContext == null) {
+        return callWithId(invocationContext == null ? null : invocationContext.invocationId(), action);
+    }
+
+    /**
+     * Calls the given action with the given invocation id as the current one, then restores the previous one. Does
+     * nothing special when the invocation id is {@code null}.
+     */
+    public static <T> T callWithId(UUID invocationId, Supplier<T> action) {
+        if (invocationId == null) {
             return action.get();
         }
         UUID previous = CURRENT_INVOCATION_ID.get();
-        CURRENT_INVOCATION_ID.set(invocationContext.invocationId());
+        CURRENT_INVOCATION_ID.set(invocationId);
         try {
             return action.get();
         } finally {

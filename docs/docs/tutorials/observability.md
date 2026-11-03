@@ -199,10 +199,11 @@ The inner invocation is linked to the outer one when it is called from one of th
 - the chat memory (`chatMemory`, `chatMemoryProvider`), including its `ChatMemoryStore`, for example a chat memory that summarizes old messages with an AI Service
 - the moderation model (`moderationModel`)
 - the `chatRequestTransformer`
+- the chat model or streaming chat model itself (`chatModel`, `streamingChatModel`), for example your own `ChatModel` implementation
 
 `parentInvocationId()` is `null`:
 - for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
-- for an AI Service called from any other part, for example from your own `ChatModel` implementation
+- for an AI Service called from any other part, for example from a `ChatModelListener`
 - when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
 
 If you only need the summaries, a summary listener on the outer AI Service is enough: the summaries of the inner invocations linked to it are nested in its `events()` (see [Listening for the whole invocation](#listening-for-the-whole-invocation)).

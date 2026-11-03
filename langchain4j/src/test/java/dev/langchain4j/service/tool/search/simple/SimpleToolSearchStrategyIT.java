@@ -4,7 +4,6 @@ import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
@@ -23,7 +22,6 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsToo
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -93,7 +91,7 @@ class SimpleToolSearchStrategyIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any(ChatRequestOptions.class));
+        ));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 request.toolExecutionRequest().arguments().contains("terms")
@@ -103,7 +101,7 @@ class SimpleToolSearchStrategyIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any(ChatRequestOptions.class));
+        ));
 
         inOrder.verify(spyTools).getWeather("London");
 
@@ -111,7 +109,7 @@ class SimpleToolSearchStrategyIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any(ChatRequestOptions.class));
+        ));
 
         verifyNoMoreInteractionsFor(spyModel);
         ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());

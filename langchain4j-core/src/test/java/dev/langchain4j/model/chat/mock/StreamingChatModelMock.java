@@ -13,8 +13,6 @@ import static java.util.Collections.synchronizedList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -55,8 +53,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private List<TokenUsage> tokenUsages = List.of();
     private FinishReason finishReason;
     private boolean throwFromChat;
-    private boolean overridingChatInsteadOfDoChat;
-    private boolean withoutDoChat;
+    private boolean streamingOnCallingThread;
     private List<ChatModelListener> listeners = List.of();
 
     public StreamingChatModelMock(List<String> tokens) {
@@ -99,6 +96,28 @@ public class StreamingChatModelMock implements StreamingChatModel {
         return this;
     }
 
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
+    public StreamingChatModelMock withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    /**
+     * Streams on the thread that calls {@code chat(ChatRequest, StreamingChatResponseHandler)}, before that call
+     * returns, as some in-process models do, instead of on a separate thread.
+     */
+    public StreamingChatModelMock streamingOnCallingThread() {
+        this.streamingOnCallingThread = true;
+        return this;
+    }
+
     private TokenUsage recordRequest(ChatRequest chatRequest) {
         synchronized (requests) {
             requests.add(chatRequest);
@@ -135,21 +154,6 @@ public class StreamingChatModelMock implements StreamingChatModel {
      */
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        if (overridingChatInsteadOfDoChat || withoutDoChat) {
-            return StreamingChatModel.super.doChat(chatRequest);
-        }
-        return publish(chatRequest);
-    }
-
-    @Override
-    public Publisher<ChatModelStreamingEvent> chat(ChatRequest chatRequest) {
-        if (overridingChatInsteadOfDoChat) {
-            return publish(chatRequest);
-        }
-        return StreamingChatModel.super.chat(chatRequest);
-    }
-
-    private Publisher<ChatModelStreamingEvent> publish(ChatRequest chatRequest) {
         if (throwFromChat) {
             throw new IllegalStateException(
                     "throwingFromChat() only applies to chat(ChatRequest, StreamingChatResponseHandler)");
@@ -228,46 +232,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
                 .build();
     }
 
-    /**
-     * Makes this mock behave like a model that overrides {@link #chat(ChatRequest, StreamingChatResponseHandler)}
-     * and {@link #chat(ChatRequest)} instead of {@link #doChat(ChatRequest, StreamingChatResponseHandler)} and
-     * {@link #doChat(ChatRequest)}: the former throws a {@link UnsupportedFeatureException}, the latter returns a
-     * publisher that fails with an {@link AsyncNotSupportedException}.
-     */
-    public StreamingChatModelMock overridingChatInsteadOfDoChat() {
-        this.overridingChatInsteadOfDoChat = true;
-        return this;
-    }
-
-    /**
-     * Makes this mock behave like a model that implements neither
-     * {@link #doChat(ChatRequest, StreamingChatResponseHandler)} nor
-     * {@link #chat(ChatRequest, StreamingChatResponseHandler)}.
-     */
-    public StreamingChatModelMock withoutDoChat() {
-        this.withoutDoChat = true;
-        return this;
-    }
-
-    @Override
-    public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        if (overridingChatInsteadOfDoChat) {
-            stream(chatRequest, handler);
-            return;
-        }
-        StreamingChatModel.super.chat(chatRequest, handler);
-    }
-
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        if (overridingChatInsteadOfDoChat || withoutDoChat) {
-            StreamingChatModel.super.doChat(chatRequest, handler);
-            return;
-        }
-        stream(chatRequest, handler);
-    }
-
-    private void stream(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         TokenUsage tokenUsage = recordRequest(chatRequest);
 
         if (exception != null && throwFromChat) {
@@ -277,10 +243,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
         } else {
             AiMessage aiMessage = nextAiMessage();
 
-            var executor = Executors.newSingleThreadExecutor();
-
-            try {
-                executor.execute(() -> {
+            var executor = streamingOnCallingThread ? null : Executors.newSingleThreadExecutor();
+            Runnable streaming = () -> {
 
                     StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
@@ -302,7 +266,13 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     ChatResponse chatResponse = chatResponse(aiMessage, tokenUsage);
 
                     onCompleteResponse(handler, chatResponse);
-                });
+            };
+            if (executor == null) {
+                streaming.run();
+                return;
+            }
+            try {
+                executor.execute(streaming);
             } finally {
                 executor.shutdown();
             }
@@ -384,15 +354,5 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     public static StreamingChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new StreamingChatModelMock(new RuntimeException(message));
-    }
-
-    public StreamingChatModelMock withListeners(ChatModelListener... listeners) {
-        this.listeners = List.of(listeners);
-        return this;
-    }
-
-    @Override
-    public List<ChatModelListener> listeners() {
-        return listeners;
     }
 }
