@@ -306,9 +306,10 @@ public class DefaultAgenticScope implements AgenticScope {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId, agentListener);
         } else if (kind == Kind.PERSISTENT) {
-            // saved now without the results still pending, and again when each of them arrives
-            flush(registry);
+            // saved now without the results still pending, and again when each of them arrives: the registry is
+            // published before saving, so that a result arriving during the save is saved again by its agent
             registryAfterRootCall = registry;
+            flush(registry);
         }
 
         compensableExecutions.clear();

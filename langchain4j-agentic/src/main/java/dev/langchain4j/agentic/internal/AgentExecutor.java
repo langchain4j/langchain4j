@@ -159,6 +159,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             Object stateValue = response instanceof ResultWithAgenticScope<?> r ? r.result() : response;
             agenticScope.writeState(outputKey, stateValue);
         }
+        if (response instanceof AsyncResponse<?> asyncResponse) {
+            // attached only now, after the response has been written to the scope, so that the result of an agent
+            // completing before that write takes its place anyway: the hook runs immediately when already completed
+            asyncResponse.onComplete(completed -> agenticScope.asyncEnded(outputKey, completed));
+        }
 
         Map<String, Object> namedArgs = args != null ? args.namedArgs() : Map.of();
         AgentInvocation agentInvocation = new AgentInvocation(
@@ -180,15 +185,13 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             // notified before the submission, on this thread, so that the agent is always nested under its still
             // ongoing parent, also when its executor starts it after that parent completed
             beforeAgentInvocation(agentInvoker.listener(), agenticScope, agentInvoker, args.namedArgs());
-            return new AsyncResponse<>(
-                    () -> {
-                        try {
-                            return agentInvoker.invokeNotified(agenticScope, invokedAgent, args);
-                        } catch (AgentInvocationException e) {
-                            return handleAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
-                        }
-                    },
-                    response -> agenticScope.asyncEnded(agentInvoker.outputKey(), response));
+            return new AsyncResponse<>(() -> {
+                try {
+                    return agentInvoker.invokeNotified(agenticScope, invokedAgent, args);
+                } catch (AgentInvocationException e) {
+                    return handleAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
+                }
+            });
         }
 
         Object response = agentInvoker.invoke(agenticScope, invokedAgent, args);

@@ -10,19 +10,16 @@ public class AsyncResponse<T> implements DelayedResponse<T> {
     private final CompletableFuture<T> futureResponse;
 
     public AsyncResponse(Supplier<T> responseSupplier) {
-        this(responseSupplier, null);
+        this.futureResponse =
+                CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutor());
     }
 
     /**
-     * Runs the supplier on the default executor and, when it completes, successfully or not, passes this response
-     * to {@code onComplete} on that same thread.
+     * Passes this response to {@code onComplete} when it completes, successfully or not, on the thread completing
+     * it, or immediately on the calling thread when it already completed.
      */
-    public AsyncResponse(Supplier<T> responseSupplier, Consumer<AsyncResponse<T>> onComplete) {
-        this.futureResponse =
-                CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutor());
-        if (onComplete != null) {
-            futureResponse.whenComplete((value, error) -> onComplete.accept(this));
-        }
+    public void onComplete(Consumer<AsyncResponse<T>> onComplete) {
+        futureResponse.whenComplete((value, error) -> onComplete.accept(this));
     }
 
     @Override

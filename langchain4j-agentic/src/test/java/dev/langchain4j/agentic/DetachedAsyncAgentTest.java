@@ -18,6 +18,7 @@ import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
+import dev.langchain4j.spi.ExecutorProvider;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -302,6 +303,32 @@ class DetachedAsyncAgentTest {
         assertThat(store.getJson(key))
                 .contains("\"fix\":\"fixed after promote canary\"")
                 .doesNotContain("<pending>");
+    }
+
+    @Test
+    void result_of_an_async_agent_completing_before_its_response_is_written_to_the_scope_is_settled_and_saved() {
+        // an executor running the agent inline completes its response before the executor of the agent writes that
+        // response to the scope: the result must take its place anyway
+        ExecutorProvider.set(() -> Runnable::run);
+        try {
+            JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+            AgenticScopePersister.setStore(store);
+            Remediation remediation = new Remediation();
+            remediation.release.countDown();
+            RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                    .subAgents(new Analysis(), remediation)
+                    .outputKey("decision")
+                    .build();
+            AgenticScopeKey key = new AgenticScopeKey(RolloutAnalysisWithMemory.class.getName(), "rollout-1");
+
+            assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+
+            assertThat(workflow.getAgenticScope("rollout-1").state().get("fix"))
+                    .isEqualTo("fixed after promote canary");
+            assertThat(store.getJson(key)).contains("\"fix\":\"fixed after promote canary\"");
+        } finally {
+            ExecutorProvider.set(null);
+        }
     }
 
     private static void await(CountDownLatch latch) {

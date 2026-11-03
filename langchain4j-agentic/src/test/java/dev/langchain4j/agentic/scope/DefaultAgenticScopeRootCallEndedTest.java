@@ -40,16 +40,15 @@ class DefaultAgenticScopeRootCallEndedTest {
         };
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch ended = new CountDownLatch(1);
-        AsyncResponse<String> response = new AsyncResponse<>(
-                () -> {
-                    await(release);
-                    return "late";
-                },
-                completed -> {
-                    scope.asyncEnded("late", completed);
-                    ended.countDown();
-                });
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            await(release);
+            return "late";
+        });
         scope.writeState("late", response);
+        response.onComplete(completed -> {
+            scope.asyncEnded("late", completed);
+            ended.countDown();
+        });
 
         scope.rootCallEnded(registry, listener);
 
@@ -70,15 +69,14 @@ class DefaultAgenticScopeRootCallEndedTest {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch ended = new CountDownLatch(1);
-        new AsyncResponse<>(
-                () -> {
-                    await(release);
-                    return "stale";
-                },
-                completed -> {
-                    scope.asyncEnded("key", completed);
-                    ended.countDown();
-                });
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            await(release);
+            return "stale";
+        });
+        response.onComplete(completed -> {
+            scope.asyncEnded("key", completed);
+            ended.countDown();
+        });
         scope.writeState("key", "fresh");
 
         release.countDown();
