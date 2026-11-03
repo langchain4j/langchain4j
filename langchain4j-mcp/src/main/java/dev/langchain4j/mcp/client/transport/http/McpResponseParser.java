@@ -90,7 +90,7 @@ final class McpResponseParser implements ServerSentEventParser {
         }
 
         /**
-         * The length of {@link #data()} in UTF-8 bytes, excluding the line terminator.
+         * The number of bytes received for this line or fragment, excluding the line terminator.
          */
         int byteLength() {
             return byteLength;

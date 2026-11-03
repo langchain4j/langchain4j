@@ -41,13 +41,18 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
     }
 
     private void startServer(String contentType, ResponseWriter writer) throws IOException {
+        startServer(contentType, writer, LIMIT);
+    }
+
+    private void startServer(String contentType, ResponseWriter writer, Integer maxSseMessageSize)
+            throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/mcp", exchange -> respond(exchange, contentType, writer));
         server.start();
         transport = StreamableHttpMcpTransport.builder()
                 .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
                 .setHttpVersion1_1()
-                .maxSseMessageSize(LIMIT)
+                .maxSseMessageSize(maxSseMessageSize)
                 .build();
         transport.start(new McpOperationHandler(
                 pendingOperations,
@@ -124,6 +129,30 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
                 .cause()
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("exceeds the maximum size of " + LIMIT + " bytes");
+    }
+
+    @Test
+    void limits_messages_to_20_mib_by_default() throws Exception {
+        int defaultLimit = 20 * 1024 * 1024;
+        startServer(
+                "text/event-stream",
+                out -> {
+                    out.write("data: ".getBytes(StandardCharsets.UTF_8));
+                    byte[] chunk = "x".repeat(8192).getBytes(StandardCharsets.UTF_8);
+                    for (int written = 0; written <= defaultLimit; written += chunk.length) {
+                        out.write(chunk);
+                    }
+                    out.write("\n\n".getBytes(StandardCharsets.UTF_8));
+                },
+                null);
+
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(7L, null));
+
+        assertThatThrownBy(() -> response.get(10, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeds the maximum size of " + defaultLimit + " bytes");
     }
 
     @Test

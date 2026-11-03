@@ -88,9 +88,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
-        maxSseMessageSize = builder.maxSseMessageSize == null
-                ? DEFAULT_MAX_SSE_MESSAGE_SIZE
-                : ensureGreaterThanZero(builder.maxSseMessageSize, "maxSseMessageSize");
+        maxSseMessageSize = ensureGreaterThanZero(
+                getOrDefault(builder.maxSseMessageSize, DEFAULT_MAX_SSE_MESSAGE_SIZE), "maxSseMessageSize");
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         responseExecutor = builder.executor;
         if (builder.httpClientBuilder != null && builder.httpClient != null) {
@@ -662,8 +661,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
             sseLineBytes += fragment.byteLength();
             if (sseDataBytes + sseLineBytes > maxSseMessageSize) {
                 LOG.warn(
-                        "SSE message from {} exceeds the maximum size of {} bytes, closing the stream",
-                        url,
+                        "SSE message exceeds the maximum size of {} bytes, closing the stream; "
+                                + "use StreamableHttpMcpTransport.Builder.maxSseMessageSize to raise the limit",
                         maxSseMessageSize);
                 handleError(new IllegalStateException("SSE message exceeds the maximum size of " + maxSseMessageSize
                         + " bytes; use StreamableHttpMcpTransport.Builder.maxSseMessageSize to raise the limit"));
@@ -1104,7 +1103,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * @return this builder
          * @since 1.24.0
          */
-        public StreamableHttpMcpTransport.Builder maxSseMessageSize(int maxSseMessageSize) {
+        public StreamableHttpMcpTransport.Builder maxSseMessageSize(Integer maxSseMessageSize) {
             this.maxSseMessageSize = maxSseMessageSize;
             return this;
         }
