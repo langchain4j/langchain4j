@@ -1,5 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
@@ -8,11 +10,17 @@ import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
 import com.ibm.watsonx.ai.rerank.RerankService;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A {@link ScoringModel} implementation that integrates IBM watsonx.ai with LangChain4j.
@@ -32,6 +40,8 @@ import java.util.List;
 public class WatsonxScoringModel implements ScoringModel {
 
     private final RerankService rerankService;
+    private final String modelName;
+    private final List<ScoringModelListener> listeners;
 
     private WatsonxScoringModel(Builder builder) {
 
@@ -51,15 +61,58 @@ public class WatsonxScoringModel implements ScoringModel {
                 .httpClient(builder.httpClient)
                 .verifySsl(builder.verifySsl)
                 .build();
+        modelName = builder.modelName;
+        listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public ScoringRequestParameters defaultRequestParameters() {
+        return ScoringRequestParameters.builder().modelName(modelName).build();
+    }
+
+    @Override
+    public List<ScoringModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.WATSONX;
     }
 
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
-        return scoreAll(segments, query, null);
+        ScoringResponse response = score(ScoringRequest.builder()
+                .documents(isNull(segments) ? List.of() : segments.stream().map(TextSegment::text).toList())
+                .query(getOrDefault(query, ""))
+                .build());
+        return Response.from(response.scores(), response.tokenUsage());
+    }
+
+    @Override
+    public ScoringResponse doScore(ScoringRequest scoringRequest) {
+        String requestModelName = getOrDefault(scoringRequest.modelName(), modelName);
+        if (scoringRequest.documents().isEmpty() || scoringRequest.query().isBlank()) {
+            return ScoringResponse.builder()
+                    .scores(List.of())
+                    .modelName(requestModelName)
+                    .build();
+        }
+        RerankParameters parameters = Objects.equals(requestModelName, modelName)
+                ? null
+                : RerankParameters.builder().modelId(requestModelName).build();
+        RerankResponse response = rerank(scoringRequest.documents(), scoringRequest.query(), parameters);
+        return ScoringResponse.builder()
+                .scores(scores(response))
+                .modelName(getOrDefault(response.modelId(), requestModelName))
+                .tokenUsage(new TokenUsage(response.inputTokenCount()))
+                .build();
     }
 
     /**
      * Scores all provided {@link TextSegment}s against a given query using the given {@link RerankParameters}.
+     * <p>
+     * Unlike {@link #scoreAll(List, String)}, this method does not notify the {@link #listeners() listeners}.
      *
      * @param segments The list of {@link TextSegment}s to score.
      * @param query The query against which to score the segments.
@@ -72,15 +125,19 @@ public class WatsonxScoringModel implements ScoringModel {
 
         if (isNull(query) || query.isBlank()) return Response.from(List.of());
 
-        List<String> inputs = segments.stream().map(TextSegment::text).toList();
+        RerankResponse response = rerank(segments.stream().map(TextSegment::text).toList(), query, parameters);
+        return Response.from(scores(response), new TokenUsage(response.inputTokenCount()));
+    }
 
-        RerankResponse response = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+    private RerankResponse rerank(List<String> inputs, String query, RerankParameters parameters) {
+        return WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> rerankService.rerank(query, inputs, parameters));
+    }
 
+    private static List<Double> scores(RerankResponse response) {
         var content = new Double[response.results().size()];
         for (RerankResult rerankResult : response.results()) content[rerankResult.index()] = rerankResult.score();
-
-        return Response.from(Arrays.asList(content), new TokenUsage(response.inputTokenCount()));
+        return Arrays.asList(content);
     }
 
     /**
@@ -107,6 +164,7 @@ public class WatsonxScoringModel implements ScoringModel {
      */
     public static class Builder extends WatsonxBuilder<Builder> {
         private String modelName;
+        private List<ScoringModelListener> listeners;
 
         private Builder() {}
 
@@ -119,6 +177,29 @@ public class WatsonxScoringModel implements ScoringModel {
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public Builder listeners(List<ScoringModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public Builder listeners(ScoringModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public WatsonxScoringModel build() {
