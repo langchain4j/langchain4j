@@ -57,8 +57,56 @@ public final class AsyncNotSupported {
      *         {@link AsyncNotSupportedException} carrying the given message.
      */
     public static <T> Flow.Publisher<T> failingPublisher(String message) {
-        AsyncNotSupportedException error = new AsyncNotSupportedException(message);
-        return subscriber -> {
+        return new FailingPublisher<>(new AsyncNotSupportedException(message));
+    }
+
+    /**
+     * @return an already-failed future carrying an {@link AsyncNotSupportedException}, like
+     *         {@link #failedFuture(Class, String)}, that {@link #isNotImplementedFutureOf(CompletableFuture, Object)}
+     *         recognizes as returned by the default method of the given component.
+     */
+    public static <T> CompletableFuture<T> notImplementedFuture(Object component, String methodName) {
+        NotImplementedFuture<T> future = new NotImplementedFuture<>(component);
+        future.completeExceptionally(new AsyncNotSupportedException(
+                methodName + "() is not implemented by " + component.getClass().getName()));
+        return future;
+    }
+
+    /**
+     * @return whether the given future was returned by {@link #notImplementedFuture(Object, String)} for the given
+     *         component.
+     */
+    public static boolean isNotImplementedFutureOf(CompletableFuture<?> future, Object component) {
+        return future instanceof NotImplementedFuture<?> notImplemented && notImplemented.component == component;
+    }
+
+    private static final class NotImplementedFuture<T> extends CompletableFuture<T> {
+
+        private final Object component;
+
+        private NotImplementedFuture(Object component) {
+            this.component = component;
+        }
+    }
+
+    /**
+     * @return whether the given publisher is one returned by {@link #failingPublisher(String)}, that is, the
+     *         publisher of a reactive method that is not implemented.
+     */
+    public static boolean isFailingPublisher(Flow.Publisher<?> publisher) {
+        return publisher instanceof FailingPublisher<?>;
+    }
+
+    private static final class FailingPublisher<T> implements Flow.Publisher<T> {
+
+        private final AsyncNotSupportedException error;
+
+        private FailingPublisher(AsyncNotSupportedException error) {
+            this.error = error;
+        }
+
+        @Override
+        public void subscribe(Flow.Subscriber<? super T> subscriber) {
             subscriber.onSubscribe(new Flow.Subscription() {
                 @Override
                 public void request(long n) {}
@@ -67,6 +115,6 @@ public final class AsyncNotSupported {
                 public void cancel() {}
             });
             subscriber.onError(error);
-        };
+        }
     }
 }

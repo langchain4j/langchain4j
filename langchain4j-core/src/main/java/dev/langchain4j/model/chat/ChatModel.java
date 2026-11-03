@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -13,6 +14,7 @@ import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -22,12 +24,19 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents a language model that has a chat API.
+ * <p>
+ * Implementations should override {@link #doChat(ChatRequest)}, not {@link #chat(ChatRequest)}: the default
+ * {@link #chat(ChatRequest, ChatRequestOptions)} applies the default request parameters, notifies the
+ * {@link ChatModelListener}s and then calls {@link #doChat(ChatRequest)}. AI Services call
+ * {@link #chat(ChatRequest, ChatRequestOptions)} (and {@link #chatAsync(ChatRequest, ChatRequestOptions)}), so an
+ * override of {@link #chat(ChatRequest)} is used by them only when {@link #doChat(ChatRequest)} is not implemented.
  *
  * @see StreamingChatModel
  */
@@ -45,6 +54,12 @@ public interface ChatModel {
 
     /**
      * Sends a chat request with additional invocation options.
+     * <p>
+     * If the model does not implement {@link #doChat(ChatRequest)} (it overrides {@link #chat(ChatRequest)}
+     * instead), the call falls back to {@link #chat(ChatRequest)} without the options, and the {@link #listeners()}
+     * are notified of its response or error. A model that also notifies its listeners by hand in its own
+     * {@link #chat(ChatRequest)} then reports each call twice; it should implement {@link #doChat(ChatRequest)}
+     * instead.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -62,20 +77,44 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+            onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
             return chatResponse;
+        } catch (DoChatNotImplementedException notImplemented) {
+            if (notImplemented.isThrownBy(this) && effectiveOptions != ChatRequestOptions.EMPTY) {
+                try {
+                    ChatResponse chatResponse = chat(chatRequest);
+                    onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
+                    return chatResponse;
+                } catch (Exception error) {
+                    onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                    throw error;
+                }
+            }
+            onError(notImplemented, finalChatRequest, provider(), attributes, invocationId, listeners);
+            throw notImplemented;
         } catch (Exception error) {
-            onError(error, finalChatRequest, provider(), attributes, listeners);
+            onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
             throw error;
         }
     }
 
+    /**
+     * The provider-specific implementation of {@link #chat(ChatRequest)}, called by
+     * {@link #chat(ChatRequest, ChatRequestOptions)} after the default request parameters are applied and the
+     * {@link ChatModelListener}s are notified.
+     * <p>
+     * The default throws a {@link UnsupportedFeatureException}. A model that overrides {@link #chat(ChatRequest)}
+     * instead of this method still works when it is called with {@link ChatRequestOptions}: the call then falls
+     * back to {@link #chat(ChatRequest)}, without the options.
+     */
     default ChatResponse doChat(ChatRequest chatRequest) {
-        throw new RuntimeException("Not implemented");
+        throw new DoChatNotImplementedException(
+                "doChat(ChatRequest) is not implemented by " + getClass().getName(), this);
     }
 
     /**
@@ -109,6 +148,10 @@ public interface ChatModel {
 
     /**
      * Sends a non-blocking chat request with additional invocation options.
+     * <p>
+     * If the model does not implement {@link #doChatAsync(ChatRequest)} but overrides {@link #chatAsync(ChatRequest)},
+     * the call falls back to {@link #chatAsync(ChatRequest)} without the options, and the {@link #listeners()} are
+     * notified of its response or error.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -128,25 +171,36 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
 
         CompletableFuture<ChatResponse> source;
         try {
             source = doChatAsync(finalChatRequest);
         } catch (Exception error) {
-            onError(error, finalChatRequest, provider(), attributes, listeners);
+            onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
+        }
+
+        if (AsyncNotSupported.isNotImplementedFutureOf(source, this)
+                && effectiveOptions != ChatRequestOptions.EMPTY) {
+            try {
+                source = chatAsync(chatRequest);
+            } catch (Exception error) {
+                onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                return CompletableFuture.failedFuture(error);
+            }
         }
 
         CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalChatRequest, provider(), attributes, listeners);
+                    onError(cause, finalChatRequest, provider(), attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+                onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
             }
         });
 
@@ -168,7 +222,7 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        return AsyncNotSupported.failedFuture(getClass(), "doChatAsync");
+        return AsyncNotSupported.notImplementedFuture(this, "doChatAsync");
     }
 
     default ChatRequestParameters defaultRequestParameters() {

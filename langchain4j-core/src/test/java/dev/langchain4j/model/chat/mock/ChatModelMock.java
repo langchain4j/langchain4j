@@ -12,6 +12,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -50,6 +51,8 @@ public class ChatModelMock implements ChatModel {
     private Queue<String> modelNames = new ConcurrentLinkedQueue<>();
     private List<TokenUsage> tokenUsages = List.of();
     private FinishReason finishReason;
+    private boolean overridingChatInsteadOfDoChat;
+    private boolean withoutDoChat;
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
@@ -133,8 +136,49 @@ public class ChatModelMock implements ChatModel {
         return listeners;
     }
 
+    /**
+     * Makes this mock behave like a model that overrides {@link #chat(ChatRequest)} and
+     * {@link #chatAsync(ChatRequest)} instead of {@link #doChat(ChatRequest)} and {@link #doChatAsync(ChatRequest)}:
+     * {@link #doChat(ChatRequest)} throws a {@link UnsupportedFeatureException} and {@link #doChatAsync(ChatRequest)}
+     * returns a failed future, as their defaults do.
+     */
+    public ChatModelMock overridingChatInsteadOfDoChat() {
+        this.overridingChatInsteadOfDoChat = true;
+        return this;
+    }
+
+    /**
+     * Makes this mock behave like a model that implements neither {@link #doChat(ChatRequest)} nor
+     * {@link #chat(ChatRequest)}.
+     */
+    public ChatModelMock withoutDoChat() {
+        this.withoutDoChat = true;
+        return this;
+    }
+
+    @Override
+    public ChatResponse chat(ChatRequest chatRequest) {
+        if (overridingChatInsteadOfDoChat) {
+            TokenUsage tokenUsage = recordRequest(chatRequest);
+            return respond(chatRequest, tokenUsage);
+        }
+        return ChatModel.super.chat(chatRequest);
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
+        if (overridingChatInsteadOfDoChat) {
+            TokenUsage tokenUsage = recordRequest(chatRequest);
+            return CompletableFuture.supplyAsync(() -> respond(chatRequest, tokenUsage));
+        }
+        return ChatModel.super.chatAsync(chatRequest);
+    }
+
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
+        if (overridingChatInsteadOfDoChat || withoutDoChat) {
+            return ChatModel.super.doChat(chatRequest);
+        }
         TokenUsage tokenUsage = recordRequest(chatRequest);
         return respond(chatRequest, tokenUsage);
     }
@@ -146,6 +190,9 @@ public class ChatModelMock implements ChatModel {
      */
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        if (overridingChatInsteadOfDoChat || withoutDoChat) {
+            return ChatModel.super.doChatAsync(chatRequest);
+        }
         TokenUsage tokenUsage = recordRequest(chatRequest);
         return CompletableFuture.supplyAsync(() -> respond(chatRequest, tokenUsage));
     }

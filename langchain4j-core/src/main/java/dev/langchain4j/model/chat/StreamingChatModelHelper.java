@@ -37,8 +37,24 @@ public final class StreamingChatModelHelper {
      */
     public static CompletableFuture<ChatResponse> chatAsync(
             StreamingChatModel streamingChatModel, ChatRequest request, Consumer<Throwable> errorHandler) {
+        return subscribe(streamingChatModel.chat(request), errorHandler);
+    }
+
+    /**
+     * As {@link #chatAsync(StreamingChatModel, ChatRequest, Consumer)}, passing the given options to the model.
+     */
+    public static CompletableFuture<ChatResponse> chatAsync(
+            StreamingChatModel streamingChatModel,
+            ChatRequest request,
+            ChatRequestOptions options,
+            Consumer<Throwable> errorHandler) {
+        return subscribe(streamingChatModel.chat(request, options), errorHandler);
+    }
+
+    private static CompletableFuture<ChatResponse> subscribe(
+            Flow.Publisher<ChatModelStreamingEvent> publisher, Consumer<Throwable> errorHandler) {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        streamingChatModel.chat(request).subscribe(new Flow.Subscriber<>() {
+        publisher.subscribe(new Flow.Subscriber<>() {
 
             private ChatResponse response;
 

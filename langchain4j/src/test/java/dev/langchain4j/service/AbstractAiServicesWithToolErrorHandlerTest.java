@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.spy;
@@ -448,17 +449,17 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     static void verifyChatRequest(
             ChatModel spyModel, InvocationMode invocationMode, ArgumentMatcher<ChatRequest> matcher) {
         if (invocationMode == InvocationMode.SYNC) {
-            verify(spyModel).chat(argThat(matcher));
+            verify(spyModel).chat(argThat(matcher), any(ChatRequestOptions.class));
         } else {
-            verify(spyModel).chatAsync(argThat(matcher));
+            verify(spyModel).chatAsync(argThat(matcher), any(ChatRequestOptions.class));
         }
     }
 
     static void verifyAnyChatRequest(ChatModel spyModel, InvocationMode invocationMode) {
         if (invocationMode == InvocationMode.SYNC) {
-            verify(spyModel).chat(any(ChatRequest.class));
+            verify(spyModel).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
         } else {
-            verify(spyModel).chatAsync(any(ChatRequest.class));
+            verify(spyModel).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
         }
     }
 
@@ -469,8 +470,6 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         verify(model, atLeast(0)).listeners();
         verify(model, atLeast(0)).provider();
         verify(model, atLeast(0)).supportedCapabilities();
-        verify(model, atLeast(0)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
-        verify(model, atLeast(0)).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
     }
 
     static class CustomToolException extends RuntimeException {

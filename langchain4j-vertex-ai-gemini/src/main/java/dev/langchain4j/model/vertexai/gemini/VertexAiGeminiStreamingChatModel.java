@@ -34,10 +34,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -54,7 +51,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -73,6 +69,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
+    private final ChatRequestParameters defaultRequestParameters;
     private final VertexAI vertexAI;
 
     private final Map<HarmCategory, SafetyThreshold> safetySettings;
@@ -194,6 +191,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.vertexAI = vertexAiBuilder.build();
 
         this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
@@ -321,6 +320,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 .build();
 
         this.generativeModel = new GenerativeModel(modelName, vertexAI).withGenerationConfig(generationConfig);
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
 
         this.logRequests = Objects.requireNonNullElse(logRequests, false);
         this.logResponses = Objects.requireNonNullElse(logResponses, false);
@@ -331,29 +332,28 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
-        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
-        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
-        this.vertexAI = null;
-        this.safetySettings = Collections.emptyMap();
-        this.googleSearch = null;
-        this.vertexSearch = null;
-        this.toolConfig = ToolConfig.newBuilder()
-                .setFunctionCallingConfig(FunctionCallingConfig.newBuilder()
-                        .setMode(FunctionCallingConfig.Mode.AUTO)
-                        .build())
-                .build();
-        this.allowedFunctionNames = Collections.emptyList();
-        this.logRequests = false;
-        this.logResponses = false;
-        this.listeners = Collections.emptyList();
-        this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
-        this.labels = Collections.emptyMap();
+        this(generativeModel, generationConfig, (Executor) null);
     }
 
     public VertexAiGeminiStreamingChatModel(
             GenerativeModel generativeModel, GenerationConfig generationConfig, Executor executor) {
+        this(generativeModel, generationConfig, executor, Collections.emptyList());
+    }
+
+    VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel, GenerationConfig generationConfig, List<ChatModelListener> listeners) {
+        this(generativeModel, generationConfig, null, listeners);
+    }
+
+    private VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel,
+            GenerationConfig generationConfig,
+            Executor executor,
+            List<ChatModelListener> listeners) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
         this.vertexAI = null;
         this.safetySettings = Collections.emptyMap();
         this.googleSearch = null;
@@ -366,7 +366,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.allowedFunctionNames = Collections.emptyList();
         this.logRequests = false;
         this.logResponses = false;
-        this.listeners = Collections.emptyList();
+        this.listeners = copy(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
         this.labels = Collections.emptyMap();
     }
@@ -377,8 +377,13 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        StreamingChatModel.super.chat(chatRequest, handler); // kept for binary compatibility, the logic is in doChat
+    }
+
+    @Override
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
+        VertexAiGeminiRequestParameters.validateParameters(parameters, defaultRequestParameters);
         ChatRequestValidationUtils.validate(parameters.toolChoice());
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
@@ -430,27 +435,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
         }
 
-        ChatRequest listenerRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .modelName(modelName)
-                        .temperature((double) generationConfig.getTemperature())
-                        .topP((double) generationConfig.getTopP())
-                        .maxOutputTokens(generationConfig.getMaxOutputTokens())
-                        .toolSpecifications(toolSpecifications)
-                        .build())
-                .build();
-        ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
-        listeners.forEach((listener) -> {
-            try {
-                listener.onRequest(chatModelRequestContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener (onRequest)", e);
-            }
-        });
-
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
         final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
@@ -501,28 +485,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 ChatResponse chatResponse = ChatResponse.builder()
                         .aiMessage(fullResponse.content())
                         .metadata(ChatResponseMetadata.builder()
-                                .tokenUsage(fullResponse.tokenUsage())
-                                .finishReason(fullResponse.finishReason())
-                                .build())
-                        .build();
-
-                ChatResponse listenerResponse = ChatResponse.builder()
-                        .aiMessage(fullResponse.content())
-                        .metadata(ChatResponseMetadata.builder()
                                 .modelName(modelName)
                                 .tokenUsage(fullResponse.tokenUsage())
                                 .finishReason(fullResponse.finishReason())
                                 .build())
                         .build();
-                ChatModelResponseContext chatModelResponseContext =
-                        new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
-                listeners.forEach((listener) -> {
-                    try {
-                        listener.onResponse(chatModelResponseContext);
-                    } catch (Exception e) {
-                        logger.warn("Exception while calling model listener (onResponse)", e);
-                    }
-                });
 
                 onCompleteResponse(handler, chatResponse);
 
@@ -531,16 +498,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                 }
             } catch (Exception exception) {
                 RuntimeException mappedException = VertexAiGeminiExceptionMapper.INSTANCE.mapException(exception);
-                listeners.forEach((listener) -> {
-                    try {
-                        ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
-                                mappedException, listenerRequest, provider(), listenerAttributes);
-                        listener.onError(chatModelErrorContext);
-                    } catch (Exception t) {
-                        logger.warn("Exception while calling model listener (onError)", t);
-                    }
-                });
-
                 handler.onError(mappedException);
             }
         });
@@ -565,6 +522,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         if (executor instanceof ExecutorService) {
             ((ExecutorService) executor).shutdown();
         }
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override

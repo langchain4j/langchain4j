@@ -5,11 +5,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The context passed to {@link EmbeddingModelListener#onError(EmbeddingModelErrorContext)} when an embedding
@@ -26,6 +28,7 @@ public class EmbeddingModelErrorContext {
     private final EmbeddingRequest embeddingRequest;
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
 
     private final List<TextSegment> textSegments;
 
@@ -34,6 +37,7 @@ public class EmbeddingModelErrorContext {
         this.embeddingRequest = builder.embeddingRequest;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         this.attributes = ensureNotNull(builder.attributes, "attributes");
+        this.invocationId = builder.invocationId;
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
     }
 
@@ -81,6 +85,17 @@ public class EmbeddingModelErrorContext {
         return textSegments;
     }
 
+    /**
+     * @return the id of the AI Service invocation this call belongs to: the one whose work (a tool, a guardrail,
+     * retrieval, ...) makes the call, otherwise {@code null}. It is the {@link InvocationContext#invocationId()} of the
+     * AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    @Experimental
+    public UUID invocationId() {
+        return invocationId;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -97,6 +112,7 @@ public class EmbeddingModelErrorContext {
         private EmbeddingRequest embeddingRequest;
         private EmbeddingModel embeddingModel;
         private Map<Object, Object> attributes;
+        private UUID invocationId;
         private List<TextSegment> textSegments;
 
         Builder() {}
@@ -123,6 +139,15 @@ public class EmbeddingModelErrorContext {
 
         public Builder textSegments(List<TextSegment> textSegments) {
             this.textSegments = textSegments;
+            return this;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder invocationId(UUID invocationId) {
+            this.invocationId = invocationId;
             return this;
         }
 

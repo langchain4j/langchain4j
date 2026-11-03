@@ -12,8 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -36,6 +38,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -137,7 +140,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -197,7 +200,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -260,7 +263,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -332,7 +335,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -383,7 +386,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tools);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -447,7 +450,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -501,7 +504,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -555,7 +558,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -613,7 +616,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -663,7 +666,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -727,7 +730,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -786,7 +789,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();
-            verify(model, times(2)).chat(chatRequestCaptor.capture());
+            verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
             verifyNoMoreInteractionsFor(model);
 
             List<ToolSpecification> toolSpecifications =
@@ -858,7 +861,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();
-            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
 
             var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
             assertThat(toolSpecifications).hasSize(1);
@@ -939,7 +942,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();
-            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
 
             var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
             assertThat(toolSpecifications).hasSize(1);
@@ -1038,7 +1041,7 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();
-            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture());
+            verify(model, times(chatInvocations)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
 
             var toolSpecifications = chatRequestCaptor.getValue().toolSpecifications();
             assertThat(toolSpecifications).hasSize(2);
@@ -1166,7 +1169,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .chat(argThat((ChatRequest request) -> request.messages().size() == 3
                         && request.messages().get(2) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.text().isEmpty()
-                        && toolResultMessage.contents().equals(List.of(TextContent.from("")))));
+                        && toolResultMessage.contents().equals(List.of(TextContent.from("")))), any(ChatRequestOptions.class));
     }
 
     @ParameterizedTest
@@ -1202,7 +1205,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .chat(argThat((ChatRequest request) -> request.messages().size() > 2
                         && request.messages().get(2) instanceof ToolExecutionResultMessage toolResultMessage
                         && toolResultMessage.text().equals(" ")
-                        && toolResultMessage.contents().equals(List.of(TextContent.from(" ")))));
+                        && toolResultMessage.contents().equals(List.of(TextContent.from(" ")))), any(ChatRequestOptions.class));
     }
 
     static final String CAT_IMAGE_URL =
@@ -1285,7 +1288,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThat(result.content().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "wildcat");
         verify(tool).takePhoto();
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
                 .filter(ToolExecutionResultMessage.class::isInstance)
                 .map(ToolExecutionResultMessage.class::cast)
@@ -1318,7 +1321,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThat(result.content().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "wildcat");
         verify(tool).takePhoto();
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
                 .filter(ToolExecutionResultMessage.class::isInstance)
                 .map(ToolExecutionResultMessage.class::cast)
@@ -1353,7 +1356,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         assertThat(response).contains("whiskers");
         verify(tool).takePhoto();
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         ToolExecutionResultMessage toolResult = chatRequestCaptor.getAllValues().get(1).messages().stream()
                 .filter(ToolExecutionResultMessage.class::isInstance)
                 .map(ToolExecutionResultMessage.class::cast)

@@ -5,6 +5,8 @@ import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,6 +20,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -90,7 +93,7 @@ class AiServicesWithToolsWithRequiredIT {
         verify(tool).process("Klaus", null);
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications =
@@ -149,7 +152,7 @@ class AiServicesWithToolsWithRequiredIT {
         verify(tool).process(new ToolWithPojoParameter.Person("Klaus", 37));
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications =
@@ -193,7 +196,7 @@ class AiServicesWithToolsWithRequiredIT {
         verify(tool).process("Klaus", Optional.empty());
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications =
@@ -240,7 +243,7 @@ class AiServicesWithToolsWithRequiredIT {
         verify(tool).process("test", Optional.empty());
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications =

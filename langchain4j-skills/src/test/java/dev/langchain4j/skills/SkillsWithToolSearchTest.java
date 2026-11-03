@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
@@ -24,7 +25,9 @@ import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasSearchableTools;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -102,7 +105,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -161,7 +164,7 @@ class SkillsWithToolSearchTest {
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         // tool search is invoked — searchable pool has only getWeather, not query_inventory
         inOrder.verify(spyStrategy).search(argThat((ToolSearchRequest request) ->
@@ -173,7 +176,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -235,7 +238,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
-        ));
+        ), any(ChatRequestOptions.class));
 
         // LLM call 2: after activation, query_inventory now visible
         // LLM call 3: query_inventory still visible
@@ -243,7 +246,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -255,7 +258,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -329,7 +332,7 @@ class SkillsWithToolSearchTest {
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         // LLM call 2: skill activated, query_inventory now visible; calls tool_search_tool
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -337,7 +340,7 @@ class SkillsWithToolSearchTest {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
                         && !containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         // tool search: getWeather is searchable (regular tool), query_inventory is NOT (skill-scoped)
         inOrder.verify(spyStrategy).search(argThat((ToolSearchRequest request) ->
@@ -349,7 +352,7 @@ class SkillsWithToolSearchTest {
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "query_inventory")
                         && containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -362,7 +365,7 @@ class SkillsWithToolSearchTest {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
                         && containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -434,14 +437,14 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ));
+        ), any(ChatRequestOptions.class));
 
         // LLM call 2: only weather's get_weather appears, NOT time's get_time
         // LLM call 3: responds with text, same tools visible
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -453,7 +456,7 @@ class SkillsWithToolSearchTest {
                 containsTool(request, "activate_skill")
                         && containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }

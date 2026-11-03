@@ -3,10 +3,12 @@ package dev.langchain4j.model.scoring.listener;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The context of an error of a scoring model: the error, the corresponding request, the model provider and
@@ -23,12 +25,14 @@ public final class ScoringModelErrorContext {
     private final ScoringRequest scoringRequest;
     private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
 
     private ScoringModelErrorContext(Builder builder) {
         this.error = ensureNotNull(builder.error, "error");
         this.scoringRequest = ensureNotNull(builder.scoringRequest, "scoringRequest");
         this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
+        this.invocationId = builder.invocationId;
     }
 
     public Throwable error() {
@@ -54,6 +58,17 @@ public final class ScoringModelErrorContext {
         return attributes;
     }
 
+    /**
+     * @return the id of the AI Service invocation this call belongs to: the one whose work (a tool, a guardrail,
+     * retrieval, ...) makes the call, otherwise {@code null}. It is the {@link InvocationContext#invocationId()} of the
+     * AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    @Experimental
+    public UUID invocationId() {
+        return invocationId;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -70,6 +85,7 @@ public final class ScoringModelErrorContext {
         private ScoringRequest scoringRequest;
         private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
+        private UUID invocationId;
 
         Builder() {}
 
@@ -90,6 +106,15 @@ public final class ScoringModelErrorContext {
 
         public Builder attributes(Map<Object, Object> attributes) {
             this.attributes = attributes;
+            return this;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder invocationId(UUID invocationId) {
+            this.invocationId = invocationId;
             return this;
         }
 

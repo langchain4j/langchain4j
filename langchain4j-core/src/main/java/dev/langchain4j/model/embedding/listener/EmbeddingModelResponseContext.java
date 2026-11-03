@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The context passed to {@link EmbeddingModelListener#onResponse(EmbeddingModelResponseContext)} after a
@@ -29,6 +31,7 @@ public class EmbeddingModelResponseContext {
     private final EmbeddingResponse embeddingResponse;
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
 
     private final Response<List<Embedding>> response;
     private final List<TextSegment> textSegments;
@@ -38,6 +41,7 @@ public class EmbeddingModelResponseContext {
         this.embeddingResponse = builder.embeddingResponse;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         this.attributes = ensureNotNull(builder.attributes, "attributes");
+        this.invocationId = builder.invocationId;
         this.response = ensureNotNull(builder.response, "response");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
     }
@@ -93,6 +97,17 @@ public class EmbeddingModelResponseContext {
         return textSegments;
     }
 
+    /**
+     * @return the id of the AI Service invocation this call belongs to: the one whose work (a tool, a guardrail,
+     * retrieval, ...) makes the call, otherwise {@code null}. It is the {@link InvocationContext#invocationId()} of the
+     * AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    @Experimental
+    public UUID invocationId() {
+        return invocationId;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -109,6 +124,7 @@ public class EmbeddingModelResponseContext {
         private EmbeddingResponse embeddingResponse;
         private EmbeddingModel embeddingModel;
         private Map<Object, Object> attributes;
+        private UUID invocationId;
         private Response<List<Embedding>> response;
         private List<TextSegment> textSegments;
 
@@ -141,6 +157,15 @@ public class EmbeddingModelResponseContext {
 
         public Builder textSegments(List<TextSegment> textSegments) {
             this.textSegments = textSegments;
+            return this;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder invocationId(UUID invocationId) {
+            this.invocationId = invocationId;
             return this;
         }
 

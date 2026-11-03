@@ -194,15 +194,15 @@ class StreamingAiServicesWithToolsIT {
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
 
         assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
         assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
@@ -510,15 +510,15 @@ class StreamingAiServicesWithToolsIT {
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(WeatherService.EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
     }
 
     @Test
@@ -568,15 +568,15 @@ class StreamingAiServicesWithToolsIT {
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         eq(ChatRequest.builder()
                                 .messages(messages.get(0), messages.get(1), messages.get(2))
                                 .toolSpecifications(EXPECTED_SPECIFICATION)
-                                .build()),
-                        any());
+                                .build()), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
     }
 
@@ -847,16 +847,16 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 1),
-                        any());
+                                chatRequest.messages().size() == 1), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
                                 chatRequest.messages().size() == 3
                                         && chatRequest.messages().get(2)
                                                 instanceof ToolExecutionResultMessage toolResult
-                                        && toolResult.text().equals(errorMessage)),
-                        any());
+                                        && toolResult.text().equals(errorMessage)), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -919,16 +919,16 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 1),
-                        any());
+                                chatRequest.messages().size() == 1), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
                                 chatRequest.messages().size() == 3
                                         && chatRequest.messages().get(2)
                                                 instanceof ToolExecutionResultMessage toolResult
-                                        && toolResult.text().equals("java.lang.RuntimeException")),
-                        any());
+                                        && toolResult.text().equals("java.lang.RuntimeException")), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -1005,16 +1005,16 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 1),
-                        any());
+                                chatRequest.messages().size() == 1), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
                                 chatRequest.messages().size() == 3
                                         && chatRequest.messages().get(2)
                                                 instanceof ToolExecutionResultMessage toolResult
-                                        && toolResult.text().equals(customizedErrorMessage)),
-                        any());
+                                        && toolResult.text().equals(customizedErrorMessage)), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -1089,8 +1089,8 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 1),
-                        any());
+                                chatRequest.messages().size() == 1), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -1158,7 +1158,7 @@ class StreamingAiServicesWithToolsIT {
 
         verifyNoInteractions(spyTool);
 
-        verify(spyModel).chat(any(ChatRequest.class), any());
+        verify(spyModel).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -1243,21 +1243,21 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 1),
-                        any());
+                                chatRequest.messages().size() == 1), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
                                 chatRequest.messages().size() == 3
                                         && chatRequest.messages().get(2)
                                                 instanceof ToolExecutionResultMessage toolResult
-                                        && toolResult.text().equals(customizedErrorMessage)),
-                        any());
+                                        && toolResult.text().equals(customizedErrorMessage)), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest chatRequest) ->
-                                chatRequest.messages().size() == 5),
-                        any());
+                                chatRequest.messages().size() == 5), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler, times(2)).beforeToolExecution(any());
@@ -1336,7 +1336,7 @@ class StreamingAiServicesWithToolsIT {
         // then
         verifyNoInteractions(spyTool);
 
-        verify(spyModel).chat(any(ChatRequest.class), any());
+        verify(spyModel).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         verifyNoMoreInteractionsFor(spyModel);
 
         verify(handler).beforeToolExecution(any());
@@ -1513,8 +1513,8 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel, times(2))
                 .chat(
                         argThat((ChatRequest request) ->
-                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
-                        any());
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1585,14 +1585,14 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest request) ->
-                                containsTool(request, "getWeather") && !containsTool(request, "getTime")),
-                        any());
+                                containsTool(request, "getWeather") && !containsTool(request, "getTime")), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
 
         verify(spyModel)
                 .chat(
                         argThat((ChatRequest request) ->
-                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
-                        any());
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1662,8 +1662,8 @@ class StreamingAiServicesWithToolsIT {
         verify(spyModel, times(2))
                 .chat(
                         argThat((ChatRequest request) ->
-                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
-                        any());
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1725,16 +1725,14 @@ class StreamingAiServicesWithToolsIT {
                                     && toolResult.contents().size() == 1
                                     && toolResult.contents().get(0)
                                             instanceof dev.langchain4j.data.message.ImageContent;
-                        }),
-                        any());
+                        }), any(ChatRequestOptions.class),
+                        any(StreamingChatResponseHandler.class));
     }
 
     // TODO all other tests from sync version
 
     // TODO rename verifyNoMoreImportantInteractions
     private static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
-        ignoreInteractions(model)
-                .chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

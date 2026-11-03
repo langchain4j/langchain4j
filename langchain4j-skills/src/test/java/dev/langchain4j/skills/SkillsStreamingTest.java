@@ -6,9 +6,11 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -29,6 +31,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -400,13 +403,13 @@ class SkillsStreamingTest {
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "update_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
                         && containsTool(request, "update_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -459,12 +462,12 @@ class SkillsStreamingTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
 
@@ -475,7 +478,7 @@ class SkillsStreamingTest {
         inOrder.verify(spyChatModel, times(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -552,13 +555,13 @@ class SkillsStreamingTest {
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // After activating weather skill: get_weather should appear, get_time should NOT
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
                 containsTool(request, "get_weather")
                         && !containsTool(request, "get_time")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -626,7 +629,7 @@ class SkillsStreamingTest {
                         && containsTool(request, "reset")
                         && containsTool(request, "poll")
                         && !containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // after activation: normal tools still present alongside skill-scoped tool
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
@@ -634,7 +637,7 @@ class SkillsStreamingTest {
                         && containsTool(request, "process")
                         && containsTool(request, "generate")
                         && containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -736,7 +739,7 @@ class SkillsStreamingTest {
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "reorder_item")
                         && !containsTool(request, "generate_report")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // second call: after activating inventory, its tools visible but not yet reporting's
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -744,7 +747,7 @@ class SkillsStreamingTest {
                         && containsTool(request, "query_inventory")
                         && containsTool(request, "reorder_item")
                         && !containsTool(request, "generate_report")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // after both activations: all unique tools present, no duplicates
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
@@ -755,7 +758,7 @@ class SkillsStreamingTest {
                     && toolNames.contains("reorder_item")
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
-        }), any());
+        }), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
 
@@ -771,7 +774,7 @@ class SkillsStreamingTest {
                     && toolNames.contains("reorder_item")
                     && toolNames.contains("generate_report")
                     && toolNames.stream().filter("query_inventory"::equals).count() == 1;
-        }), any());
+        }), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -828,7 +831,7 @@ class SkillsStreamingTest {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // subsequent calls: query_inventory visible, no duplicates
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
@@ -836,7 +839,7 @@ class SkillsStreamingTest {
                     .filter(t -> t.name().equals("query_inventory"))
                     .count();
             return containsTool(request, "query_inventory") && count == 1;
-        }), any());
+        }), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }
@@ -880,7 +883,7 @@ class SkillsStreamingTest {
         // LLM call 1: activate_skill with invalid name
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 containsTool(request, "activate_skill")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         // LLM call 2: error message sent back containing available skill names
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
@@ -889,7 +892,7 @@ class SkillsStreamingTest {
                         .map(msg -> (ToolExecutionResultMessage) msg)
                         .anyMatch(msg -> msg.text().contains("'inventory'")
                                 && msg.text().contains("non-existent"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyChatModel);
     }

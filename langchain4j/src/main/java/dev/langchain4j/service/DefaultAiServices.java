@@ -41,6 +41,7 @@ import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -48,6 +49,7 @@ import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -848,6 +850,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        ChatRequestOptions chatRequestOptions = InvocationChatRequestOptions.from(invocationContext);
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 context,
                                 memoryId,
@@ -857,7 +860,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
-                                context.chatModel::chat);
+                                request -> context.chatModel.chat(request, chatRequestOptions));
 
                         return processToolServiceResult(
                                 method,
@@ -899,7 +902,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         CompletableFuture<Object> result = new CompletableFuture<>();
 
-                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(
+                                chatRequest, InvocationChatRequestOptions.from(invocationContext));
                         propagateCancellation(result, firstModelCall);
 
                         firstModelCall
@@ -1265,7 +1269,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 parameters,
                                 invocationContext,
                                 toolServiceContext,
-                                context.chatModel::chat);
+                                request -> context.chatModel.chat(
+                                        request, InvocationChatRequestOptions.from(invocationContext)));
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
@@ -1330,7 +1335,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 parameters,
                                 invocationContext,
                                 toolServiceContext,
-                                context.chatModel::chatAsync);
+                                request -> context.chatModel.chatAsync(
+                                        request, InvocationChatRequestOptions.from(invocationContext)));
 
                         return DefaultAiServices.this
                                 .<Object>invokeOutputGuardrailsAsync(

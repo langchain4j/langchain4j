@@ -5,11 +5,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The embedding store request context.
@@ -24,10 +26,24 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
     private final EmbeddingStore<Embedded> embeddingStore;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
 
+    /**
+     * @deprecated use {@link #EmbeddingStoreRequestContext(EmbeddingStore, Map, UUID)} instead
+     */
+    @Deprecated(since = "1.24.0")
     protected EmbeddingStoreRequestContext(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {
+        this(embeddingStore, attributes, null);
+    }
+
+    /**
+     * @since 1.24.0
+     */
+    protected EmbeddingStoreRequestContext(
+            EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, UUID invocationId) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.attributes = ensureNotNull(attributes, "attributes");
+        this.invocationId = invocationId;
     }
 
     public EmbeddingStore<Embedded> embeddingStore() {
@@ -43,6 +59,16 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     }
 
     /**
+     * @return the id of the AI Service invocation this call belongs to: the one whose work (a tool, a guardrail,
+     * retrieval, ...) makes the call, otherwise {@code null}. It is the {@link InvocationContext#invocationId()} of the
+     * AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    public UUID invocationId() {
+        return invocationId;
+    }
+
+    /**
      * The {@code add(...)} request context.
      *
      * @since 1.11.0
@@ -54,28 +80,55 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         private final Embedding embedding;
         private final Embedded embedded;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public Add(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, Embedding embedding) {
-            this(embeddingStore, attributes, null, embedding, null);
+            this(Add.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .embedding(embedding));
         }
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public Add(
                 EmbeddingStore<Embedded> embeddingStore,
                 Map<Object, Object> attributes,
                 String id,
                 Embedding embedding) {
-            this(embeddingStore, attributes, id, embedding, null);
+            this(Add.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .id(id)
+                    .embedding(embedding));
         }
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public Add(
                 EmbeddingStore<Embedded> embeddingStore,
                 Map<Object, Object> attributes,
                 String id,
                 Embedding embedding,
                 Embedded embedded) {
-            super(embeddingStore, attributes);
-            this.id = id;
-            this.embedding = embedding;
-            this.embedded = embedded;
+            this(Add.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .id(id)
+                    .embedding(embedding)
+                    .embedded(embedded));
+        }
+        private Add(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.id = builder.id;
+            this.embedding = builder.embedding;
+            this.embedded = builder.embedded;
         }
 
         /**
@@ -98,6 +151,68 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         public Embedded embedded() {
             return embedded;
         }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private String id;
+            private Embedding embedding;
+            private Embedded embedded;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> id(String id) {
+                this.id = id;
+                return this;
+            }
+
+            public Builder<Embedded> embedding(Embedding embedding) {
+                this.embedding = embedding;
+                return this;
+            }
+
+            public Builder<Embedded> embedded(Embedded embedded) {
+                this.embedded = embedded;
+                return this;
+            }
+
+            public Add<Embedded> build() {
+                return new Add<>(this);
+            }
+        }
     }
 
     /**
@@ -112,16 +227,28 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         private final List<Embedding> embeddings;
         private final List<Embedded> embeddedList;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public AddAll(
                 EmbeddingStore<Embedded> embeddingStore,
                 Map<Object, Object> attributes,
                 List<String> ids,
                 List<Embedding> embeddings,
                 List<Embedded> embeddedList) {
-            super(embeddingStore, attributes);
-            this.ids = copy(ids);
-            this.embeddings = copy(embeddings);
-            this.embeddedList = copy(embeddedList);
+            this(AddAll.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .ids(ids)
+                    .embeddings(embeddings)
+                    .embeddedList(embeddedList));
+        }
+        private AddAll(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.ids = copy(builder.ids);
+            this.embeddings = copy(builder.embeddings);
+            this.embeddedList = copy(builder.embeddedList);
         }
 
         /**
@@ -144,6 +271,68 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
         public List<Embedded> embeddedList() {
             return embeddedList;
         }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private List<String> ids;
+            private List<Embedding> embeddings;
+            private List<Embedded> embeddedList;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> ids(List<String> ids) {
+                this.ids = ids;
+                return this;
+            }
+
+            public Builder<Embedded> embeddings(List<Embedding> embeddings) {
+                this.embeddings = embeddings;
+                return this;
+            }
+
+            public Builder<Embedded> embeddedList(List<Embedded> embeddedList) {
+                this.embeddedList = embeddedList;
+                return this;
+            }
+
+            public AddAll<Embedded> build() {
+                return new AddAll<>(this);
+            }
+        }
     }
 
     /**
@@ -156,12 +345,22 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
         private final EmbeddingSearchRequest searchRequest;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public Search(
                 EmbeddingStore<Embedded> embeddingStore,
                 Map<Object, Object> attributes,
                 EmbeddingSearchRequest searchRequest) {
-            super(embeddingStore, attributes);
-            this.searchRequest = searchRequest;
+            this(Search.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .searchRequest(searchRequest));
+        }
+        private Search(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.searchRequest = builder.searchRequest;
         }
 
         /**
@@ -169,6 +368,56 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
          */
         public EmbeddingSearchRequest searchRequest() {
             return searchRequest;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private EmbeddingSearchRequest searchRequest;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> searchRequest(EmbeddingSearchRequest searchRequest) {
+                this.searchRequest = searchRequest;
+                return this;
+            }
+
+            public Search<Embedded> build() {
+                return new Search<>(this);
+            }
         }
     }
 
@@ -182,9 +431,19 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
         private final String id;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public Remove(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, String id) {
-            super(embeddingStore, attributes);
-            this.id = id;
+            this(Remove.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .id(id));
+        }
+        private Remove(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.id = builder.id;
         }
 
         /**
@@ -192,6 +451,56 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
          */
         public String id() {
             return id;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private String id;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> id(String id) {
+                this.id = id;
+                return this;
+            }
+
+            public Remove<Embedded> build() {
+                return new Remove<>(this);
+            }
         }
     }
 
@@ -205,9 +514,19 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
         private final List<String> ids;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public RemoveAllIds(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, List<String> ids) {
-            super(embeddingStore, attributes);
-            this.ids = copy(ids);
+            this(RemoveAllIds.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .ids(ids));
+        }
+        private RemoveAllIds(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.ids = copy(builder.ids);
         }
 
         /**
@@ -215,6 +534,56 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
          */
         public List<String> ids() {
             return ids;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private List<String> ids;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> ids(List<String> ids) {
+                this.ids = ids;
+                return this;
+            }
+
+            public RemoveAllIds<Embedded> build() {
+                return new RemoveAllIds<>(this);
+            }
         }
     }
 
@@ -228,9 +597,19 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
 
         private final Filter filter;
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public RemoveAllFilter(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes, Filter filter) {
-            super(embeddingStore, attributes);
-            this.filter = filter;
+            this(RemoveAllFilter.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes)
+                    .filter(filter));
+        }
+        private RemoveAllFilter(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+            this.filter = builder.filter;
         }
 
         /**
@@ -238,6 +617,56 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
          */
         public Filter filter() {
             return filter;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+            private Filter filter;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public Builder<Embedded> filter(Filter filter) {
+                this.filter = filter;
+                return this;
+            }
+
+            public RemoveAllFilter<Embedded> build() {
+                return new RemoveAllFilter<>(this);
+            }
         }
     }
 
@@ -249,8 +678,61 @@ public abstract class EmbeddingStoreRequestContext<Embedded> {
     @Experimental
     public static final class RemoveAll<Embedded> extends EmbeddingStoreRequestContext<Embedded> {
 
+        /**
+         * @deprecated use {@link #builder()} instead
+         */
+        @Deprecated(since = "1.24.0")
         public RemoveAll(EmbeddingStore<Embedded> embeddingStore, Map<Object, Object> attributes) {
-            super(embeddingStore, attributes);
+            this(RemoveAll.<Embedded>builder()
+                    .embeddingStore(embeddingStore)
+                    .attributes(attributes));
+        }
+        private RemoveAll(Builder<Embedded> builder) {
+            super(builder.embeddingStore, builder.attributes, builder.invocationId);
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static <Embedded> Builder<Embedded> builder() {
+            return new Builder<>();
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public static final class Builder<Embedded> {
+
+            private EmbeddingStore<Embedded> embeddingStore;
+            private Map<Object, Object> attributes;
+            private UUID invocationId;
+
+            Builder() {}
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> embeddingStore(EmbeddingStore<Embedded> embeddingStore) {
+                this.embeddingStore = embeddingStore;
+                return this;
+            }
+
+            /**
+             * Required: {@link #build()} fails if it is not set.
+             */
+            public Builder<Embedded> attributes(Map<Object, Object> attributes) {
+                this.attributes = attributes;
+                return this;
+            }
+
+            public Builder<Embedded> invocationId(UUID invocationId) {
+                this.invocationId = invocationId;
+                return this;
+            }
+
+            public RemoveAll<Embedded> build() {
+                return new RemoveAll<>(this);
+            }
         }
     }
 }

@@ -5,6 +5,8 @@ import static dev.langchain4j.service.AiServicesIT.chatRequest;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.image.Image;
@@ -16,6 +18,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -181,7 +184,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat1("What is the capital of Germany?")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -195,7 +198,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat2("What is the capital of Germany?")).containsIgnoringCase("Berlin");
 
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -209,7 +212,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat2_1("What is the capital of Germany?", new InvocationParameters()))
                 .containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -238,7 +241,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat2_2("What is the capital of Germany?", new MyInvocationParameters()))
                 .containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -252,7 +255,7 @@ class AiServicesUserMessageConfigTest {
         // when-then
         assertThat(aiService.chat3("What is the capital of {{country}}?", "Germany"))
                 .containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -265,7 +268,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat4()).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -278,7 +281,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -291,7 +294,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat6("Germany")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -304,7 +307,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat7("capital", "Germany")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -317,7 +320,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat8("Germany")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -333,10 +336,10 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(
                                 userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -352,10 +355,10 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(
                                 userMessage(TextContent.from("How many lamas are there in this image?"), imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -371,12 +374,12 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(
                                 imageContent,
                                 TextContent.from("Count the number of lamas in this image"),
                                 imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -391,7 +394,7 @@ class AiServicesUserMessageConfigTest {
         aiService.chat12(new MyObject("test123"));
 
         // then
-        verify(chatModel).chat(chatRequest("test123"));
+        verify(chatModel).chat(eq(chatRequest("test123")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -406,7 +409,7 @@ class AiServicesUserMessageConfigTest {
         aiService.chat13(new MyObject("test123"));
 
         // then
-        verify(chatModel).chat(chatRequest("test123"));
+        verify(chatModel).chat(eq(chatRequest("test123")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -422,10 +425,10 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(
                                 userMessage(TextContent.from("Count the number of lamas in this image"), imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -441,9 +444,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(TextContent.from("Hello!"), TextContent.from("How are you?")))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -462,7 +465,7 @@ class AiServicesUserMessageConfigTest {
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         assertThat(aiService.chat16("What is the capital of Germany?")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -473,7 +476,7 @@ class AiServicesUserMessageConfigTest {
                 AiServices.builder(AiService.class).chatModel(chatModel).build();
 
         assertThat(aiService.chat17("What is the capital of Germany?")).containsIgnoringCase("Berlin");
-        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).chat(eq(chatRequest("What is the capital of Germany?")), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -491,7 +494,7 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+                .chat(eq(ChatRequest.builder().messages(userMessage(audioContent)).build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -509,7 +512,7 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+                .chat(eq(ChatRequest.builder().messages(userMessage(audioContent)).build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -527,7 +530,7 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+                .chat(eq(ChatRequest.builder().messages(userMessage(audioContent)).build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -545,7 +548,7 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+                .chat(eq(ChatRequest.builder().messages(userMessage(audioContent)).build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -565,7 +568,7 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder().messages(userMessage(textContent)).build());
+                .chat(eq(ChatRequest.builder().messages(userMessage(textContent)).build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
         assertThat(chatMemory.messages()).first().isEqualTo(userMessage(textContent));
     }
@@ -611,9 +614,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(contents.get(0), contents.get(1)))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -631,9 +634,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(contents.get(0)))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -651,9 +654,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(contents.get(0), contents.get(1)))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -671,9 +674,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(contents.get(0)))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -692,9 +695,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(audioContent, imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -713,9 +716,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(audioContent, imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 
@@ -742,9 +745,9 @@ class AiServicesUserMessageConfigTest {
 
         // then
         verify(chatModel)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(userMessage(TextContent.from(userPrompt), audioContent, imageContent))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
         verify(chatModel).supportedCapabilities();
     }
 

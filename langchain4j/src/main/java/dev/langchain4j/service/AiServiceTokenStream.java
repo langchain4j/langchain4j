@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -289,7 +290,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        context.streamingChatModel.chat(chatRequest, handler);
+        context.streamingChatModel.chat(chatRequest, InvocationChatRequestOptions.from(runContext), handler);
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

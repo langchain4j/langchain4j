@@ -12,12 +12,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -573,5 +579,93 @@ class EmbeddingStoreListenerTest {
                 ArgumentCaptor.forClass(EmbeddingStoreResponseContext.class);
         verify(listener).onResponse(responseCaptor.capture());
         assertThat(responseCaptor.getValue()).isInstanceOf(EmbeddingStoreResponseContext.RemoveAll.class);
+    }
+
+    @Test
+    void should_pass_the_current_invocation_id_to_listeners() {
+        // given
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(new EmbeddingStoreListener() {
+            @Override
+            public void onRequest(EmbeddingStoreRequestContext<?> requestContext) {
+                invocationIds.add(requestContext.invocationId());
+            }
+
+            @Override
+            public void onResponse(EmbeddingStoreResponseContext<?> responseContext) {
+                invocationIds.add(responseContext.invocationId());
+            }
+        });
+        InvocationContext invocation =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+
+        // when
+        store.add(Embedding.from(List.of(1f, 2f, 3f)));
+        CurrentInvocation.callWith(invocation, () -> store.add(Embedding.from(List.of(1f, 2f, 3f))));
+        CurrentInvocation.callWith(invocation, () -> {
+            store.removeAll();
+            return null;
+        });
+
+        // then
+        assertThat(invocationIds)
+                .containsExactly(
+                        null,
+                        null,
+                        invocation.invocationId(),
+                        invocation.invocationId(),
+                        invocation.invocationId(),
+                        invocation.invocationId());
+    }
+
+    @Test
+    void should_pass_the_current_invocation_id_to_listeners_on_error() {
+        // given
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        EmbeddingStore<String> failingStore = new TestEmbeddingStore() {
+            @Override
+            public EmbeddingSearchResult<String> search(EmbeddingSearchRequest request) {
+                throw new RuntimeException("Embedding store failed");
+            }
+        };
+        EmbeddingStore<String> store = failingStore.addListener(new EmbeddingStoreListener() {
+            @Override
+            public void onError(EmbeddingStoreErrorContext<?> errorContext) {
+                invocationIds.add(errorContext.invocationId());
+            }
+        });
+        InvocationContext invocation =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(List.of(1f, 2f, 3f)))
+                .build();
+
+        // when
+        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> store.search(request)));
+
+        // then
+        assertThat(invocationIds).containsExactly(invocation.invocationId());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void deprecated_constructors_should_still_work() {
+        // given
+        TestEmbeddingStore store = new TestEmbeddingStore();
+        Map<Object, Object> attributes = new HashMap<>();
+
+        // when
+        EmbeddingStoreRequestContext.Remove<String> requestContext =
+                new EmbeddingStoreRequestContext.Remove<>(store, attributes, "id");
+        EmbeddingStoreResponseContext.Remove<String> responseContext =
+                new EmbeddingStoreResponseContext.Remove<>(requestContext, attributes);
+        EmbeddingStoreErrorContext<String> errorContext =
+                new EmbeddingStoreErrorContext<>(new RuntimeException("failed"), requestContext, attributes);
+
+        // then
+        assertThat(requestContext.id()).isEqualTo("id");
+        assertThat(requestContext.invocationId()).isNull();
+        assertThat(responseContext.requestContext()).isSameAs(requestContext);
+        assertThat(errorContext.attributes()).isSameAs(attributes);
     }
 }

@@ -8,6 +8,7 @@ import static dev.langchain4j.store.embedding.EmbeddingStoreListenerUtils.onResp
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
@@ -43,16 +44,29 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public String add(Embedding embedding) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.Add<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.Add<>(this, attributes, embedding);
+                EmbeddingStoreRequestContext.Add.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .embedding(embedding)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             String id = delegate.add(embedding);
             EmbeddingStoreResponseContext.Add<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Add<>(requestContext, attributes, id);
+                    EmbeddingStoreResponseContext.Add.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedId(id)
+                            .build();
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -61,15 +75,29 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void add(String id, Embedding embedding) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.Add<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.Add<>(this, attributes, id, embedding);
+                EmbeddingStoreRequestContext.Add.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .id(id)
+                        .embedding(embedding)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.add(id, embedding);
             EmbeddingStoreResponseContext.Add<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Add<>(requestContext, attributes, id);
+                    EmbeddingStoreResponseContext.Add.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedId(id)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -78,16 +106,30 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public String add(Embedding embedding, Embedded embedded) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.Add<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.Add<>(this, attributes, null, embedding, embedded);
+                EmbeddingStoreRequestContext.Add.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .embedding(embedding)
+                        .embedded(embedded)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             String id = delegate.add(embedding, embedded);
             EmbeddingStoreResponseContext.Add<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Add<>(requestContext, attributes, id);
+                    EmbeddingStoreResponseContext.Add.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedId(id)
+                            .build();
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -96,16 +138,29 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public List<String> addAll(List<Embedding> embeddings) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.AddAll<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.AddAll<>(this, attributes, null, embeddings, null);
+                EmbeddingStoreRequestContext.AddAll.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .embeddings(embeddings)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             List<String> ids = delegate.addAll(embeddings);
             EmbeddingStoreResponseContext.AddAll<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.AddAll<>(requestContext, attributes, ids);
+                    EmbeddingStoreResponseContext.AddAll.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedIds(ids)
+                            .build();
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -114,16 +169,30 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.AddAll<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.AddAll<>(this, attributes, null, embeddings, embedded);
+                EmbeddingStoreRequestContext.AddAll.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .embeddings(embeddings)
+                        .embeddedList(embedded)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             List<String> ids = delegate.addAll(embeddings, embedded);
             EmbeddingStoreResponseContext.AddAll<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.AddAll<>(requestContext, attributes, ids);
+                    EmbeddingStoreResponseContext.AddAll.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedIds(ids)
+                            .build();
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -132,15 +201,30 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.AddAll<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.AddAll<>(this, attributes, ids, embeddings, embedded);
+                EmbeddingStoreRequestContext.AddAll.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .ids(ids)
+                        .embeddings(embeddings)
+                        .embeddedList(embedded)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.addAll(ids, embeddings, embedded);
             EmbeddingStoreResponseContext.AddAll<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.AddAll<>(requestContext, attributes, ids);
+                    EmbeddingStoreResponseContext.AddAll.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .returnedIds(ids)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -149,15 +233,27 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void remove(String id) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.Remove<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.Remove<>(this, attributes, id);
+                EmbeddingStoreRequestContext.Remove.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .id(id)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.remove(id);
             EmbeddingStoreResponseContext.Remove<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Remove<>(requestContext, attributes);
+                    EmbeddingStoreResponseContext.Remove.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -167,15 +263,27 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         List<String> idsAsList = (ids == null) ? null : new ArrayList<>(ids);
         EmbeddingStoreRequestContext.RemoveAllIds<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.RemoveAllIds<>(this, attributes, idsAsList);
+                EmbeddingStoreRequestContext.RemoveAllIds.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .ids(idsAsList)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll(ids);
             EmbeddingStoreResponseContext.RemoveAllIds<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.RemoveAllIds<>(requestContext, attributes);
+                    EmbeddingStoreResponseContext.RemoveAllIds.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -184,15 +292,27 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void removeAll(Filter filter) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.RemoveAllFilter<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.RemoveAllFilter<>(this, attributes, filter);
+                EmbeddingStoreRequestContext.RemoveAllFilter.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .filter(filter)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll(filter);
             EmbeddingStoreResponseContext.RemoveAllFilter<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.RemoveAllFilter<>(requestContext, attributes);
+                    EmbeddingStoreResponseContext.RemoveAllFilter.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -201,15 +321,26 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void removeAll() {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.RemoveAll<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.RemoveAll<>(this, attributes);
+                EmbeddingStoreRequestContext.RemoveAll.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             delegate.removeAll();
             EmbeddingStoreResponseContext.RemoveAll<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.RemoveAll<>(requestContext, attributes);
+                    EmbeddingStoreResponseContext.RemoveAll.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }
@@ -218,16 +349,29 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         EmbeddingStoreRequestContext.Search<Embedded> requestContext =
-                new EmbeddingStoreRequestContext.Search<>(this, attributes, request);
+                EmbeddingStoreRequestContext.Search.<Embedded>builder()
+                        .embeddingStore(this)
+                        .attributes(attributes)
+                        .searchRequest(request)
+                        .invocationId(CurrentInvocation.invocationId())
+                        .build();
         onRequest(requestContext, listeners);
         try {
             EmbeddingSearchResult<Embedded> result = delegate.search(request);
             EmbeddingStoreResponseContext.Search<Embedded> responseContext =
-                    new EmbeddingStoreResponseContext.Search<>(requestContext, attributes, result);
+                    EmbeddingStoreResponseContext.Search.<Embedded>builder()
+                            .requestContext(requestContext)
+                            .attributes(attributes)
+                            .searchResult(result)
+                            .build();
             onResponse(responseContext, listeners);
             return result;
         } catch (Exception error) {
-            onError(new EmbeddingStoreErrorContext<>(error, requestContext, attributes), listeners);
+            onError(EmbeddingStoreErrorContext.<Embedded>builder()
+                    .error(error)
+                    .requestContext(requestContext)
+                    .attributes(attributes)
+                    .build(), listeners);
             throw error;
         }
     }

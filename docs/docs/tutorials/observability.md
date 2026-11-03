@@ -224,6 +224,86 @@ Limits:
 - It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that implementation (for example through `AiServicesFactory`) return `null` until they add support for it, also for AI Services they create through `AiServices.builder(...)`.
 - Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor are not linked yet. An agent called from a tool of another agent is.
 
+### Grouping model calls by invocation
+
+The listeners of models and of other components get the `invocationId` of the AI Service invocation that made the call,
+so you can see which model calls belong to which invocation.
+The contexts of these listeners have `invocationId()` (experimental):
+- `ChatModelListener` (`ChatModelRequestContext`, `ChatModelResponseContext`, `ChatModelErrorContext`)
+- `EmbeddingModelListener`, `ModerationModelListener`, `DecisionModelListener` and `ScoringModelListener`
+- `EmbeddingStoreListener` and `ContentRetrieverListener`
+
+`invocationId()` is the id of the AI Service invocation the call belongs to: the one passed with
+`ChatRequestOptions.invocationId(...)` if any, otherwise the one whose work (a tool, a guardrail, retrieval, ...) makes the call,
+otherwise `null`, for example when you call the model directly from your own code or from a listener.
+It is the `invocationId` of the AI Service invocation, not an id of the model call.
+Together with `parentInvocationId()` (see above), you can build a tree of invocations with their model calls.
+
+```java
+// Counts the chat model calls of each AI Service invocation
+Map<UUID, AtomicInteger> modelCallsByInvocation = new ConcurrentHashMap<>();
+
+ChatModelListener listener = new ChatModelListener() {
+
+    @Override
+    public void onRequest(ChatModelRequestContext requestContext) {
+        UUID invocationId = requestContext.invocationId();
+        if (invocationId != null) {
+            modelCallsByInvocation.computeIfAbsent(invocationId, id -> new AtomicInteger()).incrementAndGet();
+        }
+    }
+};
+
+ChatModel chatModel = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_4_O_MINI)
+        .listeners(List.of(listener))
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .build();
+```
+
+The invocation id covers the AI Service's own calls to the chat model, including the calls after tool executions,
+and the calls made by the parts of the AI Service listed above (tools, guardrails, retrieval, chat memory, moderation, ...),
+in the same way as `parentInvocationId()`.
+
+You only need to pass the id yourself when your code moves a model call to another thread
+(for example with `CompletableFuture.supplyAsync(..., executor)` inside a tool), or when you want to group your own model calls
+under an invocation. A tool gets the `InvocationContext` of its invocation as a parameter, and a guardrail gets it from its request
+(`request.requestParams().invocationContext()`):
+
+```java
+class ResearchTools {
+
+    private final ChatModel chatModel;
+    private final ExecutorService executor;
+
+    ResearchTools(ChatModel chatModel, ExecutorService executor) {
+        this.chatModel = chatModel;
+        this.executor = executor;
+    }
+
+    @Tool("Summarizes a text")
+    String summarize(String text, InvocationContext invocationContext) {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Summarize: " + text))
+                .build();
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .invocationId(invocationContext.invocationId())
+                .build();
+        return CompletableFuture.supplyAsync(() -> chatModel.chat(chatRequest, options), executor)
+                .join()
+                .aiMessage()
+                .text();
+    }
+}
+```
+
+Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) fill the id only
+where they pass it with `ChatRequestOptions`.
+
 ### Creating your own events and listeners
 
 The AI Service observability capabilities are designed to be extensible. If you'd like to create your own events, you can do so by implementing the [`AiServiceEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceEvent.java) interface to define your own event.

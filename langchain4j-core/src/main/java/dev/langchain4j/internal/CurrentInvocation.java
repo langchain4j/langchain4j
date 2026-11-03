@@ -47,6 +47,17 @@ public final class CurrentInvocation {
     }
 
     /**
+     * Runs the given action with no current invocation, then restores the previous one. Used to notify listeners:
+     * their code is not part of the work of the invocation.
+     */
+    public static void runWithout(Runnable action) {
+        callWithout(() -> {
+            action.run();
+            return null;
+        });
+    }
+
+    /**
      * Calls the given action with no current invocation, then restores the previous one. Used when an AI Service is
      * invoked during the work of another invocation: its listeners and callbacks are not part of that work.
      */

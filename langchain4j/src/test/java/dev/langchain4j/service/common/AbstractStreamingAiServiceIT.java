@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -95,7 +96,7 @@ public abstract class AbstractStreamingAiServiceIT {
                 .chat(
                         eq(ChatRequest.builder()
                                 .messages(UserMessage.from(userMessage))
-                                .build()),
+                                .build()), any(ChatRequestOptions.class),
                         any(StreamingChatResponseHandler.class));
     }
 

@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -36,6 +37,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -107,7 +110,7 @@ class AiServicesWithToolsWithDescriptionIT {
         verify(tool).add(37, 87);
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -178,7 +181,7 @@ class AiServicesWithToolsWithDescriptionIT {
         verify(tool).process(new ToolWithPojoParameter.Person("Klaus", 37, 1.78, false));
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -249,7 +252,7 @@ class AiServicesWithToolsWithDescriptionIT {
         verify(tool).process(new ToolWithNestedPojoParameter.Person("Klaus", new ToolWithNestedPojoParameter.Address("Langley Falls")));
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -329,7 +332,7 @@ class AiServicesWithToolsWithDescriptionIT {
         );
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -392,7 +395,7 @@ class AiServicesWithToolsWithDescriptionIT {
         verify(tool).currentTemperature("Munich", CELSIUS);
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -445,7 +448,7 @@ class AiServicesWithToolsWithDescriptionIT {
         }});
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();
@@ -504,7 +507,7 @@ class AiServicesWithToolsWithDescriptionIT {
         verify(tool).process(asList(RED, GREEN));
         verifyNoMoreInteractions(tool);
 
-        verify(model, times(2)).chat(chatRequestCaptor.capture());
+        verify(model, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class));
         verifyNoMoreInteractionsFor(model);
 
         List<ToolSpecification> toolSpecifications = chatRequestCaptor.getValue().parameters().toolSpecifications();

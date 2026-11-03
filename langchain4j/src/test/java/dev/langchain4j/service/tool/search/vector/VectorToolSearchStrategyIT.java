@@ -8,6 +8,7 @@ import dev.langchain4j.http.client.SpyingHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -28,6 +29,7 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsToo
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -111,7 +113,7 @@ class VectorToolSearchStrategyIT {
         inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ));
+        ), any(ChatRequestOptions.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 request.toolExecutionRequest().arguments().contains("weather")
@@ -121,7 +123,7 @@ class VectorToolSearchStrategyIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         inOrder.verify(spyTools).getWeather("London");
 
@@ -129,7 +131,7 @@ class VectorToolSearchStrategyIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
@@ -151,7 +153,7 @@ class VectorToolSearchStrategyIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ));
+        ), any(ChatRequestOptions.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 request.toolExecutionRequest().arguments().contains("time")
@@ -162,7 +164,7 @@ class VectorToolSearchStrategyIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ));
+        ), any(ChatRequestOptions.class));
 
         inOrder.verify(spyTools).getTime("Germany");
 
@@ -171,7 +173,7 @@ class VectorToolSearchStrategyIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ));
+        ), any(ChatRequestOptions.class));
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());

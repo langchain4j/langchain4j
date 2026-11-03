@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.scoring.response.ScoringResponse;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -93,14 +95,15 @@ public interface ScoringModel {
         List<ScoringModelListener> listeners = listeners();
         ModelProvider provider = provider();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
-        onRequest(finalRequest, provider, attributes, listeners);
+        onRequest(finalRequest, provider, attributes, invocationId, listeners);
         try {
             ScoringResponse response = doScore(finalRequest);
-            onResponse(response, finalRequest, provider, attributes, listeners);
+            onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
             return response;
         } catch (Exception error) {
-            onError(error, finalRequest, provider, attributes, listeners);
+            onError(error, finalRequest, provider, attributes, invocationId, listeners);
             throw error;
         }
     }
@@ -163,12 +166,13 @@ public interface ScoringModel {
         List<ScoringModelListener> listeners;
         ModelProvider provider;
         Map<Object, Object> attributes;
+        UUID invocationId = CurrentInvocation.invocationId();
         try {
             finalRequest = withDefaultParameters(request);
             listeners = listeners();
             provider = provider();
             attributes = new ConcurrentHashMap<>();
-            onRequest(finalRequest, provider, attributes, listeners);
+            onRequest(finalRequest, provider, attributes, invocationId, listeners);
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }
@@ -180,7 +184,7 @@ public interface ScoringModel {
                 throw new IllegalStateException(getClass().getName() + ".doScoreAsync(ScoringRequest) returned null");
             }
         } catch (Exception error) {
-            onError(error, finalRequest, provider, attributes, listeners);
+            onError(error, finalRequest, provider, attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
         }
         if (isNullOrEmpty(listeners)) {
@@ -191,10 +195,10 @@ public interface ScoringModel {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider, attributes, listeners);
+                    onError(cause, finalRequest, provider, attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(response, finalRequest, provider, attributes, listeners);
+                onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
             }
         });
         propagateCancellation(result, source);

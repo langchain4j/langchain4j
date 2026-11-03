@@ -17,6 +17,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -347,7 +348,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 return null;
             });
 
-            context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
+            context.streamingChatModel
+                    .chat(chatRequest, InvocationChatRequestOptions.from(invocationContext))
+                    .subscribe(new Flow.Subscriber<>() {
 
                 private ChatResponse roundResponse;
 
@@ -719,7 +722,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     parameters,
                     invocationContext,
                     currentToolContext,
-                    request -> StreamingChatModelHelper.chatAsync(context.streamingChatModel, request));
+                    request -> StreamingChatModelHelper.chatAsync(
+                            context.streamingChatModel,
+                            request,
+                            InvocationChatRequestOptions.from(invocationContext),
+                            null));
             OutputGuardrailRequest request = OutputGuardrailRequest.builder()
                     .responseFromLLM(finalChatResponse)
                     .chatExecutor(toolAwareRepromptExecutor)

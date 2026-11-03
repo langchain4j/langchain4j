@@ -3,6 +3,8 @@ package dev.langchain4j.service.common;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -10,6 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -69,9 +72,9 @@ public abstract class AbstractAiServiceIT {
         assertThat(result.toolExecutions()).isEmpty();
 
         verify(model)
-                .chat(ChatRequest.builder()
+                .chat(eq(ChatRequest.builder()
                         .messages(UserMessage.from(userMessage))
-                        .build());
+                        .build()), any(ChatRequestOptions.class));
     }
 
     // TODO more tests for tools
@@ -124,7 +127,7 @@ public abstract class AbstractAiServiceIT {
         assertThat(weatherReport.weather()).isEqualTo(Weather.SUNNY);
 
         // TODO
-        //        verify(model).chat(ChatRequest.builder()
+        //        verify(model).chat(eq(ChatRequest.builder()
         //                .messages(UserMessage.from(userMessage))
         //                .parameters(ChatParameters.builder()
         //                        .toolSpecifications(ToolSpecifications.toolSpecificationsFrom(WeatherTools.class))
@@ -133,8 +136,8 @@ public abstract class AbstractAiServiceIT {
         //                                .jsonSchema(JsonSchemas.jsonSchemaFrom(WeatherReport.class).get())
         //                                .build())
         //                        .build())
-        //                .build());
-        //        verify(model).chat(ChatRequest.builder()
+        //                .build()), any(ChatRequestOptions.class));
+        //        verify(model).chat(eq(ChatRequest.builder()
         //                .messages(
         //                        UserMessage.from(userMessage),
         //                        AiMessage.from(...),
@@ -147,7 +150,7 @@ public abstract class AbstractAiServiceIT {
         //                        .jsonSchema(JsonSchemas.jsonSchemaFrom(WeatherReport.class).get())
         //                        .build())
         //                .build())
-        //                .build());
+        //                .build()), any(ChatRequestOptions.class));
         //        verifyNoMoreInteractions(model);
 
         if (assertTokenUsage()) {

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatRequestOptions;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -82,9 +84,10 @@ public class RoutingChatModel implements ChatModel {
     @Override
     public ChatResponse chat(ChatRequest chatRequest, ChatRequestOptions options) {
         ensureNotNull(chatRequest, "chatRequest");
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(options);
         String routeName = selector.select(chatRequest, options);
-        ChatResponse response =
-                selector.model(routeName).chat(chatRequest, RouteSelector.withRoute(options, routeName));
+        ChatResponse response = selector.model(routeName)
+                .chat(chatRequest, RouteSelector.withRoute(options, routeName, invocationId));
         return RouteSelector.withRoute(response, routeName);
     }
 
@@ -96,6 +99,7 @@ public class RoutingChatModel implements ChatModel {
     @Override
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
         ensureNotNull(chatRequest, "chatRequest");
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(options);
         CompletableFuture<String> route = selector.selectAsync(chatRequest, options);
         CompletableFuture<ChatResponse> result = new CompletableFuture<>();
         propagateCancellation(result, route);
@@ -106,7 +110,8 @@ public class RoutingChatModel implements ChatModel {
             }
             CompletableFuture<ChatResponse> response;
             try {
-                response = selector.model(routeName).chatAsync(chatRequest, RouteSelector.withRoute(options, routeName));
+                response = selector.model(routeName)
+                        .chatAsync(chatRequest, RouteSelector.withRoute(options, routeName, invocationId));
             } catch (Exception e) {
                 result.completeExceptionally(e);
                 return;

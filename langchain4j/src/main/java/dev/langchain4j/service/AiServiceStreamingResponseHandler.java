@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -469,7 +470,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            context.streamingChatModel.chat(next.chatRequest(), handler);
+            context.streamingChatModel.chat(
+                    next.chatRequest(), InvocationChatRequestOptions.from(invocationContext), handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -529,7 +531,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
      */
     private ChatResponse executeSynchronously(ChatRequest request) {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        context.streamingChatModel.chat(request, new StreamingChatResponseHandler() {
+        context.streamingChatModel.chat(request, InvocationChatRequestOptions.from(invocationContext), new StreamingChatResponseHandler() {
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 future.complete(completeResponse);

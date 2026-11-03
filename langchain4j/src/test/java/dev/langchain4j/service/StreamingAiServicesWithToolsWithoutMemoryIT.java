@@ -5,9 +5,11 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -99,7 +102,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
 
-        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
         List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
@@ -166,7 +169,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        verify(spyModel, times(3)).chat(chatRequestCaptor.capture(), any());
+        verify(spyModel, times(3)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
         List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();
@@ -228,7 +231,7 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         verify(calculator).squareRoot(97866249624785.0);
         verifyNoMoreInteractions(calculator);
 
-        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any());
+        verify(spyModel, times(2)).chat(chatRequestCaptor.capture(), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         List<ChatRequest> allChatRequests = chatRequestCaptor.getAllValues();
 
         List<ChatMessage> firstGenerateSendMessages = allChatRequests.get(0).messages();

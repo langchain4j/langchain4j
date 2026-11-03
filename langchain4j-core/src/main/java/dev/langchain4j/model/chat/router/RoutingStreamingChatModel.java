@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -72,6 +74,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
     public void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
         ensureNotNull(request, "request");
         ensureNotNull(handler, "handler");
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(options);
         String routeName;
         try {
             routeName = selector.select(request, options);
@@ -81,7 +84,10 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         }
         try {
             selector.model(routeName)
-                    .chat(request, RouteSelector.withRoute(options, routeName), new RouteRecordingHandler(handler, routeName));
+                    .chat(
+                            request,
+                            RouteSelector.withRoute(options, routeName, invocationId),
+                            new RouteRecordingHandler(handler, routeName));
         } catch (Exception e) {
             onError(handler, e);
         }
@@ -102,11 +108,17 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
+        return chat(request, ChatRequestOptions.EMPTY);
+    }
+
+    @Override
+    public Publisher<ChatModelStreamingEvent> chat(ChatRequest request, ChatRequestOptions options) {
         ensureNotNull(request, "request");
+        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(options);
         return downstream -> {
             DeferredSubscription subscription = new DeferredSubscription(downstream);
             downstream.onSubscribe(subscription);
-            CompletableFuture<String> route = selector.selectAsync(request, ChatRequestOptions.EMPTY);
+            CompletableFuture<String> route = selector.selectAsync(request, options);
             subscription.setRouting(route);
             route.whenComplete((routeName, routingError) -> {
                 if (subscription.isCancelled()) {
@@ -117,7 +129,9 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                     return;
                 }
                 try {
-                    selector.model(routeName).chat(request).subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
+                    selector.model(routeName)
+                            .chat(request, RouteSelector.withRoute(options, routeName, invocationId))
+                            .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
                 } catch (Throwable error) {
                     downstream.onError(error);
                 }

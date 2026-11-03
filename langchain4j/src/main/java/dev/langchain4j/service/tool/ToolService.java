@@ -30,6 +30,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -634,7 +635,7 @@ public class ToolService {
                 chatMemory,
                 invocationContext,
                 toolServiceContext,
-                context.chatModel::chat);
+                request -> context.chatModel.chat(request, InvocationChatRequestOptions.from(invocationContext)));
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -779,7 +780,7 @@ public class ToolService {
                 invocationContext,
                 toolServiceContext,
                 cancellation,
-                context.chatModel::chatAsync);
+                request -> context.chatModel.chatAsync(request, InvocationChatRequestOptions.from(invocationContext)));
     }
 
     /**

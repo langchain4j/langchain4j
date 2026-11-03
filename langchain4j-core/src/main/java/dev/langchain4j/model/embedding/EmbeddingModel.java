@@ -12,6 +12,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
@@ -29,6 +30,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -66,6 +68,7 @@ public interface EmbeddingModel {
                 .map(input -> TextSegment.from(input.text()))
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
@@ -73,6 +76,7 @@ public interface EmbeddingModel {
                         .embeddingRequest(finalRequest)
                         .embeddingModel(this)
                         .attributes(attributes)
+                        .invocationId(invocationId)
                         .build(),
                 listeners);
         try {
@@ -85,6 +89,7 @@ public interface EmbeddingModel {
                             .embeddingResponse(response)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .response(legacyResponse)
                             .textSegments(textSegments)
                             .build(),
@@ -98,6 +103,7 @@ public interface EmbeddingModel {
                             .embeddingRequest(finalRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -147,6 +153,7 @@ public interface EmbeddingModel {
             return CompletableFuture.failedFuture(error);
         }
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
@@ -154,6 +161,7 @@ public interface EmbeddingModel {
                         .embeddingRequest(finalRequest)
                         .embeddingModel(this)
                         .attributes(attributes)
+                        .invocationId(invocationId)
                         .build(),
                 listeners);
 
@@ -171,6 +179,7 @@ public interface EmbeddingModel {
                                     .embeddingRequest(finalRequest)
                                     .embeddingModel(this)
                                     .attributes(attributes)
+                                    .invocationId(invocationId)
                                     .build(),
                             listeners);
                 }
@@ -183,6 +192,7 @@ public interface EmbeddingModel {
                                 .embeddingResponse(response)
                                 .embeddingModel(this)
                                 .attributes(attributes)
+                                .invocationId(invocationId)
                                 .response(legacyResponse)
                                 .textSegments(textSegments)
                                 .build(),

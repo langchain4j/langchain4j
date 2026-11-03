@@ -45,6 +45,7 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasToolSear
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
@@ -116,7 +117,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyBeforeToolExecution).accept(argThat(bte ->
                 bte.request().name().equals("tool_search_tool")
@@ -151,7 +152,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getWeather("London");
 
@@ -159,7 +160,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -176,7 +177,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyBeforeToolExecution).accept(argThat(bte ->
                 bte.request().name().equals("tool_search_tool")
@@ -206,7 +207,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getTime("London");
 
@@ -215,7 +216,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -248,7 +249,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -264,13 +265,13 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
 
@@ -284,7 +285,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "time")
@@ -295,14 +296,14 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
     }
@@ -341,7 +342,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -365,7 +366,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage2.toolName().equals("tool_search_tool")
                         && toolResultMessage2.text().equals("Tools found: getTime")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getWeather("London");
         inOrder.verify(spyTools).getTime("London");
@@ -375,7 +376,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -415,7 +416,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -439,14 +440,14 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage2.toolName().equals("tool_search_tool")
                         && toolResultMessage2.text().equals("Tools found: getTime")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
     }
@@ -510,7 +511,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -534,7 +535,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage2.toolName().equals("tool_search_tool")
                         && toolResultMessage2.text().equals("Tools found: getTime, getWeather")
                         && toolResultMessage2.attributes().get("found_tools").equals(List.of("getTime", "getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getWeather("London");
         inOrder.verify(spyTools).getTime("London");
@@ -544,7 +545,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -558,7 +559,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "getDate")
@@ -583,7 +584,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage3.toolName().equals("tool_search_tool")
                         && toolResultMessage3.text().equals("Tools found: ")
                         && toolResultMessage3.attributes().get("found_tools").equals(List.of())
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -616,7 +617,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -632,7 +633,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getWeather("London");
 
@@ -640,7 +641,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -656,7 +657,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "time")
@@ -677,7 +678,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && request.messages().get(10) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals("getWeather")
                         && toolResultMessage2.text().equals("rainy")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyTools).getTime("London");
 
@@ -686,7 +687,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoMoreInteractions(spyTools);
@@ -719,7 +720,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 1
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -735,13 +736,13 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
 
@@ -756,7 +757,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "time")
@@ -776,14 +777,14 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && request.messages().get(10) instanceof ToolExecutionResultMessage toolResultMessage2
                         && toolResultMessage2.toolName().equals("getWeather")
                         && toolResultMessage2.text().equals("rainy")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
     }
@@ -817,7 +818,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -835,7 +836,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spySearchableTools).getWeather("London");
 
@@ -844,7 +845,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoInteractions(spyAlwaysVisibleTools);
@@ -861,7 +862,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "time")
@@ -874,7 +875,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spySearchableTools).getTime("London");
 
@@ -884,7 +885,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
         verifyNoInteractions(spyAlwaysVisibleTools);
@@ -955,7 +956,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                 request.toolSpecifications().size() == 2
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "weather")
@@ -973,14 +974,14 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && toolResultMessage.toolName().equals("tool_search_tool")
                         && toolResultMessage.text().equals("Tools found: getWeather")
                         && toolResultMessage.attributes().get("found_tools").equals(List.of("getWeather"))
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 3
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
 
@@ -995,7 +996,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "add")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
                 hasToolSearch(request, "tool_search_tool", "time")
@@ -1008,7 +1009,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         inOrder.verify(spyModel).chat(argThat((ChatRequest request) ->
                 request.toolSpecifications().size() == 4
@@ -1016,7 +1017,7 @@ public class StreamingAiServicesWithToolSearchToolIT {
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "getWeather")
                         && containsTool(request, "getTime")
-        ), any());
+        ), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
 
         verifyNoMoreImportantInteractions(spyModel);
 
@@ -1065,7 +1066,6 @@ public class StreamingAiServicesWithToolSearchToolIT {
     }
 
     public static void verifyNoMoreImportantInteractions(StreamingChatModel model) {
-        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

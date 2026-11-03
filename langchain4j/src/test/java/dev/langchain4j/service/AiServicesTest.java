@@ -6,6 +6,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -97,7 +99,7 @@ class AiServicesTest {
         assertThat(knownEvicted).isTrue();
         assertThat(assistant.getChatMemory("known")).isNull();
         assertThat(assistant.evictChatMemory("unknown")).isFalse();
-        verify(chatModel, times(1)).chat(any(ChatRequest.class));
+        verify(chatModel, times(1)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
     }
 
     @Test
@@ -184,11 +186,11 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
+        verify(chatModel).chat(eq(ChatRequest.builder()
                 .messages(
                         systemMessage("You are a professional chef. Keep your answer to one sentence."),
                         userMessage("How long should I grill chicken?"))
-                .build());
+                .build()), any(ChatRequestOptions.class));
     }
 
     @Test
@@ -206,11 +208,11 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
+        verify(chatModel).chat(eq(ChatRequest.builder()
                 .messages(
                         systemMessage("You are a professional chef. Method: answer."),
                         userMessage("How long should I grill chicken?"))
-                .build());
+                .build()), any(ChatRequestOptions.class));
     }
 
     @Test
@@ -228,11 +230,11 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
+        verify(chatModel).chat(eq(ChatRequest.builder()
                 .messages(
                         systemMessage("You are a helpful assistant."),
                         userMessage("What is 2 + 2?"))
-                .build());
+                .build()), any(ChatRequestOptions.class));
     }
 
     @Test
@@ -251,11 +253,11 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
+        verify(chatModel).chat(eq(ChatRequest.builder()
                 .messages(
                         systemMessage("You are a helpful assistant. Always be concise."),
                         userMessage("What is 2 + 2?"))
-                .build());
+                .build()), any(ChatRequestOptions.class));
     }
 
     interface ChatResponseAssistant {
@@ -278,7 +280,7 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel).chat(eq(ChatRequest.builder().messages(userMessage("Hello")).build()), any(ChatRequestOptions.class));
     }
 
     @Test
@@ -297,6 +299,6 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel).chat(eq(ChatRequest.builder().messages(userMessage("Hello")).build()), any(ChatRequestOptions.class));
     }
 }
