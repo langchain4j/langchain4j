@@ -265,6 +265,52 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
+To link model calls to something that is known to the AI Service but not to the model, for example the memory id
+of the conversation, combine a model listener with AI Service listeners: the `InvocationContext` of the AI Service events
+has both the `invocationId()` and the `chatMemoryId()`.
+
+```java
+interface PersonalAssistant {
+
+    String chat(@MemoryId String userId, @UserMessage String message);
+}
+
+// Adds up the token usage of each conversation
+Map<UUID, Object> memoryIdByInvocation = new ConcurrentHashMap<>();
+Map<Object, Integer> totalTokensByMemoryId = new ConcurrentHashMap<>();
+
+ChatModelListener tokenCounter = new ChatModelListener() {
+
+    @Override
+    public void onResponse(ChatModelResponseContext responseContext) {
+        Object memoryId = responseContext.invocationId() == null
+                ? null
+                : memoryIdByInvocation.get(responseContext.invocationId());
+        TokenUsage tokenUsage = responseContext.chatResponse().tokenUsage();
+        if (memoryId != null && tokenUsage != null && tokenUsage.totalTokenCount() != null) {
+            totalTokensByMemoryId.merge(memoryId, tokenUsage.totalTokenCount(), Integer::sum);
+        }
+    }
+};
+
+ChatModel chatModel = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_4_O_MINI)
+        .listeners(List.of(tokenCounter))
+        .build();
+
+PersonalAssistant assistant = AiServices.builder(PersonalAssistant.class)
+        .chatModel(chatModel)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .registerListeners(
+                (AiServiceStartedListener) event -> memoryIdByInvocation.put(
+                        event.invocationContext().invocationId(), event.invocationContext().chatMemoryId()),
+                (AiServiceCompletedListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()),
+                (AiServiceErrorListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()),
+                (AiServiceCancelledListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()))
+        .build();
+```
+
 The invocation id covers the AI Service's own calls to the chat model, including the calls after tool executions,
 and the calls made by the parts of the AI Service listed above (tools, guardrails, retrieval, chat memory, moderation, ...),
 in the same way as `parentInvocationId()`.
