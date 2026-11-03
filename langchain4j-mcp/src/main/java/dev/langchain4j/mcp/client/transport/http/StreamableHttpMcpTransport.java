@@ -30,6 +30,7 @@ import dev.langchain4j.spi.CapturedContext;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -432,8 +433,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return;
         }
         try {
-            Flow.Subscriber<HttpStreamingEvent> subscriber =
-                    responseExecutor == null ? exchange : new McpResponseSubscriber(exchange, responseExecutor);
+            Flow.Subscriber<HttpStreamingEvent> subscriber = responseExecutor == null
+                    ? exchange
+                    : new McpResponseSubscriber(exchange, responseExecutor, exchange::readsErrorBody);
             httpClient.stream(request, new McpResponseParser()).subscribe(subscriber);
         } catch (RuntimeException e) {
             exchange.onError(e);
@@ -607,8 +609,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     responseReceived = true;
                     onResponse(received.response());
                 } else if (event instanceof HttpErrorResponseReceived errorResponse) {
-                    handleError(new HttpException(
-                            errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    if (!readsErrorBody(errorResponse)) {
+                        handleError(new HttpException(
+                                errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    }
+                    // otherwise the stream fails with an HttpException carrying the body, see handleError
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
                         handleSseLine(line.data());
@@ -619,6 +624,80 @@ public class StreamableHttpMcpTransport implements McpTransport {
             } catch (RuntimeException e) {
                 onError(e);
             }
+        }
+
+        /**
+         * Whether the body of this error response is read, because it may carry a JSON-RPC error that tells the
+         * caller more than the status code, such as the rejection of a request whose headers do not match its
+         * body. Other error responses fail the request as soon as their status arrives.
+         */
+        boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
+            return readsErrorBody(errorResponse.statusCode())
+                    && errorResponse.headers().getOrDefault("Content-Type", List.of()).stream()
+                            .anyMatch(contentType -> contentType.contains("json"));
+        }
+
+        /**
+         * Only a client error can carry a JSON-RPC error, except a rejected credential and an expired legacy
+         * session, which are recognized by their status code alone.
+         */
+        private boolean readsErrorBody(int statusCode) {
+            return opened == null
+                    && expectResponse
+                    && context.message().getId() != null
+                    && statusCode >= 400
+                    && statusCode < 500
+                    && statusCode != 401
+                    && !expiresSession(statusCode);
+        }
+
+        private boolean expiresSession(int statusCode) {
+            return statusCode == 404 && !modernProtocol && !(context.message() instanceof McpInitializeRequest);
+        }
+
+        /**
+         * Passes a JSON-RPC error carried by an error response to the operation handler, which completes the
+         * request with it, as if it had arrived with a successful status.
+         *
+         * @return whether the response carried a JSON-RPC error for this request
+         */
+        private boolean dispatchJsonRpcError(HttpException error) {
+            if (!readsErrorBody(error.statusCode()) || error.getMessage() == null) {
+                return false;
+            }
+            Map<String, Object> message;
+            try {
+                message = McpJson.toMap(error.getMessage());
+            } catch (RuntimeException e) {
+                // the body is not JSON-RPC (e.g. a proxy's error page), so the status code is the failure
+                return false;
+            }
+            if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
+                return false;
+            }
+            message = new LinkedHashMap<>(message);
+            Long id = context.message().getId();
+            Object messageId = message.get("id");
+            if (messageId == null) {
+                // a server that could not read the request answers without an id, but the error is still its answer
+                message.put("id", id);
+            } else if (!(messageId instanceof Number number) || number.longValue() != id) {
+                return false;
+            }
+            String body = McpJson.serialize(message);
+            if (logResponses) {
+                trafficLog.info("Response: {}", body);
+            }
+            try {
+                operationHandler.onMessage(body);
+            } catch (RuntimeException e) {
+                future.completeExceptionally(e);
+            }
+            if (!future.isDone()) {
+                future.completeExceptionally(
+                        new HttpException(error.statusCode(), "Unexpected status code: " + error.statusCode()));
+            }
+            return true;
         }
 
         private void onResponse(SuccessfulHttpResponse response) {
@@ -695,6 +774,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private void handleError(Throwable error) {
             if (!finish()) {
+                return;
+            }
+            if (!closed.get() && error instanceof HttpException httpError && dispatchJsonRpcError(httpError)) {
                 return;
             }
             if (error instanceof HttpException httpError) {

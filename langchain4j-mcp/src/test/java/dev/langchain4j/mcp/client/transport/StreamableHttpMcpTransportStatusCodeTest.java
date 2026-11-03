@@ -17,6 +17,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -41,6 +42,10 @@ class StreamableHttpMcpTransportStatusCodeTest {
     private final ExecutorService serverExecutor = Executors.newCachedThreadPool();
     private StreamableHttpMcpTransport transport;
     private final CountDownLatch errorBodyReleased = new CountDownLatch(1);
+    private final ExecutorService responseExecutor = Executors.newSingleThreadExecutor();
+    private String errorContentType = "application/json";
+    private String errorBody = "{}";
+    private boolean useResponseExecutor;
 
     enum Backend {
         JDK,
@@ -76,13 +81,16 @@ class StreamableHttpMcpTransportStatusCodeTest {
             } else if (holdErrorBody) {
                 respondWithHeldErrorBody(exchange, toolsListStatus);
             } else {
-                respond(exchange, toolsListStatus, "{}");
+                respond(exchange, toolsListStatus, errorContentType, errorBody);
             }
         });
         server.start();
-        transport = backend.configure(StreamableHttpMcpTransport.builder()
-                        .url("http://localhost:" + server.getAddress().getPort() + "/mcp"))
-                .build();
+        StreamableHttpMcpTransport.Builder builder = backend.configure(StreamableHttpMcpTransport.builder()
+                .url("http://localhost:" + server.getAddress().getPort() + "/mcp"));
+        if (useResponseExecutor) {
+            builder.executor(responseExecutor);
+        }
+        transport = builder.build();
         transport.start(new McpOperationHandler(
                 new ConcurrentHashMap<>(),
                 () -> Collections.emptyList(),
@@ -100,7 +108,12 @@ class StreamableHttpMcpTransportStatusCodeTest {
     }
 
     private static void respond(HttpExchange exchange, int statusCode, String body) throws IOException {
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        respond(exchange, statusCode, "application/json", body);
+    }
+
+    private static void respond(HttpExchange exchange, int statusCode, String contentType, String body)
+            throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", contentType);
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(statusCode, bytes.length);
         try (OutputStream out = exchange.getResponseBody()) {
@@ -118,6 +131,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
             server.stop(0);
         }
         serverExecutor.shutdownNow();
+        responseExecutor.shutdownNow();
     }
 
     @Test
@@ -164,6 +178,67 @@ class StreamableHttpMcpTransportStatusCodeTest {
         assertThat(failure.statusCode()).isEqualTo(404);
         assertThat(failure).hasMessage("Session expired again after reinitialization: server returned status code 404");
         assertThat(errorBodyReleased.getCount()).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"JDK, false", "OKHTTP, false", "APACHE, false", "JDK, true"})
+    void json_rpc_error_with_a_client_error_status_completes_the_request(Backend backend, boolean onExecutor)
+            throws Exception {
+        // e.g. a request whose headers do not match its body (2026-07-28)
+        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32001,\"message\":\"Header mismatch\"}}";
+        useResponseExecutor = onExecutor;
+        startServer(400, false, backend);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        assertThat(McpJson.toMap(response.get(5, TimeUnit.SECONDS)))
+                .containsEntry("id", 1)
+                .containsEntry("error", Map.of("code", -32001, "message", "Header mismatch"));
+    }
+
+    @Test
+    void json_rpc_error_without_an_id_is_the_answer_to_the_request() throws Exception {
+        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\"}}";
+        startServer(400);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        assertThat(McpJson.toMap(response.get(5, TimeUnit.SECONDS)))
+                .containsEntry("id", 1)
+                .containsEntry("error", Map.of("code", -32700, "message", "Parse error"));
+    }
+
+    @Test
+    void json_rpc_error_for_another_request_fails_with_the_status_code() throws Exception {
+        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32001,\"message\":\"Header mismatch\"}}";
+        startServer(400);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        HttpException failure = failureOf(response);
+        assertThat(failure.statusCode()).isEqualTo(400);
+        assertThat(failure).hasMessage("Unexpected status code: 400");
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            delimiter = '|',
+            value = {"application/json | {\"message\":\"Bad request\"}", "text/html | <html>Bad request</html>"})
+    void client_error_without_a_json_rpc_error_fails_with_the_status_code(String contentType, String body)
+            throws Exception {
+        errorContentType = contentType;
+        errorBody = body;
+        startServer(400);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        HttpException failure = failureOf(response);
+        assertThat(failure.statusCode()).isEqualTo(400);
+        assertThat(failure).hasMessage("Unexpected status code: 400");
     }
 
     @Test
