@@ -22,6 +22,9 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
 import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
@@ -37,18 +40,21 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverRequestContext;
+import dev.langchain4j.rag.query.router.LanguageModelQueryRouter;
+import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
+import org.junit.jupiter.api.Test;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
-import org.junit.jupiter.api.Test;
 
 class AiServiceModelListenerInvocationIdTest {
 
@@ -360,6 +366,62 @@ class AiServiceModelListenerInvocationIdTest {
 
         assertThat(startedInvocationIds).singleElement().isNotNull();
         assertThat(modelInvocationIds).containsExactly(startedInvocationIds.get(0), startedInvocationIds.get(0));
+    }
+
+    @Test
+    void every_model_and_store_call_of_an_asynchronous_retrieval_should_get_the_invocation_id_of_the_ai_service() {
+        // The models complete on other threads, so later stages run in continuations on those threads
+        ChatModel queryModel = ChatModelMock.thatAlwaysResponds("first query\nsecond query")
+                .withListeners(recordingListener());
+        ChatModel routingModel = ChatModelMock.thatAlwaysResponds("1").withListeners(recordingListener());
+        EmbeddingModelMock embeddingModel = new EmbeddingModelMock().withAsyncSupport().withListeners(new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                modelInvocationIds.add(context.invocationId());
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                modelInvocationIds.add(context.invocationId());
+            }
+        });
+        EmbeddingStore<TextSegment> store = new InMemoryEmbeddingStore<TextSegment>().addListener(recordingStoreListener());
+        store.add(Embedding.from(new float[] {1f, 2f, 3f}), TextSegment.from("some content"));
+        modelInvocationIds.clear();
+        ContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(embeddingModel)
+                .embeddingStore(store)
+                .offloadBlocking(true)
+                .build();
+        ScoringModelMock scoringModel = ScoringModelMock.thatAlwaysScores(0.9).withListeners(new ScoringModelListener() {
+            @Override
+            public void onRequest(ScoringModelRequestContext context) {
+                modelInvocationIds.add(context.invocationId());
+            }
+
+            @Override
+            public void onResponse(ScoringModelResponseContext context) {
+                modelInvocationIds.add(context.invocationId());
+            }
+        });
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(new ExpandingQueryTransformer(queryModel))
+                        .queryRouter(new LanguageModelQueryRouter(routingModel, Map.of(retriever, "documents")))
+                        .contentAggregator(ReRankingContentAggregator.builder()
+                                .scoringModel(scoringModel)
+                                .querySelector(queryToContents -> queryToContents.keySet().iterator().next())
+                                .build())
+                        .build())
+                .registerListener(startedListener())
+                .build();
+
+        assertThat(assistant.chat("Hello")).succeedsWithin(5, SECONDS);
+
+        assertThat(startedInvocationIds).singleElement().isNotNull();
+        // query transformation (2), routing of 2 queries (4), embedding (4) and search (4) of 2 queries, re-ranking (2)
+        assertThat(modelInvocationIds).hasSize(16).containsOnly(startedInvocationIds.get(0));
     }
 
     @Test
