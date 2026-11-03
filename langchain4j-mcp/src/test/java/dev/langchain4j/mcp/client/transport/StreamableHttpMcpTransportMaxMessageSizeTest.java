@@ -19,12 +19,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * A server must not be able to make the client buffer an unbounded amount of data
- * by sending an SSE message that never ends.
+ * by sending a message that never ends, neither as an SSE event nor as a JSON response.
  */
-class StreamableHttpMcpTransportMaxSseMessageSizeTest {
+class StreamableHttpMcpTransportMaxMessageSizeTest {
 
     private static final int LIMIT = 256 * 1024;
     private static final String RESPONSE_PREFIX =
@@ -44,7 +46,7 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
         startServer(contentType, writer, LIMIT);
     }
 
-    private void startServer(String contentType, ResponseWriter writer, Integer maxSseMessageSize)
+    private void startServer(String contentType, ResponseWriter writer, Integer maxMessageSize)
             throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/mcp", exchange -> respond(exchange, contentType, writer));
@@ -52,7 +54,7 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
         transport = StreamableHttpMcpTransport.builder()
                 .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
                 .setHttpVersion1_1()
-                .maxSseMessageSize(maxSseMessageSize)
+                .maxMessageSize(maxMessageSize)
                 .build();
         transport.start(new McpOperationHandler(
                 pendingOperations,
@@ -184,8 +186,8 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
     }
 
     @Test
-    void does_not_limit_json_responses() throws Exception {
-        String padding = "x".repeat(LIMIT * 2);
+    void delivers_a_json_response_spanning_several_line_fragments_below_the_limit() throws Exception {
+        String padding = "x".repeat(LIMIT / 2);
         startServer(
                 "application/json",
                 out -> out.write((RESPONSE_PREFIX + padding + RESPONSE_SUFFIX).getBytes(StandardCharsets.UTF_8)));
@@ -196,12 +198,64 @@ class StreamableHttpMcpTransportMaxSseMessageSizeTest {
     }
 
     @Test
+    void fails_on_a_json_response_that_never_ends() throws Exception {
+        startServer("application/json", out -> {
+            out.write(RESPONSE_PREFIX.getBytes(StandardCharsets.UTF_8));
+            writeEndlessly(out, "x".repeat(1023) + "\n");
+        });
+
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(7L, null));
+
+        assertThatThrownBy(() -> response.get(10, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeds the maximum size of " + LIMIT + " bytes");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/event-stream", "application/json"})
+    void accepts_a_message_of_exactly_the_maximum_size(String contentType) throws Exception {
+        String message = messageOfSize(LIMIT);
+        startServer(contentType, out -> out.write(wireFormat(contentType, message)));
+
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(7L, null));
+
+        assertThat(response.get(10, TimeUnit.SECONDS)).isEqualTo(message);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/event-stream", "application/json"})
+    void fails_on_a_message_one_byte_over_the_maximum_size(String contentType) throws Exception {
+        startServer(contentType, out -> out.write(wireFormat(contentType, messageOfSize(LIMIT + 1))));
+
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(7L, null));
+
+        assertThatThrownBy(() -> response.get(10, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeds the maximum size of " + LIMIT + " bytes");
+    }
+
+    private static String messageOfSize(int size) {
+        return RESPONSE_PREFIX
+                + "x".repeat(size - RESPONSE_PREFIX.length() - RESPONSE_SUFFIX.length())
+                + RESPONSE_SUFFIX;
+    }
+
+    private static byte[] wireFormat(String contentType, String message) {
+        String body = contentType.equals("text/event-stream") ? "data:" + message + "\n\n" : message;
+        return body.getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Test
     void rejects_a_non_positive_limit() {
         assertThatThrownBy(() -> StreamableHttpMcpTransport.builder()
                         .url("http://localhost/mcp")
-                        .maxSseMessageSize(0)
+                        .maxMessageSize(0)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("maxSseMessageSize");
+                .hasMessageContaining("maxMessageSize");
     }
 }

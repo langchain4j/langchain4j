@@ -50,7 +50,8 @@ import org.slf4j.LoggerFactory;
 public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
-    private static final int DEFAULT_MAX_SSE_MESSAGE_SIZE = 20 * 1024 * 1024;
+    private static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
+    private static final int SSE_DATA_FIELD_NAME_LENGTH = "data:".length();
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
@@ -69,7 +70,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     // Subsidiary SSE channel fields
     private final boolean subsidiaryChannelEnabled;
-    private final int maxSseMessageSize;
+    private final int maxMessageSize;
     private volatile Runnable onFailureCallback;
     private volatile boolean subsidiaryChannelEstablished;
     private final AtomicReference<String> subsidiaryLastEventId = new AtomicReference<>();
@@ -88,8 +89,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
-        maxSseMessageSize = ensureGreaterThanZero(
-                getOrDefault(builder.maxSseMessageSize, DEFAULT_MAX_SSE_MESSAGE_SIZE), "maxSseMessageSize");
+        maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         responseExecutor = builder.executor;
         if (builder.httpClientBuilder != null && builder.httpClient != null) {
@@ -549,6 +550,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final CapturedContext requestContext;
         private final AtomicBoolean finished = new AtomicBoolean();
         private final StringBuilder body = new StringBuilder();
+        private long bodyBytes;
         private final StringBuilder sseData = new StringBuilder();
         private boolean sseDataPresent;
         private long sseDataBytes;
@@ -621,7 +623,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     if (sseResponse) {
                         handleSseFragment(line);
                     } else {
-                        body.append(line.data()).append(line.ending());
+                        handleBodyFragment(line);
                     }
                 }
             } catch (RuntimeException e) {
@@ -653,19 +655,28 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         /**
+         * Buffers the body of a response that is not an SSE stream, failing the exchange once it exceeds
+         * {@code maxMessageSize}, so that a server cannot make the client buffer an unbounded amount of data.
+         */
+        private void handleBodyFragment(McpResponseParser.Line fragment) {
+            bodyBytes += fragment.byteLength() + fragment.ending().length();
+            if (bodyBytes > maxMessageSize) {
+                failMessageTooLarge();
+                return;
+            }
+            body.append(fragment.data()).append(fragment.ending());
+        }
+
+        /**
          * Reassembles lines that the parser split into fragments, failing the exchange once the data of the
-         * current event and the line being read exceed {@code maxSseMessageSize}, so that a server cannot
-         * make the client buffer an unbounded amount of data.
+         * current event and the line being read exceed {@code maxMessageSize}, so that a server cannot
+         * make the client buffer an unbounded amount of data. The line being read still contains its field name,
+         * so a {@code data:} line that carries exactly {@code maxMessageSize} bytes is accepted.
          */
         private void handleSseFragment(McpResponseParser.Line fragment) {
             sseLineBytes += fragment.byteLength();
-            if (sseDataBytes + sseLineBytes > maxSseMessageSize) {
-                LOG.warn(
-                        "SSE message exceeds the maximum size of {} bytes, closing the stream; "
-                                + "use StreamableHttpMcpTransport.Builder.maxSseMessageSize to raise the limit",
-                        maxSseMessageSize);
-                handleError(new IllegalStateException("SSE message exceeds the maximum size of " + maxSseMessageSize
-                        + " bytes; use StreamableHttpMcpTransport.Builder.maxSseMessageSize to raise the limit"));
+            if (sseDataBytes + sseLineBytes > maxMessageSize + SSE_DATA_FIELD_NAME_LENGTH) {
+                failMessageTooLarge();
                 return;
             }
             sseLine.append(fragment.data());
@@ -677,6 +688,13 @@ public class StreamableHttpMcpTransport implements McpTransport {
             sseLine.setLength(0);
             sseLineBytes = 0;
             handleSseLine(line, lineBytes);
+        }
+
+        private void failMessageTooLarge() {
+            String message = "Message from the MCP server exceeds the maximum size of " + maxMessageSize
+                    + " bytes; use StreamableHttpMcpTransport.Builder.maxMessageSize to raise the limit";
+            LOG.warn("Closing the stream: {}", message);
+            handleError(new IllegalStateException(message));
         }
 
         private void handleSseLine(String line, long lineBytes) {
@@ -695,8 +713,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     sseData.append('\n');
                     sseDataBytes++;
                 }
-                sseData.append(line, 5, line.length());
-                sseDataBytes += lineBytes - 5;
+                sseData.append(line, SSE_DATA_FIELD_NAME_LENGTH, line.length());
+                sseDataBytes += lineBytes - SSE_DATA_FIELD_NAME_LENGTH;
                 sseDataPresent = true;
             } else if (opened != null && line.startsWith("id:")) {
                 subsidiaryLastEventId.set(line.substring(3).trim());
@@ -902,7 +920,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
         private boolean followRedirects = false;
-        private Integer maxSseMessageSize;
+        private Integer maxMessageSize;
 
         /**
          * Supplies the HTTP backend used for all requests, including the subsidiary SSE channel.
@@ -1092,19 +1110,23 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         /**
-         * The maximum size, in bytes, of a single message received over an SSE stream, i.e. the data of one
-         * SSE event. This applies to SSE responses to requests as well as to the subsidiary SSE channel.
+         * The maximum size, in bytes, of a single message received from the server: the data of one event
+         * on an SSE stream, or the whole body of any other response, such as a JSON response.
+         * This applies to every response, including the subsidiary SSE channel.
          * When a server sends a larger message, the transport closes the stream: a pending request fails
          * and the subsidiary channel reconnects. This protects the client against servers that send
-         * an endless line or event, which would otherwise be buffered in memory until it runs out.
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
          * Defaults to 20 MiB.
          *
-         * @param maxSseMessageSize the maximum message size in bytes, must be greater than zero
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
          * @return this builder
          * @since 1.24.0
          */
-        public StreamableHttpMcpTransport.Builder maxSseMessageSize(Integer maxSseMessageSize) {
-            this.maxSseMessageSize = maxSseMessageSize;
+        public StreamableHttpMcpTransport.Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
             return this;
         }
 
