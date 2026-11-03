@@ -34,7 +34,9 @@ import java.util.List;
  *         An AI Service invoked while another AI Service invocation is in progress (for example from within a tool)
  *         has its own invocation id and carries the enclosing invocation's id in
  *         {@link InvocationContext#parentInvocationId()}. Its summary is appended to the parent's events when it ends,
- *         and is still fired independently to its own listeners. A child that ends after the parent is not included.
+ *         and is still fired independently to its own listeners. A child that ends before the parent's
+ *         {@link AiServiceStartedEvent} (for example one called by a system message provider) or after the parent
+ *         has ended is not included.
  *     </li>
  *     <li>
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
