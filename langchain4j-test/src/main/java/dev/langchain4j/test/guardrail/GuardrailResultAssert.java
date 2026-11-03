@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.GuardrailResult.Result;
-import dev.langchain4j.guardrail.InputGuardrailResult;
 import java.util.Objects;
 import java.util.function.Consumer;
 import org.assertj.core.api.AbstractObjectAssert;
@@ -78,8 +77,8 @@ public abstract sealed class GuardrailResultAssert<
     }
 
     /**
-     * Asserts that the actual {@code InputGuardrailResult} represents a successful state.
-     * A successful state is determined by having {@link InputGuardrailResult#isSuccess()}.
+     * Asserts that the actual {@code GuardrailResult} represents a successful state.
+     * A successful state is determined by having {@link GuardrailResult#isSuccess()}.
      *
      * @return this assertion object for method chaining
      * @throws AssertionError if the actual result is not successful as per the aforementioned criteria
@@ -95,7 +94,7 @@ public abstract sealed class GuardrailResultAssert<
     }
 
     /**
-     * Asserts that the actual {@code InputGuardrailResult} contains failures.
+     * Asserts that the actual {@code GuardrailResult} contains failures.
      * The method validates that the object being asserted is not null and
      * that there are failures present within the result.
      *
@@ -110,7 +109,7 @@ public abstract sealed class GuardrailResultAssert<
     }
 
     /**
-     * Asserts that the actual {@code InputGuardrailResult} contains exactly one failure with the specified message.
+     * Asserts that the actual {@code GuardrailResult} contains exactly one failure with the specified message.
      * If the assertion fails, an error is thrown detailing the problem.
      *
      * @param expectedFailureMessage the expected message of the single failure
@@ -128,7 +127,7 @@ public abstract sealed class GuardrailResultAssert<
     }
 
     /**
-     * Asserts that the {@code InputGuardrailResult} contains exactly one {@link GuardrailResult.Failure} and verifies
+     * Asserts that the {@code GuardrailResult} contains exactly one {@link GuardrailResult.Failure} and verifies
      * that this failure meets the specified requirements. The requirements are defined by the provided {@link Consumer}.
      *
      * @param requirements a {@link Consumer} that defines the assertions to be applied to the single failure.
