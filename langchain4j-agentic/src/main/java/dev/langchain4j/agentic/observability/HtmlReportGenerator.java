@@ -295,8 +295,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 detail(html, "Type", typeName);
             }
         }
-        if (agent.description() != null && !agent.description().isEmpty()) {
-            detail(html, "Desc", truncate(agent.description(), 60));
+        String description = description(agent);
+        if (description != null && !description.isEmpty()) {
+            detail(html, "Desc", truncate(description, 60));
         }
         if (agent.outputType() != null) {
             detail(html, "Returns", simpleTypeName(agent.outputType()));
@@ -869,6 +870,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
     // Utility helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * The description of a remote agent, like an A2A one whose card is fetched from a server that is down, may be
+     * unavailable: the report says so for that agent instead of failing as a whole.
+     */
+    private static String description(AgentInstance agent) {
+        try {
+            return agent.description();
+        } catch (RuntimeException e) {
+            return "unavailable: " + e.getMessage();
+        }
+    }
 
     private static void detail(StringBuilder html, String label, String value) {
         html.append("<div class=\"node-detail\">");

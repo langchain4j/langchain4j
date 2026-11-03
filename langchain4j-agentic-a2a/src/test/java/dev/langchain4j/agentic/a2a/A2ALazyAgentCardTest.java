@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
@@ -166,7 +167,11 @@ class A2ALazyAgentCardTest {
     }
 
     private static String systemMessage(ChatModelMock plannerModel) {
-        return plannerModel.requests().get(0).messages().stream()
+        return systemMessage(plannerModel, 0);
+    }
+
+    private static String systemMessage(ChatModelMock plannerModel, int request) {
+        return plannerModel.requests().get(request).messages().stream()
                 .filter(SystemMessage.class::isInstance)
                 .map(message -> ((SystemMessage) message).text())
                 .findFirst()
@@ -638,16 +643,36 @@ class A2ALazyAgentCardTest {
     }
 
     @Test
-    void a_supervisor_over_an_unreachable_subagent_without_description_fails_at_its_first_call() {
-        FixAgent fixAgent = AgenticServices.createAgenticSystem(FixAgent.class, (ChatModel) null);
+    void a_supervisor_leaves_out_an_unreachable_subagent_and_offers_it_again_once_it_is_back() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.failing = true;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+        AgenticScopeFunction<String> analyzer = AgenticServices.nonAiAgentBuilder(scope -> "analyzed")
+                .name("analyzer")
+                .description("Analyzes the problem")
+                .outputKey("analysis")
+                .build();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
-                .chatModel(donePlannerModel())
-                .subAgents(fixAgent)
+                .chatModel(plannerModel)
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(analyzer, fixer)
                 .build();
 
-        Throwable failure = catchThrowable(() -> supervisor.invoke("fix the build"));
+        // the remote agent is down: the supervisor plans with its other subagents only, instead of failing
+        assertThat(supervisor.invoke("fix the build")).isEqualTo("nothing to fix");
+        assertThat(systemMessage(plannerModel, 0))
+                .contains("'analyzer$0', 'Analyzes the problem'")
+                .doesNotContain("fix$1");
 
-        assertThat(causeOfType(failure, A2AAgentCardException.class).agentName())
-                .isEqualTo("applyFix");
+        // the remote agent is back: the next invocation fetches its card and offers it to the model
+        cardSource.failing = false;
+        assertThat(supervisor.invoke("fix the build")).isEqualTo("nothing to fix");
+        assertThat(plannerModel.requests()).hasSize(2);
+        assertThat(systemMessage(plannerModel, 1)).contains("'fix$1', 'Fixes the analyzed problem'");
+        assertThat(cardSource.fetches).hasValue(2);
     }
 }

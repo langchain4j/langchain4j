@@ -2,8 +2,11 @@ package dev.langchain4j.agentic.supervisor;
 
 import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.MISSING_DESCRIPTION;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +25,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The supervisor sends the description of each subagent to its model to choose the next one. A subagent without a
  * description does not stop it: the model is explicitly told that the description is missing, and a warning naming
- * such subagents is logged once per supervisor.
+ * such subagents is logged once per supervisor. A subagent whose description cannot be read is left out of the
+ * invocation, with a warning.
  */
 class SupervisorSubagentsDescriptionTest {
 
@@ -82,11 +86,28 @@ class SupervisorSubagentsDescriptionTest {
         // the flag is shared by the planners created for the invocations of the same supervisor
         AtomicBoolean subagentsDescriptionsChecked = new AtomicBoolean();
         planner(subagentsDescriptionsChecked).init(context);
-        planner(subagentsDescriptionsChecked).init(context);
-
-        // only the first initialization reads the descriptions and logs the warning about the missing one
-        verify(subagent, times(1)).description();
+        verify(subagent, atLeastOnce()).description();
         assertThat(subagentsDescriptionsChecked).isTrue();
+
+        // the following initializations do not read the descriptions again, so the warning is logged once
+        clearInvocations(subagent);
+        planner(subagentsDescriptionsChecked).init(context);
+        verify(subagent, never()).description();
+    }
+
+    @Test
+    void a_subagent_whose_description_cannot_be_read_does_not_fail_the_initialization() {
+        AgentInstance supervisorAgent = mock(AgentInstance.class);
+        when(supervisorAgent.name()).thenReturn("supervisor");
+        AgentInstance unreachable = mock(AgentInstance.class);
+        when(unreachable.name()).thenReturn("remote");
+        when(unreachable.agentId()).thenReturn("remote$0");
+        when(unreachable.description()).thenThrow(new IllegalStateException("Failed to fetch the agent card"));
+        InitPlanningContext context =
+                new InitPlanningContext(mock(AgenticScope.class), supervisorAgent, List.of(unreachable));
+
+        // the subagent is left out of the invocation with a warning, instead of failing the whole supervisor
+        assertThatCode(() -> planner(new AtomicBoolean()).init(context)).doesNotThrowAnyException();
     }
 
     private static SupervisorPlanner planner(AtomicBoolean subagentsDescriptionsChecked) {

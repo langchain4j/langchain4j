@@ -29,9 +29,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -78,6 +80,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     // without a description is logged once
     private final AtomicBoolean subagentsDescriptionsChecked;
 
+    // The subagents left out of this invocation because their description cannot be read: the planner is created
+    // for each invocation of the supervisor, so the next one tries them again
+    private final Set<String> unavailableSubagents = new HashSet<>();
+    private String supervisorName;
+
     private String request;
 
     /**
@@ -119,6 +126,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public void init(final InitPlanningContext initPlanningContext) {
+        this.supervisorName = initPlanningContext.plannerAgent().name();
         warnAboutSubagentsWithoutDescription(initPlanningContext);
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
@@ -136,15 +144,16 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     /**
      * The supervisor sends the description of each subagent to its model to decide which one to invoke, so a
      * subagent without a description cannot be chosen meaningfully: the model receives {@link #MISSING_DESCRIPTION}
-     * in its place and a warning naming those subagents is logged once per supervisor, at its first invocation.
-     * Reading the description of a remote agent, like an A2A one without an explicit description, may fetch it from
-     * the remote server at this point.
+     * in its place and a warning naming those subagents is logged once per supervisor, at its first invocation, for
+     * the subagents whose description can be read at that time. Reading the description of a remote agent, like an
+     * A2A one without an explicit description, may fetch it from the remote server at this point.
      */
     private void warnAboutSubagentsWithoutDescription(InitPlanningContext initPlanningContext) {
         if (subagentsDescriptionsChecked.get()) {
             return;
         }
         List<String> subagentsWithoutDescription = initPlanningContext.subagents().stream()
+                .filter(this::isAvailable)
                 .filter(agent -> isNullOrBlank(agent.description()))
                 .map(AgentInstance::name)
                 .toList();
@@ -154,7 +163,32 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                             + " descriptions of its subagents to decide which one to invoke, so provide one for each"
                             + " of them: until then its model is told that no description was provided.",
                     subagentsWithoutDescription,
-                    initPlanningContext.plannerAgent().name());
+                    supervisorName);
+        }
+    }
+
+    /**
+     * A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server
+     * is down, is left out of the agents offered to the model for the rest of this invocation, with a warning, so
+     * that a remote agent that is down only affects the invocations that actually reach it. The planner is created
+     * for each invocation of the supervisor, so the next one tries that subagent again.
+     */
+    private boolean isAvailable(AgentInstance agent) {
+        if (unavailableSubagents.contains(agent.agentId())) {
+            return false;
+        }
+        try {
+            agent.description();
+            return true;
+        } catch (RuntimeException e) {
+            unavailableSubagents.add(agent.agentId());
+            LOG.warn(
+                    "The subagent '{}' of the supervisor '{}' is left out of this invocation, because its description"
+                            + " cannot be read",
+                    agent.agentId(),
+                    supervisorName,
+                    e);
+            return false;
         }
     }
 
@@ -323,6 +357,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         // only the agents that would run now are offered to the model
         String agentsList = subagents.stream()
                 .filter(planningContext::isActive)
+                .filter(this::isAvailable)
                 .map(SupervisorPlanner::toCard)
                 .collect(Collectors.joining(", "));
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
