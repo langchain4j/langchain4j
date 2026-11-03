@@ -631,7 +631,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * caller more than the status code, such as the rejection of a request whose headers do not match its
          * body. Other error responses fail the request as soon as their status arrives.
          */
-        boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
+        private boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
             return readsErrorBody(errorResponse.statusCode())
                     && errorResponse.headers().getOrDefault("Content-Type", List.of()).stream()
                             .anyMatch(contentType -> contentType.contains("json"));
@@ -642,8 +642,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * session, which are recognized by their status code alone.
          */
         private boolean readsErrorBody(int statusCode) {
-            return opened == null
-                    && expectResponse
+            return expectResponse
                     && context.message().getId() != null
                     && statusCode >= 400
                     && statusCode < 500
@@ -675,18 +674,19 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
                 return false;
             }
-            message = new LinkedHashMap<>(message);
             Long id = context.message().getId();
             Object messageId = message.get("id");
+            String body = error.getMessage();
             if (messageId == null) {
                 // a server that could not read the request answers without an id, but the error is still its answer
-                message.put("id", id);
+                Map<String, Object> answer = new LinkedHashMap<>(message);
+                answer.put("id", id);
+                body = McpJson.serialize(answer);
             } else if (!(messageId instanceof Number number) || number.longValue() != id) {
                 return false;
             }
-            String body = McpJson.serialize(message);
             if (logResponses) {
-                trafficLog.info("Response: {}", body);
+                trafficLog.info("Response: {}", error.getMessage());
             }
             try {
                 operationHandler.onMessage(body);
@@ -799,10 +799,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     scheduleSubsidiaryReconnect(requestContext);
                 }
                 opened.complete(null);
-            } else if (error instanceof HttpException httpError
-                    && httpError.statusCode() == 404
-                    && !(context.message() instanceof McpInitializeRequest)
-                    && !modernProtocol) {
+            } else if (error instanceof HttpException httpError && expiresSession(httpError.statusCode())) {
                 if (retry) {
                     future.completeExceptionally(new HttpException(
                             404, "Session expired again after reinitialization: server returned status code 404"));
