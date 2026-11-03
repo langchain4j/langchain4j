@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -8,6 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -16,6 +18,7 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
@@ -59,6 +62,7 @@ public class DecisionScoringModel implements ScoringModel {
     private final DecisionModel decisionModel;
     private final PromptTemplate questionTemplate;
     private final int maxSegmentsPerRequest;
+    private final List<ScoringModelListener> listeners;
 
     public DecisionScoringModel(DecisionModel decisionModel) {
         this(builder().decisionModel(decisionModel));
@@ -70,6 +74,17 @@ public class DecisionScoringModel implements ScoringModel {
         validate(questionTemplate);
         this.maxSegmentsPerRequest = ensureGreaterThanZero(
                 getOrDefault(builder.maxSegmentsPerRequest, DEFAULT_MAX_SEGMENTS_PER_REQUEST), "maxSegmentsPerRequest");
+        this.listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public List<ScoringModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return decisionModel.provider();
     }
 
     @Override
@@ -77,15 +92,35 @@ public class DecisionScoringModel implements ScoringModel {
         ensureNotNull(segments, "segments");
         ensureNotBlank(query, "query");
 
-        List<String> texts = segments.stream().map(TextSegment::text).toList();
-        List<Double> scores = new ArrayList<>(texts.size());
+        ScoringResponse response = score(ScoringRequest.builder()
+                .documents(segments.stream().map(TextSegment::text).toList())
+                .query(query)
+                .build());
+        return Response.from(response.scores(), response.tokenUsage());
+    }
+
+    @Override
+    public ScoringResponse doScore(ScoringRequest request) {
+        List<String> documents = ensureNotNull(request.documents(), "documents");
+        String query = ensureNotBlank(request.query(), "query");
+
+        DecisionRequestParameters parameters = DecisionRequestParameters.builder()
+                .modelName(request.parameters().modelName())
+                .build();
+        List<Double> scores = new ArrayList<>(documents.size());
         TokenUsage tokenUsage = null;
-        for (List<String> batch : batches(texts)) {
-            DecisionResponse response = decisionModel.decide(toRequest(batch, query, DecisionRequestParameters.EMPTY));
+        String modelName = null;
+        for (List<String> batch : batches(documents)) {
+            DecisionResponse response = decisionModel.decide(toRequest(batch, query, parameters));
             scores.addAll(scores(response, batch.size()));
             tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
+            modelName = getOrDefault(response.modelName(), modelName);
         }
-        return Response.from(scores, tokenUsage);
+        return ScoringResponse.builder()
+                .scores(scores)
+                .modelName(getOrDefault(modelName, request.modelName()))
+                .tokenUsage(tokenUsage)
+                .build();
     }
 
     @Override
@@ -117,12 +152,18 @@ public class DecisionScoringModel implements ScoringModel {
                 .thenApply(ignored -> {
                     List<Double> scores = new ArrayList<>(documents.size());
                     TokenUsage tokenUsage = null;
+                    String modelName = null;
                     for (int i = 0; i < batches.size(); i++) {
                         DecisionResponse response = responses.get(i).join();
                         scores.addAll(scores(response, batches.get(i).size()));
                         tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
+                        modelName = getOrDefault(response.modelName(), modelName);
                     }
-                    return ScoringResponse.builder().scores(scores).tokenUsage(tokenUsage).build();
+                    return ScoringResponse.builder()
+                            .scores(scores)
+                            .modelName(getOrDefault(modelName, request.modelName()))
+                            .tokenUsage(tokenUsage)
+                            .build();
                 })
                 .whenComplete((response, error) -> {
                     if (error == null) {
@@ -196,6 +237,7 @@ public class DecisionScoringModel implements ScoringModel {
         private DecisionModel decisionModel;
         private PromptTemplate questionTemplate;
         private Integer maxSegmentsPerRequest;
+        private List<ScoringModelListener> listeners;
 
         /**
          * Sets the decision model that scores the segments. Required.
@@ -225,6 +267,29 @@ public class DecisionScoringModel implements ScoringModel {
         public Builder maxSegmentsPerRequest(Integer maxSegmentsPerRequest) {
             this.maxSegmentsPerRequest = maxSegmentsPerRequest;
             return this;
+        }
+
+        /**
+         * Sets the listeners notified before each scoring request, after each response and on each error.
+         * The listeners of the decision model are notified as well, once per request sent to it.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public Builder listeners(List<ScoringModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Sets the listeners notified before each scoring request, after each response and on each error.
+         * The listeners of the decision model are notified as well, once per request sent to it.
+         *
+         * @param listeners the listeners.
+         * @return {@code this}.
+         */
+        public Builder listeners(ScoringModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public DecisionScoringModel build() {

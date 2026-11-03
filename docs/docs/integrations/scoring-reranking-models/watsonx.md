@@ -144,6 +144,11 @@ System.out.println(scores);
 
 > 🔗 [View available rerank model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#rerank)
 
+## Observability
+
+Attach [listeners](/tutorials/observability#scoringmodel-listener) with `WatsonxScoringModel.builder().listeners(...)` to observe
+requests, responses and errors.
+
 ## Examples
 
 - [WatsonxScoringModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/watsonx-ai-examples/src/main/java/WatsonxScoringModelTest.java)

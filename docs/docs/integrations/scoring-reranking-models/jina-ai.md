@@ -49,3 +49,8 @@ return AiServices.builder(Assistant.class)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```
+
+## Observability
+
+Attach [listeners](/tutorials/observability#scoringmodel-listener) with `JinaScoringModel.builder().listeners(...)` to observe
+requests, responses and errors.
