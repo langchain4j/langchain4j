@@ -139,7 +139,12 @@ class AgentMonitorAsyncSubagentTest {
         long deadline = System.currentTimeMillis() + 10_000;
         while (!condition.getAsBoolean()) {
             assertThat(System.currentTimeMillis()).as("condition met in time").isLessThan(deadline);
-            Thread.onSpinWait();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
         }
     }
 }
