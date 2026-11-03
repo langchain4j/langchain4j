@@ -26,10 +26,7 @@ class SupervisorAgentPlanningReplyTest {
 
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(model)
-                .subAgents(AgenticServices.nonAiAgentBuilder(scope -> null)
-                        .name("run")
-                        .description("Does nothing")
-                        .build())
+                .subAgents(AgenticServices.agentAction(() -> {}))
                 .build();
 
         assertThatExceptionOfType(IllegalStateException.class)
@@ -46,10 +43,7 @@ class SupervisorAgentPlanningReplyTest {
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(model)
                 .responseStrategy(SupervisorResponseStrategy.LAST)
-                .subAgents(AgenticServices.nonAiAgentBuilder(scope -> null)
-                        .name("run")
-                        .description("Does nothing")
-                        .build())
+                .subAgents(AgenticServices.agentAction(() -> {}))
                 .build();
 
         assertThatCode(() -> supervisor.invoke("do something")).doesNotThrowAnyException();
