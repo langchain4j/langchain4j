@@ -84,6 +84,9 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.internal.util.ReaderInputStream;
 import org.hibernate.jpa.HibernateHints;
+import org.hibernate.mapping.Column;
+import org.hibernate.mapping.Index;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.spi.EntityInstantiator;
 import org.hibernate.persister.entity.EntityPersister;
@@ -1737,13 +1740,17 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
         protected Configuration createConfiguration() {
             final int dimension = ensureNotNull(this.dimension, "dimension");
+            final boolean index = getOrDefault(createIndex, false);
+            final String tableIndexOptions = index
+                    ? databaseKind.tableIndexOptions(distanceFunction, indexType, table, "embedding", indexOptions)
+                    : null;
             final Configuration cfg = new Configuration(new BootstrapServiceRegistryBuilder()
                     .applyClassLoaderService(new ClassLoaderServiceImpl() {
                         @Override
                         public <S> Collection<S> loadJavaServices(final Class<S> serviceContract) {
                             //noinspection unchecked
                             return serviceContract == AdditionalMappingContributor.class
-                                    ? List.of((S) new DynamicEmbeddingStoreAdditionalMappingContributor(dimension))
+                                    ? List.of((S) new DynamicEmbeddingStoreAdditionalMappingContributor(dimension, tableIndexOptions))
                                     // todo: Maybe return an empty list otherwise? Does it make sense to let classes
                                     // creep in?
                                     : super.loadJavaServices(serviceContract);
@@ -2126,9 +2133,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private static class DynamicEmbeddingStoreAdditionalMappingContributor implements AdditionalMappingContributor {
 
         private final int dimension;
+        private final String tableIndexOptions;
 
-        public DynamicEmbeddingStoreAdditionalMappingContributor(final int dimension) {
+        public DynamicEmbeddingStoreAdditionalMappingContributor(final int dimension, final String tableIndexOptions) {
             this.dimension = dimension;
+            this.tableIndexOptions = tableIndexOptions;
         }
 
         @Override
@@ -2137,12 +2146,14 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 final InFlightMetadataCollector metadata,
                 final ResourceStreamLocator resourceStreamLocator,
                 final MetadataBuildingContext buildingContext) {
-            metadata.getEntityBinding(EmbeddingEntity.class.getName())
-                    .getProperty("embedding")
-                    .getValue()
-                    .getColumns()
-                    .get(0)
-                    .setArrayLength(dimension);
+            final PersistentClass entityBinding = metadata.getEntityBinding(EmbeddingEntity.class.getName());
+            final Column embedding = entityBinding.getProperty("embedding").getValue().getColumns().get(0);
+            embedding.setArrayLength(dimension);
+            if (tableIndexOptions != null) {
+                final Index index = entityBinding.getTable().getOrCreateIndex("vec_" + entityBinding.getTable().getName());
+                index.addColumn(embedding);
+                index.setOptions(tableIndexOptions);
+            }
         }
 
         @Override

@@ -13,6 +13,7 @@ import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.dialect.SQLServerDialect;
+import jakarta.persistence.Index;
 
 /**
  * Database kind
@@ -164,6 +165,26 @@ public interface DatabaseKind {
             String indexOptions);
 
     String getSetupSql();
+
+    /**
+     * Returns the index options for the embedding table that shall be applied.
+     * This is useful when the database does not support creating indexes through a separate statement
+     * via {@link #createIndexDDL(DistanceFunction, String, String, String, String)}.
+     * <p>
+     * The built-in database kinds have no default options.
+     *
+     * @return the index options to use or {@code null}
+     * @see HibernateEmbeddingStore.BaseBuilder#indexOptions(String)
+     * @see Index#options()
+     */
+    default String tableIndexOptions(
+            DistanceFunction distanceFunction,
+            String indexType,
+            String table,
+            String embeddingColumn,
+            String indexOptions) {
+        return null;
+    }
 
     /**
      * Returns the query hints that every similarity search uses by default, for example a consistency level.

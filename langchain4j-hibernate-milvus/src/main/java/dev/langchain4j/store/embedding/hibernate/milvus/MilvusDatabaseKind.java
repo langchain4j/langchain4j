@@ -31,6 +31,28 @@ public final class MilvusDatabaseKind implements DatabaseKind {
     }
 
     @Override
+    public String tableIndexOptions(
+            final DistanceFunction distanceFunction,
+            final String indexType,
+            final String table,
+            final String embeddingColumn,
+            final String indexOptions) {
+        return "metric=" + metric(distanceFunction) + (indexType == null ? "" : (",type=" + indexType))
+                + (indexOptions == null ? "" : ("," + indexOptions));
+    }
+
+    private String metric(DistanceFunction distanceFunction) {
+        return switch (distanceFunction) {
+            case COSINE -> "cosine";
+            case INNER_PRODUCT, NEGATIVE_INNER_PRODUCT -> "ip";
+            case EUCLIDEAN, EUCLIDEAN_SQUARED -> "l2";
+            case HAMMING -> "hamming";
+            case JACCARD -> "jaccard";
+            default -> throw new IllegalArgumentException("Unsupported distance function: " + distanceFunction);
+        };
+    }
+
+    @Override
     public String getSetupSql() {
         return null; // Milvus needs no extension or feature flag to be enabled before vectors can be used
     }
