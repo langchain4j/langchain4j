@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
@@ -347,13 +348,13 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> {
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
                         try {
                             return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
                         } catch (Exception e) {
                             return CompletableFuture.failedFuture(e);
                         }
-                    });
+                    }));
                 } else {
                     DefaultToolExecutor executor = DefaultToolExecutor.builder()
                             .object(objectWithTools)
@@ -361,9 +362,11 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> executor.executeAsync(
-                                    toolExecution.request(), ctx)
-                            .thenApply(result -> (Void) null));
+                    compensatingActions.put(
+                            toolName,
+                            (toolExecution, ctx) -> CurrentInvocation.callWith(
+                                            ctx, () -> executor.executeAsync(toolExecution.request(), ctx))
+                                    .thenApply(result -> (Void) null));
                 }
             }
         }
@@ -543,12 +546,14 @@ public class ToolService {
 
     public ToolServiceContext createContext(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
-        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
-        if (toolSearchService != null) {
-            context = toolSearchService.adjust(context, messages, invocationContext);
-        }
-        context = refreshDynamicProviders(context, messages, invocationContext);
-        return context;
+        return CurrentInvocation.callWith(invocationContext, () -> {
+            ToolServiceContext context =
+                    createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+            if (toolSearchService != null) {
+                context = toolSearchService.adjust(context, messages, invocationContext);
+            }
+            return refreshDynamicProviders(context, messages, invocationContext);
+        });
     }
 
     private ToolServiceContext createContextFromStaticToolsAndProviders(
@@ -1229,7 +1234,10 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             ChatRequestParameters parameters) {
 
-        toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+        ToolServiceContext initialToolServiceContext = toolServiceContext;
+        toolServiceContext = CurrentInvocation.callWith(
+                invocationContext,
+                () -> refreshDynamicProviders(initialToolServiceContext, messages, invocationContext));
         if (toolSearchService != null) {
             toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
         }
@@ -1237,12 +1245,10 @@ public class ToolService {
                 .toolSpecifications(toolServiceContext.effectiveTools())
                 .build());
 
-        ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                ChatRequest.builder()
-                        .messages(messages)
-                        .parameters(parameters)
-                        .build(),
-                memoryId);
+        ChatRequest untransformedRequest =
+                ChatRequest.builder().messages(messages).parameters(parameters).build();
+        ChatRequest chatRequest = CurrentInvocation.callWith(
+                invocationContext, () -> context.chatRequestTransformer.apply(untransformedRequest, memoryId));
 
         fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
 
@@ -1978,7 +1984,8 @@ public class ToolService {
         CompletableFuture<ToolExecutionResult> futureToolResult;
         if (toolExecutor == null) {
             try {
-                futureToolResult = CompletableFuture.completedFuture(applyToolHallucinationStrategy(toolRequest));
+                futureToolResult = CompletableFuture.completedFuture(CurrentInvocation.callWith(
+                        invocationContext, () -> applyToolHallucinationStrategy(toolRequest)));
             } catch (Exception e) {
                 futureToolResult = CompletableFuture.failedFuture(e);
             }
@@ -2033,7 +2040,8 @@ public class ToolService {
             ToolExecutionErrorHandler executionErrorHandler) {
         CompletableFuture<ToolExecutionResult> futureToolResult;
         try {
-            futureToolResult = toolExecutor.executeAsync(toolRequest, invocationContext);
+            futureToolResult = CurrentInvocation.callWith(
+                    invocationContext, () -> toolExecutor.executeAsync(toolRequest, invocationContext));
         } catch (AsyncNotSupportedException e) {
             return CompletableFuture.failedFuture(e);
         } catch (Exception e) {
@@ -2212,7 +2220,7 @@ public class ToolService {
 
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null
-                ? applyToolHallucinationStrategy(toolRequest)
+                ? CurrentInvocation.callWith(invocationContext, () -> applyToolHallucinationStrategy(toolRequest))
                 : executeWithErrorHandling(
                         toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
 
@@ -2235,7 +2243,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            return toolExecutor.executeWithContext(toolRequest, invocationContext);
+            return CurrentInvocation.callWith(
+                    invocationContext, () -> toolExecutor.executeWithContext(toolRequest, invocationContext));
         } catch (Exception e) {
             return toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
         }
@@ -2259,9 +2268,11 @@ public class ToolService {
                 .rawError(e)
                 .build();
 
-        ToolErrorHandlerResult errorHandlerResult = e instanceof ToolArgumentsException
-                ? argumentsErrorHandler.handle(getCause(e), errorContext)
-                : executionErrorHandler.handle(getCause(e), errorContext);
+        ToolErrorHandlerResult errorHandlerResult = CurrentInvocation.callWith(
+                invocationContext,
+                () -> e instanceof ToolArgumentsException
+                        ? argumentsErrorHandler.handle(getCause(e), errorContext)
+                        : executionErrorHandler.handle(getCause(e), errorContext));
 
         return ToolExecutionResult.builder()
                 .isError(true)
