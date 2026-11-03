@@ -805,15 +805,13 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         distance,
                         criteriaBuilder.parameter(Double.class, "minDistance"),
                         criteriaBuilder)
-                : null;
+                : criteriaBuilder.isNotNull(embeddingPath);
         final Predicate additonalPredicate =
                 additionalPredicateBuilder == null ? null : additionalPredicateBuilder.apply(root, criteriaBuilder);
         query.where(
                 additonalPredicate == null
                         ? predicate
-                        : (predicate == null
-                                ? additonalPredicate
-                                : criteriaBuilder.and(predicate, additonalPredicate)));
+                        : criteriaBuilder.and(predicate, additonalPredicate));
         if (distanceFunction == DistanceFunction.INNER_PRODUCT) {
             query.orderBy(criteriaBuilder.desc(distance));
         } else {
