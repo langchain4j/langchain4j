@@ -85,7 +85,7 @@ public interface ChatModel {
             onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
             return chatResponse;
         } catch (DoChatNotImplementedException notImplemented) {
-            if (notImplemented.isThrownBy(this) && effectiveOptions != ChatRequestOptions.EMPTY) {
+            if (notImplemented.isThrownBy(this) && effectiveOptions.allowFallbackToChatWithoutOptions()) {
                 try {
                     ChatResponse chatResponse = chat(chatRequest);
                     onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
@@ -184,7 +184,7 @@ public interface ChatModel {
         }
 
         if (AsyncNotSupported.isNotImplementedFutureOf(source, this)
-                && effectiveOptions != ChatRequestOptions.EMPTY) {
+                && effectiveOptions.allowFallbackToChatWithoutOptions()) {
             try {
                 source = chatAsync(chatRequest);
             } catch (Exception error) {

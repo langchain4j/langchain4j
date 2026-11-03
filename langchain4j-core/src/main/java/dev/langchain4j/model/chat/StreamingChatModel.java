@@ -147,7 +147,7 @@ public interface StreamingChatModel {
         try {
             doChat(finalChatRequest, observingHandler);
         } catch (DoChatNotImplementedException notImplemented) {
-            if (!notImplemented.isThrownBy(this) || effectiveOptions == ChatRequestOptions.EMPTY) {
+            if (!notImplemented.isThrownBy(this) || !effectiveOptions.allowFallbackToChatWithoutOptions()) {
                 throw notImplemented;
             }
             chat(request, observingHandler);
@@ -272,7 +272,7 @@ public interface StreamingChatModel {
                 }
 
                 if (AsyncNotSupported.isFailingPublisher(innerPublisher)
-                        && effectiveOptions != ChatRequestOptions.EMPTY) {
+                        && effectiveOptions.allowFallbackToChatWithoutOptions()) {
                     try {
                         innerPublisher = chat(request);
                     } catch (Throwable error) {
