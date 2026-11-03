@@ -348,8 +348,8 @@ class ResearchTools {
 }
 ```
 
-Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) fill the id only
-where they pass it with `ChatRequestOptions`.
+Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) may fill the id
+only for some of the calls, depending on how they call the models.
 
 ### Creating your own events and listeners
 
