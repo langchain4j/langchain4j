@@ -293,11 +293,20 @@ public class DefaultAgenticScope implements AgenticScope {
         registryAfterRootCall = null;
     }
 
-    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
-        // ensure that all pending streaming and deferred responses are completed before ending the root call, while
-        // the asynchronous agents whose result nobody read are left running: the root call does not wait for them
+    /**
+     * Ends the root call, which {@code failed} tells whether it ended with an exception. The responses of the
+     * asynchronous agents that no agent of the root call read are left in place, and the root call does not wait
+     * for them: when it succeeded, their failure is logged on completion, since no agent would observe it
+     * otherwise, while a failed root call already surfaced the failure of the response it read.
+     */
+    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener, boolean failed) {
+        // ensure that all pending streaming and deferred responses are completed before ending the root call
         Map.copyOf(state).forEach((key, value) -> {
-            if (value instanceof DelayedResponse<?> pending && !(value instanceof AsyncResponse<?>)) {
+            if (value instanceof AsyncResponse<?> unread) {
+                if (!failed) {
+                    unread.onComplete(completed -> logUnreadFailure(key, completed));
+                }
+            } else if (value instanceof DelayedResponse<?> pending) {
                 writeState(key, pending.blockingGet());
             }
         });
@@ -313,6 +322,19 @@ public class DefaultAgenticScope implements AgenticScope {
         }
 
         compensableExecutions.clear();
+    }
+
+    private static void logUnreadFailure(String outputKey, AsyncResponse<?> response) {
+        if (response.isFailed()) {
+            try {
+                response.blockingGet();
+            } catch (RuntimeException e) {
+                LOG.warn(
+                        "Asynchronous agent producing '{}' failed and the agentic system did not read its result",
+                        outputKey,
+                        e);
+            }
+        }
     }
 
     /**

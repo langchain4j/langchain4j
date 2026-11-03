@@ -20,7 +20,7 @@ class DefaultAgenticScopeRootCallEndedTest {
         scope.writeState("realOutput", new AsyncResponse<>(() -> "value"));
         scope.writeState("plainOutput", "kept");
 
-        assertThatCode(() -> scope.rootCallEnded(null, null)).doesNotThrowAnyException();
+        assertThatCode(() -> scope.rootCallEnded(null, null, false)).doesNotThrowAnyException();
 
         assertThat(scope.readState("nullOutput")).isNull();
         assertThat(scope.readState("realOutput")).isEqualTo("value");
@@ -50,7 +50,7 @@ class DefaultAgenticScopeRootCallEndedTest {
             ended.countDown();
         });
 
-        scope.rootCallEnded(registry, listener);
+        scope.rootCallEnded(registry, listener, false);
 
         // the root call ended without waiting, and the scope was evicted with the response still pending
         assertThat(destroyed).containsExactly(String.valueOf(scope.memoryId()));
@@ -90,7 +90,7 @@ class DefaultAgenticScopeRootCallEndedTest {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         scope.writeState("deferred", new PendingResponseCompletedBy("human", "approved"));
 
-        scope.rootCallEnded(null, null);
+        scope.rootCallEnded(null, null, false);
 
         assertThat(scope.state().get("deferred")).isEqualTo("approved");
     }

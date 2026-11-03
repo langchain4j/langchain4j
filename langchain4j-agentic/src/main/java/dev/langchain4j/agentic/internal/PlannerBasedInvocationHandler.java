@@ -225,7 +225,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             currentScope.compensateAll();
             if (isRootCall()) {
                 agentError(agentListener, currentScope, this, namedArgs, e);
-                currentScope.rootCallEnded(registry, agentListener);
+                currentScope.rootCallEnded(registry, agentListener, true);
             }
             throw e;
         }
@@ -243,7 +243,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
-            currentScope.rootCallEnded(registry, agentListener);
+            currentScope.rootCallEnded(registry, agentListener, false);
         }
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)

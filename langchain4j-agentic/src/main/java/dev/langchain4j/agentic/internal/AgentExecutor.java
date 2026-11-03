@@ -69,28 +69,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         };
     }
 
-    /**
-     * The root call does not wait for an asynchronous agent, so its failure is observed only by the agent reading
-     * its result, if any: when the error handler does not recover it, it is also logged here, so that a failure
-     * that nobody reads does not go unnoticed.
-     */
-    private Object handleAsyncAgentFailure(
-            AgentInvocationException e,
-            DefaultAgenticScope agenticScope,
-            Object invokedAgent,
-            PlannerExecutor planner,
-            AgentInvocationArguments args) {
-        try {
-            return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
-        } catch (RuntimeException failure) {
-            LOG.warn(
-                    "Asynchronous agent '{}' failed; the failure is thrown to the agent reading its result, if any",
-                    agentInvoker.name(),
-                    failure);
-            throw failure;
-        }
-    }
-
     private Object internalExecute(
             DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
         AgentInvocationArguments args = null;
@@ -189,7 +167,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 try {
                     return agentInvoker.invokeNotified(agenticScope, invokedAgent, args);
                 } catch (AgentInvocationException e) {
-                    return handleAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
+                    return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
                 }
             });
         }
