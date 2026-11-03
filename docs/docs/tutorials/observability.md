@@ -490,9 +490,10 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
 - If an exception is thrown from one of the `ModerationModelListener` methods,
   it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 
-## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
+## RAG Observability (EmbeddingModel, EmbeddingStore, ContentRetriever and ScoringModel)
 
-`EmbeddingModel`, `EmbeddingStore` and `ContentRetriever` can be instrumented with listeners to observe:
+`EmbeddingModel`, `EmbeddingStore`, `ContentRetriever` and `ScoringModel` (used to re-rank retrieved contents) can be
+instrumented with listeners to observe:
 - Latency (measure duration using `attributes`)
 - Payloads (e.g., `EmbeddingSearchRequest.queryEmbedding()` and retrieved matches/contents)
 - Errors
@@ -642,13 +643,97 @@ observedRetriever.retrieve(Query.from("my query"));
 
 A `ContentRetrieverListener` observes each call of one content retriever. To receive the final contents that an AI Service adds to the user message, once per invocation, use a `RetrievalAugmentedListener` (see [Listening for an event](#listening-for-an-event)).
 
+### ScoringModel listener
+
+A `ScoringModel` scores texts against a query, for example to re-rank retrieved contents with a
+`ReRankingContentAggregator`. Implement `ScoringModelListener`:
+
+```java
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
+import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
+import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
+
+public class MyScoringModelListener implements ScoringModelListener {
+
+    @Override
+    public void onRequest(ScoringModelRequestContext requestContext) {
+        requestContext.attributes().put("startNanos", System.nanoTime());
+        // requestContext.scoringRequest() exposes the texts being scored (documents()), the query() and the
+        // modelName() (null when the model sets none). requestContext.modelProvider() identifies the provider.
+    }
+
+    @Override
+    public void onResponse(ScoringModelResponseContext responseContext) {
+        long startNanos = (long) responseContext.attributes().get("startNanos");
+        long durationNanos = System.nanoTime() - startNanos;
+        // Do something with duration and/or responseContext.scoringResponse():
+        // scores() (one per document, in the same order), modelName() and tokenUsage().
+        // The unit of tokenUsage() depends on the provider: Cohere reports billed search units, not tokens.
+    }
+
+    @Override
+    public void onError(ScoringModelErrorContext errorContext) {
+        // Do something with errorContext.error()
+    }
+}
+```
+
+Attach listeners via the model builder's `listeners(...)` method:
+
+```java
+import dev.langchain4j.model.cohere.CohereScoringModel;
+import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
+import java.util.List;
+
+ScoringModel scoringModel = CohereScoringModel.builder()
+        .apiKey(System.getenv("COHERE_API_KEY"))
+        .modelName("rerank-v3.5")
+        .listeners(List.of(new MyScoringModelListener()))
+        .build();
+
+ScoringResponse response = scoringModel.score(ScoringRequest.builder()
+        .documents(List.of("Paris is the capital of France", "Berlin is the capital of Germany"))
+        .query("What is the capital of France?")
+        .build());
+```
+
+The listener is notified around `score(ScoringRequest)` and its asynchronous counterpart `scoreAsync(ScoringRequest)`.
+`CohereScoringModel`, `JinaScoringModel`, `VoyageAiScoringModel`, `WatsonxScoringModel` and `DecisionScoringModel`
+support `listeners(...)`. For these models, the listener is also notified when you call `scoreAll(...)` or
+`score(text, query)`, so it observes the scoring done by a `ReRankingContentAggregator` as well. One exception:
+`WatsonxScoringModel.scoreAll(segments, query, parameters)` (with `RerankParameters`) does not notify listeners;
+use `score(ScoringRequest)` to observe calls with per-request parameters.
+Other scoring models (for example the in-process ONNX and Vertex AI ones) do not support listeners yet.
+
+`DecisionScoringModel` is backed by a decision model: the `tokenUsage()` of its response is the sum of the decision
+calls, which the listeners of the decision model already observe one by one. When you add up token usage, do not count
+both.
+
+The `modelName()` of the response is the model that the provider reports in its response. `JinaScoringModel`,
+`VoyageAiScoringModel` and `WatsonxScoringModel` report it. `CohereScoringModel` does not, so its response has the
+model name that was requested. `DecisionScoringModel` has the model name reported by its decision model.
+
 ### How listeners work
 
 - Listeners are specified as a `List` and are called in the order of iteration.
 - Listeners are called synchronously and in the same thread.
+- For the asynchronous calls of an `EmbeddingModel` or a `ScoringModel` (`embedAsync(...)`, `scoreAsync(...)`),
+  `onResponse()` and `onError()` are called
+  on the thread that completes the call, which can be an I/O thread: do not block in them, for example hand slow work
+  such as writing to a database over to another thread.
 - `onRequest()` is called right before executing the underlying operation.
 - `onResponse()` is called once after successful completion.
 - `onError()` is called once if an exception is thrown by the underlying operation.
+- When you cancel the future of an asynchronous `EmbeddingModel` or `ScoringModel` call, neither `onResponse()` nor
+  `onError()` is called.
+- When an `EmbeddingModel` or a `ScoringModel` has no asynchronous implementation, its asynchronous call fails with an
+  `AsyncNotSupportedException`, which is passed to `onError()`. Listeners that count errors may want to leave it out.
+  A RAG component built with `offloadBlocking(true)` then runs the synchronous call on another thread, and the
+  listeners observe it as a separate call. Without `offloadBlocking(true)`, the RAG call fails with an
+  `UnsupportedFeatureException`.
 - If an exception is thrown from one of the listener methods, it will be logged at the `WARN` level and ignored.
 - The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
   listener, as well as between multiple listeners.
