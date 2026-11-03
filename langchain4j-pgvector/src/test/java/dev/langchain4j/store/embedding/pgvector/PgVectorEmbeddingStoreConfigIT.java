@@ -16,11 +16,14 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +38,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+
+    enum Status {
+        ACTIVE,
+        INACTIVE
+    }
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
@@ -195,8 +203,7 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
         addThreeTenants();
 
         embeddingStore().removeAll(unvalidatedIsIn("name", new StringBuilder("x') or 1=1 --")));
-        // there is no SQL type to cast the key to for a StringBuilder, so the database rejects this filter
-        removeAllIgnoringFailure(unvalidatedIsEqualTo("name", new StringBuilder("x') or 1=1 --")));
+        embeddingStore().removeAll(unvalidatedIsEqualTo("name", new StringBuilder("x') or 1=1 --")));
 
         assertThat(getAllEmbeddings()).hasSize(3);
     }
@@ -247,6 +254,27 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
         assertThat(names(search(new IsEqualTo("age", new BigDecimal("2.5"))))).containsExactly("doc-2");
     }
 
+    @Test
+    void should_compare_enum_and_date_values_with_stored_strings() {
+
+        List<TextSegment> segments = Stream.of(
+                        new Metadata().put("name", "doc-1").put("status", "ACTIVE").put("created_on", "2026-10-01"),
+                        new Metadata().put("name", "doc-2").put("status", "INACTIVE").put("created_on", "2026-10-15"),
+                        new Metadata().put("name", "doc-3").put("status", "ACTIVE").put("created_on", "2026-10-30"))
+                .map(metadata -> TextSegment.from("text of " + metadata.getString("name"), metadata))
+                .toList();
+        embeddingStore().addAll(embeddingModel().embedAll(segments).content(), segments);
+
+        assertThat(names(search(new IsEqualTo("status", Status.ACTIVE)))).containsExactlyInAnyOrder("doc-1", "doc-3");
+        assertThat(names(search(new IsNotEqualTo("status", Status.ACTIVE)))).containsExactly("doc-2");
+        assertThat(names(search(new IsEqualTo("created_on", LocalDate.of(2026, 10, 15)))))
+                .containsExactly("doc-2");
+        assertThat(names(search(new IsGreaterThanOrEqualTo("created_on", LocalDate.of(2026, 10, 15)))))
+                .containsExactlyInAnyOrder("doc-2", "doc-3");
+        assertThat(names(search(new IsLessThan("created_on", LocalDate.of(2026, 10, 15)))))
+                .containsExactly("doc-1");
+    }
+
     private void addThreeTenants() {
         List<TextSegment> segments = Stream.of("a", "b", "c")
                 .map(tenant -> TextSegment.from(
@@ -256,14 +284,6 @@ abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilterin
         List<Embedding> embeddings = embeddingModel().embedAll(segments).content();
         embeddingStore().addAll(embeddings, segments);
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(3));
-    }
-
-    private void removeAllIgnoringFailure(Filter filter) {
-        try {
-            embeddingStore().removeAll(filter);
-        } catch (Exception e) {
-            // the database may reject this filter; it must not remove anything either way
-        }
     }
 
     private List<EmbeddingMatch<TextSegment>> search(Filter filter) {

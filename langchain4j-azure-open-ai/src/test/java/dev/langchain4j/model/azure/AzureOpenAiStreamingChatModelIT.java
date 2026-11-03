@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -170,10 +171,13 @@ class AzureOpenAiStreamingChatModelIT {
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is the capital of Germany?", handler);
+        model.chat("Tell me a long story", handler);
+        ChatResponse response = handler.get();
 
         // then
-        assertThat(handler.get().aiMessage().text()).contains("Berlin");
+        // the answer text is not asserted: a reasoning model may use the whole budget for reasoning and return no text
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.tokenUsage().outputTokenCount()).isLessThanOrEqualTo(maxCompletionTokens);
     }
 
     @Test

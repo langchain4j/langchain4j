@@ -10,8 +10,10 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +22,7 @@ import java.util.stream.Stream;
 
 abstract class PgVectorFilterMapper {
 
-    static final Map<Class<?>, String> SQL_TYPE_MAP = Stream.of(
+    private static final Map<Class<?>, String> SQL_TYPE_MAP = Stream.of(
                     new SimpleEntry<>(Integer.class, "int"),
                     new SimpleEntry<>(Long.class, "bigint"),
                     new SimpleEntry<>(Float.class, "float"),
@@ -31,10 +33,12 @@ abstract class PgVectorFilterMapper {
                     new SimpleEntry<>(BigDecimal.class, "numeric"),
                     new SimpleEntry<>(String.class, "text"),
                     new SimpleEntry<>(UUID.class, "uuid"),
-                    new SimpleEntry<>(Boolean.class, "boolean"),
-                    // Default
-                    new SimpleEntry<>(Object.class, "text"))
+                    new SimpleEntry<>(Boolean.class, "boolean"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    static String sqlType(Class<?> valueType) {
+        return SQL_TYPE_MAP.getOrDefault(valueType, "text");
+    }
 
     public WhereClause map(Filter filter) {
         List<String> parameters = new ArrayList<>();
@@ -154,6 +158,12 @@ abstract class PgVectorFilterMapper {
     abstract String formatKeyAsString(String key);
 
     private static String formatValue(Object value, List<String> parameters) {
+        if (value instanceof Timestamp || (value != null && value.getClass() == Date.class)) {
+            throw new UnsupportedOperationException(format(
+                    "Unsupported filter value type: %s. Its text is not ISO-8601, so it never matches a stored date."
+                            + " Use a java.time type (for example Instant or LocalDateTime) or a String instead",
+                    value.getClass().getName()));
+        }
         parameters.add(String.valueOf(value));
         return "?";
     }

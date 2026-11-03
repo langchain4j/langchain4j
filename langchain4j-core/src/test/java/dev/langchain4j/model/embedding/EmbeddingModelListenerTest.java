@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,16 +13,19 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 class EmbeddingModelListenerTest {
@@ -233,6 +237,31 @@ class EmbeddingModelListenerTest {
         // then: onRequest fired, but cancellation is a caller action - not reported to listeners as an error
         verify(listener).onRequest(any());
         verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void embedAsync_should_notify_listeners_on_request_and_error_when_not_supported() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModel model = new EmbeddingModelMock().withListeners(listener);
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(AsyncNotSupportedException.class);
+        ArgumentCaptor<EmbeddingModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(EmbeddingModelErrorContext.class);
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).onRequest(any());
+        inOrder.verify(listener).onError(errorContext.capture());
+        verifyNoMoreInteractions(listener);
+        assertThat(errorContext.getValue().error()).isInstanceOf(AsyncNotSupportedException.class);
     }
 
     @Test

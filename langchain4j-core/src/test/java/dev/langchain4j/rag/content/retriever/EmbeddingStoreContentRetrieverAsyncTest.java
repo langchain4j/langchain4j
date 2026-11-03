@@ -6,6 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.rag.query.Metadata;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -163,6 +170,34 @@ class EmbeddingStoreContentRetrieverAsyncTest {
 
         // cancelling the retriever aborts the in-flight vector-store search
         assertThat(pendingSearch).isCancelled();
+    }
+
+    @Test
+    void retrieveAsync_should_run_offloaded_blocking_components_as_work_of_the_invocation() throws Exception {
+        InvocationContext invocationContext =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        AtomicReference<UUID> seenBySearch = new AtomicReference<>();
+        FakeEmbeddingStore store = new FakeEmbeddingStore() {
+            @Override
+            public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+                seenBySearch.set(CurrentInvocation.invocationId());
+                return super.search(request);
+            }
+        };
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(new EmbeddingModelMock())
+                .embeddingStore(store)
+                .offloadBlocking(true)
+                .build();
+        Metadata metadata = Metadata.builder()
+                .chatMessage(UserMessage.from("hello"))
+                .invocationContext(invocationContext)
+                .build();
+
+        retriever.retrieveAsync(Query.from("hello", metadata)).get(5, SECONDS);
+
+        // the search runs on another thread, but it is still work of the invocation
+        assertThat(seenBySearch.get()).isEqualTo(invocationContext.invocationId());
     }
 
     static class FakeEmbeddingModel implements EmbeddingModel {

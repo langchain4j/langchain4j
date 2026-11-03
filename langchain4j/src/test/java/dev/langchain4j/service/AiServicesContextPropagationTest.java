@@ -32,6 +32,7 @@ import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -39,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -502,6 +504,76 @@ class AiServicesContextPropagationTest {
         // then
         assertThat(answer).isEqualTo("Berlin");
         assertThat(tools.requestIdsSeen).containsExactly("null");
+    }
+
+    @Test
+    void should_link_ai_service_called_by_tool_to_its_parent_and_keep_the_captured_context() throws Exception {
+
+        // given: the outer tool runs on an executor thread where the captured context is restored, and calls an
+        // inner AI Service that captures the context again on that thread
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        InnerTools innerTools = new InnerTools();
+        Assistant inner = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("recordInner")
+                                .arguments("{}")
+                                .build()),
+                        AiMessage.from("Berlin")))
+                .tools(innerTools)
+                .build();
+        OuterTools outerTools = new OuterTools(inner);
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("askInner")
+                                .arguments("{}")
+                                .build()),
+                        AiMessage.from("Berlin")))
+                .tools(outerTools)
+                .build();
+
+        // when
+        String answer = withRequestId("request-42", () -> outer.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+
+        // then
+        assertThat(answer).isEqualTo("Berlin");
+        assertThat(innerTools.requestIdsSeen).containsExactly("request-42");
+        assertThat(innerTools.parentInvocationIdsSeen).containsExactly(outerTools.outerInvocationId.get());
+        assertThat(outerTools.outerParentInvocationId.get()).isNull();
+    }
+
+    static class OuterTools {
+
+        final Assistant inner;
+        final AtomicReference<UUID> outerInvocationId = new AtomicReference<>();
+        final AtomicReference<UUID> outerParentInvocationId = new AtomicReference<>();
+
+        OuterTools(Assistant inner) {
+            this.inner = inner;
+        }
+
+        @Tool
+        String askInner(InvocationContext invocationContext) {
+            outerInvocationId.set(invocationContext.invocationId());
+            outerParentInvocationId.set(invocationContext.parentInvocationId());
+            return inner.chatAsync(USER_MESSAGE).join();
+        }
+    }
+
+    static class InnerTools {
+
+        final List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
+        final List<UUID> parentInvocationIdsSeen = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String recordInner(InvocationContext invocationContext) {
+            requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+            parentInvocationIdsSeen.add(invocationContext.parentInvocationId());
+            return "Berlin";
+        }
     }
 
     private static AiMessage toolCall(String id) {
