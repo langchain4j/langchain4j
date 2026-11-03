@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Internal
 public class ChatMemoryService {
@@ -85,6 +87,7 @@ public class ChatMemoryService {
 
         private final ChatMemoryService chatMemoryService;
         private final InvocationContext invocationContext;
+        private final Lock resolutionLock = new ReentrantLock();
         private volatile ChatMemory delegate;
 
         private InvocationChatMemory(ChatMemoryService chatMemoryService, InvocationContext invocationContext) {
@@ -94,14 +97,24 @@ public class ChatMemoryService {
 
         private ChatMemory delegate() {
             ChatMemory chatMemory = delegate;
-            if (chatMemory == null) {
-                // Racing threads get the same chat memory: the provider is called at most once per memory id
-                chatMemory = CurrentInvocation.callWith(
-                        invocationContext,
-                        () -> chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId()));
-                delegate = chatMemory;
+            if (chatMemory != null) {
+                return chatMemory;
             }
-            return chatMemory;
+            // Resolved by one thread at a time, so that the invocation keeps using a single chat memory even if it
+            // is evicted while being resolved. A lock rather than synchronized, as the provider may block.
+            resolutionLock.lock();
+            try {
+                chatMemory = delegate;
+                if (chatMemory == null) {
+                    chatMemory = CurrentInvocation.callWith(
+                            invocationContext,
+                            () -> chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId()));
+                    delegate = chatMemory;
+                }
+                return chatMemory;
+            } finally {
+                resolutionLock.unlock();
+            }
         }
 
         @Override
