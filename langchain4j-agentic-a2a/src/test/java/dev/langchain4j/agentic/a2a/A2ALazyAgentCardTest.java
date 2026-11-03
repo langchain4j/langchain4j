@@ -675,4 +675,25 @@ class A2ALazyAgentCardTest {
         assertThat(systemMessage(plannerModel, 1)).contains("'fix$1', 'Fixes the analyzed problem'");
         assertThat(cardSource.fetches).hasValue(2);
     }
+
+    /** An agent instance type the A2A client does not implement. */
+    interface OtherAgentInstance extends AgentInstance {}
+
+    @Test
+    void the_a2a_agent_of_a_declarative_system_can_be_warmed_up_through_as() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        useLazyA2AService(cardSource, replying("fixed"));
+        Pipeline pipeline = AgenticServices.createAgenticSystem(Pipeline.class, (ChatModel) null);
+        AgentInstance fixAgent = ((AgentInstance) pipeline)
+                .subagents().stream()
+                        .filter(subagent -> subagent.name().equals("applyFix"))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(cardSource.fetches).hasValue(0);
+
+        // the wrapper of the A2A agent gives access to the client, which fetches the card at once
+        assertThat(fixAgent.as(A2AClientInstance.class).agentCard().name()).isEqualTo("remote-fixer");
+        assertThat(cardSource.fetches).hasValue(1);
+        assertThatThrownBy(() -> fixAgent.as(OtherAgentInstance.class)).isInstanceOf(ClassCastException.class);
+    }
 }

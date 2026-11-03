@@ -178,6 +178,18 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         return parent;
     }
 
+    /**
+     * Gives access to the wrapped A2A client agent, for instance to fetch its agent card before the first invocation
+     * of the declarative agentic system containing it: {@code subagent.as(A2AClientInstance.class).agentCard()}.
+     */
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        if (agentInstanceClass.isInstance(a2AClientInstance)) {
+            return agentInstanceClass.cast(a2AClientInstance);
+        }
+        return AgentInvoker.super.as(agentInstanceClass);
+    }
+
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
