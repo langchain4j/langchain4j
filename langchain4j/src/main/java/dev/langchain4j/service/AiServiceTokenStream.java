@@ -290,10 +290,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        CurrentInvocation.callWith(runContext, () -> {
-            context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler));
-            return null;
-        });
+        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

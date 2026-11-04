@@ -641,10 +641,44 @@ class EmbeddingStoreListenerTest {
                 .build();
 
         // when
-        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> store.search(request)));
+        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> store.search(request)))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Embedding store failed");
 
         // then
         assertThat(invocationIds).containsExactly(invocation.invocationId());
+    }
+
+    @Test
+    void should_notify_listeners_without_the_current_invocation() {
+        // given
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        EmbeddingStore<String> store = new TestEmbeddingStore().addListener(new EmbeddingStoreListener() {
+            @Override
+            public void onRequest(EmbeddingStoreRequestContext<?> requestContext) {
+                invocationIds.add(requestContext.invocationId());
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+
+            @Override
+            public void onResponse(EmbeddingStoreResponseContext<?> responseContext) {
+                invocationIds.add(responseContext.invocationId());
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+        });
+        InvocationContext invocation =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(Embedding.from(List.of(1f, 2f, 3f)))
+                .build();
+
+        // when
+        CurrentInvocation.callWith(invocation, () -> store.search(request));
+
+        // then
+        assertThat(invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
     }
 
     @Test

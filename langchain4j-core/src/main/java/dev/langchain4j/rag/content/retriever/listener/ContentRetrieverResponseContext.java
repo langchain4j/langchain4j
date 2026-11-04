@@ -38,9 +38,10 @@ public class ContentRetrieverResponseContext {
     }
 
     /**
-     * @return the id of the AI Service invocation this call belongs to: the one whose work (a tool, a guardrail,
-     * retrieval, ...) makes the call, otherwise {@code null}. It is the {@link InvocationContext#invocationId()} of the
-     * AI Service invocation, not an id of this call.
+     * @return the id of the AI Service invocation in which this call is made (the calls made by its tools, guardrails,
+     * retrieval, moderation, chat memory, ...), otherwise {@code null}, for example when it is called outside of an AI
+     * Service.
+     * It is the {@link InvocationContext#invocationId()} of the AI Service invocation, not an id of this call.
      * @since 1.24.0
      */
     @Experimental
@@ -89,6 +90,9 @@ public class ContentRetrieverResponseContext {
         }
 
         /**
+         * Sets the id of the AI Service invocation in which the call is made, see {@link #invocationId()} of the
+         * context. LangChain4j sets it for the listeners; set it yourself only when you create the context yourself.
+         *
          * @since 1.24.0
          */
         @Experimental

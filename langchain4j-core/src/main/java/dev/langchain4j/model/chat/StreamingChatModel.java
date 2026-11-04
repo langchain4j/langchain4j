@@ -6,7 +6,6 @@ import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.CurrentInvocation;
-import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -72,7 +71,7 @@ public interface StreamingChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 

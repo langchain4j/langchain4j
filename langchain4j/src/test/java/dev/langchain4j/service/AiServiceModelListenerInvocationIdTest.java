@@ -220,7 +220,7 @@ class AiServiceModelListenerInvocationIdTest {
     }
 
     @Test
-    void ai_service_should_use_chat_override_of_a_model() {
+    void should_call_chat_without_options_when_the_model_overrides_chat() {
         List<String> seenByOverride = new CopyOnWriteArrayList<>();
         ChatModel model = new ChatModelMock("answer") {
             @Override

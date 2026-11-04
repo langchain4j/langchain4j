@@ -62,11 +62,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -93,11 +89,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -125,11 +117,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             onResponse(responseContext, listeners);
             return id;
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -156,11 +144,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -188,11 +172,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             onResponse(responseContext, listeners);
             return ids;
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -220,11 +200,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -249,11 +225,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -279,11 +251,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -308,11 +276,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -336,11 +300,7 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
                             .build();
             onResponse(responseContext, listeners);
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
     }
@@ -367,12 +327,17 @@ final class ListeningEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             onResponse(responseContext, listeners);
             return result;
         } catch (Exception error) {
-            onError(EmbeddingStoreErrorContext.<Embedded>builder()
-                    .error(error)
-                    .requestContext(requestContext)
-                    .attributes(attributes)
-                    .build(), listeners);
+            onError(errorContext(error, requestContext, attributes), listeners);
             throw error;
         }
+    }
+
+    private static <E> EmbeddingStoreErrorContext<E> errorContext(
+            Exception error, EmbeddingStoreRequestContext<E> requestContext, Map<Object, Object> attributes) {
+        return EmbeddingStoreErrorContext.<E>builder()
+                .error(error)
+                .requestContext(requestContext)
+                .attributes(attributes)
+                .build();
     }
 }

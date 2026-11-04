@@ -44,10 +44,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
         var responseHandler = new StreamingToSyncResponseHandler(this.errorHandler);
-        CurrentInvocation.callWith(invocationContext, () -> {
-            this.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(responseHandler));
-            return null;
-        });
+        CurrentInvocation.runWith(invocationContext, () -> this.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(responseHandler)));
 
         return Optional.ofNullable(responseHandler.getResponse()).orElseGet(ChatResponse.builder()::build);
     }

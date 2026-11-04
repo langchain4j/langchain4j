@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
@@ -13,7 +14,6 @@ import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.internal.InvocationChatRequestOptions;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -64,7 +64,7 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
         onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
         try {
@@ -131,7 +131,7 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = InvocationChatRequestOptions.invocationIdOf(effectiveOptions);
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
         onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
 

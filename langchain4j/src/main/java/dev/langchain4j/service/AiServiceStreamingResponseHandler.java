@@ -471,10 +471,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            CurrentInvocation.callWith(invocationContext, () -> {
-                context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler));
-                return null;
-            });
+            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 

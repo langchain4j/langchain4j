@@ -203,7 +203,6 @@ The inner invocation is linked to the outer one when it is called from one of th
 
 `parentInvocationId()` is `null`:
 - for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
-- for an AI Service called from any other part, for example from a `ChatModelListener`
 - when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
 
 If you only need the summaries, a summary listener on the outer AI Service is enough: the summaries of the inner invocations linked to it are nested in its `events()` (see [Listening for the whole invocation](#listening-for-the-whole-invocation)).
@@ -234,9 +233,10 @@ The contexts of these listeners have `invocationId()` (experimental):
 - `EmbeddingModelListener`, `ModerationModelListener`, `DecisionModelListener` and `ScoringModelListener`
 - `EmbeddingStoreListener` and `ContentRetrieverListener`
 
-`invocationId()` is the id of the AI Service invocation the call belongs to: the one passed with
-`ChatRequestOptions.invocationId(...)` if any, otherwise the one whose work (a tool, a guardrail, retrieval, ...) makes the call,
-otherwise `null`, for example when you call the model directly from your own code or from a listener.
+`invocationId()` is the id of the AI Service invocation in which the call is made: for a chat model, the one passed with
+`ChatRequestOptions.invocationId(...)` if any, otherwise the invocation that makes the call (the AI Service's own calls to the
+chat model, including the calls after tool executions, and the calls made by its tools, guardrails, retrieval, chat memory,
+moderation, ...), otherwise `null`, for example when you call the model directly from your own code or from a listener.
 It is the `invocationId` of the AI Service invocation, not an id of the model call.
 Together with `parentInvocationId()` (see above), you can build a tree of invocations with their model calls.
 
@@ -249,7 +249,7 @@ ChatModelListener listener = new ChatModelListener() {
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
         UUID invocationId = requestContext.invocationId();
-        if (invocationId != null) {
+        if (invocationId != null) { // null when the model is called outside of an AI Service invocation
             modelCallsByInvocation.computeIfAbsent(invocationId, id -> new AtomicInteger()).incrementAndGet();
         }
     }
@@ -316,9 +316,10 @@ The invocation id covers the AI Service's own calls to the chat model, including
 and the calls made by the parts of the AI Service listed above (tools, guardrails, retrieval, chat memory, moderation, ...),
 in the same way as `parentInvocationId()`.
 
-You only need to pass the id yourself when your code moves a model call to another thread
-(for example with `CompletableFuture.supplyAsync(..., executor)` inside a tool), or when you want to group your own model calls
-under an invocation. A tool gets the `InvocationContext` of its invocation as a parameter, and a guardrail gets it from its request
+You only need to pass the id yourself when your code moves a chat model call to another thread
+(for example with `CompletableFuture.supplyAsync(..., executor)` inside a tool), or when you want to group your own chat model calls
+under an invocation. This is possible only for chat models, with `ChatRequestOptions`: for the other models, embedding stores and
+content retrievers, a call that your code moves to another thread has no `invocationId`. A tool gets the `InvocationContext` of its invocation as a parameter, and a guardrail gets it from its request
 (`request.requestParams().invocationContext()`):
 
 ```java
@@ -348,8 +349,8 @@ class ResearchTools {
 }
 ```
 
-Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) may fill the id
-only for some of the calls, depending on how they call the models.
+Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) may not fill the id,
+or fill it only for some of the calls, depending on how they call the models.
 
 ### Creating your own events and listeners
 

@@ -42,7 +42,7 @@ public class ChatRequestOptions {
     }
 
     /**
-     * Returns the {@link InvocationContext#invocationId()} of the AI Service invocation this call belongs to,
+     * Returns the {@link InvocationContext#invocationId()} of the AI Service invocation in which this call is made,
      * which {@link ChatModelListener}s get as {@code invocationId()}, or {@code null} if it was not set.
      *
      * @since 1.24.0
@@ -93,9 +93,12 @@ public class ChatRequestOptions {
         }
 
         /**
-         * Sets the {@link InvocationContext#invocationId()} of the AI Service invocation this call belongs to.
+         * Sets the {@link InvocationContext#invocationId()} of the AI Service invocation in which this call is made.
          * {@link ChatModelListener}s get it as {@code invocationId()}. When it is not set, they get the id of the
-         * AI Service invocation whose work (a tool, a guardrail, retrieval, ...) makes the call, if any.
+         * AI Service invocation that makes the call (the AI Service's own chat model calls, including those after tool
+         * executions, and the calls made by its tools, guardrails, retrieval, chat memory, ...), if any.
+         * Set it only when your code calls the model on another thread than the one of the invocation, where it is
+         * not passed on automatically.
          *
          * @since 1.24.0
          */

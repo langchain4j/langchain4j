@@ -47,9 +47,8 @@ public interface InvocationContext {
      * </ul>
      * <p>
      * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
-     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), from any
-     * other part of an AI Service (for example a {@code ChatModelListener}), when there is no parent, or when this
-     * {@code InvocationContext} implementation does not track it.
+     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), when there
+     * is no parent, or when this {@code InvocationContext} implementation does not track it.
      * <p>
      * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
      * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands

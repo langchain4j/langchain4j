@@ -67,6 +67,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import java.util.stream.Stream;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreResponseContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
+import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverErrorContext;
+import dev.langchain4j.model.moderation.listener.ModerationModelErrorContext;
+import static org.junit.jupiter.api.Named.named;
 
 class ListenerInvocationIdTest {
 
@@ -111,10 +122,12 @@ class ListenerInvocationIdTest {
     @Test
     void chat_listener_should_get_the_invocation_id_on_error() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
-        ChatModel model = ChatModelMock.thatAlwaysThrowsException().withListeners(listener);
+        ChatModel model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("failed").withListeners(listener);
         InvocationContext invocation = invocationContext();
 
-        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST)));
+        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST)))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("failed");
 
         assertThat(listener.invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
         assertThat(listener.events).containsExactly("request", "error");
@@ -475,9 +488,15 @@ class ListenerInvocationIdTest {
 
         Flow.Publisher<ChatModelStreamingEvent> publisher =
                 CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST));
-        CompletableFuture<Void> subscribed = CompletableFuture.runAsync(() -> assertThatThrownBy(() -> subscribe(publisher)));
+        CompletableFuture<Void> done = CompletableFuture.supplyAsync(() -> subscribeAsync(publisher))
+                .thenCompose(future -> future);
 
-        assertThat(subscribed).succeedsWithin(5, SECONDS);
+        assertThat(done)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .withMessage("failed");
         assertThat(listener.events).containsExactly("request", "error");
         assertThat(listener.invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
     }
@@ -569,25 +588,335 @@ class ListenerInvocationIdTest {
                 .isNull();
     }
 
+    @ParameterizedTest
+    @MethodSource("builders_without_required_fields")
+    void builders_should_reject_missing_required_fields(ThrowingCallable build, String expectedMessage) {
+        assertThatThrownBy(build)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expectedMessage);
+    }
+
+    static Stream<Arguments> builders_without_required_fields() {
+        return Stream.of(
+                Arguments.of(
+                        named("ChatModelRequestContext", (ThrowingCallable) () -> ChatModelRequestContext.builder()
+                                .build()),
+                        "chatRequest cannot be null"),
+                Arguments.of(
+                        named("ChatModelResponseContext", (ThrowingCallable) () -> ChatModelResponseContext.builder()
+                                .build()),
+                        "chatResponse cannot be null"),
+                Arguments.of(
+                        named("ChatModelErrorContext", (ThrowingCallable) () -> ChatModelErrorContext.builder()
+                                .build()),
+                        "error cannot be null"),
+                Arguments.of(
+                        named(
+                                "DecisionModelRequestContext",
+                                (ThrowingCallable) () -> DecisionModelRequestContext.builder().build()),
+                        "decisionRequest cannot be null"),
+                Arguments.of(
+                        named(
+                                "DecisionModelResponseContext",
+                                (ThrowingCallable) () -> DecisionModelResponseContext.builder().build()),
+                        "decisionResponse cannot be null"),
+                Arguments.of(
+                        named(
+                                "DecisionModelErrorContext",
+                                (ThrowingCallable) () -> DecisionModelErrorContext.builder().build()),
+                        "error cannot be null"),
+                Arguments.of(
+                        named(
+                                "ModerationModelRequestContext",
+                                (ThrowingCallable) () -> ModerationModelRequestContext.builder().build()),
+                        "moderationRequest cannot be null"),
+                Arguments.of(
+                        named(
+                                "ModerationModelResponseContext",
+                                (ThrowingCallable) () -> ModerationModelResponseContext.builder().build()),
+                        "moderationResponse cannot be null"),
+                Arguments.of(
+                        named(
+                                "ModerationModelErrorContext",
+                                (ThrowingCallable) () -> ModerationModelErrorContext.builder().build()),
+                        "error cannot be null"),
+                Arguments.of(
+                        named(
+                                "EmbeddingStoreRequestContext.Search",
+                                (ThrowingCallable) () -> EmbeddingStoreRequestContext.Search.<String>builder()
+                                        .build()),
+                        "embeddingStore cannot be null"),
+                Arguments.of(
+                        named(
+                                "EmbeddingStoreResponseContext.Search",
+                                (ThrowingCallable) () -> EmbeddingStoreResponseContext.Search.<String>builder()
+                                        .build()),
+                        "requestContext cannot be null"),
+                Arguments.of(
+                        named(
+                                "EmbeddingStoreErrorContext",
+                                (ThrowingCallable) () -> EmbeddingStoreErrorContext.<String>builder().build()),
+                        "error cannot be null"));
+    }
+
     @Test
-    void builders_should_reject_missing_required_fields() {
-        assertThatThrownBy(() -> ChatModelRequestContext.builder()
-                        .attributes(new ConcurrentHashMap<>())
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("chatRequest cannot be null");
-        assertThatThrownBy(() -> ChatModelResponseContext.builder()
-                        .chatRequest(CHAT_REQUEST)
-                        .attributes(new ConcurrentHashMap<>())
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("chatResponse cannot be null");
-        assertThatThrownBy(() -> DecisionModelRequestContext.builder().build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("decisionRequest cannot be null");
-        assertThatThrownBy(() -> ModerationModelRequestContext.builder().build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("moderationRequest cannot be null");
+    void chat_listener_should_get_the_invocation_id_when_the_async_call_fails_on_another_thread() {
+        RecordingChatModelListener listener = new RecordingChatModelListener();
+        ChatModel model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("failed").withListeners(listener);
+        InvocationContext invocation = invocationContext();
+
+        CompletableFuture<?> future = CurrentInvocation.callWith(invocation, () -> model.chatAsync(CHAT_REQUEST));
+
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isExactlyInstanceOf(RuntimeException.class)
+                .withMessage("failed");
+        assertThat(listener.events).containsExactly("request", "error");
+        assertThat(listener.invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
+    }
+
+    @Test
+    void decision_listener_should_get_the_invocation_id_when_the_async_call_fails_on_another_thread() {
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
+                .withAsyncResponse(request -> CompletableFuture.supplyAsync(() -> {
+                    throw new IllegalStateException("failed");
+                }))
+                .withListeners(new DecisionModelListener() {
+                    @Override
+                    public void onRequest(DecisionModelRequestContext context) {
+                        invocationIds.add(context.invocationId());
+                    }
+
+                    @Override
+                    public void onError(DecisionModelErrorContext context) {
+                        invocationIds.add(context.invocationId());
+                    }
+                });
+        InvocationContext invocation = invocationContext();
+        DecisionRequest request = DecisionRequest.builder()
+                .input("Buy now!")
+                .question("spam", YesNoQuestion.from("Is this spam?"))
+                .build();
+
+        assertThat(CurrentInvocation.callWith(invocation, () -> model.decideAsync(request)))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .withMessage("failed");
+        assertThat(invocationIds).containsExactly(invocation.invocationId(), invocation.invocationId());
+    }
+
+    @Test
+    void moderation_listener_should_get_the_invocation_id_on_error() {
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        ModerationModelMock model = ModerationModelMock.thatModerates(request -> {
+                    throw new IllegalStateException("failed");
+                })
+                .withListeners(new ModerationModelListener() {
+                    @Override
+                    public void onError(ModerationModelErrorContext context) {
+                        invocationIds.add(context.invocationId());
+                    }
+                });
+        InvocationContext invocation = invocationContext();
+
+        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> model.moderate("hello")))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("failed");
+        assertThat(invocationIds).containsExactly(invocation.invocationId());
+    }
+
+    @Test
+    void content_retriever_listener_should_get_the_invocation_id_on_error() {
+        List<UUID> invocationIds = new CopyOnWriteArrayList<>();
+        ContentRetriever retriever = ((ContentRetriever) query -> {
+                    throw new IllegalStateException("failed");
+                })
+                .addListener(new ContentRetrieverListener() {
+                    @Override
+                    public void onError(ContentRetrieverErrorContext context) {
+                        invocationIds.add(context.invocationId());
+                    }
+                });
+        InvocationContext invocation = invocationContext();
+
+        assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> retriever.retrieve(Query.from("hello"))))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("failed");
+        assertThat(invocationIds).containsExactly(invocation.invocationId());
+    }
+
+    @Test
+    void decision_listener_should_be_notified_without_the_current_invocation() {
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
+                .withListeners(new DecisionModelListener() {
+                    @Override
+                    public void onRequest(DecisionModelRequestContext context) {
+                        seenInListener.add(CurrentInvocation.invocationId());
+                    }
+
+                    @Override
+                    public void onResponse(DecisionModelResponseContext context) {
+                        seenInListener.add(CurrentInvocation.invocationId());
+                    }
+                });
+        DecisionRequest request = DecisionRequest.builder()
+                .input("Buy now!")
+                .question("spam", YesNoQuestion.from("Is this spam?"))
+                .build();
+
+        CurrentInvocation.callWith(invocationContext(), () -> model.decide(request));
+
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void embedding_listener_should_be_notified_without_the_current_invocation() {
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        EmbeddingModelMock model = new EmbeddingModelMock().withListeners(new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+        });
+
+        CurrentInvocation.callWith(invocationContext(), () -> model.embed("hello"));
+
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void moderation_listener_should_be_notified_without_the_current_invocation() {
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        ModerationModelMock model = ModerationModelMock.thatNeverFlags().withListeners(new ModerationModelListener() {
+            @Override
+            public void onRequest(ModerationModelRequestContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+
+            @Override
+            public void onResponse(ModerationModelResponseContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+        });
+
+        CurrentInvocation.callWith(invocationContext(), () -> model.moderate("hello"));
+
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void scoring_listener_should_be_notified_without_the_current_invocation() {
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        ScoringModelMock model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(new ScoringModelListener() {
+            @Override
+            public void onRequest(ScoringModelRequestContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+
+            @Override
+            public void onResponse(ScoringModelResponseContext context) {
+                seenInListener.add(CurrentInvocation.invocationId());
+            }
+        });
+        ScoringRequest request = ScoringRequest.builder()
+                .documents(List.of("a"))
+                .query("query")
+                .build();
+
+        CurrentInvocation.callWith(invocationContext(), () -> model.score(request));
+
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void content_retriever_listener_should_be_notified_without_the_current_invocation() {
+        List<UUID> seenInListener = new CopyOnWriteArrayList<>();
+        ContentRetriever retriever = ((ContentRetriever) query -> List.of())
+                .addListener(new ContentRetrieverListener() {
+                    @Override
+                    public void onRequest(ContentRetrieverRequestContext context) {
+                        seenInListener.add(CurrentInvocation.invocationId());
+                    }
+
+                    @Override
+                    public void onResponse(ContentRetrieverResponseContext context) {
+                        seenInListener.add(CurrentInvocation.invocationId());
+                    }
+                });
+
+        CurrentInvocation.callWith(invocationContext(), () -> retriever.retrieve(Query.from("hello")));
+
+        assertThat(seenInListener).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void routed_publisher_created_outside_of_an_invocation_should_stay_without_invocation_id() {
+        RecordingChatModelListener listener = new RecordingChatModelListener();
+        StreamingChatModel routed =
+                StreamingChatModelMock.thatAlwaysStreams("hel", "lo").withListeners(listener);
+        StreamingChatModel router = RoutingStreamingChatModel.builder()
+                .route("only", routed)
+                .defaultRoute("only")
+                .router(asyncRouteTo("only"))
+                .build();
+
+        Flow.Publisher<ChatModelStreamingEvent> publisher = router.chat(CHAT_REQUEST);
+        CurrentInvocation.callWith(invocationContext(), () -> {
+            subscribe(publisher);
+            return null;
+        });
+
+        assertThat(listener.invocationIds).hasSize(2).containsOnlyNulls();
+    }
+
+    @Test
+    void router_should_see_the_invocation_id_passed_in_the_options() {
+        List<UUID> seenByRouter = new CopyOnWriteArrayList<>();
+        ChatModelRouter recordingRouter = new ChatModelRouter() {
+            @Override
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
+                seenByRouter.add(CurrentInvocation.invocationId());
+                return ChatModelRoutingResult.route("only");
+            }
+
+            @Override
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
+                seenByRouter.add(CurrentInvocation.invocationId());
+                return CompletableFuture.completedFuture(ChatModelRoutingResult.route("only"));
+            }
+        };
+        ChatModel router = RoutingChatModel.builder()
+                .route("only", ChatModelMock.thatAlwaysResponds("hello"))
+                .defaultRoute("only")
+                .router(recordingRouter)
+                .build();
+        StreamingChatModel streamingRouter = RoutingStreamingChatModel.builder()
+                .route("only", StreamingChatModelMock.thatAlwaysStreams("hello"))
+                .defaultRoute("only")
+                .router(recordingRouter)
+                .build();
+        UUID passed = UUID.randomUUID();
+        ChatRequestOptions options =
+                ChatRequestOptions.builder().invocationId(passed).build();
+
+        router.chat(CHAT_REQUEST, options);
+        assertThat(router.chatAsync(CHAT_REQUEST, options)).succeedsWithin(5, SECONDS);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        streamingRouter.chat(CHAT_REQUEST, options, handler);
+        handler.get();
+
+        assertThat(seenByRouter).containsExactly(passed, passed, passed);
     }
 
     private static ChatModelRouter asyncRouteTo(String routeName) {
@@ -606,6 +935,10 @@ class ListenerInvocationIdTest {
     }
 
     private static void subscribe(Flow.Publisher<ChatModelStreamingEvent> publisher) {
+        assertThat(subscribeAsync(publisher)).succeedsWithin(5, SECONDS);
+    }
+
+    private static CompletableFuture<Void> subscribeAsync(Flow.Publisher<ChatModelStreamingEvent> publisher) {
         CompletableFuture<Void> done = new CompletableFuture<>();
         publisher.subscribe(new Flow.Subscriber<>() {
             @Override
@@ -626,7 +959,7 @@ class ListenerInvocationIdTest {
                 done.complete(null);
             }
         });
-        assertThat(done).succeedsWithin(5, SECONDS);
+        return done;
     }
 
     private static InvocationContext invocationContext() {
