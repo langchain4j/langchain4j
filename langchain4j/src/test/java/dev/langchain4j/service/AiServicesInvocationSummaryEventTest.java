@@ -340,14 +340,13 @@ class AiServicesInvocationSummaryEventTest {
     }
 
     @Test
-    void invocationCalledFromTheChatModelIsNotNested() {
+    void invocationCalledFromTheChatModelIsNested() {
         var inner = AiServices.builder(InnerAssistant.class)
                 .chatModel(respondingWith("inner"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
-        // The outer AI Service calls the inner one from its ChatModel while its own invocation is in progress.
-        // The ChatModel is not one of the parts that link an inner invocation to the outer one, so it is not nested.
+        // The outer AI Service calls the inner one from its ChatModel while its own invocation is in progress
         var outer = AiServices.builder(Assistant.class)
                 .chatModel(new ChatModelMock(chatRequest -> AiMessage.from("outer: " + inner.chat("Hi"))))
                 .registerListener(invocationSummaryListener)
@@ -355,21 +354,33 @@ class AiServicesInvocationSummaryEventTest {
 
         assertThat(outer.chat("Hi")).isEqualTo("outer: inner");
 
+        // The inner invocation ends first
         assertThat(summaries)
-                .hasSize(2)
-                .allSatisfy(summary -> assertThat(summary.events())
-                        .allSatisfy(event -> assertThat(
-                                        event.invocationContext().invocationId())
-                                .isEqualTo(summary.invocationContext().invocationId()))
-                        .<Class<?>>map(AiServiceEvent::eventClass)
-                        .containsExactly(
-                                AiServiceStartedEvent.class,
-                                AiServiceRequestIssuedEvent.class,
-                                AiServiceResponseReceivedEvent.class,
-                                AiServiceCompletedEvent.class))
                 .extracting(summary -> summary.invocationContext().interfaceName())
-                // The inner invocation ends first
                 .containsExactly(InnerAssistant.class.getName(), Assistant.class.getName());
+        var innerSummary = summaries.get(0);
+        var outerSummary = summaries.get(1);
+        assertThat(innerSummary.invocationContext().parentInvocationId())
+                .isEqualTo(outerSummary.invocationContext().invocationId());
+        assertThat(innerSummary.events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .containsExactly(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        AiServiceCompletedEvent.class);
+        assertThat(outerSummary.events())
+                .<Class<?>>map(AiServiceEvent::eventClass)
+                .containsExactly(
+                        AiServiceStartedEvent.class,
+                        AiServiceRequestIssuedEvent.class,
+                        AiServiceInvocationSummaryEvent.class,
+                        AiServiceResponseReceivedEvent.class,
+                        AiServiceCompletedEvent.class);
+        assertThat(outerSummary.events())
+                .filteredOn(AiServiceInvocationSummaryEvent.class::isInstance)
+                .singleElement()
+                .isSameAs(innerSummary);
     }
 
     enum Execution {
