@@ -1363,7 +1363,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         ResultWithAgenticScope<String> result = eveningPlannerAgent.invokeWithAgenticScope(Map.of("mood", "romantic"));
+        result.agenticScope().readState("meals", "");
         assertThat(result.agenticScope().readState("foodAgent", "")).isEqualTo("done");
+        result.agenticScope().readState("movies", "");
         assertThat(result.agenticScope().readState("moviesAgent", "")).isEqualTo("done");
     }
 
