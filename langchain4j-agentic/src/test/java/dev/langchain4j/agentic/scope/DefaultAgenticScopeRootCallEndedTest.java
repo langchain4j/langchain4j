@@ -2,10 +2,14 @@ package dev.langchain4j.agentic.scope;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agentic.JsonInMemoryAgenticScopeStore;
 import dev.langchain4j.agentic.internal.AsyncResponse;
+import dev.langchain4j.agentic.internal.PendingResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -111,8 +115,54 @@ class DefaultAgenticScopeRootCallEndedTest {
         release.countDown();
     }
 
+    @Test
+    void failed_async_response_is_rendered_and_persisted_as_failed_and_reported_once() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            throw new IllegalStateException("sandbox unavailable");
+        });
+        assertThatThrownBy(response::blockingGet).isInstanceOf(IllegalStateException.class);
+        scope.writeState("fix", response);
+        scope.registerAgentInvocation(new AgentInvocation(Object.class, "remediate", "remediate", Map.of(), response));
+
+        assertThat(scope.toString()).contains("<failed>");
+        assertThat(scope.serializableCopy().agentInvocations())
+                .extracting(AgentInvocation::output)
+                .containsExactly("<failed>");
+        assertThat(response.reportFailureOnce()).isTrue();
+        assertThat(response.reportFailureOnce()).isFalse();
+    }
+
+    @Test
+    void evicted_persistent_scope_is_not_saved_again_when_an_async_agent_completes() {
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        try {
+            AgenticScopeRegistry registry = new AgenticScopeRegistry("root");
+            DefaultAgenticScope scope = registry.create("session-1");
+            AgenticScopeKey key = new AgenticScopeKey("root", "session-1");
+            CountDownLatch release = new CountDownLatch(1);
+            AsyncResponse<String> response = new AsyncResponse<>(() -> {
+                await(release);
+                return "late";
+            });
+            scope.writeState("late", response);
+            scope.rootCallEnded(registry, null, false);
+            assertThat(store.getJson(key)).isNotNull();
+
+            registry.evict("session-1", null);
+            release.countDown();
+            response.blockingGet();
+            scope.asyncEnded("late", response);
+
+            assertThat(store.getJson(key)).isNull();
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
+    }
+
     /** A deferred response completed as soon as it is awaited, like a human answering at once. */
-    private static class PendingResponseCompletedBy extends dev.langchain4j.agentic.internal.PendingResponse<String> {
+    private static class PendingResponseCompletedBy extends PendingResponse<String> {
         private final String answer;
 
         PendingResponseCompletedBy(String responseId, String answer) {

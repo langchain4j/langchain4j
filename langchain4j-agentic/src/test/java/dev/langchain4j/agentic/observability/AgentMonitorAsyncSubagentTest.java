@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.observability;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
@@ -13,7 +14,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +51,7 @@ class AgentMonitorAsyncSubagentTest {
     @BeforeEach
     void keepTheExecutorBusy() {
         ExecutorProvider.set(() -> singleThread);
-        singleThread.submit(() -> await(executorBusy));
+        singleThread.submit(() -> awaitLatch(executorBusy));
     }
 
     @AfterEach
@@ -93,7 +93,7 @@ class AgentMonitorAsyncSubagentTest {
                 .containsExactly("remediate");
 
         executorBusy.countDown();
-        awaitUntil(() -> monitor.successfulExecutions().size() == 1);
+        await().atMost(10, SECONDS).until(() -> monitor.successfulExecutions().size() == 1);
 
         assertThat(monitor.ongoingExecutions()).isEmpty();
         AgentInvocation analysis =
@@ -117,7 +117,7 @@ class AgentMonitorAsyncSubagentTest {
         assertThat(monitor.ongoingExecutions()).hasSize(1);
 
         executorBusy.countDown();
-        awaitUntil(() -> monitor.failedExecutions().size() == 1);
+        await().atMost(10, SECONDS).until(() -> monitor.failedExecutions().size() == 1);
 
         assertThat(monitor.ongoingExecutions()).isEmpty();
         assertThat(monitor.successfulExecutions()).isEmpty();
@@ -127,24 +127,11 @@ class AgentMonitorAsyncSubagentTest {
         assertThat(execution.error().error()).hasMessageContaining("remediate");
     }
 
-    private static void await(CountDownLatch latch) {
+    private static void awaitLatch(CountDownLatch latch) {
         try {
             latch.await(10, SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        }
-    }
-
-    private static void awaitUntil(BooleanSupplier condition) {
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (!condition.getAsBoolean()) {
-            assertThat(System.currentTimeMillis()).as("condition met in time").isLessThan(deadline);
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
         }
     }
 }

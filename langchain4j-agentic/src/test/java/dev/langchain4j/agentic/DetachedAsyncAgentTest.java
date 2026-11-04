@@ -3,6 +3,7 @@ package dev.langchain4j.agentic;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
@@ -25,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -64,7 +64,7 @@ class DetachedAsyncAgentTest {
         @Agent(async = true, outputKey = "fix")
         public String remediate(@V("decision") String decision) {
             started.countDown();
-            await(release);
+            awaitLatch(release);
             return "fixed after " + decision;
         }
     }
@@ -74,7 +74,7 @@ class DetachedAsyncAgentTest {
 
         @Agent(async = true, outputKey = "fix")
         public String remediate(@V("decision") String decision) {
-            await(release);
+            awaitLatch(release);
             throw new IllegalStateException("sandbox unavailable");
         }
     }
@@ -83,6 +83,13 @@ class DetachedAsyncAgentTest {
         @Agent(async = true, outputKey = "fix")
         public String remediate(@V("decision") String decision) {
             return null;
+        }
+    }
+
+    public static class FailingCheck {
+        @Agent(outputKey = "check")
+        public String check(@V("decision") String decision) {
+            throw new IllegalStateException("check failed");
         }
     }
 
@@ -147,7 +154,6 @@ class DetachedAsyncAgentTest {
         ResultWithAgenticScope<String> result = workflow.analyze("canary");
 
         assertThat(result.result()).isEqualTo("promote canary");
-        assertThat(remediation.release.getCount()).isEqualTo(1);
         // the agent was notified before its submission, on the calling thread, and the ephemeral scope was destroyed
         // at the end of the root call without waiting for it
         assertThat(listener.events).contains("before:remediate", "destroyed").doesNotContain("after:remediate");
@@ -156,9 +162,10 @@ class DetachedAsyncAgentTest {
         // the live scope still holds the pending response
         AgenticScope scope = result.agenticScope();
         assertThat(scope.state().get("fix")).isInstanceOf(AsyncResponse.class);
+        assertThat(((AsyncResponse<?>) scope.state().get("fix")).isDone()).isFalse();
 
         remediation.release.countDown();
-        awaitUntil(() -> scope.state().get("fix") instanceof String);
+        await().atMost(10, SECONDS).until(() -> scope.state().get("fix") instanceof String);
 
         assertThat(listener.outputs.get("remediate")).isEqualTo("fixed after promote canary");
         assertThat(listener.events).containsSubsequence("destroyed", "after:remediate");
@@ -175,7 +182,7 @@ class DetachedAsyncAgentTest {
 
         CompletableFuture<Object> rootCall =
                 CompletableFuture.supplyAsync(() -> workflow.invoke(Map.of("input", "canary")));
-        await(remediation.started);
+        awaitLatch(remediation.started);
 
         assertThat(rootCall).isNotDone();
         remediation.release.countDown();
@@ -183,15 +190,39 @@ class DetachedAsyncAgentTest {
     }
 
     @Test
-    void a_later_agent_reading_the_async_result_waits_for_it() {
+    void a_later_agent_reading_the_async_result_waits_for_it() throws Exception {
         Remediation remediation = new Remediation();
-        remediation.release.countDown();
         UntypedAgent workflow = AgenticServices.sequenceBuilder()
                 .subAgents(new Analysis(), remediation, new Report())
                 .outputKey("report")
                 .build();
 
-        assertThat(workflow.invoke(Map.of("input", "canary"))).isEqualTo("report: fixed after promote canary");
+        CompletableFuture<Object> rootCall =
+                CompletableFuture.supplyAsync(() -> workflow.invoke(Map.of("input", "canary")));
+        awaitLatch(remediation.started);
+
+        assertThat(rootCall).isNotDone();
+        remediation.release.countDown();
+        assertThat(rootCall.get(5, SECONDS)).isEqualTo("report: fixed after promote canary");
+    }
+
+    @Test
+    void failed_root_call_does_not_wait_for_a_detached_agent_whose_result_still_reaches_the_listener() {
+        Remediation remediation = new Remediation();
+        RecordingListener listener = new RecordingListener();
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(new Analysis(), remediation, new FailingCheck())
+                .listener(listener)
+                .build();
+
+        assertThatThrownBy(() -> workflow.invoke(Map.of("input", "canary")))
+                .isInstanceOf(AgentInvocationException.class);
+        assertThat(listener.events).doesNotContain("after:remediate");
+
+        remediation.release.countDown();
+        await().atMost(10, SECONDS).until(() -> listener.events.contains("after:remediate"));
+
+        assertThat(listener.outputs.get("remediate")).isEqualTo("fixed after promote canary");
     }
 
     @Test
@@ -213,7 +244,7 @@ class DetachedAsyncAgentTest {
         assertThat(result.result()).isEqualTo("promote canary");
 
         remediation.release.countDown();
-        awaitUntil(() -> !handledErrors.isEmpty());
+        await().atMost(10, SECONDS).until(() -> !handledErrors.isEmpty());
 
         assertThat(listener.events)
                 .containsSubsequence("destroyed", "error:remediate")
@@ -238,9 +269,10 @@ class DetachedAsyncAgentTest {
 
         ResultWithAgenticScope<String> result = workflow.analyze("canary");
         remediation.release.countDown();
-        awaitUntil(() -> "manual fix".equals(result.agenticScope().state().get("fix")));
+        await().atMost(10, SECONDS).until(() -> "manual fix".equals(result.agenticScope().state().get("fix")));
 
         assertThat(result.agenticScope().state().get("fix")).isEqualTo("manual fix");
+        assertThat(listener.events).contains("error:remediate").doesNotContain("after:remediate");
     }
 
     @Test
@@ -253,7 +285,7 @@ class DetachedAsyncAgentTest {
                 .build();
 
         ResultWithAgenticScope<String> result = workflow.analyze("canary");
-        awaitUntil(() -> !result.agenticScope().hasState("fix"));
+        await().atMost(10, SECONDS).until(() -> !result.agenticScope().hasState("fix"));
 
         assertThat(result.agenticScope().hasState("fix")).isFalse();
     }
@@ -273,7 +305,7 @@ class DetachedAsyncAgentTest {
         assertThat(scope.state().get("fix")).isInstanceOf(AsyncResponse.class);
 
         remediation.release.countDown();
-        awaitUntil(() -> "fixed after promote canary".equals(scope.state().get("fix")));
+        await().atMost(10, SECONDS).until(() -> "fixed after promote canary".equals(scope.state().get("fix")));
 
         assertThat(workflow.getAgenticScope("rollout-1")).isSameAs(scope);
         assertThat(listener.events).doesNotContain("destroyed");
@@ -298,11 +330,53 @@ class DetachedAsyncAgentTest {
         assertThat(savedAtRootEnd).contains("\"agentName\":\"remediate\"").contains("\"output\":\"<pending>\"");
 
         remediation.release.countDown();
-        awaitUntil(() -> store.getJson(key).contains("\"fix\""));
+        await().atMost(10, SECONDS).until(() -> store.getJson(key).contains("\"fix\""));
 
         assertThat(store.getJson(key))
                 .contains("\"fix\":\"fixed after promote canary\"")
                 .doesNotContain("<pending>");
+    }
+
+    @Test
+    void late_failure_of_a_detached_agent_is_saved_in_a_persistent_scope() {
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        FailingRemediation remediation = new FailingRemediation();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new Analysis(), remediation)
+                .outputKey("decision")
+                .build();
+        AgenticScopeKey key = new AgenticScopeKey(RolloutAnalysisWithMemory.class.getName(), "rollout-1");
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        assertThat(store.getJson(key)).contains("\"output\":\"<pending>\"");
+
+        remediation.release.countDown();
+        await().atMost(10, SECONDS).until(() -> store.getJson(key).contains("\"output\":\"<failed>\""));
+    }
+
+    @Test
+    void failure_of_a_detached_agent_before_the_end_of_the_root_call_does_not_break_saving_a_persistent_scope() {
+        // an executor running the agent inline makes it fail before the root call ends
+        ExecutorProvider.set(() -> Runnable::run);
+        try {
+            JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+            AgenticScopePersister.setStore(store);
+            FailingRemediation remediation = new FailingRemediation();
+            remediation.release.countDown();
+            RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                    .subAgents(new Analysis(), remediation)
+                    .outputKey("decision")
+                    .build();
+            AgenticScopeKey key = new AgenticScopeKey(RolloutAnalysisWithMemory.class.getName(), "rollout-1");
+
+            assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+            assertThat(store.getJson(key)).contains("\"output\":\"<failed>\"");
+
+            assertThat(workflow.analyze("rollout-1", "rollback")).isEqualTo("promote rollback");
+        } finally {
+            ExecutorProvider.set(null);
+        }
     }
 
     @Test
@@ -331,25 +405,12 @@ class DetachedAsyncAgentTest {
         }
     }
 
-    private static void await(CountDownLatch latch) {
+    private static void awaitLatch(CountDownLatch latch) {
         try {
             assertThat(latch.await(10, SECONDS)).as("latch released").isTrue();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
-        }
-    }
-
-    private static void awaitUntil(BooleanSupplier condition) {
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (!condition.getAsBoolean()) {
-            assertThat(System.currentTimeMillis()).as("condition met in time").isLessThan(deadline);
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
         }
     }
 }

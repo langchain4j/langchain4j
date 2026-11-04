@@ -81,6 +81,8 @@ public class DefaultAgenticScope implements AgenticScope {
      */
     private transient volatile AgenticScopeRegistry registryAfterRootCall;
 
+    private transient boolean evicted;
+
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
             .and(Predicate.not(DefaultAgenticScope::isFuture))
@@ -130,7 +132,7 @@ public class DefaultAgenticScope implements AgenticScope {
                 copy.state.put(key, value);
             }
         });
-        copy.agentInvocations.addAll(agentInvocations);
+        agentInvocations.forEach(invocation -> copy.agentInvocations.add(invocation.persistable()));
         copy.context.addAll(context);
         return copy;
     }
@@ -335,7 +337,7 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private static void logUnreadFailure(String outputKey, AsyncResponse<?> response) {
-        if (response.isFailed()) {
+        if (response.reportFailureOnce()) {
             try {
                 response.blockingGet();
             } catch (RuntimeException e) {
@@ -375,10 +377,28 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
+    /**
+     * Called by the registry when it evicts this scope, before deleting it from the store, so that an asynchronous
+     * agent completing afterwards does not save it again.
+     */
+    void markEvicted() {
+        if (kind != Kind.PERSISTENT) {
+            return;
+        }
+        lock.writeLock().lock();
+        try {
+            evicted = true;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     private void flush(AgenticScopeRegistry registry) {
         lock.writeLock().lock();
         try {
-            registry.update(this);
+            if (!evicted) {
+                registry.update(this);
+            }
         } finally {
             lock.writeLock().unlock();
         }
