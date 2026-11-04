@@ -19,6 +19,7 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
@@ -307,6 +308,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     @Override
     public boolean async() {
         return false;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return service.activationCondition;
     }
 
     @Override

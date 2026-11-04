@@ -3,6 +3,17 @@ package dev.langchain4j.agentic.planner;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Decides which subagents an agentic system invokes, and in which order, through the {@link Action}s it returns.
+ * <p>
+ * The {@link AgentInstance#activationCondition() activation conditions} of the subagents are enforced when they are
+ * invoked, so a planner never needs to check them: an inactive agent is skipped, and the planner receives an
+ * invocation whose {@link dev.langchain4j.agentic.scope.AgentInvocation#skipped() skipped()} method returns
+ * {@code true}. A planner selecting its candidates from the state of the scope can also use
+ * {@link PlanningContext#isActive(AgentInstance)} to avoid selecting inactive agents, but it must handle skipped
+ * invocations anyway, because the condition is evaluated again when the agent is invoked and the state can change in
+ * between.
+ */
 public interface Planner {
 
     default void init(InitPlanningContext initPlanningContext) { }

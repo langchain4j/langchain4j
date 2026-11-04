@@ -5,11 +5,13 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -133,6 +135,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return a2AClientInstance.activationCondition();
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
         return arguments;
     }
@@ -144,9 +151,15 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? untypedAgentInvocationArguments(agenticScope)
-                : agentInvocationArguments(agenticScope, arguments);
+        if (isUntyped()) {
+            for (AgentArgument argument : arguments) {
+                if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
+                    throw new MissingArgumentException(argument.name());
+                }
+            }
+            return untypedAgentInvocationArguments(agenticScope);
+        }
+        return agentInvocationArguments(agenticScope, arguments);
     }
 
     private boolean isUntyped() {

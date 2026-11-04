@@ -53,6 +53,13 @@ When the user asks you to edit a Word document:
 
 Any file in the skill directory (other than `SKILL.md` itself and files under a `scripts/`
 subdirectory) is automatically loaded as a `SkillResource` that the LLM can read on demand.
+Symbolic links inside a skill directory work as long as they point to a file in the same skill directory.
+Symbolic links to directories inside a skill are not followed.
+If `SKILL.md` or a resource file is a symbolic link to a file outside of its skill directory,
+loading fails with an `IllegalArgumentException`.
+To share a file between skills, copy it into each skill directory.
+The skill directory itself may be a symbolic link (for example, when a skill installer links it into place);
+in that case, the files of the directory it points to are loaded.
 
 Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills from the file system:
 
@@ -60,7 +67,7 @@ Use `FileSystemSkillLoader` from the `langchain4j-skills` module to load skills 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-skills</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -91,17 +98,17 @@ src/main/resources/
 
 ```java
 // Load all skills from a classpath directory:
-List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills");
+List<Skill> skills = ClassPathSkillLoader.loadSkills("skills");
 
 // Or load a single skill:
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx");
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx");
 ```
 
 By default, `ClassPathSkillLoader` uses the thread's context class loader.
 You can pass a custom `ClassLoader` if needed:
 
 ```java
-FileSystemSkill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
+Skill skill = ClassPathSkillLoader.loadSkill("skills/docx", myClassLoader);
 ```
 
 The same `SKILL.md` format, resource loading rules, and `scripts/` exclusion apply
@@ -465,7 +472,7 @@ Shell execution lives in a separate experimental artifact — add it to your bui
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-experimental-skills-shell</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 

@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -100,6 +101,11 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public Method method() {
         return method;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return mcpClientInstance.activationCondition();
     }
 
     @Override

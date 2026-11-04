@@ -15,14 +15,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-web-search-engine-searchapi</artifactId>
-  <version>1.22.0-beta32</version>
+  <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:1.22.0-beta32'
+implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:1.23.0-beta33'
 ```
 
 ### Example code:
@@ -33,9 +33,12 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.web.search.WebSearchTool;
-import dev.langchain4j.web.search.searchapi.SearchApiEngine;
 import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class SearchApiTool {
 
@@ -66,7 +69,7 @@ public class SearchApiTool {
                 .build();
         ChatModel chatModel = OpenAiChatModel.builder()
                 .apiKey(OPENAI_API_KEY)
-                .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
+                .modelName(OpenAiChatModelName.GPT_6_1_TERRA)
                 .logRequests(true)
                 .build();
 

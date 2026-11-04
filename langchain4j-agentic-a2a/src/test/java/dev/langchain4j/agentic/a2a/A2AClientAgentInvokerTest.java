@@ -1,10 +1,12 @@
 package dev.langchain4j.agentic.a2a;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.lang.reflect.Method;
@@ -64,5 +66,14 @@ class A2AClientAgentInvokerTest {
 
         assertThat(agenticScope.state()).containsKey("pendingResult");
         assertThat(args.namedArgs()).isEqualTo(Map.of("topic", "dragons"));
+    }
+
+    @Test
+    void untyped_invocation_arguments_reject_a_missing_input() throws NoSuchMethodException {
+        DefaultAgenticScope agenticScope = DefaultAgenticScope.ephemeralAgenticScope();
+
+        assertThatThrownBy(() -> untypedInvoker().toInvocationArguments(agenticScope))
+                .isInstanceOf(MissingArgumentException.class)
+                .hasMessageContaining("topic");
     }
 }

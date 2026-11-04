@@ -128,6 +128,15 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
+    @Override
+    public void onAgentSkipped(AgentSkipped agentSkipped) {
+        MonitoredExecution execution =
+                ongoingExecutions.get(agentSkipped.agenticScope().memoryId());
+        if (execution != null) {
+            execution.onAgentSkipped(agentSkipped);
+        }
+    }
+
     private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
         if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
             return;

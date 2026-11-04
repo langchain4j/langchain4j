@@ -34,9 +34,21 @@ public final class YesNoAnswer implements DecisionAnswer {
 
     /**
      * Creates an answer with the given probability of "yes", from 0 to 1.
+     *
+     * @since 1.23.0
      */
-    public static YesNoAnswer of(double probability) {
+    public static YesNoAnswer from(double probability) {
         return builder().probability(probability).build();
+    }
+
+    /**
+     * Creates an answer with the given probability of "yes", from 0 to 1.
+     *
+     * @deprecated use {@link #from(double)} instead
+     */
+    @Deprecated(since = "1.23.0", forRemoval = true)
+    public static YesNoAnswer of(double probability) {
+        return from(probability);
     }
 
     public static Builder builder() {

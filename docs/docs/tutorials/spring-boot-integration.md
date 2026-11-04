@@ -31,7 +31,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -102,7 +102,7 @@ import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -299,24 +299,107 @@ has to be on the classpath. `Flux<String>` and `TokenStream` do not need it.
 Avoid `spring-boot-starter-webflux` for this purpose unless your application is a WebFlux application: it also
 brings a web server. Without `WebClient`, a non-blocking call fails with an `AsyncNotSupportedException` that says
 what to add.
+See [HTTP client](#http-client) for how these requests are configured.
 
-Non-blocking requests are built from the application's `WebClient.Builder`, just as blocking requests are built
-from its `RestClient.Builder`. So the filters, default headers and observability configured on each builder apply,
-and a filter that adds credentials for your own services also runs for requests to the model provider. The two
-builders are configured separately: a customization of one does not apply to the other. For the non-blocking
-requests, the connector that Spring Boot is configured to use, including its connector customizers, is combined
-with the timeouts configured in LangChain4j; Spring Boot's other HTTP client settings, such as SSL bundles, are not
-applied. If the application has several `WebClient.Builder` beans and none of them is `@Primary`, LangChain4j
-uses a new `WebClient.builder()` instead. To give LangChain4j a dedicated builder, declare a `WebClientBuilderHolder`
-bean:
+## HTTP client
+
+The OpenAI, Mistral AI and Ollama starters send requests with Spring's HTTP clients, configured the way Spring Boot
+configures its own. The other starters use their own HTTP client, and this section does not apply to them. A model
+that you build yourself, with `OpenAiChatModel.builder()` for example, is not configured this way: pass it an HTTP
+client builder as shown in [Customizable HTTP Client](/tutorials/customizable-http-client).
+
+- **Builders:** blocking requests are built from the application's `RestClient.Builder`, non-blocking requests from
+  its `WebClient.Builder`. So the filters, default headers and observability configured on each builder apply, and a
+  filter that adds credentials for your own services also runs for requests to the model provider. The two builders
+  are configured separately: a customization of one does not apply to the other. If the application's builder is
+  `@LoadBalanced` (Spring Cloud), declare a plain `@Primary` builder as well, or the model's HTTP client builder bean
+  as shown below: a load-balanced builder resolves the model provider's host name as a service name.
+- **HTTP client and settings:** requests are sent with the HTTP client that Spring Boot is configured to use,
+  including its customizers (for example a proxy), and with Spring Boot's HTTP client settings, such as redirects
+  and the SSL bundle. LangChain4j builds the request factory and the connector itself, to apply its timeouts, so a
+  `ClientHttpRequestFactory` or `ClientHttpConnector` bean of the application is not used: customize them with
+  `ClientHttpRequestFactoryBuilderCustomizer` and `ClientHttpConnectorBuilderCustomizer` beans instead. The settings
+  are:
+  - Spring Boot 4: `spring.http.clients.*`, for both kinds of requests;
+  - Spring Boot 3: `spring.http.client.*` for blocking requests and `spring.http.reactiveclient.*` for non-blocking
+    requests, as for Spring Boot's own clients. In a reactive web application, Spring Boot 3 does not apply
+    `spring.http.client.*`, so blocking requests use the defaults.
+- **Several beans:** if the application has several beans of one of these types (the builders, Spring Boot's HTTP
+  client builders and its settings) and none of them is `@Primary`, LangChain4j uses none of them: it uses a new
+  builder or the defaults instead, and logs a warning.
+- **Timeouts** always come from LangChain4j, for example `langchain4j.open-ai.chat-model.timeout`. When it is not
+  set, the connect timeout is 15 seconds and the read timeout 60 seconds: raise it for slow models, such as reasoning
+  models or local models that load on first use. Spring Boot's `connect-timeout` and `read-timeout` have no effect on
+  these requests.
+
+So an SSL bundle configured in Spring Boot has to trust the model provider's certificate as well, and a client
+certificate in it is also presented to the model provider. To send the requests of a model with other settings,
+declare its HTTP client builder bean yourself. Its name is that of the model bean followed by `HttpClientBuilder`,
+for example `openAiChatModelHttpClientBuilder` or `ollamaEmbeddingModelHttpClientBuilder`. With Spring Boot 4:
 
 ```java
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.spring.restclient.SpringRestClient;
+import org.springframework.boot.http.client.HttpClientSettings;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestClient;
+
+@Bean
+HttpClientBuilder openAiChatModelHttpClientBuilder() {
+    return SpringRestClient.builder()
+            .restClientBuilder(RestClient.builder())
+            // no SSL bundle, so the JVM's default trust store is used; the same as not setting it.
+            // To use another SSL bundle: HttpClientSettings.ofSslBundle(sslBundles.getBundle("..."))
+            .httpClientSettings(HttpClientSettings.defaults())
+            .createDefaultStreamingRequestExecutor(false); // a chat model does not stream
+}
+```
+
+With Spring Boot 3, the settings of blocking and non-blocking requests are set separately:
+
+```java
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.spring.restclient.SpringRestClient;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.boot.http.client.reactive.ClientHttpConnectorSettings;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestClient;
+
+@Bean
+HttpClientBuilder openAiChatModelHttpClientBuilder() {
+    return SpringRestClient.builder()
+            .restClientBuilder(RestClient.builder())
+            .clientHttpRequestFactorySettings(ClientHttpRequestFactorySettings.defaults())
+            .clientHttpConnectorSettings(ClientHttpConnectorSettings.defaults())
+            .createDefaultStreamingRequestExecutor(false);
+}
+```
+
+Such a bean replaces everything the starter configures for the HTTP client of that model, not only the settings.
+To keep the rest, pass it yourself:
+
+- the application's `RestClient.Builder`, with `restClientBuilder(...)`. The examples pass a new one, so that the
+  filters and interceptors of the application are not applied to requests to the model provider;
+- the application's `WebClient.Builder`, for non-blocking requests, with
+  `webClientBuilder(WebClientBuilderHolder.of(webClientBuilder))`. Without it, a new `WebClient.builder()` is used;
+- the HTTP client chosen by Spring Boot, with its customizers: pass the `ClientHttpRequestFactoryBuilder` and
+  `ClientHttpConnectorBuilder` beans to `clientHttpRequestFactoryBuilder(...)` and `clientHttpConnectorBuilder(...)`;
+- for a streaming model, the task executor that carries the context (for example tracing, MDC and security) to the
+  thread reading the stream, with `streamingRequestExecutor(...)`. The starter declares it as a bean named after the
+  model bean followed by `TaskExecutor`, for example `openAiStreamingChatModelTaskExecutor`.
+
+To give LangChain4j a dedicated `WebClient.Builder`, declare a `WebClientBuilderHolder` bean:
+
+```java
+import dev.langchain4j.http.client.spring.restclient.WebClientBuilderHolder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.reactive.function.client.WebClient;
+
 @Bean
 WebClientBuilderHolder langchain4jWebClientBuilder() {
     return WebClientBuilderHolder.of(WebClient.builder());
 }
 ```
-
 
 ## Observability
 
@@ -364,12 +447,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.22.0-beta32'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.23.0-beta33'
 ```
 
 #### Micrometer (Actuator) Configuration

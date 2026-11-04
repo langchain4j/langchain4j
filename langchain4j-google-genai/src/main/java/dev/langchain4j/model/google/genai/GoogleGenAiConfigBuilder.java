@@ -18,6 +18,7 @@ import com.google.genai.types.SpeechConfig;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
+import com.google.genai.types.ToolCodeExecution;
 import com.google.genai.types.ToolConfig;
 import com.google.genai.types.UrlContext;
 import com.google.genai.types.VertexAISearch;
@@ -168,6 +169,50 @@ class GoogleGenAiConfigBuilder {
             List<String> responseModalities,
             Boolean automaticContinuation,
             Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                false,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            boolean codeExecutionEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            SpeechConfig speechConfig,
+            List<String> responseModalities,
+            Boolean automaticContinuation,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -278,6 +323,7 @@ class GoogleGenAiConfigBuilder {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                codeExecutionEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
@@ -293,6 +339,7 @@ class GoogleGenAiConfigBuilder {
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
+            boolean codeExecutionEnabled,
             List<String> allowedFunctionNames,
             String vertexSearchDatastore) {
 
@@ -324,6 +371,11 @@ class GoogleGenAiConfigBuilder {
         if (urlContextEnabled) {
             requestTools.add(
                     Tool.builder().urlContext(UrlContext.builder().build()).build());
+        }
+        if (codeExecutionEnabled) {
+            requestTools.add(Tool.builder()
+                    .codeExecution(ToolCodeExecution.builder().build())
+                    .build());
         }
         if (vertexSearchDatastore != null && !vertexSearchDatastore.isEmpty()) {
             requestTools.add(Tool.builder()

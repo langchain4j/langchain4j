@@ -55,9 +55,21 @@ public final class YesNoQuestion implements Question {
 
     /**
      * Creates a yes/no question with the given text.
+     *
+     * @since 1.23.0
      */
-    public static YesNoQuestion of(String text) {
+    public static YesNoQuestion from(String text) {
         return builder().text(text).build();
+    }
+
+    /**
+     * Creates a yes/no question with the given text.
+     *
+     * @deprecated use {@link #from(String)} instead
+     */
+    @Deprecated(since = "1.23.0", forRemoval = true)
+    public static YesNoQuestion of(String text) {
+        return from(text);
     }
 
     public static Builder builder() {

@@ -9,12 +9,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.UserMessageTransformer;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
@@ -23,6 +23,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.lang.reflect.Proxy;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +75,11 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
-            .and(Predicate.not(DefaultAgenticScope::isFuture));
+            .and(Predicate.not(DefaultAgenticScope::isFuture))
+            // the raw response of a decision model, written by decision agents returning a DecisionResult, and the
+            // records answering several questions with Choice, Scale or YesNoAnswer fields, which cannot be converted
+            .and(Predicate.not(
+                    value -> value instanceof DecisionResult<?> || PersistedDecisionAnswers.isCompositeAnswer(value)));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());
@@ -93,6 +100,14 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private final Kind kind;
+
+    /**
+     * Replaces every registered invocation with the one returned by the given converter, for a JSON codec adapting
+     * the values of the invocations before writing the scope or after reading it.
+     */
+    void replaceAgentInvocations(UnaryOperator<AgentInvocation> converter) {
+        agentInvocations.replaceAll(converter);
+    }
 
     /**
      * The state that is safe to persist. Public so that a JSON codec supplied through the SPI can
@@ -231,11 +246,37 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentInvocation(AgentInvocation agentInvocation, Object agent) {
+    public void registerAgentInvocation(AgentInvocation agentInvocation) {
+        withReadLock(() -> agentInvocations.add(agentInvocation));
+    }
+
+    /**
+     * Adds to the context of this scope the messages exchanged by an AI agent in the invocation that just
+     * completed: the last user message and the last answer of its chat memory when it has one, otherwise the user
+     * message of its last model call, when known, and its output. Other kinds of agents have no messages to add.
+     */
+    public void registerContext(AgentInstance agent, Object agentObject, UserMessage userMessage, Object output) {
+        if (!(agentObject instanceof ChatMemoryAccess agentWithMemory)) {
+            return;
+        }
         withReadLock(() -> {
-            agentInvocations.add(agentInvocation);
-            registerContext(agentInvocation, agent);
+            ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                registerContextFromChatMemory(agent.name(), agent.agentId(), chatMemory);
+            } else if (output != null) {
+                Object outputText = isSerializable(output) ? output : "<unknown>";
+                addToContext(agent.name(), agent.agentId(), userMessage, AiMessage.aiMessage(outputText.toString()));
+            }
         });
+    }
+
+    private void addToContext(String agentName, String agentId, UserMessage userMessage, AiMessage aiMessage) {
+        AgentMessage agentAiMessage = new AgentMessage(agentName, agentId, aiMessage);
+        // added together, so that the messages of concurrent invocations do not interleave in the context
+        context.addAll(
+                userMessage == null
+                        ? List.of(agentAiMessage)
+                        : List.of(new AgentMessage(agentName, agentId, userMessage), agentAiMessage));
     }
 
     public void rootCallStarted(AgenticScopeRegistry registry) {}
@@ -267,25 +308,7 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
-    private void registerContext(AgentInvocation agentInvocation, Object agent) {
-        ChatMemory chatMemory =
-                agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
-        if (chatMemory != null) {
-            registerContextFromChatMemory(agentInvocation, chatMemory);
-        } else if (agentInvocation.output() != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    chatMessagesAccess.lastUserMessage(memoryId())));
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    AiMessage.aiMessage(agentInvocation.output().toString())));
-            chatMessagesAccess.removeLastResponseEvent(memoryId());
-        }
-    }
-
-    private void registerContextFromChatMemory(AgentInvocation agentInvocation, ChatMemory chatMemory) {
+    private void registerContextFromChatMemory(String agentName, String agentId, ChatMemory chatMemory) {
         List<ChatMessage> agentMessages = chatMemory.messages();
         if (Utils.isNullOrEmpty(agentMessages)) {
             return;
@@ -298,10 +321,9 @@ public class DefaultAgenticScope implements AgenticScope {
 
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
             if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                // Only add to the agenticScope's context the last UserMessage ...
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), userMessage));
-                // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), aiMessage));
+                // Only add to the agenticScope's context the last UserMessage and the last AiMessage response, all
+                // other messages are local to the invoked agent internals
+                addToContext(agentName, agentId, userMessage, aiMessage);
                 return;
             }
         }
@@ -338,7 +360,7 @@ public class DefaultAgenticScope implements AgenticScope {
             }
             ChatMessage message = agentMessage.message();
             if (message instanceof UserMessage userMessage) {
-                sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
+                sb.append("User: \"").append(text(userMessage)).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
                 sb.append(agentMessage.agentName())
                         .append(" agent: \"")
@@ -350,6 +372,21 @@ public class DefaultAgenticScope implements AgenticScope {
         String contextAsConversation = sb.toString();
         LOG.trace("AgenticScope context as conversation: '{}'", contextAsConversation);
         return contextAsConversation;
+    }
+
+    /**
+     * The same text of the given user message that a {@link UserMessageTransformer} transforms, or, for a message
+     * without any text, like a message made only of an image, the types of its contents, like {@code [image]}, so
+     * that the conversation still tells that the user sent something.
+     */
+    private static String text(UserMessage userMessage) {
+        String text = UserMessageTransformer.text(userMessage);
+        if (!text.isEmpty() || userMessage.contents().isEmpty()) {
+            return text;
+        }
+        return userMessage.contents().stream()
+                .map(content -> "[" + content.type().name().toLowerCase(Locale.ROOT) + "]")
+                .collect(Collectors.joining(" "));
     }
 
     @Override
@@ -373,7 +410,8 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
+        StringBuilder sb =
+                new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
         boolean first = true;
         for (Map.Entry<String, Object> e : state.entrySet()) {
             if (!first) sb.append(", ");

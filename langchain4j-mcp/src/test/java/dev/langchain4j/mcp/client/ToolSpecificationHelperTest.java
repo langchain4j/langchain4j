@@ -1374,7 +1374,7 @@ class ToolSpecificationHelperTest {
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> toolList(String json) {
         try {
-            return McpJson.deserialize(McpJson.parse(json), List.class);
+            return McpJson.deserialize(json, List.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

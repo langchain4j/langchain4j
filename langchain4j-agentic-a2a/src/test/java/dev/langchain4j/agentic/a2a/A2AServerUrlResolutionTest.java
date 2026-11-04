@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,8 @@ class A2AServerUrlResolutionTest {
     void should_fail_when_supplier_takes_parameters() {
         assertThatThrownBy(() ->
                 AgenticServices.createAgenticSystem(A2AWithSupplierTakingParameters.class, (ChatModel) null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("No SupplierParameterResolver is registered for parameter")
                 .hasMessageContaining("@A2AServerUrlSupplier");
     }
 

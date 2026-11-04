@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.22.0</version>
+    <version>1.23.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -552,7 +552,8 @@ More information can be found [here](/tutorials/customizable-http-client).
 
 ### Spring Boot
 When using the `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
-the Spring's `RestClient` is used as the default HTTP client.
+the Spring's `RestClient` is used as the default HTTP client. It is configured with Spring Boot's HTTP client settings,
+see [Spring Boot Integration](/tutorials/spring-boot-integration#http-client).
 
 You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).

@@ -174,6 +174,9 @@ public @interface Agent {
 
     /**
      * Names of other agents participating in the definition of the context of this agent.
+     * Their outputs are summarized by an additional, blocking call to this agent's model, made before the agent's
+     * own request. If the agent uses a {@code StreamingChatModel}, the summary is fully generated before the agent
+     * starts streaming its response.
      *
      * @return array of names of other agents participating in the definition of the context of this agent.
      */

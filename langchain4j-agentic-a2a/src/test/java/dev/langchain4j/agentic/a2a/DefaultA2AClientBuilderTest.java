@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
@@ -342,5 +343,28 @@ class DefaultA2AClientBuilderTest {
         } catch (Exception e) {
             return e.getCause();
         }
+    }
+
+    @Test
+    void untyped_invocation_without_a_declared_input_fails_with_a_clear_exception() {
+        AgentCard agentCard = AgentCard.builder()
+                .name("test-agent")
+                .description("Test agent")
+                .version("1.0.0")
+                .url("http://localhost")
+                .capabilities(new AgentCapabilities(false, false, false, List.of()))
+                .defaultInputModes(List.of("text"))
+                .defaultOutputModes(List.of("text"))
+                .skills(List.of())
+                .supportedInterfaces(List.of())
+                .build();
+        DefaultA2AClientBuilder<UntypedAgent> builder =
+                new DefaultA2AClientBuilder<>(agentCard, UntypedAgent.class, mock(Client.class));
+        builder.inputKeys("first", "second");
+        UntypedAgent agent = builder.build();
+
+        assertThatThrownBy(() -> agent.invoke(Map.of("first", "hello")))
+                .isInstanceOf(MissingArgumentException.class)
+                .hasMessageContaining("second");
     }
 }

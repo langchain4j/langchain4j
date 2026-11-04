@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.noChoicesErrorMessage;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toTools;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
@@ -14,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
@@ -24,9 +26,12 @@ import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class OpenAiUtilsTest {
 
@@ -370,5 +375,40 @@ class OpenAiUtilsTest {
         // then - falls back to model-level
         assertThat(tools).hasSize(1);
         assertThat(tools.get(0).function().strict()).isTrue();
+    }
+
+    static Stream<Arguments> no_choices_error_messages() {
+        return Stream.of(
+                Arguments.of("{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
+                Arguments.of("\n\n{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
+                Arguments.of("{\"error\":\"Service is too busy\"}", "Service is too busy"),
+                Arguments.of("{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
+                Arguments.of("{\"error\":{\"code\":503}}", "{\"error\":{\"code\":503}}"),
+                Arguments.of("{\"id\":\"chatcmpl-123\",\"choices\":[]}", "no choices returned in response"),
+                Arguments.of("{\"error\":null}", "no choices returned in response"),
+                Arguments.of("not json", "no choices returned in response"),
+                Arguments.of("[]", "no choices returned in response"),
+                Arguments.of("null", "no choices returned in response"),
+                Arguments.of("", "no choices returned in response"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("no_choices_error_messages")
+    void should_build_no_choices_error_message(String body, String expectedDetail) {
+
+        // given
+        SuccessfulHttpResponse rawHttpResponse =
+                SuccessfulHttpResponse.builder().statusCode(200).body(body).build();
+
+        // when
+        String message = noChoicesErrorMessage(rawHttpResponse);
+
+        // then
+        assertThat(message).isEqualTo("Chat completion failed: " + expectedDetail);
+    }
+
+    @Test
+    void should_build_no_choices_error_message_without_raw_response() {
+        assertThat(noChoicesErrorMessage(null)).isEqualTo("Chat completion failed: no choices returned in response");
     }
 }

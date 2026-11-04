@@ -49,10 +49,10 @@ class OllamaDecisionModelImageIT {
 
         // given
         DecisionRequest request = DecisionRequest.builder()
-                .input(List.of(
+                .inputContents(List.of(
                         TextContent.from("A photo sent by the customer."), ImageContent.from(RED_SQUARE_PNG, "image/png")))
-                .question("red", YesNoQuestion.of("Is the image mostly red?"))
-                .question("blue", YesNoQuestion.of("Is the image mostly blue?"))
+                .question("red", YesNoQuestion.from("Is the image mostly red?"))
+                .question("blue", YesNoQuestion.from("Is the image mostly blue?"))
                 .build();
 
         // when
@@ -71,9 +71,9 @@ class OllamaDecisionModelImageIT {
         input.put("before", ImageContent.from(RED_SQUARE_PNG, "image/png"));
         input.put("after", ImageContent.from(BLUE_SQUARE_PNG, "image/png"));
         DecisionRequest request = DecisionRequest.builder()
-                .input(input)
-                .question("after_blue", YesNoQuestion.of("Is the 'after' image mostly blue?"))
-                .question("after_red", YesNoQuestion.of("Is the 'after' image mostly red?"))
+                .inputFields(input)
+                .question("after_blue", YesNoQuestion.from("Is the 'after' image mostly blue?"))
+                .question("after_red", YesNoQuestion.from("Is the 'after' image mostly red?"))
                 .build();
 
         // when
@@ -89,12 +89,12 @@ class OllamaDecisionModelImageIT {
 
         // given
         DecisionRequest request = DecisionRequest.builder()
-                .input(List.of(
+                .inputContents(List.of(
                         TextContent.from("Two photos:"),
                         ImageContent.from(RED_SQUARE_PNG, "image/png"),
                         ImageContent.from(BLUE_SQUARE_PNG, "image/png")))
-                .question("second_blue", YesNoQuestion.of("Is [image 2] mostly blue?"))
-                .question("second_red", YesNoQuestion.of("Is [image 2] mostly red?"))
+                .question("second_blue", YesNoQuestion.from("Is [image 2] mostly blue?"))
+                .question("second_red", YesNoQuestion.from("Is [image 2] mostly red?"))
                 .build();
 
         // when

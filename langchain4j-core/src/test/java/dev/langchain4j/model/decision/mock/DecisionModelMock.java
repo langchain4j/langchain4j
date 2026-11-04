@@ -5,6 +5,7 @@ import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
@@ -31,6 +32,8 @@ public class DecisionModelMock implements DecisionModel {
     private final Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers;
     private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
     private TokenUsage tokenUsage;
+    private String modelName;
+    private ModelProvider provider = ModelProvider.OTHER;
     private boolean asyncSupported = true;
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
 
@@ -44,6 +47,27 @@ public class DecisionModelMock implements DecisionModel {
     public DecisionModelMock withTokenUsage(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
         return this;
+    }
+
+    /**
+     * Reports the given model name in every response.
+     */
+    public DecisionModelMock withModelName(String modelName) {
+        this.modelName = modelName;
+        return this;
+    }
+
+    /**
+     * Returns the given provider from {@link #provider()}.
+     */
+    public DecisionModelMock withProvider(ModelProvider provider) {
+        this.provider = ensureNotNull(provider, "provider");
+        return this;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return provider;
     }
 
     /**
@@ -90,6 +114,7 @@ public class DecisionModelMock implements DecisionModel {
     private DecisionResponse respond(DecisionRequest request) {
         return DecisionResponse.builder()
                 .answers(answers.apply(request))
+                .modelName(modelName)
                 .tokenUsage(tokenUsage)
                 .build();
     }
@@ -150,7 +175,7 @@ public class DecisionModelMock implements DecisionModel {
             if (!(question instanceof YesNoQuestion yesNoQuestion)) {
                 throw new IllegalStateException("Expected a yes/no question, but got " + question);
             }
-            return YesNoAnswer.of(probability.apply(yesNoQuestion));
+            return YesNoAnswer.from(probability.apply(yesNoQuestion));
         });
     }
 

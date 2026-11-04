@@ -3,19 +3,29 @@ package dev.langchain4j.invocation;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * The {@link InvocationContext} built by LangChain4j.
+ * <p>
+ * Besides its values, it holds whether the invocation has already reported its end (see {@link InvocationEnd}).
+ * Copies made with {@link #toBuilder()} that keep the same {@link #invocationId()} share this state, so the
+ * invocation reports its end only once, whichever copy is used. A copy with another invocation id, or a context
+ * built from scratch, starts as not ended.
+ *
  * @since 1.6.0
  */
 public class DefaultInvocationContext implements InvocationContext {
 
     private final UUID invocationId;
+    private final UUID parentInvocationId;
     private final String interfaceName;
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
@@ -27,10 +37,12 @@ public class DefaultInvocationContext implements InvocationContext {
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
-    private final dev.langchain4j.spi.CapturedContext capturedContext;
+    private final CapturedContext capturedContext;
+    private final AtomicBoolean ended;
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
+        this.parentInvocationId = builder.parentInvocationId();
         this.interfaceName = builder.interfaceName();
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
@@ -43,15 +55,27 @@ public class DefaultInvocationContext implements InvocationContext {
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
         this.capturedContext = builder.capturedContext;
+        this.ended = builder.ended != null && Objects.equals(builder.endedInvocationId, invocationId)
+                ? builder.ended
+                : new AtomicBoolean();
     }
 
-    dev.langchain4j.spi.CapturedContext capturedContext() {
+    CapturedContext capturedContext() {
         return capturedContext;
+    }
+
+    AtomicBoolean ended() {
+        return ended;
     }
 
     @Override
     public UUID invocationId() {
         return invocationId;
+    }
+
+    @Override
+    public UUID parentInvocationId() {
+        return parentInvocationId;
     }
 
     @Override
@@ -115,6 +139,7 @@ public class DefaultInvocationContext implements InvocationContext {
         if (object == null || getClass() != object.getClass()) return false;
         DefaultInvocationContext that = (DefaultInvocationContext) object;
         return Objects.equals(invocationId, that.invocationId)
+                && Objects.equals(parentInvocationId, that.parentInvocationId)
                 && Objects.equals(interfaceName, that.interfaceName)
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
@@ -132,6 +157,7 @@ public class DefaultInvocationContext implements InvocationContext {
     public int hashCode() {
         return Objects.hash(
                 invocationId,
+                parentInvocationId,
                 interfaceName,
                 methodName,
                 methodArguments,
@@ -149,6 +175,7 @@ public class DefaultInvocationContext implements InvocationContext {
     public String toString() {
         return "DefaultInvocationContext{" +
                 "invocationId=" + invocationId +
+                ", parentInvocationId=" + parentInvocationId +
                 ", interfaceName='" + interfaceName + '\'' +
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +
