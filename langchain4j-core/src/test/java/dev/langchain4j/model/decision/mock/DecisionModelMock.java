@@ -7,6 +7,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -36,6 +37,7 @@ public class DecisionModelMock implements DecisionModel {
     private ModelProvider provider = ModelProvider.OTHER;
     private boolean asyncSupported = true;
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
+    private List<DecisionModelListener> listeners = List.of();
 
     public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
         this.answers = ensureNotNull(answers, "answers");
@@ -187,5 +189,15 @@ public class DecisionModelMock implements DecisionModel {
         return new DecisionModelMock(request -> {
             throw new RuntimeException(message);
         });
+    }
+
+    public DecisionModelMock withListeners(DecisionModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<DecisionModelListener> listeners() {
+        return listeners;
     }
 }

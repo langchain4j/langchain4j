@@ -3,10 +3,12 @@ package dev.langchain4j.model.scoring.listener;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The context of a request to a scoring model: the request (the documents, the query and the parameters), the model
@@ -22,11 +24,13 @@ public final class ScoringModelRequestContext {
     private final ScoringRequest scoringRequest;
     private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
 
     private ScoringModelRequestContext(Builder builder) {
         this.scoringRequest = ensureNotNull(builder.scoringRequest, "scoringRequest");
         this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
+        this.invocationId = builder.invocationId;
     }
 
     /**
@@ -53,6 +57,18 @@ public final class ScoringModelRequestContext {
         return attributes;
     }
 
+    /**
+     * @return the id of the AI Service invocation in which this call is made (the calls made by its tools, guardrails,
+     * retrieval, moderation, chat memory, ...), otherwise {@code null}, for example when it is called outside of an AI
+     * Service.
+     * It is the {@link InvocationContext#invocationId()} of the AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    @Experimental
+    public UUID invocationId() {
+        return invocationId;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -68,6 +84,7 @@ public final class ScoringModelRequestContext {
         private ScoringRequest scoringRequest;
         private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
+        private UUID invocationId;
 
         Builder() {}
 
@@ -83,6 +100,18 @@ public final class ScoringModelRequestContext {
 
         public Builder attributes(Map<Object, Object> attributes) {
             this.attributes = attributes;
+            return this;
+        }
+
+        /**
+         * Sets the id of the AI Service invocation in which the call is made, see {@link #invocationId()} of the
+         * context. LangChain4j sets it for the listeners; set it yourself only when you create the context yourself.
+         *
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder invocationId(UUID invocationId) {
+            this.invocationId = invocationId;
             return this;
         }
 
