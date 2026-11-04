@@ -310,7 +310,10 @@ public class DefaultAgenticScope implements AgenticScope {
      * one root call at a time runs on a scope, since those agents would otherwise share with the new call the chat
      * memory of their agents, the context and the compensations of the scope and the execution recorded by an
      * {@code AgentMonitor}. The tool executions of the agents completed after the end of the previous call are then
-     * dropped, as those of a completed root call are: a failure of this call does not compensate them.
+     * dropped, as those of a completed root call are: a failure of this call does not compensate them. The failed
+     * responses of those agents are dropped too, as the saved copy of a persistent scope never contains them: their
+     * failure was reported, and an agent of this call must not fail for it, like a skipped agent returning the
+     * current value of its output key would.
      */
     public void rootCallStarted(AgenticScopeRegistry registry) {
         if (!runningAsyncAgents.isEmpty()) {
@@ -322,6 +325,8 @@ public class DefaultAgenticScope implements AgenticScope {
             running.keySet().forEach(CompletableFuture::join);
         }
         compensableExecutions.clear();
+        withReadLock(() ->
+                state.values().removeIf(value -> value instanceof AsyncResponse<?> response && response.isFailed()));
         registryAfterRootCall = null;
         rootCallInProgress = true;
     }
@@ -418,8 +423,8 @@ public class DefaultAgenticScope implements AgenticScope {
     /**
      * Completes an asynchronous agent, on the thread of its executor. Its result replaces the response under its
      * output key, if the key still holds that response, as reading it would have done, while a failure is left in
-     * place, so that reading it still fails. A persistent scope whose root call already ended is then saved again,
-     * with the result.
+     * place, so that reading it still fails, until the next root call on this scope drops it. A persistent scope
+     * whose root call already ended is then saved again, with the result.
      */
     public void asyncEnded(String outputKey, AsyncResponse<?> response) {
         if (outputKey != null && !outputKey.isBlank() && !response.isFailed()) {

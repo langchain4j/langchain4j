@@ -190,6 +190,25 @@ class DefaultAgenticScopeRootCallEndedTest {
     }
 
     @Test
+    void failed_async_response_is_dropped_at_the_start_of_the_next_root_call() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            throw new IllegalStateException("sandbox unavailable");
+        });
+        scope.writeState("fix", response);
+        scope.asyncPending("remediate", "fix", response);
+        scope.rootCallEnded(null, null, false);
+
+        // kept during the call that produced it, so that a reader of the result fails
+        assertThatThrownBy(() -> scope.readState("fix")).isInstanceOf(IllegalStateException.class);
+
+        scope.rootCallStarted(null);
+
+        // dropped at the next root call, as the saved copy of a persistent scope would have dropped it
+        assertThat(scope.hasState("fix")).isFalse();
+    }
+
+    @Test
     void root_call_end_does_not_wait_for_a_suspended_response() throws Exception {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         SuspendedResponse<String> suspended = new SuspendedResponse<>("approval");

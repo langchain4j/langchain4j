@@ -95,6 +95,21 @@ class DetachedAsyncAgentTest {
         }
     }
 
+    /** Decides nothing for a stable rollout, so that the agents needing the decision are skipped. */
+    public static class AnalysisUnlessStable {
+        @Agent(outputKey = "decision")
+        public String analyze(@V("input") String input) {
+            return "stable".equals(input) ? null : "promote " + input;
+        }
+    }
+
+    public static class OptionalFailingRemediation {
+        @Agent(async = true, outputKey = "fix", optional = true)
+        public String remediate(@V("decision") String decision) {
+            throw new IllegalStateException("sandbox unavailable");
+        }
+    }
+
     public static class NullRemediation {
         @Agent(async = true, outputKey = "fix")
         public String remediate(@V("decision") String decision) {
@@ -443,6 +458,24 @@ class DetachedAsyncAgentTest {
         // the root call suspended as with a synchronous agent, notified once, and the reader never ran
         assertThat(listener.events).containsOnlyOnce("suspended").doesNotContain("error:remediate", "before:report");
         assertThat(workflow.getAgenticScope("rollout-1").pendingResponseIds()).containsExactly("remediate:task-1");
+    }
+
+    @Test
+    void failed_result_of_a_detached_agent_is_dropped_at_the_next_root_call() {
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new AnalysisUnlessStable(), new OptionalFailingRemediation())
+                .outputKey("decision")
+                .build();
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        AgenticScope scope = workflow.getAgenticScope("rollout-1");
+        // during the call that produced it, and until the next one, reading the result throws the failure
+        assertThatThrownBy(() -> scope.readState("fix")).isInstanceOf(AgentInvocationException.class);
+
+        // the next call skips the remediation, whose argument is missing, which returns the current value of its
+        // output key: the stale failure of the previous call must not be it
+        assertThat(workflow.analyze("rollout-1", "stable")).isNull();
+        assertThat(scope.hasState("fix")).isFalse();
     }
 
     @Test
