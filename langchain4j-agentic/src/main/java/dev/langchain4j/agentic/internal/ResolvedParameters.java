@@ -32,6 +32,8 @@ public final class ResolvedParameters {
     private final SupplierParameterResolver[] resolvers;
     private final SupplierParameterResolver.Context[] contexts;
     private final int[] frameworkIndexes;
+    // The values of the resolved parameters when they are resolved once, at the creation of the agent, else null
+    private final Object[] resolvedValues;
     private volatile List<AgentArgument> frameworkArguments;
 
     private ResolvedParameters(Class<?> agentType, Method method, List<SupplierParameterResolver> availableResolvers) {
@@ -55,6 +57,15 @@ public final class ResolvedParameters {
             }
         }
         this.frameworkIndexes = indexes.stream().mapToInt(Integer::intValue).toArray();
+        this.resolvedValues = null;
+    }
+
+    private ResolvedParameters(ResolvedParameters parameters, Object[] resolvedValues) {
+        this.method = parameters.method;
+        this.resolvers = parameters.resolvers;
+        this.contexts = parameters.contexts;
+        this.frameworkIndexes = parameters.frameworkIndexes;
+        this.resolvedValues = resolvedValues;
     }
 
     /**
@@ -153,15 +164,28 @@ public final class ResolvedParameters {
     }
 
     /**
-     * Builds the positional arguments of the method, resolving its resolved parameters and taking the parameters
-     * provided by the framework from the given values, in their order. The parameters provided by the framework
-     * without a corresponding value are {@code null}.
+     * Returns a copy of these parameters whose resolved parameters are resolved now, once, instead of at each
+     * invocation of the method. For the methods invoked later than the creation of the agent, like the one annotated
+     * with {@code @A2AClientCustomizer}, which runs when the A2A client is created on the first invocation of the
+     * agent: a value resolved per request, like a token, is then the one of the thread creating the agent, as for
+     * the other supplier methods, and not the one of the first caller.
+     */
+    public ResolvedParameters resolvedNow() {
+        return new ResolvedParameters(this, arguments());
+    }
+
+    /**
+     * Builds the positional arguments of the method, resolving its resolved parameters, unless already resolved by
+     * {@link #resolvedNow()}, and taking the parameters provided by the framework from the given values, in their
+     * order. The parameters provided by the framework without a corresponding value are {@code null}.
      */
     public Object[] arguments(Object... frameworkValues) {
-        Object[] args = new Object[resolvers.length];
-        for (int i = 0; i < resolvers.length; i++) {
-            if (resolvers[i] != null) {
-                args[i] = resolvers[i].resolve(contexts[i]);
+        Object[] args = resolvedValues != null ? resolvedValues.clone() : new Object[resolvers.length];
+        if (resolvedValues == null) {
+            for (int i = 0; i < resolvers.length; i++) {
+                if (resolvers[i] != null) {
+                    args[i] = resolvers[i].resolve(contexts[i]);
+                }
             }
         }
         for (int i = 0; i < frameworkIndexes.length && i < frameworkValues.length; i++) {

@@ -80,6 +80,7 @@
         <module>langchain4j-couchbase</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-hibernate</module>
+        <module>langchain4j-hibernate-milvus</module>
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
@@ -301,7 +302,7 @@
                     <plugin>
                         <groupId>com.diffplug.spotless</groupId>
                         <artifactId>spotless-maven-plugin</artifactId>
-                        <version>2.44.4</version>
+                        <version>2.46.1</version>
                         <configuration>
                             <ratchetFrom>origin/main</ratchetFrom>
                             <pom>

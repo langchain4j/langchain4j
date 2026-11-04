@@ -232,7 +232,7 @@ public class A2AAgentIT {
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        assertThat(agenticScope.agentInvocations("Creative Writer")).hasSize(1);
+        assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
         List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentCalls).hasSizeBetween(1, 5);

@@ -38,6 +38,7 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -222,6 +223,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
+                                .parentInvocationId(CurrentInvocation.invocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
@@ -236,11 +238,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                             InvocationContext withCapturedContext = CapturedContextSupport.captureInto(
                                             invocationContext.toBuilder())
                                     .build();
-                            return invoke(method, args, withCapturedContext);
+                            return CurrentInvocation.callWithout(() -> invoke(method, args, withCapturedContext));
                         } catch (VirtualMachineError e) {
                             throw e;
                         } catch (Throwable t) {
-                            TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
+                            CurrentInvocation.callWithout(() -> {
+                                TerminalEvents.fireError(context.eventListenerRegistrar, invocationContext, t);
+                                return null;
+                            });
                             if (t instanceof Exception) {
                                 Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, t);
                                 if (asyncFailure.isPresent()) {
@@ -331,18 +336,25 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Object memoryId = invocationContext.chatMemoryId();
                         ChatMemory chatMemory = context.hasChatMemory()
-                                ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
+                                ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(invocationContext, method, args);
+                        InvocationContext prologueContext = invocationContext;
+                        Optional<SystemMessage> systemMessage = CurrentInvocation.callWith(
+                                prologueContext, () -> prepareSystemMessage(prologueContext, method, args));
                         if (context.systemMessageTransformer != null) {
-                            String transformedSystemMessage = context.systemMessageTransformer.apply(
-                                    systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
+                            String untransformedSystemMessage =
+                                    systemMessage.map(SystemMessage::text).orElse(null);
+                            String transformedSystemMessage = CurrentInvocation.callWith(
+                                    prologueContext,
+                                    () -> context.systemMessageTransformer.apply(
+                                            untransformedSystemMessage, prologueContext));
                             systemMessage = transformedSystemMessage != null
                                     ? Optional.of(SystemMessage.from(transformedSystemMessage))
                                     : Optional.empty();
                         }
-                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
+                        var userMessageTemplate = CurrentInvocation.callWith(
+                                prologueContext, () -> getUserMessageTemplate(memoryId, method, args));
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
                                 userMessageTemplate, method, args);
                         UserMessage originalUserMessage =
@@ -444,7 +456,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     ? (UserMessage) augmentationResult.chatMessage()
                                                     : originalUserMessage);
                                     GuardrailRequestParams commonGuardrailParam = GuardrailRequestParams.builder()
-                                            .chatMemory(chatMemory)
+                                            .chatMemory(ChatMemoryService.unwrap(chatMemory))
                                             .augmentationResult(augmentationResult)
                                             .userMessageTemplate(userMessageTemplate)
                                             .invocationContext(baseInvocationContext)
@@ -528,7 +540,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
                             final AtomicBoolean reactiveSubscribedBefore = new AtomicBoolean(false);
 
-                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
+                            Flow.Publisher<AiServiceStreamingEvent> eventsOfSubscription = subscriber -> {
                                 if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
                                     subscriber.onSubscribe(NOOP_SUBSCRIPTION);
                                     subscriber.onError(
@@ -603,7 +615,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                         ? (UserMessage) augmentationResult.chatMessage()
                                                         : originalUserMessage);
                                         commonGuardrailParam = GuardrailRequestParams.builder()
-                                                .chatMemory(reactiveChatMemory)
+                                                .chatMemory(ChatMemoryService.unwrap(reactiveChatMemory))
                                                 .augmentationResult(augmentationResult)
                                                 .userMessageTemplate(userMessageTemplate)
                                                 .invocationContext(subscriptionContext)
@@ -744,6 +756,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             });
                                 });
                             };
+                            Flow.Publisher<AiServiceStreamingEvent> events =
+                                    subscriber -> CurrentInvocation.callWithout(() -> {
+                                        eventsOfSubscription.subscribe(subscriber);
+                                        return null;
+                                    });
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events
@@ -771,7 +788,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build();
                             AugmentationRequest augmentationRequest =
                                     new AugmentationRequest(userMessageForAugmentation, metadata);
-                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            augmentationResult = CurrentInvocation.callWith(
+                                    invocationContext, () -> context.retrievalAugmentor.augment(augmentationRequest));
                             fireRetrievalAugmentedEvent(
                                     invocationContext, userMessageForAugmentation, augmentationResult);
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
@@ -780,7 +798,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
 
                         var commonGuardrailParam = GuardrailRequestParams.builder()
-                                .chatMemory(chatMemory)
+                                .chatMemory(ChatMemoryService.unwrap(chatMemory))
                                 .augmentationResult(augmentationResult)
                                 .userMessageTemplate(userMessageTemplate)
                                 .invocationContext(invocationContext)
@@ -832,7 +850,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
-                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest chatRequest = transformChatRequest(
+                                invocationContext,
                                 ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
@@ -906,7 +925,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         CompletableFuture<Object> result = new CompletableFuture<>();
 
-                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        CompletableFuture<ChatResponse> firstModelCall = CurrentInvocation.callWith(
+                                invocationContext, () -> context.chatModel.chatAsync(chatRequest));
                         propagateCancellation(result, firstModelCall);
 
                         firstModelCall
@@ -996,7 +1016,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.toolService.createContext(invocationContext, userMessage, messages);
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
-                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest chatRequest = transformChatRequest(
+                                invocationContext,
                                 ChatRequest.builder()
                                         .messages(messages)
                                         .parameters(parameters)
@@ -1113,6 +1134,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .build());
                     }
 
+                    private ChatRequest transformChatRequest(
+                            InvocationContext invocationContext, ChatRequest chatRequest, Object memoryId) {
+                        return CurrentInvocation.callWith(
+                                invocationContext, () -> context.chatRequestTransformer.apply(chatRequest, memoryId));
+                    }
+
                     /**
                      * Runs RAG augmentation off the calling thread for the asynchronous and reactive return-type
                      * modes: reads the chat memory via the asynchronous {@code messagesAsync} and delegates to
@@ -1134,8 +1161,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? chatMemory.messagesAsync()
                                     : CompletableFuture.completedFuture(null);
                             async = chatMemoryMessages
-                                    .thenCompose(memoryMessages -> augmentor.augmentAsync(augmentationRequest(
-                                            originalUserMessage, systemMessage, memoryMessages, invocationContext)))
+                                    .thenCompose(memoryMessages -> CurrentInvocation.callWith(
+                                            invocationContext,
+                                            () -> augmentor.augmentAsync(augmentationRequest(
+                                                    originalUserMessage,
+                                                    systemMessage,
+                                                    memoryMessages,
+                                                    invocationContext))))
                                     .thenApply(augmentationResult -> {
                                         fireRetrievalAugmentedEvent(
                                                 invocationContext, originalUserMessage, augmentationResult);
@@ -1556,9 +1588,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return CompletableFuture.supplyAsync(
                                     () -> {
                                         List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                        return context.moderationModel
-                                                .moderate(messagesToModerate)
-                                                .content();
+                                        return CurrentInvocation.callWith(
+                                                invocationContext,
+                                                () -> context.moderationModel
+                                                        .moderate(messagesToModerate)
+                                                        .content());
                                     },
                                     executor);
                         }

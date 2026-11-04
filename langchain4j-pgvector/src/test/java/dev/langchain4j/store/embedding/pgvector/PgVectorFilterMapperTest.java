@@ -15,8 +15,11 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -276,6 +279,35 @@ class PgVectorFilterMapperTest {
                 .isEqualTo("(status::text is null or status::text != ?) and created_on::text < ?")
                 .doesNotContain("::null");
         assertThat(whereClause.parameters()).containsExactly("ACTIVE", "2026-10-30");
+    }
+
+    @Test
+    void utilDateValue_shouldBeRejected_jsonMapper() {
+        Filter filter = new IsEqualTo("created_on", new Date(0));
+
+        assertThatThrownBy(() -> jsonMapper.map(filter))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("java.util.Date")
+                .hasMessageContaining("java.time");
+    }
+
+    @Test
+    void timestampValueInList_shouldBeRejected_columnMapper() {
+        Filter filter = new IsIn("created_at", List.of(new Timestamp(0)));
+
+        assertThatThrownBy(() -> columnMapper.map(filter))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("java.sql.Timestamp");
+    }
+
+    @Test
+    void sqlDateAndTimeValues_shouldBeBoundAsIsoText_jsonMapper() {
+        Filter filter = new IsEqualTo("created_on", java.sql.Date.valueOf("2026-10-30"))
+                .and(new IsLessThan("opens_at", Time.valueOf("09:30:00")));
+
+        WhereClause whereClause = jsonMapper.map(filter);
+
+        assertThat(whereClause.parameters()).containsExactly("2026-10-30", "09:30:00");
     }
 
     @Test

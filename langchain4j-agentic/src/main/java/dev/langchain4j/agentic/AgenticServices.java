@@ -322,7 +322,7 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl, null, agentServiceClass);
     }
 
     /**
@@ -874,10 +874,12 @@ public class AgenticServices {
 
     private static AgentExecutor createRegistryAgent(Class<?> agentServiceClass, Method registryMethod) {
         if (activationCondition(agentServiceClass) != null) {
-            throw new AgenticSystemConfigurationException("An @ActivationCondition is not supported on the @RegistryAgent "
-                    + agentServiceClass.getName() + ", because its agent is taken already built from the registry. "
-                    + "Set the activation condition when building the agent registered as '"
-                    + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
+            throw new AgenticSystemConfigurationException(
+                    "An @ActivationCondition is not supported on the @RegistryAgent "
+                            + agentServiceClass.getName()
+                            + ", because its agent is taken already built from the registry. "
+                            + "Set the activation condition when building the agent registered as '"
+                            + registryMethod.getAnnotation(RegistryAgent.class).value() + "'.");
         }
         String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
         AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
@@ -887,10 +889,13 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
-        // checked before creating the builder, which fetches the agent card from the server
+        // checked before creating the builder, which validates the A2A server URL, and its resolved parameters are
+        // resolved now, while the method runs when the client is created on the first invocation of the agent
         Optional<ResolvedParameters> customizer = selectMethod(
                         agentServiceClass, method -> method.isAnnotationPresent(A2AClientCustomizer.class))
-                .map(method -> ResolvedParameters.of(agentServiceClass, method).checkFrameworkParameters(Object.class));
+                .map(method -> ResolvedParameters.of(agentServiceClass, method)
+                        .checkFrameworkParameters(Object.class)
+                        .resolvedNow());
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
@@ -943,8 +948,7 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
@@ -1008,6 +1012,7 @@ public class AgenticServices {
                 humanInTheLoop.description(),
                 humanInTheLoop.outputKey(),
                 humanInTheLoop.async(),
+                false,
                 activationCondition(agentServiceClass));
         return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
     }

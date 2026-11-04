@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.HandlerWithoutInvocation;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -208,6 +210,13 @@ public class AiServiceTokenStream implements TokenStream {
 
     @Override
     public void start() {
+        CurrentInvocation.callWithout(() -> {
+            startRun();
+            return null;
+        });
+    }
+
+    private void startRun() {
         boolean startedAgain = startedBefore.getAndSet(true);
         InvocationContext runContext = startedAgain ? newRunContext() : invocationContext;
         try {
@@ -228,12 +237,14 @@ public class AiServiceTokenStream implements TokenStream {
         List<ToolSpecification> effectiveTools =
                 toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
 
-        ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                ChatRequest.builder()
-                        .messages(messages)
-                        .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
-                        .build(),
-                runContext.chatMemoryId());
+        ChatRequest chatRequest = CurrentInvocation.callWith(
+                runContext,
+                () -> context.chatRequestTransformer.apply(
+                        ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(chatRequestParameters(runContext.methodArguments(), effectiveTools))
+                                .build(),
+                        runContext.chatMemoryId()));
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                 .errorHandler(errorHandler)
@@ -279,7 +290,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        context.streamingChatModel.chat(chatRequest, handler);
+        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

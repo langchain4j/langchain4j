@@ -33,7 +33,7 @@ class A2AClientAgentInvokerTest {
                 .build();
 
         A2AClientInstance clientInstance = mock(A2AClientInstance.class);
-        when(clientInstance.agentCard()).thenReturn(agentCard);
+        when(clientInstance.name()).thenReturn(agentCard.name());
         when(clientInstance.inputKeys()).thenReturn(new String[] {"topic"});
 
         Method invoke = UntypedAgent.class.getMethod("invoke", Map.class);

@@ -27,7 +27,7 @@ jobs:
           - milvus_image: milvusdb/milvus:v2.6.26
             # the Milvus Cloud tests run in one entry only, so that two runs do not share the same cloud collection
             run_cloud_tests: true
-          - milvus_image: milvusdb/milvus:v3.0.4
+          - milvus_image: milvusdb/milvus:v3.0.5
             run_cloud_tests: false
 
     steps:
@@ -44,12 +44,12 @@ jobs:
         run: |
           ## compile and install the Milvus modules and their dependencies, so that the step below only tests the Milvus modules
           ## retried once, as a transient Maven Central failure would otherwise skip all tests of this job
-          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2 -am -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2 -am -DskipTests -DskipITs -DembeddingsSkipCache install
+          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install
 
       - name: Test Milvus modules with JDK 17
         run: |
           mvn -B -U verify \
-            -pl langchain4j-milvus,langchain4j-milvus-v2 \
+            -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus \
             --fail-at-end \
             -Dmilvus.image=${{ matrix.milvus_image }} \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
