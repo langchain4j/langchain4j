@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Cassandra and AstraDb</name>
 
     <properties>
-        <astra-db-client.version>1.2.4</astra-db-client.version>
+        <astra-db-client.version>1.2.7</astra-db-client.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
