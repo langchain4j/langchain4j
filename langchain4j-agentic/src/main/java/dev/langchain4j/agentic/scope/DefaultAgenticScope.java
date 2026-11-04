@@ -337,6 +337,18 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     /**
+     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope: as after a
+     * completed call, an asynchronous agent completing in the meantime finds no call in progress, so it notifies
+     * its own suspension to the listener, and a persistent scope is saved again with its result.
+     */
+    public void rootCallSuspended(AgenticScopeRegistry registry) {
+        rootCallInProgress = false;
+        if (kind == Kind.PERSISTENT) {
+            registryAfterRootCall = registry;
+        }
+    }
+
+    /**
      * Ends the root call, which {@code failed} tells whether it ended with an exception. The responses of the
      * asynchronous agents that no agent of the root call read are left in place, and the root call does not wait
      * for them: when it succeeded, their failure is logged on completion, since no agent would observe it

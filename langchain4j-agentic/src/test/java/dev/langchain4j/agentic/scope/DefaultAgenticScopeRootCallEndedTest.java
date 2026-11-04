@@ -209,6 +209,38 @@ class DefaultAgenticScopeRootCallEndedTest {
     }
 
     @Test
+    void suspended_root_call_leaves_the_scope_as_a_returned_one() {
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        try {
+            AgenticScopeRegistry registry = new AgenticScopeRegistry("root");
+            DefaultAgenticScope scope = registry.create("session-1");
+            AgenticScopeKey key = new AgenticScopeKey("root", "session-1");
+            CountDownLatch release = new CountDownLatch(1);
+            AsyncResponse<String> response = new AsyncResponse<>(() -> {
+                await(release);
+                return "late";
+            });
+            scope.rootCallStarted(registry);
+            scope.writeState("late", response);
+            scope.asyncPending("lateAgent", "late", response);
+
+            scope.rootCallSuspended(registry);
+
+            // the root call returned, suspended: an agent completing afterwards finds no call in progress, and its
+            // result is saved as after a completed root call
+            assertThat(scope.rootCallInProgress()).isFalse();
+            release.countDown();
+            org.awaitility.Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+                String json = store.getJson(key);
+                return json != null && json.contains("\"late\":\"late\"");
+            });
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
+    }
+
+    @Test
     void root_call_end_does_not_wait_for_a_suspended_response() throws Exception {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         SuspendedResponse<String> suspended = new SuspendedResponse<>("approval");

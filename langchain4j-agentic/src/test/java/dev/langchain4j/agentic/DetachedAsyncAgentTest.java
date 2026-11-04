@@ -26,6 +26,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import dev.langchain4j.spi.ExecutorProvider;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -107,6 +108,15 @@ class DetachedAsyncAgentTest {
         @Agent(async = true, outputKey = "fix", optional = true)
         public String remediate(@V("decision") String decision) {
             throw new IllegalStateException("sandbox unavailable");
+        }
+    }
+
+    /** A gate asking for an approval, suspending the agentic system as an A2A client agent does. */
+    public static class ApprovalGate {
+        @Agent(outputKey = "approval")
+        public String approve(AgenticScope scope, @V("decision") String decision) {
+            scope.writeState("a2a.response.approve", new SuspendedResponse<>("approval"));
+            throw new AgenticSystemSuspendedException(scope);
         }
     }
 
@@ -476,6 +486,28 @@ class DetachedAsyncAgentTest {
         // output key: the stale failure of the previous call must not be it
         assertThat(workflow.analyze("rollout-1", "stable")).isNull();
         assertThat(scope.hasState("fix")).isFalse();
+    }
+
+    @Test
+    void detached_agent_suspending_after_a_suspended_root_call_is_notified_too() {
+        SuspendingRemediation remediation = new SuspendingRemediation();
+        RecordingListener listener = new RecordingListener();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new Analysis(), remediation, new ApprovalGate())
+                .outputKey("decision")
+                .listener(listener)
+                .build();
+
+        // the root call suspends on the approval while the remediation is still running
+        assertThatThrownBy(() -> workflow.analyze("rollout-1", "canary"))
+                .isInstanceOf(AgenticSystemSuspendedException.class);
+        assertThat(listener.events).containsOnlyOnce("suspended");
+
+        // the remediation then suspends too: the root call already returned, so its listener is told
+        remediation.release.countDown();
+        await().atMost(10, SECONDS).until(() -> Collections.frequency(listener.events, "suspended") == 2);
+        assertThat(workflow.getAgenticScope("rollout-1").pendingResponseIds())
+                .containsExactlyInAnyOrder("approval", "remediate:task-1");
     }
 
     @Test
