@@ -176,6 +176,25 @@ class SqlFilterParserTest {
                                         metadataKey("form").isEqualTo("circle")),
                                 metadataKey("area").isGreaterThan(7L))))
 
+                // escaped single quotes inside string literals
+                .add(of("name = 'O''Brien'", metadataKey("name").isEqualTo("O'Brien")))
+                .add(of("name != 'O''Brien'", metadataKey("name").isNotEqualTo("O'Brien")))
+                .add(of("name > 'O''Brien'", metadataKey("name").isGreaterThan("O'Brien")))
+                .add(of("name >= 'O''Brien'", metadataKey("name").isGreaterThanOrEqualTo("O'Brien")))
+                .add(of("name < 'O''Brien'", metadataKey("name").isLessThan("O'Brien")))
+                .add(of("name <= 'O''Brien'", metadataKey("name").isLessThanOrEqualTo("O'Brien")))
+                .add(of("name IN ('O''Brien', 'Klaus')", metadataKey("name").isIn("O'Brien", "Klaus")))
+                .add(of("name NOT IN ('O''Brien', 'Klaus')", metadataKey("name").isNotIn("O'Brien", "Klaus")))
+                .add(of("name = '''Klaus'", metadataKey("name").isEqualTo("'Klaus")))
+                .add(of("name = 'Klaus'''", metadataKey("name").isEqualTo("Klaus'")))
+                .add(of("name = ''''", metadataKey("name").isEqualTo("'")))
+                .add(of("name = 'it''s a ''test'''", metadataKey("name").isEqualTo("it's a 'test'")))
+
+                // string literals without escaping are unaffected
+                .add(of("name = ''", metadataKey("name").isEqualTo("")))
+                .add(of("name = 'back\\slash'", metadataKey("name").isEqualTo("back\\slash")))
+                .add(of("name = 'has \"double\" quotes'", metadataKey("name").isEqualTo("has \"double\" quotes")))
+
                 // complete SQL statements
                 .add(of(
                         "SELECT * from fake_table WHERE id = 7",
@@ -224,6 +243,17 @@ class SqlFilterParserTest {
                                 new Metadata().put("key", "aa"),
                                 new Metadata().put("key", "a a"),
                                 new Metadata().put("key2", "a"))))
+
+                // escaped single quote
+                .add(Arguments.of(
+                        "key = 'O''Brien'",
+                        asList(
+                                new Metadata().put("key", "O'Brien"),
+                                new Metadata().put("key", "O'Brien").put("key2", "b")),
+                        asList(
+                                new Metadata().put("key", "O''Brien"),
+                                new Metadata().put("key", "OBrien"),
+                                new Metadata().put("key2", "O'Brien"))))
 
                 // integer
                 .add(Arguments.of(
