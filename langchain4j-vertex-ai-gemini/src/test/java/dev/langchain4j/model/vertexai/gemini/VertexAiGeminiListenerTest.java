@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai.gemini;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -17,6 +18,7 @@ import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseStream;
 import com.google.cloud.vertexai.generativeai.ResponseStreamIteratorWithHistory;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -101,6 +103,38 @@ class VertexAiGeminiListenerTest {
         assertThat(response).failsWithin(5, SECONDS);
         assertThat(events).containsExactly("request", "error");
         assertConfiguredParameters();
+    }
+
+    @Test
+    void streaming_chat_model_should_report_an_unsupported_temperature_to_handler_and_listeners() {
+        assertStreamingValidationErrorReported(
+                ChatRequestParameters.builder().temperature(0.9).build(), "'temperature' parameter");
+    }
+
+    @Test
+    void streaming_chat_model_should_report_an_unsupported_frequency_penalty_to_handler_and_listeners() {
+        assertStreamingValidationErrorReported(
+                ChatRequestParameters.builder().frequencyPenalty(0.5).build(), "'frequencyPenalty' parameter");
+    }
+
+    private void assertStreamingValidationErrorReported(ChatRequestParameters parameters, String unsupported) {
+        VertexAiGeminiStreamingChatModel model = new VertexAiGeminiStreamingChatModel(
+                generativeModel(), GENERATION_CONFIG, List.of(recordingListener()));
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .build();
+        CompletableFuture<ChatResponse> response = new CompletableFuture<>();
+
+        assertThatCode(() -> model.chat(chatRequest, handler(response))).doesNotThrowAnyException();
+
+        assertThat(response)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .withMessage(unsupported + " is not supported yet by this model provider");
+        assertThat(events).containsExactly("request", "error");
     }
 
     private static GenerativeModel generativeModel() {

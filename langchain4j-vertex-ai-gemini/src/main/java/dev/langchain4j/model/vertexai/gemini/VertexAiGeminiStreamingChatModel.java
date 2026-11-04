@@ -382,16 +382,20 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        ChatRequestParameters parameters = chatRequest.parameters();
-        VertexAiGeminiRequestParameters.validateParameters(parameters, defaultRequestParameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-        ChatRequestValidationUtils.validate(parameters.responseFormat());
+        try {
+            ChatRequestParameters parameters = chatRequest.parameters();
+            VertexAiGeminiRequestParameters.validateParameters(parameters, defaultRequestParameters);
+            ChatRequestValidationUtils.validate(parameters.toolChoice());
+            ChatRequestValidationUtils.validate(parameters.responseFormat());
 
-        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-        if (isNullOrEmpty(toolSpecifications)) {
-            generate(chatRequest.messages(), handler);
-        } else {
-            generate(chatRequest.messages(), toolSpecifications, handler);
+            List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+            if (isNullOrEmpty(toolSpecifications)) {
+                generate(chatRequest.messages(), handler);
+            } else {
+                generate(chatRequest.messages(), toolSpecifications, handler);
+            }
+        } catch (RuntimeException e) {
+            handler.onError(e);
         }
     }
 
