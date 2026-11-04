@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -118,7 +119,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
                         builder.apiEndpoint);
 
@@ -509,9 +510,15 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the HTTP request timeout for calls to the Google GenAI API.
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request, including the complete stream:
+         * a response that is still streaming when the timeout is reached fails.
+         * With automatic continuation (see {@link #automaticContinuation(Boolean)}), a long response can take
+         * several requests, each with its own timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
          *
-         * @param timeout the request timeout
+         * @param timeout the timeout
          * @return {@code this}
          */
         public Builder timeout(Duration timeout) {
