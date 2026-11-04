@@ -30,6 +30,7 @@ import dev.langchain4j.observability.api.DefaultAiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
@@ -219,6 +220,36 @@ class AgentAiServiceEventTest {
                         "reviewer AiServiceCompletedEvent",
                         "after reviewer",
                         "after sequence");
+    }
+
+    @Test
+    void summary_of_an_agent_called_from_a_tool_is_nested_in_the_summary_of_the_calling_agent() throws Exception {
+        List<AiServiceInvocationSummaryEvent> summaries = new CopyOnWriteArrayList<>();
+        AiServiceInvocationSummaryListener listener = summaries::add;
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        SharedRegistrarFactory.REGISTRAR.register(listener);
+        try (URLClassLoader sharedRegistrarLoader = sharedRegistrarClassLoader(original)) {
+            Thread.currentThread().setContextClassLoader(sharedRegistrarLoader);
+            Assistant expert = AgenticServices.agentBuilder(Assistant.class)
+                    .chatModel(thatAlwaysResponds("expert answer"))
+                    .build();
+            Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                    .chatModel(thatAlwaysResponds(AiMessage.from(toolCall("1", "askExpert")), AiMessage.from("answer")))
+                    .tools(new ExpertTools(expert))
+                    .build();
+
+            assertThat(assistant.answer("question")).isEqualTo("answer");
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+            SharedRegistrarFactory.REGISTRAR.unregister(listener);
+        }
+
+        // The expert's summary is fired on its own first, and also nested in the summary of the calling agent
+        assertThat(summaries).hasSize(2);
+        assertThat(summaries.get(1).events()).contains(summaries.get(0));
+        assertThat(summaries.get(0).invocationContext().parentInvocationId())
+                .isEqualTo(summaries.get(1).invocationContext().invocationId());
+        assertThat(summaries.get(1).invocationContext().parentInvocationId()).isNull();
     }
 
     @Test
@@ -822,6 +853,19 @@ class AgentAiServiceEventTest {
         @Tool("Get the current weather")
         String weather() {
             return "sunny";
+        }
+    }
+
+    public static class ExpertTools {
+        private final Assistant expert;
+
+        ExpertTools(Assistant expert) {
+            this.expert = expert;
+        }
+
+        @Tool("Ask the expert")
+        String askExpert() {
+            return expert.answer("question for the expert");
         }
     }
 }

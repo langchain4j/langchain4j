@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -13,6 +14,35 @@ import java.util.function.Predicate;
  * @param <T> the agent service interface type
  */
 public interface A2AClientBuilder<T> {
+
+    /**
+     * Sets the name of the agent, from which its id in the reports, in the agents list sent to a supervisor and in
+     * the error handler context is derived. When not set, a typed agent takes the name of the annotation of its agent
+     * method or, when that is not set either, the name of the method, and an untyped one gets a placeholder derived
+     * from the host, port and path of the A2A server URL, so that the name is known without fetching the agent
+     * card, which happens only on the first invocation. The name never changes once the agent is built, even after
+     * the card has been fetched.
+     *
+     * @param name the name of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> name(String name) {
+        return this;
+    }
+
+    /**
+     * Sets the description of the agent, used by the supervisor and the other planners to decide when to invoke
+     * it. When neither this method nor the annotation of the agent method set it, the description is read from the
+     * agent card, which is fetched on the first call to {@link AgentInstance#description()}: for a subagent of a
+     * supervisor this happens on the first invocation of the supervisor, which then depends on the availability of
+     * the remote agent, so an explicit description is recommended there.
+     *
+     * @param description the description of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> description(String description) {
+        return this;
+    }
 
     /**
      * Sets the state keys whose values will be sent as message parts to the remote agent.

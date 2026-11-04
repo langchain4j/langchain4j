@@ -12,10 +12,13 @@ import java.lang.annotation.Target;
  * <p>
  * The annotated method must be static, take a single parameter of type
  * {@code org.a2aproject.sdk.client.ClientBuilder}, and return {@code void}.
- * It is invoked once at build time, allowing transport, interceptors, streaming,
+ * It is invoked once, when the client is created on the first invocation of the agent,
+ * after the agent card has been fetched, allowing transport, interceptors, streaming,
  * and other low-level configuration to be specified declaratively.
  * Besides the {@code ClientBuilder}, it can declare parameters resolved through a
- * {@link SupplierParameterResolver}.
+ * {@link SupplierParameterResolver}, which are resolved when the agent is built, like the parameters of
+ * the other supplier methods, and not when the client is created: a value resolved per request, like a
+ * token, is the one of the thread building the agent and not the one of the first caller.
  * <p>
  * Example:
  * <pre>{@code
