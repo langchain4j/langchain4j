@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Hibernate :: Milvus</name>
 
     <properties>
-        <hibernate-nosql.version>1.0.0.Alpha4</hibernate-nosql.version>
+        <hibernate-nosql.version>1.0.0-SNAPSHOT</hibernate-nosql.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
