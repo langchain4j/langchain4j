@@ -1,5 +1,7 @@
 package dev.langchain4j.rag.content.retriever;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onError;
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
@@ -70,5 +74,58 @@ final class ListeningContentRetriever implements ContentRetriever {
                     listeners);
             throw error;
         }
+    }
+
+    @Override
+    public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ContentRetrieverRequestContext requestContext = ContentRetrieverRequestContext.builder()
+                .query(query)
+                .contentRetriever(this)
+                .attributes(attributes)
+                .build();
+        onRequest(requestContext, listeners);
+
+        CompletableFuture<List<Content>> source;
+        try {
+            source = delegate.retrieveAsync(query);
+        } catch (Exception error) {
+            onError(
+                    ContentRetrieverErrorContext.builder()
+                            .error(error)
+                            .query(query)
+                            .contentRetriever(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            return CompletableFuture.failedFuture(error);
+        }
+
+        CompletableFuture<List<Content>> result = source.whenComplete((contents, error) -> {
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (!(cause instanceof CancellationException)) {
+                    onError(
+                            ContentRetrieverErrorContext.builder()
+                                    .error(cause)
+                                    .query(query)
+                                    .contentRetriever(this)
+                                    .attributes(attributes)
+                                    .build(),
+                            listeners);
+                }
+            } else {
+                onResponse(
+                        ContentRetrieverResponseContext.builder()
+                                .contents(contents)
+                                .query(query)
+                                .contentRetriever(this)
+                                .attributes(attributes)
+                                .build(),
+                        listeners);
+            }
+        });
+        propagateCancellation(result, source);
+        return result;
     }
 }
