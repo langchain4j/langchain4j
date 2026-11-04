@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The root call of an agentic system does not wait for an asynchronous agent whose result nobody reads: it returns
  * while that agent is still running, and the result or the failure of the agent is reported to its listener, while
- * the scope is finalized only after its completion.
+ * the scope is ended at the end of the root call, without waiting for it.
  */
 class DetachedAsyncAgentTest {
 
