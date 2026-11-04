@@ -1,19 +1,27 @@
 package dev.langchain4j.agentic.workflow.impl;
 
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
-import dev.langchain4j.agentic.workflow.SequentialAgentService;
-import java.lang.reflect.Method;
-
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
-public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
+import dev.langchain4j.agentic.workflow.SequentialAgentService;
+import java.lang.reflect.Method;
+import java.util.List;
+
+public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>>
+        implements SequentialAgentService<T> {
 
     public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
-        configureSequential(agentServiceClass);
+        configureSequential(AgentHelpers.staticOnly(agentServiceClass));
+    }
+
+    @Override
+    protected void applyHelperObjects(List<Object> helperObjects) {
+        configureSequential(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
     }
 
     @Override
@@ -26,7 +34,9 @@ public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, Seq
     }
 
     public static <T> SequentialAgentServiceImpl<T> builder(Class<T> agentServiceClass) {
-        return new SequentialAgentServiceImpl<>(agentServiceClass, validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.SequenceAgent.class));
+        return new SequentialAgentServiceImpl<>(
+                agentServiceClass,
+                validateAgentClass(agentServiceClass, false, dev.langchain4j.agentic.declarative.SequenceAgent.class));
     }
 
     @Override
@@ -34,8 +44,8 @@ public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, Seq
         return "Sequential";
     }
 
-    private void configureSequential(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureSequential(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
     }
 }

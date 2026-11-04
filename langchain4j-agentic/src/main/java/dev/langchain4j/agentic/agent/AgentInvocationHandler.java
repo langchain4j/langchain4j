@@ -75,6 +75,15 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         context.eventListenerRegistrar = new ForwardingRegistrar(context.eventListenerRegistrar);
     }
 
+    /**
+     * @return the AI service implementing this agent, built by {@link dev.langchain4j.service.AiServices} from the
+     *         agent type: an integration that builds its own AI service implementation reaches it here, for instance
+     *         to manage the chat memories it created
+     */
+    public Object aiService() {
+        return agent;
+    }
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AiServiceListener.class
@@ -111,7 +120,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 }
                 case "registry" ->
                     throw new UnsupportedOperationException(
-                            "AgenticScopeOwner's registry method can be used only on the root agent of an agentic system.");
+                            "AgenticScopeOwner's registry method can be used only on the root agent of an agentic"
+                                    + " system.");
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeOwner class : " + method.getName());
@@ -172,8 +182,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     private Object invokeStandaloneAgent(Method method, Object[] args) {
-        LOGGER.warn(
-                "Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
+        LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices"
+                + " instead.");
 
         AgenticScope standaloneAgenticScope = ephemeralAgenticScope();
         AgentModelResponse modelResponse = new AgentModelResponse();

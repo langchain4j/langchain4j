@@ -170,6 +170,24 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    /**
+     * Applies the helper objects of the agent to this builder: the objects whose instance methods, annotated with
+     * the declarative annotations, configure the agent next to the static methods of its type, applied by the
+     * constructor. Used by the declarative API with the helper objects returned by the {@code helperObjectsResolver}
+     * of an {@link dev.langchain4j.agentic.AgenticServices.AgentConfigurator}.
+     */
+    public S helperObjects(List<Object> helperObjects) {
+        applyHelperObjects(helperObjects);
+        return (S) this;
+    }
+
+    /**
+     * Applies the instance helper methods of the given helper objects to this builder, whose static helpers have
+     * been applied by its constructor, with
+     * {@link dev.langchain4j.agentic.internal.AgentHelpers#instanceOnly(Class, List)}.
+     */
+    protected abstract void applyHelperObjects(List<Object> helperObjects);
+
     private void addSubagents(List<AgentExecutor> agents) {
         this.subagents.addAll(agents);
     }

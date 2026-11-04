@@ -1,8 +1,10 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCondition;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildListener;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkNoDecisionSuppliers;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
-import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
@@ -13,7 +15,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.declarative.DeclarativeUtil;
+import dev.langchain4j.agentic.declarative.HumanInTheLoop;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -35,6 +37,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
@@ -112,9 +115,82 @@ public class AgentUtil {
         if (agent instanceof AgenticScopeFunction<?> function) {
             return agenticScopeFunctionToExecutor(function);
         }
-        return agent instanceof InternalAgent internalAgent
-                ? agentToExecutor(internalAgent)
-                : nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()));
+        if (agent instanceof InternalAgent internalAgent) {
+            return agentToExecutor(internalAgent);
+        }
+        // an agent passed as an instance is its own helper object: its activation condition and listener can be
+        // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver
+        AgentHelpers helpers = AgentHelpers.of(agent.getClass(), List.of(agent));
+        Method humanInTheLoopMethod = instanceHumanInTheLoopMethod(agent.getClass());
+        if (humanInTheLoopMethod != null) {
+            return humanInTheLoopExecutor(humanInTheLoopMethod, agent, helpers);
+        }
+        return nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()), helpers);
+    }
+
+    /**
+     * @return the instance method of the given class annotated with {@link HumanInTheLoop @HumanInTheLoop}, or
+     *         {@code null} when there is none
+     * @throws IllegalArgumentException if there is more than one, or if the class also declares an
+     *         {@link Agent @Agent} method
+     */
+    private static Method instanceHumanInTheLoopMethod(Class<?> agentClass) {
+        Method humanInTheLoopMethod = null;
+        boolean hasAgentMethod = false;
+        for (Method method :
+                AgentHelpers.methodsAnnotatedWith(agentClass, List.of(Agent.class, HumanInTheLoop.class))) {
+            if (method.isAnnotationPresent(Agent.class)) {
+                hasAgentMethod = true;
+            }
+            if (method.isAnnotationPresent(HumanInTheLoop.class) && !Modifier.isStatic(method.getModifiers())) {
+                if (humanInTheLoopMethod != null) {
+                    throw new IllegalArgumentException(
+                            "Multiple @HumanInTheLoop methods found in class: " + agentClass.getName());
+                }
+                humanInTheLoopMethod = method;
+            }
+        }
+        if (humanInTheLoopMethod != null && hasAgentMethod) {
+            throw new IllegalArgumentException("The class " + agentClass.getName()
+                    + " declares both an @Agent and a @HumanInTheLoop method: an agent class must declare one of them");
+        }
+        return humanInTheLoopMethod;
+    }
+
+    /**
+     * Creates the executor of the human-in-the-loop agent implemented by the given method, a static method or an
+     * instance method of the given target, that is also one of the helper objects of the agent.
+     */
+    public static AgentExecutor humanInTheLoopExecutor(Method method, Object target, AgentHelpers helpers) {
+        checkNoDecisionSuppliers(helpers);
+        var humanInTheLoop = method.getAnnotation(HumanInTheLoop.class);
+
+        HelperMethod helper = new HelperMethod(method, target);
+        ResolvedParameters parameters = ResolvedParameters.of(helpers.agentType(), helper);
+        List<AgentArgument> methodArguments = parameters.frameworkArguments().stream()
+                .filter(arg -> !arg.name().startsWith("@"))
+                .toList();
+        var humanInTheLoopBuilder = AgenticServices.humanInTheLoopBuilder()
+                .description(humanInTheLoop.description())
+                .outputKey(humanInTheLoop.outputKey())
+                .async(humanInTheLoop.async())
+                .inputs(methodArguments.isEmpty() ? null : methodArguments)
+                .responseProvider(scope -> helper.invoke(
+                        parameters.invocationArguments(scope, Map.of(), true).positionalArgs()));
+
+        buildListener(helpers, humanInTheLoopBuilder::listener);
+
+        String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
+        AgentInvoker agentInvoker = nonAiAgentInvoker(
+                parameters,
+                name,
+                humanInTheLoop.description(),
+                humanInTheLoop.outputKey(),
+                humanInTheLoop.async(),
+                false,
+                activationCondition(helpers));
+        // the invoker calls the method on the agent of the executor, which is the target of an instance method
+        return new AgentExecutor(agentInvoker, target != null ? target : humanInTheLoopBuilder.build());
     }
 
     private static AgentExecutor agenticScopeFunctionToExecutor(AgenticScopeFunction<?> function) {
@@ -134,13 +210,35 @@ public class AgentUtil {
     }
 
     public static AgentExecutor nonAiAgentToExecutor(Object agent, Method agenticMethod) {
+        // a class with a static agent method is wrapped in an AgenticScopeFunction, its helpers are on the class;
+        // an agent passed as an instance is its own helper object
+        AgentHelpers helpers = agent instanceof AgenticScopeFunction<?>
+                ? AgentHelpers.staticOnly(agenticMethod.getDeclaringClass())
+                : AgentHelpers.of(agent.getClass(), List.of(agent));
+        return nonAiAgentToExecutor(agent, agenticMethod, helpers);
+    }
+
+    /**
+     * Creates the executor of the non-AI agent implemented by the given method of the given object, with the given
+     * helpers: the activation condition and the listener of the agent can be static methods of the agent type or
+     * instance methods of its helper objects, and the parameters of the agent method can be provided by a
+     * {@link dev.langchain4j.agentic.declarative.SupplierParameterResolver}.
+     */
+    public static AgentExecutor nonAiAgentToExecutor(Object agent, Method agenticMethod, AgentHelpers helpers) {
         Agent annotation = agenticMethod.getAnnotation(Agent.class);
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         String outputKey = AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey());
         return new AgentExecutor(
                 nonAiAgentInvoker(
-                        agent, agenticMethod, name, description, outputKey, annotation.async(), annotation.optional()),
+                        agent,
+                        agenticMethod,
+                        name,
+                        description,
+                        outputKey,
+                        annotation.async(),
+                        annotation.optional(),
+                        helpers),
                 agent);
     }
 
@@ -151,31 +249,19 @@ public class AgentUtil {
             String description,
             String outputKey,
             boolean async,
-            boolean optional) {
+            boolean optional,
+            AgentHelpers helpers) {
         if (agent instanceof AgentSpecsProvider spec) {
             return AgentInvoker.fromSpec(spec, agenticMethod, name);
         }
-        // a class with a static agent method is wrapped in an AgenticScopeFunction, its conditions are on the class
-        if (agent instanceof AgenticScopeFunction<?>) {
-            Class<?> agentClass = agenticMethod.getDeclaringClass();
-            return nonAiAgentInvoker(
-                    ResolvedParameters.of(agentClass, agenticMethod),
-                    name,
-                    description,
-                    outputKey,
-                    async,
-                    optional,
-                    DeclarativeUtil.activationCondition(agentClass));
-        }
-        // the parameters of an agent passed as an instance are not provided by a SupplierParameterResolver
         return nonAiAgentInvoker(
-                agenticMethod,
+                ResolvedParameters.of(helpers.agentType(), agenticMethod),
                 name,
                 description,
                 outputKey,
                 async,
                 optional,
-                DeclarativeUtil.activationCondition(agent.getClass()));
+                activationCondition(helpers));
     }
 
     public static AgentInvoker nonAiAgentInvoker(
@@ -486,24 +572,27 @@ public class AgentUtil {
         return validateAgentClass(agentServiceClass, failOnMissingAnnotation, null);
     }
 
+    /**
+     * Validates that the given agent type declares a single agent method, and returns it: a method annotated with
+     * {@link Agent @Agent} or with the given pattern annotation, declared by the type, its superclasses or its
+     * interfaces. The method is found also when the type overrides it without the annotation, as a proxy generated
+     * by a container does, and is then invoked through the override.
+     */
     public static Method validateAgentClass(
             Class<?> agentServiceClass,
             boolean failOnMissingAnnotation,
             Class<? extends Annotation> patternAnnotation) {
+        List<Class<? extends Annotation>> annotations =
+                patternAnnotation == null ? List.of(Agent.class) : List.of(Agent.class, patternAnnotation);
         Method agentMethod = null;
-        for (Method method : allMethods(agentServiceClass)) {
-            if (method.isAnnotationPresent(Agent.class)
-                    || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
-                if (agentMethod != null) {
-                    throw new IllegalArgumentException(
-                            "Multiple agent methods found in class: " + agentServiceClass.getName());
-                }
-                agentMethod = method;
+        for (Method method : AgentHelpers.methodsAnnotatedWith(agentServiceClass, annotations)) {
+            if (agentMethod != null) {
+                throw new IllegalArgumentException(
+                        "Multiple agent methods found in class: " + agentServiceClass.getName());
             }
+            agentMethod = method;
         }
-        if (agentMethod != null) {
-            agentMethod.setAccessible(true);
-        } else if (failOnMissingAnnotation) {
+        if (agentMethod == null && failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

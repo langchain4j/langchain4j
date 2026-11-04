@@ -14,7 +14,9 @@ public interface AgenticScopeAccess {
     AgenticScope getAgenticScope(Object memoryId);
 
     /**
-     * Evicts the {@link AgenticScope} with the given id.
+     * Evicts the {@link AgenticScope} with the given id, together with the chat memories that the agents of this
+     * agentic system created for that id, which are cleared and evicted: an evicted scope leaves nothing behind in
+     * the chat memory stores of its agents.
      *
      * @param memoryId The id of the {@link AgenticScope} to be evicted.
      * @return true if {@link AgenticScope} with the given id existed, and it was successfully evicted, false otherwise.

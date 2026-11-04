@@ -10,12 +10,12 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.frameworkParam
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.isDecisionAgent;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateHelper;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.humanInTheLoopExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
-import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -44,6 +44,7 @@ import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
@@ -394,28 +395,56 @@ public class AgenticServices {
      * {@code decisionAgentBuilder()} is {@code null}, for a decision agent it is the other way round, so a
      * configurator must check which builder it received before using it. The {@code agentInstanceFactory} is
      * applied to both kinds of agents.
+     * <p>
+     * The {@code helperObjectsResolver} is called with the type of every agent of the system, the root agent and
+     * each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated with
+     * the declarative annotations like {@code @ExitCondition} or {@code @ChatModelSupplier}, configure the agent
+     * instead of, or next to, the static methods of the agent type. It can return {@code null} or an empty list for
+     * an agent without helper objects. It is how a dependency injection container provides the helpers of an agent
+     * as methods of a managed bean, typically an instance of the agent type itself.
      */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
             Function<InternalAgent, Object> agentInstanceFactory,
-            Supplier<Object> defaultMemoryIdSupplier) {
+            Supplier<Object> defaultMemoryIdSupplier,
+            Function<Class<?>, List<Object>> helperObjectsResolver) {
 
         private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {});
 
         public AgentConfigurator(Consumer<DeclarativeAgentCreationContext<?>> configurator) {
-            this(configurator, null, null, null);
+            this(configurator, null, null, null, null);
         }
 
         public AgentConfigurator(
                 Consumer<DeclarativeAgentCreationContext<?>> configurator,
                 Function<Class<?>, Object> subAgentResolver,
                 Function<InternalAgent, Object> agentInstanceFactory) {
-            this(configurator, subAgentResolver, agentInstanceFactory, null);
+            this(configurator, subAgentResolver, agentInstanceFactory, null, null);
+        }
+
+        public AgentConfigurator(
+                Consumer<DeclarativeAgentCreationContext<?>> configurator,
+                Function<Class<?>, Object> subAgentResolver,
+                Function<InternalAgent, Object> agentInstanceFactory,
+                Supplier<Object> defaultMemoryIdSupplier) {
+            this(configurator, subAgentResolver, agentInstanceFactory, defaultMemoryIdSupplier, null);
         }
 
         public static AgentConfigurator empty() {
             return EMPTY;
+        }
+
+        /**
+         * The helper objects of the given agent type returned by the {@code helperObjectsResolver}, or an empty list
+         * when there is no resolver or it returns nothing.
+         */
+        public List<Object> helperObjects(Class<?> agentType) {
+            if (helperObjectsResolver == null) {
+                return List.of();
+            }
+            List<Object> helperObjects = helperObjectsResolver.apply(agentType);
+            return helperObjects == null ? List.of() : helperObjects;
         }
     }
 
@@ -545,6 +574,17 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * Applies the helper objects of the agent to a workflow, planner or supervisor builder, whose constructor applied
+     * the static helpers of the agent type: the helpers of the objects are applied on top of them, before the
+     * attributes of the agent annotation.
+     */
+    private static void setHelperObjects(Object builder, List<Object> helperObjects) {
+        if (!helperObjects.isEmpty()) {
+            ((AbstractServiceBuilder<?, ?>) builder).helperObjects(helperObjects);
+        }
+    }
+
     private static void buildAgentSpecs(
             Method agentMethod,
             String name,
@@ -575,6 +615,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -595,6 +636,7 @@ public class AgenticServices {
                 .maxIterations(annotation.maxIterations());
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -611,8 +653,10 @@ public class AgenticServices {
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         ConditionalAgent annotation = agentMethod.getAnnotation(ConditionalAgent.class);
         var builder = conditionalBuilder(agentServiceClass);
+        List<Object> helperObjects = agentConfigurator.helperObjects(agentServiceClass);
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, helperObjects);
 
         buildAgentSpecs(
                 agentMethod,
@@ -622,15 +666,19 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        AgentHelpers helpers = AgentHelpers.of(agentServiceClass, helperObjects);
         for (Class<?> subagent : annotation.subAgents()) {
-            predicateMethod(agentServiceClass, method -> {
-                        ActivationCondition activationCondition = method.getAnnotation(ActivationCondition.class);
-                        return activationCondition != null
-                                && Arrays.asList(activationCondition.value()).contains(subagent);
-                    })
-                    .ifPresent(method -> builder.subAgent(
-                            method.getAnnotation(ActivationCondition.class).description(),
-                            agenticScopePredicate(agentServiceClass, method),
+            predicateHelper(
+                            helpers,
+                            ActivationCondition.class,
+                            method -> Arrays.asList(method.getAnnotation(ActivationCondition.class)
+                                            .value())
+                                    .contains(subagent))
+                    .ifPresent(helper -> builder.subAgent(
+                            helper.method()
+                                    .getAnnotation(ActivationCondition.class)
+                                    .description(),
+                            agenticScopePredicate(agentServiceClass, helper),
                             createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
@@ -644,6 +692,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -664,6 +713,7 @@ public class AgenticServices {
                 .itemsProvider(annotation.itemsProvider());
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -683,6 +733,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -706,6 +757,7 @@ public class AgenticServices {
                 .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
+        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         if (!isNullOrBlank(supervisorAgent.name())) {
             builder.name(supervisorAgent.name());
@@ -928,7 +980,8 @@ public class AgenticServices {
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(
-                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method, not both.");
+                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method,"
+                            + " not both.");
         }
 
         if (supplierMethod.isPresent()) {
@@ -941,7 +994,8 @@ public class AgenticServices {
         }
 
         throw new IllegalArgumentException(
-                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method annotated with @A2AServerUrlSupplier.");
+                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method"
+                        + " annotated with @A2AServerUrlSupplier.");
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
@@ -953,9 +1007,9 @@ public class AgenticServices {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
                 })
-                .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns"
+                                + " the McpClient instance."));
 
         var mcpClientBuilder = McpService.get()
                 .mcpBuilder(mcpClient, agentServiceClass)
@@ -982,39 +1036,7 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
-        checkNoDecisionSuppliers(agentServiceClass);
-        var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
-
-        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, method);
-        List<AgentArgument> methodArguments = parameters.frameworkArguments().stream()
-                .filter(arg -> !arg.name().startsWith("@"))
-                .toList();
-        var humanInTheLoopBuilder = humanInTheLoopBuilder()
-                .description(humanInTheLoop.description())
-                .outputKey(humanInTheLoop.outputKey())
-                .async(humanInTheLoop.async())
-                .inputs(methodArguments.isEmpty() ? null : methodArguments)
-                .responseProvider(scope -> invokeStatic(
-                        method,
-                        parameters.invocationArguments(scope, Map.of(), true).positionalArgs()));
-
-        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
-                .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgentListener.class);
-                    humanInTheLoopBuilder.listener(
-                            invokeSupplierWithResolvers(agentServiceClass, listenerMethod, AgentListener.class));
-                });
-
-        String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
-        AgentInvoker agentInvoker = nonAiAgentInvoker(
-                parameters,
-                name,
-                humanInTheLoop.description(),
-                humanInTheLoop.outputKey(),
-                humanInTheLoop.async(),
-                false,
-                activationCondition(agentServiceClass));
-        return new AgentExecutor(agentInvoker, humanInTheLoopBuilder.build());
+        return humanInTheLoopExecutor(method, null, AgentHelpers.staticOnly(agentServiceClass));
     }
 
     private static Method nonAiAgentMethod(Class<?> agentServiceClass) {

@@ -3,13 +3,14 @@ package dev.langchain4j.agentic.planner;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
-import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, PlannerBasedService<T>>
@@ -19,7 +20,12 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
 
     public PlannerBasedServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
-        configurePlanner(agentServiceClass);
+        configurePlanner(AgentHelpers.staticOnly(agentServiceClass));
+    }
+
+    @Override
+    protected void applyHelperObjects(List<Object> helperObjects) {
+        configurePlanner(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
     }
 
     public static <T> PlannerBasedService<T> builder(Class<T> agentServiceClass) {
@@ -47,14 +53,14 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
         return build(plannerSupplier);
     }
 
-    private void configurePlanner(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configurePlanner(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
 
-        getAnnotatedMethodOnClass(agentServiceClass, PlannerSupplier.class).ifPresent(method -> {
-            checkReturnType(method, Planner.class);
+        helpers.select(PlannerSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), Planner.class);
             ResolvedParameters parameters =
-                    ResolvedParameters.of(agentServiceClass, method).checkAllResolved();
+                    ResolvedParameters.of(helpers.agentType(), helper).checkAllResolved();
             planner(() -> parameters.invoke());
         });
     }

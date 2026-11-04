@@ -46,8 +46,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import java.lang.annotation.ElementType;
@@ -279,7 +279,8 @@ class HelperMethodParameterResolverTest {
 
         @ErrorHandler
         static ErrorRecoveryResult recover(ErrorContext errorContext) {
-            return ErrorRecoveryResult.result("recovered from " + errorContext.exception().getMessage());
+            return ErrorRecoveryResult.result(
+                    "recovered from " + errorContext.exception().getMessage());
         }
     }
 
@@ -288,8 +289,7 @@ class HelperMethodParameterResolverTest {
         SERVICES.put(Formatter.class, new IllegalStateException("formatter not available"));
         register(Policy.class, new Policy("Voldemort"));
 
-        GreetingSequenceWithRecovery sequence =
-                AgenticServices.createAgenticSystem(GreetingSequenceWithRecovery.class);
+        GreetingSequenceWithRecovery sequence = AgenticServices.createAgenticSystem(GreetingSequenceWithRecovery.class);
 
         assertThat(sequence.run("Mario")).isEqualTo("recovered from Failed to resolve the parameters of agent 'greet'");
     }
@@ -313,7 +313,7 @@ class HelperMethodParameterResolverTest {
     }
 
     @Test
-    void parameters_of_a_non_ai_agent_passed_as_instance_are_read_from_the_scope() {
+    void parameters_of_a_non_ai_agent_passed_as_instance_are_resolved_like_the_static_ones() {
         register(Formatter.class, new Formatter());
         Formatter scopeFormatter = new Formatter() {
             @Override
@@ -327,12 +327,14 @@ class HelperMethodParameterResolverTest {
                 .outputKey("greeting")
                 .build();
 
+        // the resolved formatter is used, not the one in the scope, and it is not an argument of the agent
         assertThat(sequence.invoke(Map.of("name", "Mario", "formatter", scopeFormatter)))
-                .isEqualTo("Hello Mario!");
+                .isEqualTo("HELLO MARIO");
         assertThat(((AgentInstance) sequence).subagents().get(0).arguments())
                 .extracting(AgentArgument::name)
-                .containsExactly("name", "formatter");
-        assertThat(RESOLVED).isEmpty();
+                .containsExactly("name");
+        assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).containsExactly("greet");
+        assertThat(RESOLVED.get(0).declaringAgentClass()).isEqualTo(InstanceGreeter.class);
     }
 
     // ── @ActivationCondition with value ──
@@ -657,8 +659,8 @@ class HelperMethodParameterResolverTest {
         ChatModelMock plannerModel = scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
-                    {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}
-                    """);
+            {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}
+            """);
 
         ExchangeSupervisor supervisor = AgenticServices.createAgenticSystem(ExchangeSupervisor.class, plannerModel);
         supervisor.invoke("convert 100 EUR to USD");

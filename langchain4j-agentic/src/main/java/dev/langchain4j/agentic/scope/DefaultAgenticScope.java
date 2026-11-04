@@ -29,6 +29,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -244,6 +245,15 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public <T> T getOrCreateAgent(String agentId, Function<DefaultAgenticScope, T> agentFactory) {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
+    }
+
+    /**
+     * The agents created for this scope only, by {@link #getOrCreateAgent}: the AI agents whose configuration
+     * depends on the scope, and the planner agent of a supervisor. They are not part of the agent tree of the
+     * agentic system, so they have to be reached through the scope, for instance to evict their chat memories.
+     */
+    public Collection<Object> cachedAgents() {
+        return Collections.unmodifiableCollection(agents.values());
     }
 
     public void registerAgentInvocation(AgentInvocation agentInvocation) {

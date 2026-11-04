@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateHelper;
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
@@ -10,11 +10,14 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
+import dev.langchain4j.agentic.internal.HelperMethod;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -29,7 +32,12 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
 
     public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         super(agentServiceClass, agenticMethod);
-        configureLoop(agentServiceClass);
+        configureLoop(AgentHelpers.staticOnly(agentServiceClass));
+    }
+
+    @Override
+    protected void applyHelperObjects(List<Object> helperObjects) {
+        configureLoop(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
     }
 
     @Override
@@ -95,23 +103,25 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
         return "Loop";
     }
 
-    private void configureLoop(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureLoop(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
 
-        predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
-                .map(method -> {
-                    testExitAtLoopEnd(method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
-                    return method;
+        predicateHelper(helpers, ExitCondition.class)
+                .map(helper -> {
+                    testExitAtLoopEnd(
+                            helper.method().getAnnotation(ExitCondition.class).testExitAtLoopEnd());
+                    return helper;
                 })
-                .ifPresent(method -> this.exitCondition(
-                        method.getAnnotation(ExitCondition.class).description(),
-                        loopExitConditionPredicate(agentServiceClass, method)));
+                .ifPresent(helper -> this.exitCondition(
+                        helper.method().getAnnotation(ExitCondition.class).description(),
+                        loopExitConditionPredicate(helpers.agentType(), helper)));
     }
 
     private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(
-            Class<?> agentServiceClass, Method predicateMethod) {
-        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, predicateMethod);
+            Class<?> agentServiceClass, HelperMethod predicateHelper) {
+        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, predicateHelper);
+        Method predicateMethod = predicateHelper.method();
         return (agenticScope, loopCounter) -> {
             try {
                 Object[] args = parameters
@@ -120,7 +130,7 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
                                 Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter),
                                 true)
                         .positionalArgs();
-                return (boolean) predicateMethod.invoke(null, args);
+                return (boolean) predicateMethod.invoke(predicateHelper.target(), args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }

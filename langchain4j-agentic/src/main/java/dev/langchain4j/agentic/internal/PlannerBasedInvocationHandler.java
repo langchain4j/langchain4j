@@ -36,6 +36,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.TokenStream;
@@ -161,7 +162,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         if (method.getDeclaringClass() == AgenticScopeAccess.class) {
             return switch (method.getName()) {
                 case "getAgenticScope" -> registry.get(args[0]);
-                case "evictAgenticScope" -> registry.evict(args[0], agentListener);
+                case "evictAgenticScope" -> evictAgenticScope(registry, args[0]);
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeAccess class : " + method.getName());
@@ -203,6 +204,50 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             agenticScopeRegistry.compareAndSet(null, new AgenticScopeRegistry(type.getName()));
         }
         return agenticScopeRegistry.get();
+    }
+
+    /**
+     * Evicts the scope with the given memory id from the registry, and with it the chat memories the agents of this
+     * agentic system created for that memory id: the ones of the AI agents reachable from the agent tree, and the
+     * ones of the agents created for the scope only, like the AI agents whose configuration depends on the scope and
+     * the planner agent of a supervisor.
+     */
+    private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId) {
+        DefaultAgenticScope scope = registry.get(memoryId);
+        if (scope != null) {
+            evictChatMemories(subagents, memoryId);
+            for (Object cachedAgent : scope.cachedAgents()) {
+                if (cachedAgent instanceof ChatMemoryAccess chatMemoryAccess) {
+                    evictChatMemory(chatMemoryAccess, memoryId);
+                }
+            }
+        }
+        return registry.evict(memoryId, agentListener);
+    }
+
+    private static void evictChatMemories(List<AgentInstance> agents, Object memoryId) {
+        for (AgentInstance agent : agents) {
+            // the planner-based agents have no chat memory of their own, and the one of a supervisor is reached
+            // through the scope: only the AI agents are asked to evict theirs
+            if (agent.topology() == AgenticSystemTopology.AI_AGENT
+                    && agent instanceof AgentExecutor executor
+                    && executor.agent() instanceof ChatMemoryAccess chatMemoryAccess) {
+                evictChatMemory(chatMemoryAccess, memoryId);
+            }
+            evictChatMemories(agent.subagents(), memoryId);
+        }
+    }
+
+    /**
+     * Clears the chat memory of the given agent for the given memory id, so that its messages leave the chat memory
+     * store too, then evicts it: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory object.
+     */
+    private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId) {
+        ChatMemory chatMemory = chatMemoryAccess.getChatMemory(memoryId);
+        if (chatMemory != null) {
+            chatMemory.clear();
+        }
+        chatMemoryAccess.evictChatMemory(memoryId);
     }
 
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {

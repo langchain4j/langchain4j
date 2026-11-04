@@ -18,9 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The parameters of a static method declared on an agent type, split once, when the agent is created, between the
- * parameters provided by a registered {@link SupplierParameterResolver} and the parameters provided by the agentic
- * framework, like the {@link AgenticScope}, its state, the memory id or a value passed by the caller.
+ * The parameters of a helper method of an agent, a static method declared on the agent type or an instance method of
+ * one of its helper objects, split once, when the agent is created, between the parameters provided by a registered
+ * {@link SupplierParameterResolver} and the parameters provided by the agentic framework, like the
+ * {@link AgenticScope}, its state, the memory id or a value passed by the caller.
  * <p>
  * Only the parameters provided by the framework are agent arguments: the resolved ones are never read from the
  * {@link AgenticScope}, nor reported to listeners and planners.
@@ -28,7 +29,7 @@ import java.util.Map;
 @Internal
 public final class ResolvedParameters {
 
-    private final Method method;
+    private final HelperMethod helper;
     private final SupplierParameterResolver[] resolvers;
     private final SupplierParameterResolver.Context[] contexts;
     private final int[] frameworkIndexes;
@@ -36,8 +37,10 @@ public final class ResolvedParameters {
     private final Object[] resolvedValues;
     private volatile List<AgentArgument> frameworkArguments;
 
-    private ResolvedParameters(Class<?> agentType, Method method, List<SupplierParameterResolver> availableResolvers) {
-        this.method = method;
+    private ResolvedParameters(
+            Class<?> agentType, HelperMethod helper, List<SupplierParameterResolver> availableResolvers) {
+        this.helper = helper;
+        Method method = helper.method();
         Parameter[] parameters = method.getParameters();
         this.resolvers = new SupplierParameterResolver[parameters.length];
         this.contexts = new SupplierParameterResolver.Context[parameters.length];
@@ -61,7 +64,7 @@ public final class ResolvedParameters {
     }
 
     private ResolvedParameters(ResolvedParameters parameters, Object[] resolvedValues) {
-        this.method = parameters.method;
+        this.helper = parameters.helper;
         this.resolvers = parameters.resolvers;
         this.contexts = parameters.contexts;
         this.frameworkIndexes = parameters.frameworkIndexes;
@@ -70,17 +73,49 @@ public final class ResolvedParameters {
 
     /**
      * Splits the parameters of the given method using the {@link SupplierParameterResolver}s registered in
-     * {@link DeclarativeUtil}.
+     * {@link DeclarativeUtil}. The method is invoked without a target: it is a static method, or an instance method
+     * whose target is given at each invocation, like the {@link dev.langchain4j.agentic.Agent} method of a non-AI
+     * agent.
      *
      * @param agentType the agent class or interface declaring the method, or inheriting it
-     * @param method the static method to invoke
+     * @param method the method to invoke
      */
     public static ResolvedParameters of(Class<?> agentType, Method method) {
-        return new ResolvedParameters(agentType, method, DeclarativeUtil.getSupplierParameterResolvers());
+        return of(agentType, method, null);
+    }
+
+    /**
+     * Splits the parameters of the given method using the {@link SupplierParameterResolver}s registered in
+     * {@link DeclarativeUtil}.
+     *
+     * @param agentType the agent class or interface the method is a helper of
+     * @param method the method to invoke
+     * @param target the helper object the method is invoked on, or {@code null} for a static method
+     */
+    public static ResolvedParameters of(Class<?> agentType, Method method, Object target) {
+        return of(agentType, new HelperMethod(method, target));
+    }
+
+    /**
+     * Splits the parameters of the given helper method using the {@link SupplierParameterResolver}s registered in
+     * {@link DeclarativeUtil}.
+     *
+     * @param agentType the agent class or interface the method is a helper of
+     * @param helper the method to invoke, with its target
+     */
+    public static ResolvedParameters of(Class<?> agentType, HelperMethod helper) {
+        return new ResolvedParameters(agentType, helper, DeclarativeUtil.getSupplierParameterResolvers());
     }
 
     public Method method() {
-        return method;
+        return helper.method();
+    }
+
+    /**
+     * @return the helper object the method is invoked on, or {@code null} for a static method
+     */
+    public Object target() {
+        return helper.target();
     }
 
     /**
@@ -90,7 +125,7 @@ public final class ResolvedParameters {
         // computed lazily, because only the parameters read from the AgenticScope need a name
         List<AgentArgument> arguments = frameworkArguments;
         if (arguments == null) {
-            Parameter[] parameters = method.getParameters();
+            Parameter[] parameters = method().getParameters();
             arguments = new ArrayList<>(frameworkIndexes.length);
             for (int index : frameworkIndexes) {
                 arguments.add(argumentFromParameter(parameters[index]));
@@ -112,7 +147,7 @@ public final class ResolvedParameters {
      * @return the parameter at the given position among the ones provided by the framework
      */
     public Parameter frameworkParameter(int position) {
-        return method.getParameters()[frameworkIndexes[position]];
+        return method().getParameters()[frameworkIndexes[position]];
     }
 
     /**
@@ -124,12 +159,12 @@ public final class ResolvedParameters {
         if (frameworkIndexes.length != expected.length) {
             String resolvedHint =
                     frameworkIndexes.length == resolvers.length ? "" : " not provided by a SupplierParameterResolver";
-            throw new IllegalArgumentException("Method " + method + " must have " + expected.length + " arguments"
+            throw new IllegalArgumentException("Method " + method() + " must have " + expected.length + " arguments"
                     + resolvedHint + ": " + Arrays.toString(expected));
         }
         for (int i = 0; i < expected.length; i++) {
             if (!expected[i].isAssignableFrom(frameworkParameter(i).getType())) {
-                throw new IllegalArgumentException("Method " + method + " argument " + (frameworkIndexes[i] + 1)
+                throw new IllegalArgumentException("Method " + method() + " argument " + (frameworkIndexes[i] + 1)
                         + " must be of type " + expected[i].getName());
             }
         }
@@ -145,7 +180,7 @@ public final class ResolvedParameters {
     public ResolvedParameters checkAllResolved() {
         if (frameworkIndexes.length > 0) {
             throw new AgenticSystemConfigurationException("No SupplierParameterResolver is registered for parameter "
-                    + frameworkParameter(0) + " of " + annotationName() + "method " + method + ".");
+                    + frameworkParameter(0) + " of " + annotationName() + "method " + method() + ".");
         }
         return this;
     }
@@ -154,7 +189,7 @@ public final class ResolvedParameters {
      * @return the name of the declarative annotation of the method, like "@ToolsSupplier ", or an empty string
      */
     private String annotationName() {
-        for (Annotation annotation : method.getAnnotations()) {
+        for (Annotation annotation : method().getAnnotations()) {
             Class<? extends Annotation> type = annotation.annotationType();
             if (type.getPackageName().equals(SupplierParameterResolver.class.getPackageName())) {
                 return "@" + type.getSimpleName() + " ";
@@ -210,11 +245,11 @@ public final class ResolvedParameters {
     }
 
     /**
-     * Invokes the static method, with the parameters provided by the framework taken from the given values. Failures
-     * are reported as by {@link DeclarativeUtil#invokeStatic(Method, Object...)}.
+     * Invokes the method on its target, with the parameters provided by the framework taken from the given values.
+     * Failures are reported as by {@link HelperMethod#invoke(Object...)}.
      */
     public <T> T invoke(Object... frameworkValues) {
-        return DeclarativeUtil.invokeStatic(method, arguments(frameworkValues));
+        return helper.invoke(arguments(frameworkValues));
     }
 
     private record DefaultSupplierParameterResolverContext(

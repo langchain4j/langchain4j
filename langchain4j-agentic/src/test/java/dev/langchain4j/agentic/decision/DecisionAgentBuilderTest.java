@@ -39,8 +39,8 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "One and only one of decisionModel and decisionModelProvider must be set for the decision agent 'classify'");
+                .hasMessage("One and only one of decisionModel and decisionModelProvider must be set for the decision"
+                        + " agent 'classify'");
     }
 
     @Test
@@ -80,11 +80,14 @@ class DecisionAgentBuilderTest {
     }
 
     @Test
-    void should_reject_a_class() {
-        assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterClass.class))
+    void should_reject_a_class_without_an_agent_instance_factory() {
+        // a class is accepted, for the integrations implementing its agent method through an agentInstanceFactory,
+        // but it cannot be implemented by a proxy
+        assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterClass.class)
+                        .decisionModel(DecisionModelMock.thatAlwaysThrowsException())
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A decision agent must be defined by an interface, but " + RouterClass.class.getName()
-                        + " is a class");
+                .hasMessageContaining("is not an interface");
     }
 
     public interface NoAgentMethod {
@@ -164,8 +167,8 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(FutureRouter.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Method 'classify' of the decision agent " + FutureRouter.class.getName()
-                        + " returns a CompletableFuture, which is not supported: declare the type of the result directly "
-                        + "and make the agent asynchronous with async(true) or @Agent(async = true)");
+                        + " returns a CompletableFuture, which is not supported: declare the type of the result"
+                        + " directly and make the agent asynchronous with async(true) or @Agent(async = true)");
     }
 
     public interface RouterWithMemoryId {
@@ -212,8 +215,9 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterWithRequestParameters.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(
-                        "has type DecisionRequestParameters, which is not supported: set the request "
-                                + "parameters with requestParameters(...) on the builder, or as default parameters of the decision model");
+                        "has type DecisionRequestParameters, which is not supported: set the request parameters with"
+                                + " requestParameters(...) on the builder, or as default parameters of the decision"
+                                + " model");
     }
 
     public interface TextRouter {
@@ -289,10 +293,9 @@ class DecisionAgentBuilderTest {
                         .threshold(0.7)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
-                                + "apply it to the probabilities of a YesNoAnswer, Choice or Scale answer instead, "
-                                + "for instance with YesNoAnswer.isYes(threshold)");
+                .hasMessage("The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
+                        + "apply it to the probabilities of a YesNoAnswer, Choice or Scale answer instead, "
+                        + "for instance with YesNoAnswer.isYes(threshold)");
     }
 
     @Test
