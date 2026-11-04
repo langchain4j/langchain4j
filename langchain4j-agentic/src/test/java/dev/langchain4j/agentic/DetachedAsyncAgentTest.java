@@ -117,6 +117,7 @@ class DetachedAsyncAgentTest {
     static class RecordingListener implements AgentListener {
         final List<String> events = new CopyOnWriteArrayList<>();
         final Map<String, String> beforeThreads = new ConcurrentHashMap<>();
+        final Map<String, String> afterThreads = new ConcurrentHashMap<>();
         final Map<String, Object> outputs = new ConcurrentHashMap<>();
 
         @Override
@@ -129,6 +130,8 @@ class DetachedAsyncAgentTest {
         @Override
         public void afterAgentInvocation(AgentResponse agentResponse) {
             events.add("after:" + agentResponse.agent().name());
+            afterThreads.put(
+                    agentResponse.agent().name(), Thread.currentThread().getName());
             if (agentResponse.output() != null) {
                 outputs.put(agentResponse.agent().name(), agentResponse.output());
             }
@@ -168,11 +171,9 @@ class DetachedAsyncAgentTest {
         ResultWithAgenticScope<String> result = workflow.analyze("canary");
 
         assertThat(result.result()).isEqualTo("promote canary");
-        // the agent was notified before its submission, on the calling thread, and the ephemeral scope was destroyed
-        // at the end of the root call without waiting for it
+        // the ephemeral scope was destroyed at the end of the root call without waiting for the agent
+        awaitLatch(remediation.started);
         assertThat(listener.events).contains("before:remediate", "destroyed").doesNotContain("after:remediate");
-        assertThat(listener.beforeThreads.get("remediate"))
-                .isEqualTo(Thread.currentThread().getName());
         // the live scope still holds the pending response
         AgenticScope scope = result.agenticScope();
         assertThat(scope.state().get("fix")).isInstanceOf(AsyncResponse.class);
@@ -183,6 +184,10 @@ class DetachedAsyncAgentTest {
 
         assertThat(listener.outputs.get("remediate")).isEqualTo("fixed after promote canary");
         assertThat(listener.events).containsSubsequence("destroyed", "after:remediate");
+        // both events of the agent were notified on the thread of its executor, as for every invocation
+        assertThat(listener.beforeThreads.get("remediate"))
+                .isEqualTo(listener.afterThreads.get("remediate"))
+                .isNotEqualTo(Thread.currentThread().getName());
         assertThat(scope.state().get("fix")).isEqualTo("fixed after promote canary");
     }
 

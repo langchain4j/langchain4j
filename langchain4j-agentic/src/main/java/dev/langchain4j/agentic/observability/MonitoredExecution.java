@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,6 +18,7 @@ public class MonitoredExecution {
     private final AgentInvocation topLevelInvocations;
 
     private final Map<Object, AgentInvocation> ongoingInvocations = new ConcurrentHashMap<>();
+    private final Set<Object> submittedAgentIds = ConcurrentHashMap.newKeySet();
 
     private AgentInvocationError agentInvocationError;
     private volatile boolean unrecoveredAsyncFailure;
@@ -26,7 +28,21 @@ public class MonitoredExecution {
         ongoingInvocations.put(firstAgentRequest.agentId(), this.topLevelInvocations);
     }
 
+    /**
+     * Records the submission of an asynchronous agent, before its executor starts it: the invocation is nested under
+     * its parent, still ongoing at that point, and keeps this execution ongoing until the agent completes, also when
+     * the {@link #beforeAgentInvocation} of the agent comes after its parent, or the root call, completed.
+     */
+    void asyncAgentSubmitted(AgentRequest agentRequest) {
+        beforeAgentInvocation(agentRequest);
+        submittedAgentIds.add(agentRequest.agentId());
+    }
+
     void beforeAgentInvocation(AgentRequest agentRequest) {
+        if (submittedAgentIds.remove(agentRequest.agentId())) {
+            // the invocation was recorded at the submission of this asynchronous agent
+            return;
+        }
         AgentInvocation newInvocation = new AgentInvocation(agentRequest);
         addNestedInvocation(agentRequest.agent(), newInvocation);
         ongoingInvocations.put(agentRequest.agentId(), newInvocation);

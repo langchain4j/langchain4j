@@ -110,6 +110,21 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
+    /**
+     * Notified by the agentic system when an asynchronous agent is submitted to its executor, on the submitting
+     * thread, before the {@link #beforeAgentInvocation} of the agent is notified on the thread of the executor: the
+     * invocation is nested under its parent, still ongoing at that point, also when the executor starts the agent
+     * after the parent completed.
+     */
+    @Internal
+    public void asyncAgentSubmitted(AgentRequest agentRequest) {
+        MonitoredExecution execution =
+                ongoingExecutions.get(agentRequest.agenticScope().memoryId());
+        if (execution != null) {
+            execution.asyncAgentSubmitted(agentRequest);
+        }
+    }
+
     @Override
     public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();

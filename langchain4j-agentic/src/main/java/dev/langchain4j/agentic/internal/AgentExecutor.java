@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentSkipped;
-import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
@@ -11,6 +10,7 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -188,12 +188,16 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             AgentInvocationArguments args,
             boolean async) {
         if (async) {
-            // notified before the submission, on this thread, so that the agent is always nested under its still
-            // ongoing parent, also when its executor starts it after that parent completed
-            beforeAgentInvocation(agentInvoker.listener(), agenticScope, agentInvoker, args.namedArgs());
+            // a monitor learns about the submission on this thread, so that it nests the agent under its still
+            // ongoing parent also when the executor starts it after that parent completed, while the listeners are
+            // notified on the thread of the executor, as for every invocation
+            AgentMonitor monitor = listenerOfType(agentInvoker.listener(), AgentMonitor.class);
+            if (monitor != null) {
+                monitor.asyncAgentSubmitted(new AgentRequest(agenticScope, agentInvoker, args.namedArgs()));
+            }
             return new AsyncResponse<>(() -> {
                 try {
-                    return agentInvoker.invokeNotified(agenticScope, invokedAgent, args);
+                    return agentInvoker.invoke(agenticScope, invokedAgent, args);
                 } catch (AgentInvocationException e) {
                     return recoverAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
                 }

@@ -31,20 +31,12 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     /**
      * Invokes the agent, reports the invocation to its listeners with the response of the model it called, and
-     * registers the messages it exchanged in the context of the scope. Everything happens on the calling thread.
+     * registers the messages it exchanged in the context of the scope. Everything happens on the calling thread,
+     * which for an asynchronous agent is the thread of its executor.
      */
     default Object invoke(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
-        beforeAgentInvocation(listener(), agenticScope, this, args.namedArgs());
-        return invokeNotified(agenticScope, agent, args);
-    }
-
-    /**
-     * Same as {@link #invoke(DefaultAgenticScope, Object, AgentInvocationArguments)}, for an invocation that was
-     * already notified to the listeners with {@link AgentListener#beforeAgentInvocation}: an asynchronous agent is
-     * notified when it is submitted, on the submitting thread, and then invoked on the thread of its executor.
-     */
-    default Object invokeNotified(DefaultAgenticScope agenticScope, Object agent, AgentInvocationArguments args) throws AgentInvocationException {
         AgentListener listener = listener();
+        beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         AgentModelResponse modelResponse = new AgentModelResponse();
         Object result = internalInvoke(agenticScope, listener, agent, args, modelResponse);
         afterAgentInvocation(listener, new AgentResponse(agenticScope, this, args.namedArgs(), result,
