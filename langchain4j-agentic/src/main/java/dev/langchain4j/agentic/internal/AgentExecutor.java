@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentSkipped;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
@@ -9,6 +10,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -67,6 +69,32 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 yield completeAgentInvocation(recoveryResult.result(), agenticScope, planner, args);
             }
         };
+    }
+
+    /**
+     * The failure of an asynchronous agent is reported to the listeners before the error handler runs, so a monitor
+     * learns here, once the handler decided, whether the failure was recovered, with a result or a successful retry,
+     * or thrown to the agent reading the result, if any.
+     */
+    private Object recoverAsyncAgentFailure(
+            AgentInvocationException e,
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner,
+            AgentInvocationArguments args) {
+        AgentMonitor monitor = listenerOfType(agentInvoker.listener(), AgentMonitor.class);
+        try {
+            Object result = handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
+            if (monitor != null) {
+                monitor.asyncAgentCompleted(agenticScope, false);
+            }
+            return result;
+        } catch (RuntimeException failure) {
+            if (monitor != null) {
+                monitor.asyncAgentCompleted(agenticScope, true);
+            }
+            throw failure;
+        }
     }
 
     private Object internalExecute(
@@ -167,7 +195,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 try {
                     return agentInvoker.invokeNotified(agenticScope, invokedAgent, args);
                 } catch (AgentInvocationException e) {
-                    return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
+                    return recoverAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
                 }
             });
         }

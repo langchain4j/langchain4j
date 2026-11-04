@@ -115,7 +115,7 @@ public class AgentMonitor implements AgentListener {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
-        finalizeExecution(memoryId, execution, false);
+        finalizeExecution(memoryId, execution);
     }
 
     @Override
@@ -124,7 +124,28 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            finalizeExecution(memoryId, execution, true);
+            // the error of an asynchronous agent is reported before its error handler runs: whether the failure was
+            // recovered is known only when the agent completes, see asyncAgentCompleted
+            if (!agentInvocationError.agent().async()) {
+                finalizeExecution(memoryId, execution);
+            }
+        }
+    }
+
+    /**
+     * Notified by the agentic system when an asynchronous agent whose failure was reported to
+     * {@link #onAgentInvocationError} completes, after its error handler ran: {@code failed} tells whether the failure
+     * was not recovered, which records the execution as failed, whether the root call already ended or not.
+     */
+    @Internal
+    public void asyncAgentCompleted(AgenticScope agenticScope, boolean failed) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null) {
+            if (failed) {
+                execution.asyncAgentFailed();
+            }
+            finalizeExecution(memoryId, execution);
         }
     }
 
@@ -137,16 +158,16 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
-    private void finalizeExecution(Object memoryId, MonitoredExecution execution, boolean failed) {
+    private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
         if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
             return;
         }
         if (!ongoingExecutions.remove(memoryId, execution)) {
             return;
         }
-        // the root call does not wait for an asynchronous agent whose result nobody reads, so the failure of such an
-        // agent can be the last event of an execution already completed, which is then recorded as failed
-        if (execution.done() && !failed) {
+        // the root call does not wait for an asynchronous agent whose result nobody reads, so such an agent can fail
+        // for good after the root call completed: the execution is then recorded as failed anyway
+        if (execution.done() && !execution.hasUnrecoveredAsyncFailure()) {
             synchronized (successfulExecutions) {
                 successfulExecutions
                         .computeIfAbsent(memoryId, k -> new ArrayList<>())

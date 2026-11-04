@@ -19,6 +19,7 @@ public class MonitoredExecution {
     private final Map<Object, AgentInvocation> ongoingInvocations = new ConcurrentHashMap<>();
 
     private AgentInvocationError agentInvocationError;
+    private volatile boolean unrecoveredAsyncFailure;
 
     MonitoredExecution(AgentRequest firstAgentRequest) {
         this.topLevelInvocations = new AgentInvocation(firstAgentRequest);
@@ -37,10 +38,15 @@ public class MonitoredExecution {
     }
 
     private void addNestedInvocation(AgentInstance agent, AgentInvocation newInvocation) {
-        AgentInvocation parentInvocation = ongoingInvocations.get(agent.parent().agentId());
+        String parentId = agent.parent().agentId();
+        AgentInvocation parentInvocation = ongoingInvocations.get(parentId);
         if (parentInvocation == null) {
-            throw new IllegalStateException("No ongoing parent invocation found for agent ID: "
-                    + agent.parent().agentId());
+            // the retry of an asynchronous agent is invoked after its parent completed: it is nested under the last
+            // invocation of that parent
+            parentInvocation = latestInvocationOf(topLevelInvocations, parentId);
+        }
+        if (parentInvocation == null) {
+            throw new IllegalStateException("No ongoing parent invocation found for agent ID: " + parentId);
         }
 
         if (parentInvocation.agent().topology() == AgenticSystemTopology.LOOP) {
@@ -64,6 +70,29 @@ public class MonitoredExecution {
             throw new IllegalStateException("No ongoing invocation found for agent ID: " + agentResponse.agentId());
         }
         finishedInvocation.finished(agentResponse);
+    }
+
+    private static AgentInvocation latestInvocationOf(AgentInvocation invocation, String agentId) {
+        AgentInvocation latest = agentId.equals(invocation.agent().agentId()) ? invocation : null;
+        for (AgentInvocation nested : invocation.nestedInvocations()) {
+            AgentInvocation found = latestInvocationOf(nested, agentId);
+            if (found != null) {
+                latest = found;
+            }
+        }
+        return latest;
+    }
+
+    /**
+     * Records that an asynchronous agent of this execution failed and its error handler did not recover the failure:
+     * the execution is then recorded as failed, whether that agent failed before or after the root call ended.
+     */
+    void asyncAgentFailed() {
+        unrecoveredAsyncFailure = true;
+    }
+
+    boolean hasUnrecoveredAsyncFailure() {
+        return unrecoveredAsyncFailure;
     }
 
     void onAgentInvocationError(AgentInvocationError agentInvocationError) {

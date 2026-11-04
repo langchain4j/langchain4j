@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,18 @@ class AgentMonitorAsyncSubagentTest {
         }
     }
 
+    public static class FailingOnceRemediation {
+        private final AtomicInteger attempts = new AtomicInteger();
+
+        @Agent(async = true, outputKey = "fix")
+        public String remediate(@V("decision") String decision) {
+            if (attempts.getAndIncrement() == 0) {
+                throw new IllegalStateException("sandbox unavailable");
+            }
+            return "fixed after " + decision;
+        }
+    }
+
     private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
     private final CountDownLatch executorBusy = new CountDownLatch(1);
 
@@ -62,6 +76,11 @@ class AgentMonitorAsyncSubagentTest {
     }
 
     private static UntypedAgent analysisThenRemediation(AgentMonitor monitor, Object remediation) {
+        return analysisThenRemediation(monitor, remediation, ErrorRecoveryResult::throwException);
+    }
+
+    private static UntypedAgent analysisThenRemediation(
+            AgentMonitor monitor, Object remediation, Supplier<ErrorRecoveryResult> recovery) {
         UntypedAgent analysis = AgenticServices.sequenceBuilder()
                 .name("analysis")
                 .subAgents(new Analysis(), remediation)
@@ -71,7 +90,7 @@ class AgentMonitorAsyncSubagentTest {
                 .subAgents(analysis)
                 .outputKey("decision")
                 .listener(monitor)
-                .errorHandler(errorContext -> ErrorRecoveryResult.throwException())
+                .errorHandler(errorContext -> recovery.get())
                 .build();
     }
 
@@ -125,6 +144,67 @@ class AgentMonitorAsyncSubagentTest {
         assertThat(execution.hasError()).isTrue();
         assertThat(execution.error().agentName()).isEqualTo("remediate");
         assertThat(execution.error().error()).hasMessageContaining("remediate");
+    }
+
+    @Test
+    void recovered_failure_of_a_late_async_subagent_is_recorded_as_successful() {
+        AgentMonitor monitor = new AgentMonitor();
+        UntypedAgent root = analysisThenRemediation(
+                monitor, new FailingRemediation(), () -> ErrorRecoveryResult.result("manual fix"));
+
+        assertThat(root.invoke(Map.of("input", "canary"))).isEqualTo("promote canary");
+        assertThat(monitor.ongoingExecutions()).hasSize(1);
+
+        executorBusy.countDown();
+        await().atMost(10, SECONDS).until(() -> monitor.ongoingExecutions().isEmpty());
+
+        // the error handler recovered the failure, so the execution succeeded, with the error it reported
+        assertThat(monitor.failedExecutions()).isEmpty();
+        assertThat(monitor.successfulExecutions()).hasSize(1);
+        assertThat(monitor.successfulExecutions().get(0).hasError()).isTrue();
+    }
+
+    @Test
+    void retried_late_async_subagent_stays_in_one_execution() {
+        AgentMonitor monitor = new AgentMonitor();
+        UntypedAgent root = analysisThenRemediation(monitor, new FailingOnceRemediation(), ErrorRecoveryResult::retry);
+
+        assertThat(root.invoke(Map.of("input", "canary"))).isEqualTo("promote canary");
+        assertThat(monitor.ongoingExecutions()).hasSize(1);
+
+        executorBusy.countDown();
+        await().atMost(10, SECONDS).until(() -> monitor.ongoingExecutions().isEmpty());
+
+        // the retry is a second invocation of the agent nested under the same completed parent
+        assertThat(monitor.failedExecutions()).isEmpty();
+        assertThat(monitor.successfulExecutions()).hasSize(1);
+        AgentInvocation analysis = monitor.successfulExecutions()
+                .get(0)
+                .topLevelInvocations()
+                .nestedInvocations()
+                .get(0);
+        assertThat(analysis.nestedInvocations())
+                .extracting(invocation -> invocation.agent().name())
+                .containsExactly("analyze", "remediate", "remediate");
+        AgentInvocation retry = analysis.nestedInvocations().get(2);
+        assertThat(retry.done()).isTrue();
+        assertThat(retry.output()).isEqualTo("fixed after promote canary");
+    }
+
+    @Test
+    void unrecovered_failure_of_an_async_subagent_before_the_end_of_the_root_call_is_recorded_as_failed() {
+        // an executor running the agent inline makes it fail at its submission, before the root call ends
+        ExecutorProvider.set(() -> Runnable::run);
+        AgentMonitor monitor = new AgentMonitor();
+        UntypedAgent root = analysisThenRemediation(monitor, new FailingRemediation());
+
+        assertThat(root.invoke(Map.of("input", "canary"))).isEqualTo("promote canary");
+
+        // the same outcome as when the agent fails after the end of the root call
+        assertThat(monitor.ongoingExecutions()).isEmpty();
+        assertThat(monitor.successfulExecutions()).isEmpty();
+        assertThat(monitor.failedExecutions()).hasSize(1);
+        assertThat(monitor.failedExecutions().get(0).error().agentName()).isEqualTo("remediate");
     }
 
     private static void awaitLatch(CountDownLatch latch) {
