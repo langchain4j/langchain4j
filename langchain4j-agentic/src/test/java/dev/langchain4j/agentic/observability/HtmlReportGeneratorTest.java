@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -9,6 +11,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -263,5 +266,20 @@ class HtmlReportGeneratorTest {
             count++;
         }
         return count;
+    }
+
+    @Test
+    void shows_the_description_of_an_agent_as_unavailable_when_it_cannot_be_read() {
+        // like an A2A agent whose card cannot be fetched because its server is down
+        AgentInstance remoteAgent = mock(AgentInstance.class);
+        when(remoteAgent.name()).thenReturn("fixer");
+        when(remoteAgent.agentId()).thenReturn("fixer$0");
+        when(remoteAgent.topology()).thenReturn(AgenticSystemTopology.AI_AGENT);
+        when(remoteAgent.description())
+                .thenThrow(new IllegalStateException("Failed to fetch the agent card of A2A agent 'fixer'"));
+
+        String html = HtmlReportGenerator.generateTopology(remoteAgent);
+
+        assertThat(html).contains("fixer").contains("unavailable: Failed to fetch the agent card");
     }
 }
