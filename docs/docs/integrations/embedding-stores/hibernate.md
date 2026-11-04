@@ -644,12 +644,28 @@ describes the URL format and its options.
 
 Milvus differs from the relational databases described above:
 
-* **Indexes are not configurable from LangChain4j.** Milvus creates the vector index together with the collection, so
-  the `createIndex()`, `indexType()` and `indexOptions()` builder methods have no effect.
-* **The dynamic builders only support `DistanceFunction.COSINE`.** The collection they create has a cosine vector
-  index, and Milvus rejects a search whose distance function does not match the index metric.
-* **Other distance functions need your own entity.** Declare the vector index with the matching metric, for example
+* **The vector index is created together with the collection.** The dynamic builders always declare it with the
+  metric of the distance function, so `createIndex()` has no effect. `indexType()` sets the Milvus index type, and
+  `indexOptions()` adds Milvus index parameters:
+
+  ```java
+  EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
+          .databaseKind(MilvusDatabaseKind.INSTANCE)
+          .host("localhost")
+          .port(19530)
+          .database("default")
+          .table("my_collection")
+          .dimension(384)
+          .indexType("HNSW")
+          .indexOptions("M=16,efConstruction=64")
+          .createTable(true)
+          .build();
+  ```
+
+* **The supported distance functions are `COSINE` (the default), `INNER_PRODUCT`, `NEGATIVE_INNER_PRODUCT` and
+  `EUCLIDEAN`.** The dynamic builders fail at `build()` for the other distance functions.
+* **With your own entity, declare the vector index with the matching metric**, for example
   `@Table(indexes = @Index(name = "my_entity_vector_index", columnList = "embedding", options = "metric=ip"))`, and
-  pass the entity to `HibernateEmbeddingStore.builder()`. Use `metric=ip` for `INNER_PRODUCT` and
-  `NEGATIVE_INNER_PRODUCT`, and `metric=l2` for `EUCLIDEAN`.
-* **`EUCLIDEAN_SQUARED` and `MANHATTAN` are not supported.**
+  pass the entity to `HibernateEmbeddingStore.builder()`. Use `metric=cosine` for `COSINE`, `metric=ip` for
+  `INNER_PRODUCT` and `NEGATIVE_INNER_PRODUCT`, and `metric=l2` for `EUCLIDEAN`. Milvus rejects a search whose
+  distance function does not match the metric of the index.

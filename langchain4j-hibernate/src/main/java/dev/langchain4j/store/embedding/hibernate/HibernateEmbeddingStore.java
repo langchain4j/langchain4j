@@ -1739,11 +1739,22 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         protected Map<String, Object> queryHints;
 
         protected Configuration createConfiguration() {
+            return createConfiguration(databaseKind);
+        }
+
+        /**
+         * Creates the Hibernate configuration for the embedding table.
+         *
+         * @param databaseKind the database kind of the store, which provides the index options of the table,
+         *                     see {@link DatabaseKind#tableIndexOptions(DistanceFunction, String, String, String, String)},
+         *                     or {@code null} for no index options
+         * @return the configuration
+         */
+        protected Configuration createConfiguration(DatabaseKind databaseKind) {
             final int dimension = ensureNotNull(this.dimension, "dimension");
-            final boolean index = getOrDefault(createIndex, false);
-            final String tableIndexOptions = index
-                    ? databaseKind.tableIndexOptions(distanceFunction, indexType, table, "embedding", indexOptions)
-                    : null;
+            final String tableIndexOptions = databaseKind == null
+                    ? null
+                    : databaseKind.tableIndexOptions(distanceFunction, indexType, table, "embedding", indexOptions);
             final Configuration cfg = new Configuration(new BootstrapServiceRegistryBuilder()
                     .applyClassLoaderService(new ClassLoaderServiceImpl() {
                         @Override
@@ -1974,22 +1985,22 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         }
 
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
-            final Configuration cfg = createConfiguration();
             final DatabaseKind databaseKind;
-            if (isNullOrBlank(jdbcUrl)) {
+            final String jdbcUrl;
+            if (isNullOrBlank(this.jdbcUrl)) {
                 databaseKind = ensureNotNull(this.databaseKind, "databaseKind");
-                final String jdbcUrl = databaseKind.createJdbcUrl(
+                jdbcUrl = databaseKind.createJdbcUrl(
                         ensureNotBlank(host, "host"), port, ensureNotBlank(database, "database"));
-                cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, jdbcUrl);
             } else {
-                final String jdbcUrl = ensureNotBlank(this.jdbcUrl, "jdbcUrl");
+                jdbcUrl = this.jdbcUrl;
                 databaseKind =
                         this.databaseKind != null ? this.databaseKind : DatabaseKind.determineDatabaseKind(jdbcUrl);
                 if (databaseKind == null) {
                     throw new IllegalArgumentException("Can't determine DatabaseKind for JDBC URL: " + jdbcUrl);
                 }
-                cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, jdbcUrl);
             }
+            final Configuration cfg = createConfiguration(databaseKind);
+            cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, jdbcUrl);
             if (user != null) {
                 cfg.setProperty(JdbcSettings.JAKARTA_JDBC_USER, user);
             }
@@ -2098,9 +2109,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         }
 
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
-            final Configuration cfg = createConfiguration();
-            cfg.getProperties().put(JdbcSettings.JAKARTA_NON_JTA_DATASOURCE, ensureNotNull(dataSource, "dataSource"));
             final DatabaseKind databaseKind = ensureNotNull(this.databaseKind, "databaseKind");
+            final Configuration cfg = createConfiguration(databaseKind);
+            cfg.getProperties().put(JdbcSettings.JAKARTA_NON_JTA_DATASOURCE, ensureNotNull(dataSource, "dataSource"));
             return new HibernateEmbeddingStore<>(
                     true,
                     createSessionFactory(cfg, databaseKind),

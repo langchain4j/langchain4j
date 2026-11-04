@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.hibernate.DistanceFunction;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
 import java.util.ArrayList;
@@ -92,6 +93,60 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .build());
 
         assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+    }
+
+    @Test
+    void should_score_matches_by_euclidean_distance() {
+        HibernateEmbeddingStore<?> store = HibernateEmbeddingStore.dynamicBuilder()
+                .databaseKind(MilvusDatabaseKind.INSTANCE)
+                .host(databaseContainer.getHost())
+                .port(databaseContainer.getMappedPort(19530))
+                .database("default")
+                .table("test_" + UUID.randomUUID().toString().replace("-", ""))
+                .dimension(embeddingModel.dimension())
+                .distanceFunction(DistanceFunction.EUCLIDEAN)
+                .createTable(true)
+                .dropTableFirst(true)
+                .build();
+        try {
+            Embedding first = embeddingModel.embed("hello world").content();
+            Embedding second =
+                    embeddingModel.embed("completely unrelated text about cars").content();
+            List<String> ids = store.addAll(
+                    List.of(first, second), List.of(TextSegment.from("hello world"), TextSegment.from("cars")));
+
+            List<EmbeddingMatch<TextSegment>> matches = store.search(EmbeddingSearchRequest.builder()
+                            .queryEmbedding(first)
+                            .maxResults(2)
+                            .build())
+                    .matches();
+
+            assertThat(matches).extracting(EmbeddingMatch::embeddingId).containsExactlyElementsOf(ids);
+            assertThat(matches.get(0).score()).isCloseTo(1, withPercentage(0.01));
+            assertThat(matches.get(1).score())
+                    .isCloseTo(1 / (1 + euclideanDistance(first, second)), withPercentage(0.01));
+
+            double minScore = (matches.get(0).score() + matches.get(1).score()) / 2;
+            List<EmbeddingMatch<TextSegment>> closeMatches = store.search(EmbeddingSearchRequest.builder()
+                            .queryEmbedding(first)
+                            .maxResults(2)
+                            .minScore(minScore)
+                            .build())
+                    .matches();
+
+            assertThat(closeMatches).extracting(EmbeddingMatch::embeddingId).containsExactly(ids.get(0));
+        } finally {
+            store.close();
+        }
+    }
+
+    private static double euclideanDistance(Embedding a, Embedding b) {
+        double sum = 0;
+        for (int i = 0; i < a.dimension(); i++) {
+            double difference = a.vector()[i] - b.vector()[i];
+            sum += difference * difference;
+        }
+        return Math.sqrt(sum);
     }
 
     @Test

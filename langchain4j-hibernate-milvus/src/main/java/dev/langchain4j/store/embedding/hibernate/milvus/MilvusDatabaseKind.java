@@ -25,8 +25,7 @@ public final class MilvusDatabaseKind implements DatabaseKind {
             final String table,
             final String embeddingColumn,
             final String indexOptions) {
-        // Milvus creates the vector index together with the collection, so there is no index DDL to run
-        // afterwards, and the createIndex(), indexType() and indexOptions() settings have no effect
+        // Milvus creates the vector index together with the collection, see tableIndexOptions()
         return null;
     }
 
@@ -45,10 +44,9 @@ public final class MilvusDatabaseKind implements DatabaseKind {
         return switch (distanceFunction) {
             case COSINE -> "cosine";
             case INNER_PRODUCT, NEGATIVE_INNER_PRODUCT -> "ip";
-            case EUCLIDEAN, EUCLIDEAN_SQUARED -> "l2";
-            case HAMMING -> "hamming";
-            case JACCARD -> "jaccard";
-            default -> throw new IllegalArgumentException("Unsupported distance function: " + distanceFunction);
+            case EUCLIDEAN -> "l2";
+            default ->
+                throw new IllegalArgumentException("Milvus does not support the distance function: " + distanceFunction);
         };
     }
 
