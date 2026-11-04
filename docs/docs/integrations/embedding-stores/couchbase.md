@@ -24,7 +24,7 @@ https://www.couchbase.com/
 
 ## Examples
 
-- [CouchbaseEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/couchbase-example/src/main/java/CouchbaseEmbeddingStoreExample.java)
+- [CouchbaseEmbeddingSearchExample](https://github.com/langchain4j/langchain4j-examples/blob/main/couchbase-example/src/main/java/CouchbaseEmbeddingSearchExample.java)
 
 ## Couchbase Embedding Store
 Couchbase langchain4j integration stores each embedding in a separate document and uses an FTS vector index to perform
@@ -151,7 +151,7 @@ System.out.println(embeddingMatch.embedded().text()); // I like football.
 ## Deleting Embeddings
 Couchbase embedding store also supports removing embeddings by their identifiers, for example:
 ```java
-embeddingStore.remove(embeddingMatch.id())
+embeddingStore.remove(embeddingMatch.embeddingId());
 ```
 
 Or, to remove all embeddings:
