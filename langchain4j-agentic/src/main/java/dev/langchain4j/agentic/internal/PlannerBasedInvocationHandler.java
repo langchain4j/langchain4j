@@ -207,12 +207,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {
         DefaultAgenticScope currentScope = currentAgenticScope(registry, method, args);
+        if (isRootCall()) {
+            // before writing the inputs of this call to the scope, which the asynchronous agents of the previous
+            // call still running could read
+            currentScope.rootCallStarted(registry);
+        }
         writeAgenticScope(currentScope, method, args);
         beforeCall.accept(currentScope);
 
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
-            currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 

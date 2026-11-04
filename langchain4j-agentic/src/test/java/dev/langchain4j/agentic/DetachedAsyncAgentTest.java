@@ -120,6 +120,20 @@ class DetachedAsyncAgentTest {
         }
     }
 
+    /** Reads the scope while running, once released, as an agent taking the {@link AgenticScope} can do. */
+    public static class InputReadingRemediation {
+        final CountDownLatch release = new CountDownLatch(1);
+        final List<String> results = new CopyOnWriteArrayList<>();
+
+        @Agent(async = true, outputKey = "fix")
+        public String remediate(AgenticScope scope, @V("decision") String decision) {
+            awaitLatch(release);
+            String result = "fixed for " + scope.readState("input");
+            results.add(result);
+            return result;
+        }
+    }
+
     public static class NullRemediation {
         @Agent(async = true, outputKey = "fix")
         public String remediate(@V("decision") String decision) {
@@ -508,6 +522,31 @@ class DetachedAsyncAgentTest {
         await().atMost(10, SECONDS).until(() -> Collections.frequency(listener.events, "suspended") == 2);
         assertThat(workflow.getAgenticScope("rollout-1").pendingResponseIds())
                 .containsExactlyInAnyOrder("approval", "remediate:task-1");
+    }
+
+    @Test
+    void next_root_call_writes_its_inputs_only_after_the_detached_agents_of_the_previous_one_completed()
+            throws Exception {
+        InputReadingRemediation remediation = new InputReadingRemediation();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new Analysis(), remediation)
+                .outputKey("decision")
+                .build();
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        AgenticScope scope = workflow.getAgenticScope("rollout-1");
+
+        // the second call waits before writing its input, which the remediation of the first one still reads
+        CompletableFuture<String> secondCall =
+                CompletableFuture.supplyAsync(() -> workflow.analyze("rollout-1", "stable"));
+        await().during(300, MILLISECONDS)
+                .atMost(2, SECONDS)
+                .until(() -> "canary".equals(scope.state().get("input")));
+
+        remediation.release.countDown();
+        assertThat(secondCall.get(10, SECONDS)).isEqualTo("promote stable");
+        await().atMost(10, SECONDS).until(() -> remediation.results.size() == 2);
+        assertThat(remediation.results).containsExactly("fixed for canary", "fixed for stable");
     }
 
     @Test
