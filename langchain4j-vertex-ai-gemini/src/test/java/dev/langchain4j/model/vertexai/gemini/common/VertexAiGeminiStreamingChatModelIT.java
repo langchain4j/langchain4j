@@ -49,6 +49,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean reportsUnsupportedParametersThroughOnError() {
+        return true;
+    }
+
+    @Override
     protected boolean supportsToolChoiceRequired() {
         return false; // TODO implement
     }
