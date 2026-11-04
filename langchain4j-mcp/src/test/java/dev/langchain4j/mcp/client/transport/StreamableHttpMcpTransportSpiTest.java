@@ -605,6 +605,52 @@ class StreamableHttpMcpTransportSpiTest {
     }
 
     @Test
+    void should_reconnect_subsidiary_channel_when_a_message_exceeds_the_maximum_size() throws Exception {
+        start(builder().subsidiaryChannel(true).maxMessageSize(1024));
+        CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
+        StreamExchange initialization = httpClient.nextExchange();
+        initialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        initialization.body(INITIALIZE_RESULT);
+        initialization.complete();
+        StreamExchange notification = httpClient.nextExchange();
+        notification.open(202, Map.of());
+        notification.complete();
+
+        StreamExchange channel = httpClient.nextExchange();
+        channel.open(200, Map.of("Content-Type", List.of("text/event-stream")));
+        assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
+        channel.body("retry: 0\n\ndata: " + "x".repeat(600) + "\n");
+        channel.body("data: " + "x".repeat(600) + "\n");
+
+        assertThat(channel.isCancelled()).isTrue();
+        StreamExchange reconnect = httpClient.nextExchange();
+        assertThat(reconnect.request().method()).isEqualTo(HttpMethod.GET);
+        transport.close();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/event-stream", "application/json"})
+    void should_limit_the_response_to_a_notification(String contentType) throws Exception {
+        start(builder().maxMessageSize(1024));
+        CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
+        StreamExchange initialization = httpClient.nextExchange();
+        initialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        initialization.body(INITIALIZE_RESULT);
+        initialization.complete();
+        StreamExchange notification = httpClient.nextExchange();
+        notification.open(200, Map.of("Content-Type", List.of(contentType)));
+
+        notification.body(("data: " + "x".repeat(600) + "\n").repeat(2));
+
+        assertThat(notification.isCancelled()).isTrue();
+        assertThatThrownBy(() -> initialized.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeds the maximum size of 1024 bytes");
+    }
+
+    @Test
     void should_handle_responses_from_supplied_client_on_configured_executor() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor(task -> new Thread(task, "mcp-test-executor"));
         try {

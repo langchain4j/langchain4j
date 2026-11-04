@@ -108,7 +108,6 @@ jobs:
           mvn -B -U verify ${{ steps.jackson3.outputs.profile }} \
             -Dsurefire.timeout=7200 \
             -Dfailsafe.timeout=7200 \
-            -Dsurefire.timeout.jstack.enabled=true \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \

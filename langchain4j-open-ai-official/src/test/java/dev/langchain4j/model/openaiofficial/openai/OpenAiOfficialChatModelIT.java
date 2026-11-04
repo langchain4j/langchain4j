@@ -76,7 +76,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         ChatModel model = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("o4-mini")
+                .modelName("gpt-6.1-terra")
                 .build();
 
         // when

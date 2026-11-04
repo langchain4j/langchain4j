@@ -16,6 +16,9 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
 import dev.langchain4j.model.scoring.request.DefaultScoringRequestParameters;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -52,6 +55,90 @@ class DecisionScoringModelTest {
                 .containsEntry(
                         "document2",
                         YesNoQuestion.from("Does the document help answer the query?\nDocument: something else"));
+    }
+
+    @Test
+    void should_notify_listeners_once_per_scoring_call() {
+
+        List<ScoringModelResponseContext> responses = new ArrayList<>();
+        ScoringModelListener listener = new ScoringModelListener() {
+            @Override
+            public void onResponse(ScoringModelResponseContext responseContext) {
+                responses.add(responseContext);
+            }
+        };
+        ScoringModel scoringModel = DecisionScoringModel.builder()
+                .decisionModel(decisionModel.withTokenUsage(new TokenUsage(3)).withProvider(ModelProvider.OPEN_AI))
+                .maxSegmentsPerRequest(1)
+                .listeners(listener)
+                .build();
+
+        scoringModel.scoreAll(List.of(TextSegment.from("a relevant document"), TextSegment.from("other")), "q");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).scoringRequest().documents()).containsExactly("a relevant document", "other");
+        assertThat(responses.get(0).scoringResponse().scores()).containsExactly(0.9, 0.1);
+        assertThat(responses.get(0).scoringResponse().tokenUsage()).isEqualTo(new TokenUsage(6));
+        assertThat(responses.get(0).modelProvider()).isEqualTo(ModelProvider.OPEN_AI);
+    }
+
+    @Test
+    void should_report_the_model_name_of_the_decision_model() {
+
+        ScoringModel scoringModel = new DecisionScoringModel(decisionModel.withModelName("decision-model-v2"));
+        ScoringRequest request = ScoringRequest.builder()
+                .documents(List.of("a relevant document"))
+                .query("the query")
+                .build();
+
+        assertThat(scoringModel.score(request).modelName()).isEqualTo("decision-model-v2");
+        assertThat(scoringModel.scoreAsync(request).join().modelName()).isEqualTo("decision-model-v2");
+    }
+
+    @Test
+    void should_report_the_requested_model_name_when_the_decision_model_reports_none() {
+
+        ScoringModel scoringModel = new DecisionScoringModel(decisionModel);
+        ScoringRequest request = ScoringRequest.builder()
+                .documents(List.of("a relevant document"))
+                .query("the query")
+                .parameters(DefaultScoringRequestParameters.builder().modelName("per-call-model").build())
+                .build();
+
+        assertThat(scoringModel.score(request).modelName()).isEqualTo("per-call-model");
+        assertThat(scoringModel.scoreAsync(request).join().modelName()).isEqualTo("per-call-model");
+    }
+
+    @Test
+    void should_fail_async_scoring_with_blank_query_without_throwing() {
+
+        CompletableFuture<ScoringResponse> future = new DecisionScoringModel(decisionModel)
+                .scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("relevant"))
+                        .query(" ")
+                        .build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
+    void score_should_pass_the_per_call_model_name_to_the_decision_model() {
+
+        ScoringModel scoringModel = new DecisionScoringModel(decisionModel);
+
+        ScoringResponse response = scoringModel.score(ScoringRequest.builder()
+                .documents(List.of("a relevant document"))
+                .query("the query")
+                .parameters(DefaultScoringRequestParameters.builder().modelName("per-call-model").build())
+                .build());
+
+        assertThat(response.scores()).containsExactly(0.9);
+        assertThat(decisionModel.request().parameters().modelName()).isEqualTo("per-call-model");
     }
 
     @Test

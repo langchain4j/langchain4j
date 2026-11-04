@@ -14,14 +14,13 @@ import java.util.List;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestUtils {
 
     private static final int EXTRA_TOKENS_PER_EACH_MESSAGE =
             3 /* extra tokens for each message */ + 1 /* extra token for 'role' */;
-    private static final OpenAiTokenCountEstimator TOKEN_COUNT_ESTIMATOR = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+    private static final OpenAiTokenCountEstimator TOKEN_COUNT_ESTIMATOR = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 25, 50, 100, 250, 500, 1000})

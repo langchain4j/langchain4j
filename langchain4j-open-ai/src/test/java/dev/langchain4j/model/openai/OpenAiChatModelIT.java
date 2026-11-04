@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_NANO;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_6_1_TERRA;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -48,8 +48,6 @@ class OpenAiChatModelIT {
             value = OpenAiChatModelName.class,
             mode = EXCLUDE,
             names = {
-                "GPT_4_32K", // don't have access
-                "GPT_4_32K_0613", // don't have access
                 "O3", // don't have access
                 "O3_2025_04_16", // don't have access
             })
@@ -251,21 +249,22 @@ class OpenAiChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(O3_MINI)
+                .modelName(GPT_6_1_TERRA)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage =
+                UserMessage.from("How many prime numbers are there between 100 and 150? Answer with the number only.");
 
-        ChatRequest chatRequestWithLowReasoningEffort = ChatRequest.builder()
+        ChatRequest chatRequestWithoutReasoning = ChatRequest.builder()
                 .messages(userMessage)
                 .parameters(OpenAiChatRequestParameters.builder()
-                        .reasoningEffort("low")
+                        .reasoningEffort("none")
                         .build())
                 .build();
 
-        ChatRequest chatRequestWithMediumReasoningEffort = ChatRequest.builder()
+        ChatRequest chatRequestWithHighReasoningEffort = ChatRequest.builder()
                 .messages(userMessage)
                 .parameters(OpenAiChatRequestParameters.builder()
                         .reasoningEffort("high")
@@ -273,17 +272,17 @@ class OpenAiChatModelIT {
                 .build();
 
         // when
-        ChatResponse chatResponseWithLowReasoningEffort = model.chat(chatRequestWithLowReasoningEffort);
-        ChatResponse chatResponseWithMediumReasoningEffort = model.chat(chatRequestWithMediumReasoningEffort);
+        ChatResponse chatResponseWithoutReasoning = model.chat(chatRequestWithoutReasoning);
+        ChatResponse chatResponseWithHighReasoningEffort = model.chat(chatRequestWithHighReasoningEffort);
 
         // then
-        Integer lowReasoningTokens = ((OpenAiTokenUsage) chatResponseWithLowReasoningEffort.tokenUsage())
+        Integer noReasoningTokens = ((OpenAiTokenUsage) chatResponseWithoutReasoning.tokenUsage())
                 .outputTokensDetails()
                 .reasoningTokens();
-        Integer mediumReasoningTokens = ((OpenAiTokenUsage) chatResponseWithMediumReasoningEffort.tokenUsage())
+        Integer highReasoningTokens = ((OpenAiTokenUsage) chatResponseWithHighReasoningEffort.tokenUsage())
                 .outputTokensDetails()
                 .reasoningTokens();
-        assertThat(lowReasoningTokens).isLessThan(mediumReasoningTokens);
+        assertThat(noReasoningTokens).isLessThan(highReasoningTokens);
     }
 
     @Test

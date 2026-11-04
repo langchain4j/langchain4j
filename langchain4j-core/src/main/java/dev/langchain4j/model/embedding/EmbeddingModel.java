@@ -111,7 +111,12 @@ public interface EmbeddingModel {
      * validation failure completes the future exceptionally rather than being thrown, so callers always observe
      * errors through the future. {@link #listeners()} are notified around the asynchronous call. Cancelling the
      * returned future cancels the in-flight embedding call for providers whose {@link #doEmbedAsync(EmbeddingRequest)}
-     * honors cancellation (best-effort).
+     * honors cancellation (best-effort); the listeners are then notified of neither a response nor an error.
+     * When {@link #doEmbedAsync(EmbeddingRequest)} is not implemented, the returned future fails with an
+     * {@link AsyncNotSupportedException}, and the listeners are notified of it as an error (listeners that count
+     * errors may want to leave it out). A RAG component built with {@code offloadBlocking(true)} then runs
+     * {@link #embed(EmbeddingRequest)} on another thread, which the listeners observe as a separate call; without it,
+     * the RAG call fails with an {@code UnsupportedFeatureException}.
      *
      * @param request the inputs to embed and the per-call parameters.
      * @return a {@link CompletableFuture} of the embeddings and the response metadata.
@@ -121,20 +126,26 @@ public interface EmbeddingModel {
     default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
 
         EmbeddingRequest finalRequest;
+        List<EmbeddingModelListener> listeners;
         try {
             finalRequest = validatedRequest(request);
-        } catch (Exception validationError) {
-            return CompletableFuture.failedFuture(validationError);
+            listeners = listeners();
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
         }
 
-        List<EmbeddingModelListener> listeners = listeners();
         if (isNullOrEmpty(listeners)) {
             return invokeDoEmbedAsync(finalRequest);
         }
 
-        List<TextSegment> textSegments = finalRequest.inputs().stream()
-                .map(input -> TextSegment.from(input.text()))
-                .toList();
+        List<TextSegment> textSegments;
+        try {
+            textSegments = finalRequest.inputs().stream()
+                    .map(input -> TextSegment.from(input.text()))
+                    .toList();
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
 
         EmbeddingModelListenerUtils.onRequest(
