@@ -48,6 +48,7 @@ class TavilyClient {
                 .method(POST)
                 .url(baseUrl, "search")
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(searchRequest))
                 .build();
 
@@ -81,8 +82,7 @@ class TavilyClient {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        TavilyClientBuilder() {
-        }
+        TavilyClientBuilder() {}
 
         public TavilyClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
