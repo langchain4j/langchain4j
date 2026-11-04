@@ -10,9 +10,13 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ChatModelTest implements WithAssertions {
 
@@ -55,6 +59,61 @@ class ChatModelTest implements WithAssertions {
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void chatAsync_string_should_cancel_the_underlying_request(boolean mayInterruptIfRunning) {
+        CompletableFuture<ChatResponse> source = new CompletableFuture<>();
+        ChatModel model = asyncModelReturning(source);
+
+        CompletableFuture<String> result = model.chatAsync("hello");
+
+        assertThat(result).isNotDone();
+        assertThat(source).isNotDone();
+
+        assertThat(result.cancel(mayInterruptIfRunning)).isTrue();
+
+        assertThat(result).isCancelled();
+        assertThat(source).isCancelled();
+    }
+
+    @Test
+    void chatAsync_string_should_complete_with_the_response_text() {
+        CompletableFuture<ChatResponse> source = new CompletableFuture<>();
+        ChatModel model = asyncModelReturning(source);
+
+        CompletableFuture<String> result = model.chatAsync("hello");
+        assertThat(result).isNotDone();
+
+        source.complete(ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build());
+
+        assertThat(result).isCompletedWithValue("Hi");
+        assertThat(result.cancel(true)).isFalse();
+        assertThat(source).isNotCancelled();
+    }
+
+    @Test
+    void chatAsync_string_should_propagate_failure_without_cancelling_the_request() {
+        CompletableFuture<ChatResponse> source = new CompletableFuture<>();
+        ChatModel model = asyncModelReturning(source);
+        RuntimeException failure = new RuntimeException("request failed");
+
+        CompletableFuture<String> result = model.chatAsync("hello");
+        source.completeExceptionally(failure);
+
+        assertThatThrownBy(result::get).isInstanceOf(ExecutionException.class).hasCause(failure);
+        assertThat(result).isNotCancelled();
+        assertThat(source).isNotCancelled();
+    }
+
+    private static ChatModel asyncModelReturning(CompletableFuture<ChatResponse> response) {
+        return new ChatModel() {
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest request) {
+                return response;
+            }
+        };
     }
 
     @Test
