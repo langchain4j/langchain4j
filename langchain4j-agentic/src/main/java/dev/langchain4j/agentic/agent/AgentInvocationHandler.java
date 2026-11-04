@@ -34,6 +34,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -76,7 +77,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     /**
-     * @return the AI service implementing this agent, built by {@link dev.langchain4j.service.AiServices} from the
+     * @return the AI service implementing this agent, built by {@link AiServices} from the
      *         agent type: an integration that builds its own AI service implementation reaches it here, for instance
      *         to manage the chat memories it created
      */
@@ -120,8 +121,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 }
                 case "registry" ->
                     throw new UnsupportedOperationException(
-                            "AgenticScopeOwner's registry method can be used only on the root agent of an agentic"
-                                    + " system.");
+                            "AgenticScopeOwner's registry method can be used only on the root agent of an agentic system.");
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeOwner class : " + method.getName());
@@ -136,7 +136,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                             ? context.chatMemoryService.getChatMemory(args[0])
                             : null;
                 case "evictChatMemory" ->
-                    context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                    context.hasChatMemory()
+                            && builder.hasNonDefaultChatMemory()
+                            && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on ChatMemoryAccess class : " + method.getName());
@@ -182,8 +184,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     private Object invokeStandaloneAgent(Method method, Object[] args) {
-        LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices"
-                + " instead.");
+        LOGGER.warn(
+                "Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
 
         AgenticScope standaloneAgenticScope = ephemeralAgenticScope();
         AgentModelResponse modelResponse = new AgentModelResponse();

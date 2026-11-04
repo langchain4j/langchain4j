@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArgument
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentFromParameter;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -74,26 +75,14 @@ public final class ResolvedParameters {
     /**
      * Splits the parameters of the given method using the {@link SupplierParameterResolver}s registered in
      * {@link DeclarativeUtil}. The method is invoked without a target: it is a static method, or an instance method
-     * whose target is given at each invocation, like the {@link dev.langchain4j.agentic.Agent} method of a non-AI
+     * whose target is given at each invocation, like the {@link Agent} method of a non-AI
      * agent.
      *
      * @param agentType the agent class or interface declaring the method, or inheriting it
      * @param method the method to invoke
      */
     public static ResolvedParameters of(Class<?> agentType, Method method) {
-        return of(agentType, method, null);
-    }
-
-    /**
-     * Splits the parameters of the given method using the {@link SupplierParameterResolver}s registered in
-     * {@link DeclarativeUtil}.
-     *
-     * @param agentType the agent class or interface the method is a helper of
-     * @param method the method to invoke
-     * @param target the helper object the method is invoked on, or {@code null} for a static method
-     */
-    public static ResolvedParameters of(Class<?> agentType, Method method, Object target) {
-        return of(agentType, new HelperMethod(method, target));
+        return of(agentType, new HelperMethod(method, null));
     }
 
     /**
@@ -109,13 +98,6 @@ public final class ResolvedParameters {
 
     public Method method() {
         return helper.method();
-    }
-
-    /**
-     * @return the helper object the method is invoked on, or {@code null} for a static method
-     */
-    public Object target() {
-        return helper.target();
     }
 
     /**

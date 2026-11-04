@@ -46,8 +46,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import java.lang.annotation.ElementType;
@@ -279,8 +279,7 @@ class HelperMethodParameterResolverTest {
 
         @ErrorHandler
         static ErrorRecoveryResult recover(ErrorContext errorContext) {
-            return ErrorRecoveryResult.result(
-                    "recovered from " + errorContext.exception().getMessage());
+            return ErrorRecoveryResult.result("recovered from " + errorContext.exception().getMessage());
         }
     }
 
@@ -289,7 +288,8 @@ class HelperMethodParameterResolverTest {
         SERVICES.put(Formatter.class, new IllegalStateException("formatter not available"));
         register(Policy.class, new Policy("Voldemort"));
 
-        GreetingSequenceWithRecovery sequence = AgenticServices.createAgenticSystem(GreetingSequenceWithRecovery.class);
+        GreetingSequenceWithRecovery sequence =
+                AgenticServices.createAgenticSystem(GreetingSequenceWithRecovery.class);
 
         assertThat(sequence.run("Mario")).isEqualTo("recovered from Failed to resolve the parameters of agent 'greet'");
     }
@@ -659,8 +659,8 @@ class HelperMethodParameterResolverTest {
         ChatModelMock plannerModel = scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
-            {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}
-            """);
+                    {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}
+                    """);
 
         ExchangeSupervisor supervisor = AgenticServices.createAgenticSystem(ExchangeSupervisor.class, plannerModel);
         supervisor.invoke("convert 100 EUR to USD");

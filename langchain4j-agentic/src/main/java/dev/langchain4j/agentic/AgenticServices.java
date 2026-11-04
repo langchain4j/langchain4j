@@ -402,6 +402,12 @@ public class AgenticServices {
      * instead of, or next to, the static methods of the agent type. It can return {@code null} or an empty list for
      * an agent without helper objects. It is how a dependency injection container provides the helpers of an agent
      * as methods of a managed bean, typically an instance of the agent type itself.
+     * <p>
+     * The resolver is called once for each agent, when the agentic system is built. The returned objects are then
+     * shared by all the invocations of the agent, also by the ones running at the same time, so they must be
+     * thread-safe, or be proxies finding the current instance at each call, like the client proxies of the
+     * normal-scoped beans of a CDI container. Their annotated methods are found and invoked through reflection, on the
+     * class of each object, its superclasses and its interfaces.
      */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
@@ -980,8 +986,7 @@ public class AgenticServices {
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(
-                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method,"
-                            + " not both.");
+                    "Provide either a2aServerUrl in the @A2AClientAgent annotation or an @A2AServerUrlSupplier method, not both.");
         }
 
         if (supplierMethod.isPresent()) {
@@ -994,8 +999,7 @@ public class AgenticServices {
         }
 
         throw new IllegalArgumentException(
-                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method"
-                        + " annotated with @A2AServerUrlSupplier.");
+                "An A2A client agent requires either a2aServerUrl in the @A2AClientAgent annotation or a method annotated with @A2AServerUrlSupplier.");
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
@@ -1007,9 +1011,9 @@ public class AgenticServices {
                     checkReturnType(method, Object.class);
                     return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
                 })
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns"
-                                + " the McpClient instance."));
+                .orElseThrow(
+                        () -> new IllegalArgumentException(
+                                "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
 
         var mcpClientBuilder = McpService.get()
                 .mcpBuilder(mcpClient, agentServiceClass)

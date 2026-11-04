@@ -18,6 +18,7 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
@@ -222,7 +223,7 @@ public class AgentUtil {
      * Creates the executor of the non-AI agent implemented by the given method of the given object, with the given
      * helpers: the activation condition and the listener of the agent can be static methods of the agent type or
      * instance methods of its helper objects, and the parameters of the agent method can be provided by a
-     * {@link dev.langchain4j.agentic.declarative.SupplierParameterResolver}.
+     * {@link SupplierParameterResolver}.
      */
     public static AgentExecutor nonAiAgentToExecutor(Object agent, Method agenticMethod, AgentHelpers helpers) {
         Agent annotation = agenticMethod.getAnnotation(Agent.class);

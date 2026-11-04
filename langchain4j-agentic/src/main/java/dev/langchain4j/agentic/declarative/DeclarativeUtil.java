@@ -256,10 +256,10 @@ public class DeclarativeUtil {
         for (Class<? extends Annotation> chatModelAnnotation :
                 List.of(ChatModelSupplier.class, StreamingChatModelSupplier.class)) {
             if (helpers.select(chatModelAnnotation).isPresent()) {
-                throw new AgenticSystemConfigurationException("The decision agent " + agentType.getName()
-                        + " declares a method annotated with @" + chatModelAnnotation.getSimpleName()
-                        + ": a decision agent uses a decision model, provided with @DecisionModelSupplier, and"
-                        + " no chat model");
+                throw new AgenticSystemConfigurationException(
+                        "The decision agent " + agentType.getName()
+                                + " declares a method annotated with @" + chatModelAnnotation.getSimpleName()
+                                + ": a decision agent uses a decision model, provided with @DecisionModelSupplier, and no chat model");
             }
         }
 
@@ -310,12 +310,11 @@ public class DeclarativeUtil {
         for (Class<? extends Annotation> decisionAnnotation :
                 List.of(DecisionModelSupplier.class, DecisionThresholdSupplier.class)) {
             if (helpers.select(decisionAnnotation).isPresent()) {
-                throw new AgenticSystemConfigurationException("The agent "
-                        + helpers.agentType().getName()
+                throw new AgenticSystemConfigurationException("The agent " + helpers.agentType().getName()
                         + " declares a method annotated with @" + decisionAnnotation.getSimpleName()
-                        + ", but it is not built as a decision agent: a decision agent is an interface with an @Agent"
-                        + " method annotated with @Decide, or declaring a @DecisionModelSupplier, built with"
-                        + " AgenticServices.decisionAgentBuilder or by the declarative API");
+                        + ", but it is not built as a decision agent: a decision agent is an interface with an @Agent method "
+                        + "annotated with @Decide, or declaring a @DecisionModelSupplier, built with "
+                        + "AgenticServices.decisionAgentBuilder or by the declarative API");
             }
         }
     }
@@ -463,8 +462,8 @@ public class DeclarativeUtil {
             }
             if (conditionMethod != null) {
                 throw new AgenticSystemConfigurationException("Only one @ActivationCondition method without value is "
-                        + "allowed in " + agentClass.getName() + ", but found "
-                        + conditionMethod.method().getName() + " and " + method.getName());
+                        + "allowed in " + agentClass.getName() + ", but found " + conditionMethod.describe() + " and "
+                        + helper.describe());
             }
             conditionMethod = helper;
         }

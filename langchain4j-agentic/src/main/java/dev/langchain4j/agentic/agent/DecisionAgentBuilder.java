@@ -100,14 +100,13 @@ public class DecisionAgentBuilder<T> {
     Function<InternalAgent, Object> agentInstanceFactory;
 
     /**
-     * Creates a builder for the given decision agent type, an interface or a class whose {@link Agent @Agent} method
-     * is abstract or {@code native}, applying its declarative configuration
+     * Creates a builder for the given decision agent interface, applying its declarative configuration
      * ({@link DecisionModelSupplier @DecisionModelSupplier},
      * {@link DecisionThresholdSupplier @DecisionThresholdSupplier},
      * {@link ActivationCondition @ActivationCondition} and
      * {@link AgentListenerSupplier @AgentListenerSupplier}) when present.
      *
-     * @throws IllegalArgumentException if the type cannot be a decision agent
+     * @throws IllegalArgumentException if the interface cannot be a decision agent
      */
     public DecisionAgentBuilder(Class<T> agentServiceClass) {
         this(agentServiceClass, true);
@@ -125,9 +124,9 @@ public class DecisionAgentBuilder<T> {
         this.decisionMethod = DecisionMethod.from(agenticMethod);
         if (decisionMethod.isAsync()) {
             throw new IllegalArgumentException(
-                    ("Method '%s' of the decision agent %s returns a %s, which is not supported: declare the type of"
-                        + " the result directly and make the agent asynchronous with async(true) or @Agent(async ="
-                        + " true)")
+                    ("Method '%s' of the decision agent %s returns a %s, which is not supported: "
+                                    + "declare the type of the result directly and make the agent asynchronous with async(true) "
+                                    + "or @Agent(async = true)")
                             .formatted(
                                     agenticMethod.getName(),
                                     agentServiceClass.getName(),
@@ -153,9 +152,8 @@ public class DecisionAgentBuilder<T> {
 
     private static void validateMethod(Class<?> agentServiceClass, Method method) {
         if (method.isAnnotationPresent(UserMessage.class) || method.isAnnotationPresent(SystemMessage.class)) {
-            throw new IllegalArgumentException(("Method '%s' of the decision agent %s must not be annotated with"
-                + " @UserMessage or @SystemMessage: a decision agent has no prompt, its question is the one of"
-                + " @Decide")
+            throw new IllegalArgumentException(("Method '%s' of the decision agent %s must not be annotated with "
+                            + "@UserMessage or @SystemMessage: a decision agent has no prompt, its question is the one of @Decide")
                     .formatted(method.getName(), agentServiceClass.getName()));
         }
         for (Parameter parameter : method.getParameters()) {
@@ -166,15 +164,15 @@ public class DecisionAgentBuilder<T> {
                                 .formatted(parameterName(parameter), method.getName(), agentServiceClass.getName()));
             }
             if (AgenticScope.class.isAssignableFrom(parameter.getType())) {
-                throw new IllegalArgumentException(("Parameter '%s' of method '%s' of the decision agent %s has type"
-                    + " AgenticScope, which is not supported: the arguments of a decision agent are read from the"
-                    + " AgenticScope by name and sent to the decision model")
+                throw new IllegalArgumentException(("Parameter '%s' of method '%s' of the decision agent %s has type "
+                                + "AgenticScope, which is not supported: the arguments of a decision agent are read from "
+                                + "the AgenticScope by name and sent to the decision model")
                         .formatted(parameterName(parameter), method.getName(), agentServiceClass.getName()));
             }
             if (DecisionRequestParameters.class.isAssignableFrom(parameter.getType())) {
-                throw new IllegalArgumentException(("Parameter '%s' of method '%s' of the decision agent %s has type"
-                    + " DecisionRequestParameters, which is not supported: set the request parameters with"
-                    + " requestParameters(...) on the builder, or as default parameters of the decision model")
+                throw new IllegalArgumentException(("Parameter '%s' of method '%s' of the decision agent %s has type "
+                                + "DecisionRequestParameters, which is not supported: set the request parameters with "
+                                + "requestParameters(...) on the builder, or as default parameters of the decision model")
                         .formatted(parameterName(parameter), method.getName(), agentServiceClass.getName()));
             }
         }
@@ -357,6 +355,10 @@ public class DecisionAgentBuilder<T> {
      * {@code boolean} answer
      */
     public T build() {
+        if (agentInstanceFactory == null && !agentServiceClass.isInterface()) {
+            throw new IllegalArgumentException("A decision agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         if ((decisionModel == null) == (decisionModelProvider == null)) {
             throw new IllegalArgumentException(
                     "One and only one of decisionModel and decisionModelProvider must be set for the decision agent '"

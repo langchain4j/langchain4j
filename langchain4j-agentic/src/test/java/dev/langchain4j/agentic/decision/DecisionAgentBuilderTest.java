@@ -39,8 +39,8 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("One and only one of decisionModel and decisionModelProvider must be set for the decision"
-                        + " agent 'classify'");
+                .hasMessage(
+                        "One and only one of decisionModel and decisionModelProvider must be set for the decision agent 'classify'");
     }
 
     @Test
@@ -87,7 +87,8 @@ class DecisionAgentBuilderTest {
                         .decisionModel(DecisionModelMock.thatAlwaysThrowsException())
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("is not an interface");
+                .hasMessage("A decision agent must be defined by an interface, but " + RouterClass.class.getName()
+                        + " is a class");
     }
 
     public interface NoAgentMethod {
@@ -167,8 +168,8 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(FutureRouter.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Method 'classify' of the decision agent " + FutureRouter.class.getName()
-                        + " returns a CompletableFuture, which is not supported: declare the type of the result"
-                        + " directly and make the agent asynchronous with async(true) or @Agent(async = true)");
+                        + " returns a CompletableFuture, which is not supported: declare the type of the result directly "
+                        + "and make the agent asynchronous with async(true) or @Agent(async = true)");
     }
 
     public interface RouterWithMemoryId {
@@ -215,9 +216,8 @@ class DecisionAgentBuilderTest {
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterWithRequestParameters.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(
-                        "has type DecisionRequestParameters, which is not supported: set the request parameters with"
-                                + " requestParameters(...) on the builder, or as default parameters of the decision"
-                                + " model");
+                        "has type DecisionRequestParameters, which is not supported: set the request "
+                                + "parameters with requestParameters(...) on the builder, or as default parameters of the decision model");
     }
 
     public interface TextRouter {
@@ -293,9 +293,10 @@ class DecisionAgentBuilderTest {
                         .threshold(0.7)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
-                        + "apply it to the probabilities of a YesNoAnswer, Choice or Scale answer instead, "
-                        + "for instance with YesNoAnswer.isYes(threshold)");
+                .hasMessage(
+                        "The decision agent 'classify' has no boolean answer, so a threshold would never be used: "
+                                + "apply it to the probabilities of a YesNoAnswer, Choice or Scale answer instead, "
+                                + "for instance with YesNoAnswer.isYes(threshold)");
     }
 
     @Test

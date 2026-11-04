@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
+import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
@@ -7,7 +9,7 @@ import java.lang.reflect.Parameter;
  * SPI for resolving parameters of the helper methods of declarative agents from external sources
  * such as a dependency injection container. A helper method is a static method of the agent type, or an instance
  * method of one of the <em>helper objects</em> of the agent, returned by the {@code helperObjectsResolver} of an
- * {@link dev.langchain4j.agentic.AgenticServices.AgentConfigurator}.
+ * {@link AgenticServices.AgentConfigurator}.
  * <p>
  * Applies to the methods annotated with any supplier annotation: {@link ChatModelSupplier},
  * {@link StreamingChatModelSupplier}, {@link DecisionModelSupplier}, {@link DecisionThresholdSupplier},
@@ -20,7 +22,7 @@ import java.lang.reflect.Parameter;
  * {@link A2AServerUrlSupplier} and {@link ParallelExecutor}; to the methods annotated with
  * {@link ExitCondition}, {@link ActivationCondition}, {@link Output}, {@link BeforeCall},
  * {@link ErrorHandler}, {@link SupervisorRequest} and {@link A2AClientCustomizer}; to the
- * {@link dev.langchain4j.agentic.Agent} methods of non-AI agents, static or on an instance, and to the
+ * {@link Agent} methods of non-AI agents, static or on an instance, and to the
  * {@link HumanInTheLoop} methods.
  * <p>
  * For a static method, {@link Context#declaringAgentClass()} is the agent type declaring, or inheriting, the method.

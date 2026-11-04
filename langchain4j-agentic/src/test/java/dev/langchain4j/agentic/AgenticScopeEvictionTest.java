@@ -3,9 +3,11 @@ package dev.langchain4j.agentic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
+import dev.langchain4j.agentic.declarative.ChatMemorySupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -23,7 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests that evicting an {@link dev.langchain4j.agentic.scope.AgenticScope} also evicts the chat memories that the
+ * Tests that evicting an {@link AgenticScope} also evicts the chat memories that the
  * agents of the agentic system created for its memory id: the AI agents of the agent tree, the AI agents created for
  * the scope only, because their configuration depends on it, and the planner agent of a supervisor.
  */
@@ -160,6 +162,35 @@ class AgenticScopeEvictionTest {
             assertThat(store.getMessages("dmytro")).as(store.toString()).isNotEmpty();
         }
         assertThat(assistant.getAgenticScope("dmytro")).isNotNull();
+    }
+
+    public interface SingleMemoryGreeter {
+
+        @dev.langchain4j.service.UserMessage("Greet {{name}}")
+        @Agent(outputKey = "greeting")
+        String greet(@V("name") String name);
+
+        @ChatMemorySupplier
+        static ChatMemory chatMemory() {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+    }
+
+    public interface SingleMemoryAssistant extends AgenticScopeAccess {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = SingleMemoryGreeter.class)
+        String assist(@MemoryId String memoryId, @V("name") String name);
+    }
+
+    @Test
+    void evicting_an_agentic_scope_with_an_agent_having_a_single_chat_memory_evicts_the_scope() {
+        SingleMemoryAssistant assistant =
+                AgenticServices.createAgenticSystem(SingleMemoryAssistant.class, echoModel());
+        assistant.assist("mario", "Mario");
+
+        assertThat(assistant.evictAgenticScope("mario")).isTrue();
+
+        assertThat(assistant.getAgenticScope("mario")).isNull();
     }
 
     @Test

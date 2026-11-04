@@ -7,6 +7,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -174,7 +175,7 @@ public abstract class AbstractServiceBuilder<T, S> {
      * Applies the helper objects of the agent to this builder: the objects whose instance methods, annotated with
      * the declarative annotations, configure the agent next to the static methods of its type, applied by the
      * constructor. Used by the declarative API with the helper objects returned by the {@code helperObjectsResolver}
-     * of an {@link dev.langchain4j.agentic.AgenticServices.AgentConfigurator}.
+     * of an {@link AgenticServices.AgentConfigurator}.
      */
     public S helperObjects(List<Object> helperObjects) {
         applyHelperObjects(helperObjects);
@@ -184,7 +185,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     /**
      * Applies the instance helper methods of the given helper objects to this builder, whose static helpers have
      * been applied by its constructor, with
-     * {@link dev.langchain4j.agentic.internal.AgentHelpers#instanceOnly(Class, List)}.
+     * {@link AgentHelpers#instanceOnly(Class, List)}.
      */
     protected abstract void applyHelperObjects(List<Object> helperObjects);
 
