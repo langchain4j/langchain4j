@@ -91,6 +91,11 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        StreamingChatModel.super.chat(chatRequest, handler); // kept because revapi reports its removal; the logic is in doChat
+    }
+
+    @Override
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.responseFormat());

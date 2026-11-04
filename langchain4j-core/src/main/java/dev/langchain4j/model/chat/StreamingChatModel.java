@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
@@ -69,7 +70,7 @@ public interface StreamingChatModel {
 
         ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
-        List<ChatModelListener> listeners = listeners();
+        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
         UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
@@ -195,7 +196,7 @@ public interface StreamingChatModel {
                 .parameters(defaultRequestParameters().overrideWith(request.parameters()))
                 .build();
 
-        List<ChatModelListener> listeners = listeners();
+        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
 
         ModelProvider provider = provider();
         UUID invocationId = CurrentInvocation.invocationId();
