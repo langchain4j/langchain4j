@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class DefaultAgenticScopeRootCallEndedTest {
@@ -225,11 +226,10 @@ class DefaultAgenticScopeRootCallEndedTest {
             scope.writeState("late", response);
             scope.asyncPending("lateAgent", "late", response);
 
-            scope.rootCallSuspended(registry);
+            scope.rootCallSuspended(registry, null);
 
-            // the root call returned, suspended: an agent completing afterwards finds no call in progress, and its
-            // result is saved as after a completed root call
-            assertThat(scope.rootCallInProgress()).isFalse();
+            // the root call returned, suspended: the result of the agent completing afterwards is saved as after a
+            // completed root call
             release.countDown();
             org.awaitility.Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
                 String json = store.getJson(key);
@@ -252,6 +252,62 @@ class DefaultAgenticScopeRootCallEndedTest {
 
         assertThat(scope.state().get("a2a.response.remediate")).isSameAs(suspended);
         assertThat(scope.pendingResponseIds()).containsExactly("approval");
+    }
+
+    @Test
+    void suspension_of_an_async_agent_landing_at_root_end_is_notified() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        AtomicInteger suspensions = new AtomicInteger();
+        AsyncResponse<String> response = suspending(scope, null);
+        assertThatThrownBy(response::blockingGet).isInstanceOf(AgenticSystemSuspendedException.class);
+        scope.writeState("fix", response);
+
+        // the root call ended without noticing the suspension, landed after its last check: the listener is told at
+        // root end, once, so that the next call does not suspend without warning
+        scope.rootCallEnded(null, suspensionCounter(suspensions), false);
+        assertThat(suspensions).hasValue(1);
+        scope.rootCallEnded(null, suspensionCounter(suspensions), false);
+        assertThat(suspensions).hasValue(1);
+    }
+
+    @Test
+    void suspended_root_call_reports_the_later_suspensions_of_its_async_agents_but_not_the_one_it_noticed() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        AtomicInteger suspensions = new AtomicInteger();
+        AsyncResponse<String> noticed = suspending(scope, null);
+        assertThatThrownBy(noticed::blockingGet).isInstanceOf(AgenticSystemSuspendedException.class);
+        scope.writeState("noticed", noticed);
+        CountDownLatch release = new CountDownLatch(1);
+        AsyncResponse<String> late = suspending(scope, release);
+        scope.writeState("late", late);
+
+        // the suspension of the completed agent is among the pending responses the root call just notified
+        scope.rootCallSuspended(null, suspensionCounter(suspensions));
+        assertThat(suspensions).hasValue(0);
+
+        // the one of the agent still running is notified when it happens
+        release.countDown();
+        org.awaitility.Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 1);
+    }
+
+    /** Counts the suspensions notified to the listener. */
+    private static AgentListener suspensionCounter(AtomicInteger suspensions) {
+        return new AgentListener() {
+            @Override
+            public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+                suspensions.incrementAndGet();
+            }
+        };
+    }
+
+    /** The response of an agent suspending the system, once released when a latch is given. */
+    private static AsyncResponse<String> suspending(DefaultAgenticScope scope, CountDownLatch release) {
+        return new AsyncResponse<>(() -> {
+            if (release != null) {
+                await(release);
+            }
+            throw new AgenticSystemSuspendedException(scope);
+        });
     }
 
     /** A deferred response completed as soon as it is awaited, like a human answering at once. */

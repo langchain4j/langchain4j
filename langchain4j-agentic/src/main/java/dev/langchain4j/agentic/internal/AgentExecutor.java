@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentSkipped;
-import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticSystemSuspended;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
@@ -199,13 +198,6 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             return new AsyncResponse<>(() -> {
                 try {
                     return agentInvoker.invoke(agenticScope, invokedAgent, args);
-                } catch (AgenticSystemSuspendedException e) {
-                    // thrown to the agent reading the result, if any, which suspends the system as on the sync path,
-                    // while a root call already returned cannot throw it to its caller: its listener is told instead
-                    if (!agenticScope.rootCallInProgress()) {
-                        onAgenticSystemSuspended(agentInvoker.listener(), agenticScope);
-                    }
-                    throw e;
                 } catch (AgentInvocationException e) {
                     return recoverAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
                 }

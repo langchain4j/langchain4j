@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.scope;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticSystemSuspended;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -88,12 +89,6 @@ public class DefaultAgenticScope implements AgenticScope {
      * see {@link #rootCallStarted(AgenticScopeRegistry)}.
      */
     private final transient Map<CompletableFuture<Void>, String> runningAsyncAgents = new ConcurrentHashMap<>();
-
-    /**
-     * Whether a root call is running on this scope: an asynchronous agent suspending the agentic system in the
-     * meantime is noticed by that call, which suspends as usual, while after the call returned the listener is told.
-     */
-    private transient volatile boolean rootCallInProgress;
 
     private transient boolean evicted;
 
@@ -328,21 +323,24 @@ public class DefaultAgenticScope implements AgenticScope {
         withReadLock(() ->
                 state.values().removeIf(value -> value instanceof AsyncResponse<?> response && response.isFailed()));
         registryAfterRootCall = null;
-        rootCallInProgress = true;
-    }
-
-    /** Not a bean getter, so that the JSON of the scope does not carry it. */
-    public boolean rootCallInProgress() {
-        return rootCallInProgress;
     }
 
     /**
-     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope: as after a
-     * completed call, an asynchronous agent completing in the meantime finds no call in progress, so it notifies
-     * its own suspension to the listener, and a persistent scope is saved again with its result.
+     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope. As after a
+     * completed call, the failure of an asynchronous agent completing afterwards is reported, and a persistent scope
+     * is saved again with its result. The suspension of an agent already completed is not reported: it is among
+     * the pending responses the root call just notified.
      */
-    public void rootCallSuspended(AgenticScopeRegistry registry) {
-        rootCallInProgress = false;
+    public void rootCallSuspended(AgenticScopeRegistry registry, AgentListener agentListener) {
+        Map.copyOf(state).forEach((key, value) -> {
+            if (value instanceof AsyncResponse<?> unread) {
+                if (unread.isDone()) {
+                    reportUnreadFailure(key, unread, null, false);
+                } else {
+                    unread.onComplete(completed -> reportUnreadFailure(key, completed, agentListener, false));
+                }
+            }
+        });
         if (kind == Kind.PERSISTENT) {
             registryAfterRootCall = registry;
         }
@@ -351,11 +349,11 @@ public class DefaultAgenticScope implements AgenticScope {
     /**
      * Ends the root call, which {@code failed} tells whether it ended with an exception. The responses of the
      * asynchronous agents that no agent of the root call read are left in place, and the root call does not wait
-     * for them: when it succeeded, their failure is logged on completion, since no agent would observe it
-     * otherwise, while a failed root call already surfaced the failure of the response it read.
+     * for them: their failure is logged on completion when the call succeeded, since no agent would observe it
+     * otherwise, while a failed root call already surfaced the failure of the response it read, and a suspension of
+     * the agentic system by one of them, which the call returned without noticing, is notified to the listener.
      */
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener, boolean failed) {
-        rootCallInProgress = false;
         // ensure that all pending streaming and deferred responses are completed before ending the root call
         List<String> stillRunning = new ArrayList<>();
         Map.copyOf(state).forEach((key, value) -> {
@@ -363,9 +361,7 @@ public class DefaultAgenticScope implements AgenticScope {
                 if (!unread.isDone()) {
                     stillRunning.add(key);
                 }
-                if (!failed) {
-                    unread.onComplete(completed -> logUnreadFailure(key, completed));
-                }
+                unread.onComplete(completed -> reportUnreadFailure(key, completed, agentListener, failed));
             } else if (value instanceof DelayedResponse<?> pending && !suspendsTheSystem(pending)) {
                 writeState(key, pending.blockingGet());
             }
@@ -398,13 +394,23 @@ public class DefaultAgenticScope implements AgenticScope {
         return response instanceof SuspendedResponse<?> suspended && !suspended.isDone();
     }
 
-    private static void logUnreadFailure(String outputKey, AsyncResponse<?> response) {
-        if (response.reportFailureOnce()) {
-            try {
-                response.blockingGet();
-            } catch (AgenticSystemSuspendedException e) {
-                // not a failure: the system awaits the responses the next root call resumes from
-            } catch (RuntimeException e) {
+    /**
+     * Reports once the failure of the response of an asynchronous agent that no agent of the root call read: a
+     * suspension of the agentic system is notified to the listener, as the root call returned without noticing it
+     * and its caller cannot get it anymore, while any other failure is logged, unless the root call failed, since
+     * the failure it surfaced may be the one of the response it read.
+     */
+    private void reportUnreadFailure(
+            String outputKey, AsyncResponse<?> response, AgentListener agentListener, boolean rootCallFailed) {
+        if (!response.reportFailureOnce()) {
+            return;
+        }
+        try {
+            response.blockingGet();
+        } catch (AgenticSystemSuspendedException e) {
+            onAgenticSystemSuspended(agentListener, this);
+        } catch (RuntimeException e) {
+            if (!rootCallFailed) {
                 LOG.warn(
                         "Asynchronous agent producing '{}' failed and the agentic system did not read its result",
                         outputKey,
