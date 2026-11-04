@@ -21,6 +21,7 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, SupervisorAgentServiceImpl<T>>
@@ -56,6 +57,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         }
 
         Context.ContextSummarizer summarizer = contextSummarizer();
+        AtomicBoolean subagentsDescriptionsChecked = new AtomicBoolean();
         return build(() -> new SupervisorPlanner(
                 chatModel,
                 chatMemoryProvider,
@@ -65,7 +67,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
                 requestGenerator,
                 outputKey,
                 output,
-                summarizer));
+                summarizer,
+                subagentsDescriptionsChecked));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {

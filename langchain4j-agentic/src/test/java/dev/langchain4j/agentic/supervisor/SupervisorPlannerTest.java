@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.IllegalConfigurationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 
 class SupervisorPlannerTest {
@@ -22,7 +23,8 @@ class SupervisorPlannerTest {
                         null,
                         "output",
                         null,
-                        null))
+                        null,
+                        new AtomicBoolean()))
                 .withMessage("A ContextSummarizer is required for the SUMMARIZATION context strategy.");
     }
 
@@ -37,7 +39,8 @@ class SupervisorPlannerTest {
                 null,
                 "output",
                 null,
-                null);
+                null,
+                new AtomicBoolean());
 
         assertThat(planner).isNotNull();
     }

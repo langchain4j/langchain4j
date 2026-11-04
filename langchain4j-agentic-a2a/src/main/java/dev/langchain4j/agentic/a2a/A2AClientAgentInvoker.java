@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.a2aproject.sdk.spec.AgentCard;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
@@ -32,7 +31,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final A2AClientInstance a2AClientInstance;
 
-    private final AgentCard agentCard;
     private final Method method;
 
     private InternalAgent parent;
@@ -40,7 +38,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
-        this.agentCard = a2AClientInstance.agentCard();
         this.agentId = name();
         this.arguments = arguments(a2AClientInstance);
     }
@@ -91,7 +88,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String name() {
-        return agentCard.name();
+        return a2AClientInstance.name();
     }
 
     @Override
@@ -101,7 +98,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String description() {
-        return agentCard.description();
+        return a2AClientInstance.description();
     }
 
     @Override
@@ -179,6 +176,18 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public AgentInstance parent() {
         return parent;
+    }
+
+    /**
+     * Gives access to the wrapped A2A client agent, for instance to fetch its agent card before the first invocation
+     * of the declarative agentic system containing it: {@code subagent.as(A2AClientInstance.class).agentCard()}.
+     */
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        if (agentInstanceClass.isInstance(a2AClientInstance)) {
+            return agentInstanceClass.cast(a2AClientInstance);
+        }
+        return AgentInvoker.super.as(agentInstanceClass);
     }
 
     @Override

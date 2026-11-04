@@ -1545,6 +1545,8 @@ SupervisorAgent bankSupervisor = AgenticServices
 
 Note that the subagents can also be complex agents implementing a workflow, that will be seen as a single agent by the supervisor.
 
+The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server is down, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again.
+
 The resulting `SupervisorAgent` typically takes a user request as input and produces a response, so its signature is simply as follows:
 
 ```java
@@ -3666,7 +3668,7 @@ UntypedAgent creativeWriter = AgenticServices
         .build();
 ```
 
-The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
+The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server, which is fetched the first time it is needed and not when the agent is built, as explained in the [agent card resolution](#agent-card-resolution) section. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
 
 Alternatively, it is possible to define a local interface for the A2A agent like:
 
@@ -3690,6 +3692,39 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+### Agent card resolution
+
+Building an A2A client agent, or an agentic system containing one, never contacts the A2A server: the agent card is fetched lazily, the first time it is needed, which is normally the first invocation of the agent. In this way a remote agent that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an A2A agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The only checks done at build time are on the server URL, which must be an absolute `http` or `https` URL, and on the tenant, so a malformed one fails with an `AgenticSystemConfigurationException` when the agent is built.
+
+This has a few consequences for what is known about the agent before its first invocation.
+
+- **Name**: the name of an A2A agent is always known locally, without the card. It is the one set through the `name` attribute of the `@A2AClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `a2aBuilder(A2A_SERVER_URL)` gets a placeholder derived from the host, port and path of the server URL, like `a2a-remote-host-8080` for `http://remote-host:8080`. Setting a meaningful name is recommended for untyped agents, especially when they are used by a supervisor, whose model sees the name of every subagent. The agent id is derived from the name: it is used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and it never changes, not even after the card has been fetched.
+- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@A2AClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is read from the agent card, which is fetched the first time it is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor fetches the card. When the card cannot be fetched, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. Setting the description explicitly avoids all this, and also keeps text controlled by the remote server out of the prompt of the supervisor.
+- **Tenant**: an explicitly configured tenant is sent with every message, while the [auto-detection from the agent card](#auto-detection-from-the-agent-card-url) is performed when the first message is sent.
+- **Client customization**: the a2a-java `Client` is created from the card, so the [client customizer](#customizing-the-a2a-client) runs on the first invocation and not when the agent is built. The parameters of the `@A2AClientCustomizer` method provided by a `SupplierParameterResolver` are however resolved when the agent is built, like those of the other supplier methods, so a value resolved per request, like a token, is the one of the thread building the agent and not the one of the first caller.
+
+The first invocation of the agent pays the latency of the card fetch. Calling the `agentCard()` method of the `A2AClientInstance` interface, implemented by every A2A client agent, fetches the card immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the card cannot be fetched:
+
+```java
+AgentCard agentCard = ((A2AClientInstance) creativeWriter).agentCard();
+```
+ When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent:
+
+```java
+UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+        .subAgents(analyzer, remoteFixer)
+        .outputKey("fix")
+        .errorHandler(errorContext -> {
+            for (Throwable cause = errorContext.exception(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof A2AAgentCardException) {
+                    return ErrorRecoveryResult.result("no fix available, the remote fixer is unreachable");
+                }
+            }
+            return ErrorRecoveryResult.throwException();
+        })
+        .build();
+```
 
 ### Multi-turn conversations with A2A servers
 
@@ -3775,7 +3810,7 @@ In a multi-tenant A2A deployment, messages must be scoped to a specific tenant s
 
 #### Auto-detection from the agent card URL
 
-When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed.
+When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed. Since the card is fetched lazily, the detection happens when the first message is sent.
 
 #### Static tenant via the `@A2AClientAgent` annotation
 
@@ -3882,7 +3917,7 @@ If an A2A client is invoked outside an agentic system, there is no scope to susp
 
 ### Customizing the A2A client
 
-By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
+By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting. The customizer is applied when the `Client` is created, which happens on the first invocation of the agent, once its agent card is available, and not when the agent is built.
 
 When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
 
@@ -3898,7 +3933,7 @@ UntypedAgent creativeWriter = AgenticServices
 
 When a customizer is provided, it replaces the default transport setup entirely, giving full control over how the `Client` is constructed.
 
-For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a single `ClientBuilder` parameter and return `void`:
+For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a `ClientBuilder` parameter and return `void`. Any other parameter must be provided by a `SupplierParameterResolver`: it is resolved when the agent is built, while the method itself runs when the client is created, on the first invocation of the agent.
 
 ```java
 public interface DeclarativeA2AWithCustomizer {
