@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agentic.JsonInMemoryAgenticScopeStore;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.PendingResponse;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +187,20 @@ class DefaultAgenticScopeRootCallEndedTest {
         assertThat(scope.state().get("late")).isEqualTo("late");
         scope.compensateAll();
         assertThat(compensated).isEmpty();
+    }
+
+    @Test
+    void root_call_end_does_not_wait_for_a_suspended_response() throws Exception {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        SuspendedResponse<String> suspended = new SuspendedResponse<>("approval");
+        scope.writeState("a2a.response.remediate", suspended);
+
+        // a suspended response is meant to suspend the system, never to be awaited: left in place for the next call
+        CompletableFuture<Void> rootEnd = CompletableFuture.runAsync(() -> scope.rootCallEnded(null, null, false));
+        rootEnd.get(2, TimeUnit.SECONDS);
+
+        assertThat(scope.state().get("a2a.response.remediate")).isSameAs(suspended);
+        assertThat(scope.pendingResponseIds()).containsExactly("approval");
     }
 
     /** A deferred response completed as soon as it is awaited, like a human answering at once. */

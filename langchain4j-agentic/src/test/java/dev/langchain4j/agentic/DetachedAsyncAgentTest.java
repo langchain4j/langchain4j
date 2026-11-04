@@ -9,6 +9,7 @@ import static org.awaitility.Awaitility.await;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AsyncResponse;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.AgentInvocation;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -20,6 +21,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeKey;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
@@ -100,6 +102,25 @@ class DetachedAsyncAgentTest {
         }
     }
 
+    /**
+     * A remote agent asking for more input, as an A2A client agent does: it leaves a suspended response in the
+     * scope and suspends the agentic system, then continues with the input provided when invoked again.
+     */
+    public static class SuspendingRemediation {
+        static final String RESPONSE_KEY = "a2a.response.remediate";
+        final CountDownLatch release = new CountDownLatch(1);
+
+        @Agent(async = true, outputKey = "fix")
+        public String remediate(AgenticScope scope, @V("decision") String decision) {
+            awaitLatch(release);
+            if (scope.state().get(RESPONSE_KEY) instanceof String input) {
+                return "fixed with " + input;
+            }
+            scope.writeState(RESPONSE_KEY, new SuspendedResponse<>("remediate:task-1"));
+            throw new AgenticSystemSuspendedException(scope);
+        }
+    }
+
     public static class FailingCheck {
         @Agent(outputKey = "check")
         public String check(@V("decision") String decision) {
@@ -145,6 +166,11 @@ class DetachedAsyncAgentTest {
         @Override
         public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
             events.add("destroyed");
+        }
+
+        @Override
+        public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+            events.add("suspended");
         }
 
         @Override
@@ -370,6 +396,53 @@ class DetachedAsyncAgentTest {
                 .isAfterOrEqualTo(firstRemediation.startTime().plus(firstRemediation.duration()));
         assertThat(second.topLevelInvocations().nestedInvocations().get(1).output())
                 .isEqualTo("fixed after promote stable");
+    }
+
+    @Test
+    void suspension_of_a_detached_agent_is_notified_and_resumed_by_the_next_call() {
+        SuspendingRemediation remediation = new SuspendingRemediation();
+        RecordingListener listener = new RecordingListener();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new Analysis(), remediation)
+                .outputKey("decision")
+                .listener(listener)
+                .build();
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        AgenticScope scope = workflow.getAgenticScope("rollout-1");
+        remediation.release.countDown();
+        await().atMost(10, SECONDS).until(() -> listener.events.contains("suspended"));
+
+        // as for a synchronous agent: no failure reported, the pending response left in the scope for the next call,
+        // and the result, which nobody read here, failed with the suspension so that reading it suspends the system
+        assertThat(listener.events).doesNotContain("error:remediate", "after:remediate");
+        assertThat(scope.pendingResponseIds()).containsExactly("remediate:task-1");
+        assertThatThrownBy(() -> scope.readState("fix")).isInstanceOf(AgenticSystemSuspendedException.class);
+
+        scope.completePendingResponse("remediate:task-1", "more input");
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        await().atMost(10, SECONDS)
+                .until(() -> "fixed with more input".equals(scope.state().get("fix")));
+        assertThat(scope.pendingResponseIds()).isEmpty();
+    }
+
+    @Test
+    void a_later_agent_reading_the_result_of_a_suspending_async_agent_suspends_the_root_call() {
+        SuspendingRemediation remediation = new SuspendingRemediation();
+        remediation.release.countDown();
+        RecordingListener listener = new RecordingListener();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new Analysis(), remediation, new Report())
+                .outputKey("report")
+                .listener(listener)
+                .build();
+
+        assertThatThrownBy(() -> workflow.analyze("rollout-1", "canary"))
+                .isInstanceOf(AgenticSystemSuspendedException.class);
+
+        // the root call suspended as with a synchronous agent, notified once, and the reader never ran
+        assertThat(listener.events).containsOnlyOnce("suspended").doesNotContain("error:remediate", "before:report");
+        assertThat(workflow.getAgenticScope("rollout-1").pendingResponseIds()).containsExactly("remediate:task-1");
     }
 
     @Test

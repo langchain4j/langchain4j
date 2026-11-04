@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.internal.UserMessageTransformer;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -87,6 +88,12 @@ public class DefaultAgenticScope implements AgenticScope {
      * see {@link #rootCallStarted(AgenticScopeRegistry)}.
      */
     private final transient Map<CompletableFuture<Void>, String> runningAsyncAgents = new ConcurrentHashMap<>();
+
+    /**
+     * Whether a root call is running on this scope: an asynchronous agent suspending the agentic system in the
+     * meantime is noticed by that call, which suspends as usual, while after the call returned the listener is told.
+     */
+    private transient volatile boolean rootCallInProgress;
 
     private transient boolean evicted;
 
@@ -316,6 +323,12 @@ public class DefaultAgenticScope implements AgenticScope {
         }
         compensableExecutions.clear();
         registryAfterRootCall = null;
+        rootCallInProgress = true;
+    }
+
+    /** Not a bean getter, so that the JSON of the scope does not carry it. */
+    public boolean rootCallInProgress() {
+        return rootCallInProgress;
     }
 
     /**
@@ -325,6 +338,7 @@ public class DefaultAgenticScope implements AgenticScope {
      * otherwise, while a failed root call already surfaced the failure of the response it read.
      */
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener, boolean failed) {
+        rootCallInProgress = false;
         // ensure that all pending streaming and deferred responses are completed before ending the root call
         List<String> stillRunning = new ArrayList<>();
         Map.copyOf(state).forEach((key, value) -> {
@@ -335,7 +349,7 @@ public class DefaultAgenticScope implements AgenticScope {
                 if (!failed) {
                     unread.onComplete(completed -> logUnreadFailure(key, completed));
                 }
-            } else if (value instanceof DelayedResponse<?> pending) {
+            } else if (value instanceof DelayedResponse<?> pending && !suspendsTheSystem(pending)) {
                 writeState(key, pending.blockingGet());
             }
         });
@@ -359,10 +373,20 @@ public class DefaultAgenticScope implements AgenticScope {
         compensableExecutions.clear();
     }
 
+    /**
+     * A suspended response not yet completed is meant to suspend the agentic system, never to be awaited: it is left
+     * in place for the next root call on this scope to resume from it.
+     */
+    private static boolean suspendsTheSystem(DelayedResponse<?> response) {
+        return response instanceof SuspendedResponse<?> suspended && !suspended.isDone();
+    }
+
     private static void logUnreadFailure(String outputKey, AsyncResponse<?> response) {
         if (response.reportFailureOnce()) {
             try {
                 response.blockingGet();
+            } catch (AgenticSystemSuspendedException e) {
+                // not a failure: the system awaits the responses the next root call resumes from
             } catch (RuntimeException e) {
                 LOG.warn(
                         "Asynchronous agent producing '{}' failed and the agentic system did not read its result",
