@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.internal.PendingResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -159,6 +160,32 @@ class DefaultAgenticScopeRootCallEndedTest {
         } finally {
             AgenticScopePersister.setStore(null);
         }
+    }
+
+    @Test
+    void root_call_start_waits_for_the_async_agents_of_the_previous_call_and_drops_their_compensations() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        CountDownLatch release = new CountDownLatch(1);
+        List<String> compensated = new CopyOnWriteArrayList<>();
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            await(release);
+            scope.registerCompensableExecution(null, execution -> compensated.add("late"));
+            return "late";
+        });
+        scope.writeState("late", response);
+        scope.asyncPending("lateAgent", "late", response);
+        scope.rootCallEnded(null, null, false);
+
+        CompletableFuture<Void> nextCall = CompletableFuture.runAsync(() -> scope.rootCallStarted(null));
+        assertThat(nextCall).isNotDone();
+
+        release.countDown();
+        nextCall.join();
+
+        // the result was settled before the next root call started, and its compensation is not the next call's
+        assertThat(scope.state().get("late")).isEqualTo("late");
+        scope.compensateAll();
+        assertThat(compensated).isEmpty();
     }
 
     /** A deferred response completed as soon as it is awaited, like a human answering at once. */

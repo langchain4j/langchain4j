@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -80,6 +81,12 @@ public class DefaultAgenticScope implements AgenticScope {
      * the next one, so that it also tells whether the root call ended, see {@link #asyncEnded(String, AsyncResponse)}.
      */
     private transient volatile AgenticScopeRegistry registryAfterRootCall;
+
+    /**
+     * The asynchronous agents of this scope still running, by name: the next root call on this scope waits for them,
+     * see {@link #rootCallStarted(AgenticScopeRegistry)}.
+     */
+    private final transient Map<CompletableFuture<Void>, String> runningAsyncAgents = new ConcurrentHashMap<>();
 
     private transient boolean evicted;
 
@@ -291,7 +298,23 @@ public class DefaultAgenticScope implements AgenticScope {
                         : List.of(new AgentMessage(agentName, agentId, userMessage), agentAiMessage));
     }
 
+    /**
+     * Starts a root call, once the asynchronous agents of the previous call on this scope still running completed:
+     * one root call at a time runs on a scope, since those agents would otherwise share with the new call the chat
+     * memory of their agents, the context and the compensations of the scope and the execution recorded by an
+     * {@code AgentMonitor}. The tool executions of the agents completed after the end of the previous call are then
+     * dropped, as those of a completed root call are: a failure of this call does not compensate them.
+     */
     public void rootCallStarted(AgenticScopeRegistry registry) {
+        if (!runningAsyncAgents.isEmpty()) {
+            Map<CompletableFuture<Void>, String> running = Map.copyOf(runningAsyncAgents);
+            LOG.debug(
+                    "Root call on AgenticScope '{}' waits for the asynchronous agents {} of the previous call, still running",
+                    memoryId,
+                    running.values());
+            running.keySet().forEach(CompletableFuture::join);
+        }
+        compensableExecutions.clear();
         registryAfterRootCall = null;
     }
 
@@ -347,6 +370,25 @@ public class DefaultAgenticScope implements AgenticScope {
                         e);
             }
         }
+    }
+
+    /**
+     * Tracks the response of an asynchronous agent just written to this scope: its result takes the place of the
+     * response when it completes, see {@link #asyncEnded(String, AsyncResponse)}, and until then the next root call
+     * on this scope waits for it. Called after the write, so that the result of an agent completing before it is
+     * settled anyway.
+     */
+    public void asyncPending(String agentName, String outputKey, AsyncResponse<?> response) {
+        CompletableFuture<Void> ended = new CompletableFuture<>();
+        runningAsyncAgents.put(ended, agentName);
+        response.onComplete(completed -> {
+            try {
+                asyncEnded(outputKey, completed);
+            } finally {
+                runningAsyncAgents.remove(ended);
+                ended.complete(null);
+            }
+        });
     }
 
     /**

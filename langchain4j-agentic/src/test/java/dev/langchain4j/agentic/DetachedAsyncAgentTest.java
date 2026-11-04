@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,10 +9,13 @@ import static org.awaitility.Awaitility.await;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.internal.AsyncResponse;
+import dev.langchain4j.agentic.observability.AgentInvocation;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeKey;
@@ -49,6 +53,16 @@ class DetachedAsyncAgentTest {
     public static class Analysis {
         @Agent(outputKey = "decision")
         public String analyze(@V("input") String input) {
+            return "promote " + input;
+        }
+    }
+
+    public static class RecordingAnalysis {
+        final List<String> inputs = new CopyOnWriteArrayList<>();
+
+        @Agent(outputKey = "decision")
+        public String analyze(@V("input") String input) {
+            inputs.add(input);
             return "promote " + input;
         }
     }
@@ -269,7 +283,8 @@ class DetachedAsyncAgentTest {
 
         ResultWithAgenticScope<String> result = workflow.analyze("canary");
         remediation.release.countDown();
-        await().atMost(10, SECONDS).until(() -> "manual fix".equals(result.agenticScope().state().get("fix")));
+        await().atMost(10, SECONDS)
+                .until(() -> "manual fix".equals(result.agenticScope().state().get("fix")));
 
         assertThat(result.agenticScope().state().get("fix")).isEqualTo("manual fix");
         assertThat(listener.events).contains("error:remediate").doesNotContain("after:remediate");
@@ -305,10 +320,51 @@ class DetachedAsyncAgentTest {
         assertThat(scope.state().get("fix")).isInstanceOf(AsyncResponse.class);
 
         remediation.release.countDown();
-        await().atMost(10, SECONDS).until(() -> "fixed after promote canary".equals(scope.state().get("fix")));
+        await().atMost(10, SECONDS)
+                .until(() -> "fixed after promote canary".equals(scope.state().get("fix")));
 
         assertThat(workflow.getAgenticScope("rollout-1")).isSameAs(scope);
         assertThat(listener.events).doesNotContain("destroyed");
+    }
+
+    @Test
+    void next_root_call_on_the_same_memory_id_waits_for_the_detached_agent_of_the_previous_one() throws Exception {
+        Remediation remediation = new Remediation();
+        RecordingAnalysis analysis = new RecordingAnalysis();
+        AgentMonitor monitor = new AgentMonitor();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(analysis, remediation)
+                .outputKey("decision")
+                .listener(monitor)
+                .build();
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        awaitLatch(remediation.started);
+        assertThat(monitor.ongoingExecutions()).hasSize(1);
+
+        // the second call on the same memory id does not run its agents while the remediation of the first one is
+        // still running: it would share with it the chat memories, the context, the compensations and the monitoring
+        CompletableFuture<String> secondCall =
+                CompletableFuture.supplyAsync(() -> workflow.analyze("rollout-1", "stable"));
+        await().during(300, MILLISECONDS).atMost(2, SECONDS).until(() -> !analysis.inputs.contains("stable"));
+        assertThat(secondCall).isNotDone();
+
+        remediation.release.countDown();
+        assertThat(secondCall.get(10, SECONDS)).isEqualTo("promote stable");
+        await().atMost(5, SECONDS).until(() -> monitor.successfulExecutions().size() == 2);
+
+        assertThat(monitor.ongoingExecutions()).isEmpty();
+        assertThat(monitor.failedExecutions()).isEmpty();
+        MonitoredExecution first = monitor.successfulExecutions().get(0);
+        MonitoredExecution second = monitor.successfulExecutions().get(1);
+        AgentInvocation firstRemediation =
+                first.topLevelInvocations().nestedInvocations().get(1);
+        assertThat(firstRemediation.agent().name()).isEqualTo("remediate");
+        assertThat(firstRemediation.output()).isEqualTo("fixed after promote canary");
+        assertThat(second.topLevelInvocations().startTime())
+                .isAfterOrEqualTo(firstRemediation.startTime().plus(firstRemediation.duration()));
+        assertThat(second.topLevelInvocations().nestedInvocations().get(1).output())
+                .isEqualTo("fixed after promote stable");
     }
 
     @Test

@@ -138,9 +138,9 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             agenticScope.writeState(outputKey, stateValue);
         }
         if (response instanceof AsyncResponse<?> asyncResponse) {
-            // attached only now, after the response has been written to the scope, so that the result of an agent
-            // completing before that write takes its place anyway: the hook runs immediately when already completed
-            asyncResponse.onComplete(completed -> agenticScope.asyncEnded(outputKey, completed));
+            // tracked only now, after the response has been written to the scope, so that the result of an agent
+            // completing before that write takes its place anyway
+            agenticScope.asyncPending(name(), outputKey, asyncResponse);
         }
 
         Map<String, Object> namedArgs = args != null ? args.namedArgs() : Map.of();
