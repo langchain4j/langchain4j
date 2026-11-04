@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.TokenCountEstimator;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class AzureOpenAiTokenCountEstimatorTest {
@@ -94,6 +96,38 @@ class AzureOpenAiTokenCountEstimatorTest {
 
         // then
         assertThat(tokenCount).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat", "gpt-5.1"})
+    void should_support_gpt_5_models(String modelName) {
+
+        // given
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName);
+
+        // when
+        int tokenCount = tokenCountEstimator.estimateTokenCountInText("supercalifragilisticexpialidocious");
+
+        // then
+        assertThat(tokenCount).isEqualTo(10); // o200k_base, cl100k_base would return 11
+    }
+
+    @Test
+    void should_keep_cl100k_base_for_models_known_to_jtokkit() {
+
+        // when
+        int tokenCount = tokenCountEstimator.estimateTokenCountInText("supercalifragilisticexpialidocious");
+
+        // then
+        assertThat(tokenCount).isEqualTo(11); // gpt-3.5-turbo still resolves to cl100k_base
+    }
+
+    @Test
+    void should_fail_for_model_unknown_to_jtokkit() {
+
+        assertThatThrownBy(() -> new AzureOpenAiTokenCountEstimator("banana"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Model 'banana' is unknown to jtokkit");
     }
 
     static List<String> repeat(String strings, int n) {
