@@ -20,6 +20,7 @@ import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -808,5 +809,56 @@ class McpAgentTest {
         assertThatThrownBy(() -> pipeline.invoke(Map.of("text", "Hello world")))
                 .isInstanceOf(MissingArgumentException.class)
                 .hasMessageContaining("language");
+    }
+
+    public interface TypedLimitAgent {
+
+        @Agent(description = "List records")
+        String list(@V("limit") int limit);
+    }
+
+    private static McpClient mockLimitClient() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("list_records")
+                .description("List records")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("limit", new JsonIntegerSchema())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+        mockToolResult(mcpClient, "ok");
+        return mcpClient;
+    }
+
+    @Test
+    void typed_mcp_agent_coerces_scope_values_to_the_declared_parameter_types() {
+        McpClient mcpClient = mockLimitClient();
+
+        TypedLimitAgent records =
+                McpAgent.builder(mcpClient, TypedLimitAgent.class).build();
+        UntypedAgent pipeline =
+                AgenticServices.sequenceBuilder().subAgents(records).build();
+
+        // A previous agent's String output leaves a String in the scope, while the agent method declares an int.
+        pipeline.invoke(Map.of("limit", "5"));
+
+        ArgumentCaptor<ToolExecutionRequest> captor = ArgumentCaptor.forClass(ToolExecutionRequest.class);
+        verify(mcpClient).executeTool(captor.capture());
+
+        assertThat(Json.fromJson(captor.getValue().arguments(), Map.class)).containsEntry("limit", 5);
+    }
+
+    @Test
+    void typed_mcp_agent_rejects_a_scope_value_that_cannot_be_coerced() {
+        McpClient mcpClient = mockLimitClient();
+
+        TypedLimitAgent records =
+                McpAgent.builder(mcpClient, TypedLimitAgent.class).build();
+        UntypedAgent pipeline =
+                AgenticServices.sequenceBuilder().subAgents(records).build();
+
+        assertThatThrownBy(() -> pipeline.invoke(Map.of("limit", "not-a-number")))
+                .isInstanceOf(NumberFormatException.class);
     }
 }
