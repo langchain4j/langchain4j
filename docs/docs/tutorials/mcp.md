@@ -65,6 +65,13 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
 Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
 If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
 
+**_NOTE:_** A single message received from the server can be at most 20 MiB by default: the data of one event
+on an SSE stream, or the whole body of any other response, such as a JSON response. If the server sends a larger
+message, the transport closes the stream and drops the message, and the pending request fails. This keeps a misbehaving
+server from filling the client's memory. The size is that of the JSON text, so binary content such as images, which is
+base64-encoded, takes about a third more than its raw size. To change the limit, set it on the builder, for example
+`.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()
@@ -73,6 +80,10 @@ McpTransport transport = WebSocketMcpTransport.builder()
         .logRequests(true)
         .build();
 ```
+
+**_NOTE:_** As with the Streamable HTTP transport, a single message received from the server can be at most
+20 MiB by default. If the server sends a larger message, the transport closes the connection and all pending
+requests fail. To change the limit, set it on the builder, for example `.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
 
 For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
 The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
