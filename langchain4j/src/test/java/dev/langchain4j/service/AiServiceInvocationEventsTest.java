@@ -2832,6 +2832,30 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
+    void should_not_record_parent_of_ai_service_called_by_token_stream_handler_on_the_thread_of_the_model_call()
+            throws Exception {
+        // the model streams before chat(...) returns, so the handlers run on the thread of the model call
+        Assistant inner = innerAssistant();
+        StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                                callingTools("book"), AiMessage.from("booked"))
+                        .streamingOnCallingThread())
+                .tools(new NoOpBookingTool())
+                .registerListeners(listeners())
+                .build();
+        CompletableFuture<String> done = new CompletableFuture<>();
+
+        outer.chat("Hello")
+                .onPartialResponse(token -> inner.chat("about " + token))
+                .onCompleteResponse(response -> done.complete(inner.chat("follow-up")))
+                .onError(done::completeExceptionally)
+                .start();
+        done.get(5, SECONDS);
+
+        assertNoInvocationHasParent();
+    }
+
+    @Test
     void should_not_record_parent_of_ai_service_chained_to_async_invocation() throws Exception {
         Assistant inner = innerAssistant();
         CountDownLatch chained = new CountDownLatch(1);
@@ -3184,6 +3208,14 @@ class AiServiceInvocationEventsTest {
                 (ToolExecutor) (request, memoryId) -> {
                     throw error;
                 });
+    }
+
+    static class NoOpBookingTool {
+
+        @Tool
+        String book() {
+            return "booked";
+        }
     }
 
     private static AiMessage callingTools(String... toolNames) {

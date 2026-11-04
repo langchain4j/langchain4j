@@ -135,7 +135,7 @@ A few things to keep in mind:
   - It is collected even if only the outer AI Service has a summary listener. Its events are then kept in memory until the outer invocation ends.
   - Its summary is still delivered to the inner AI Service's own listeners. So a listener registered on both AI Services receives the inner summary twice: on its own, and inside the outer summary. When you add up tokens, costs or tool calls, count each invocation only once, for example by skipping the `AiServiceInvocationSummaryEvent`s found in `events()`.
   - A summary listener of the outer AI Service also receives the prompts, responses and tool results of the inner invocations. If you filter or redact what you log or export, do the same for the nested summaries.
-  - Inner invocations called from the chat memory or its `ChatMemoryStore` are nested. Inner invocations that end before the outer one has fired its `AiServiceStartedEvent` (those called from the `ChatMemoryProvider`, the system or user message provider or the system message transformer), or after the outer one has ended, are linked but not nested.
+  - Inner invocations called from the chat model, the chat memory or its `ChatMemoryStore` are nested. Inner invocations that end before the outer one has fired its `AiServiceStartedEvent` (those called from the `ChatMemoryProvider`, the system or user message provider or the system message transformer), or after the outer one has ended, are linked but not nested.
 - For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` fails because of a configuration error (for example, a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation.
 - Each subscription to the reactive stream returned by an AI Service method, and each call of `TokenStream.start()`, is a separate invocation with its own `invocationId`, so it results in its own `AiServiceInvocationSummaryEvent`, also when several subscriptions run at the same time. A second `start()` of the same `TokenStream` reuses the retrieved contents, the input guardrails and the messages prepared when the AI Service method was called, so its summary contains no `RetrievalAugmentedEvent` and no input guardrail events: only the model call, the tools and the output guardrails run again.
 - An `AiServiceInvocationSummaryEvent` is fired by the registrar itself. Trying to fire one via `AiServiceListenerRegistrar.fireEvent` results in an `IllegalArgumentException`.
@@ -199,10 +199,10 @@ The inner invocation is linked to the outer one when it is called from one of th
 - the chat memory (`chatMemory`, `chatMemoryProvider`), including its `ChatMemoryStore`, for example a chat memory that summarizes old messages with an AI Service
 - the moderation model (`moderationModel`)
 - the `chatRequestTransformer`
+- the chat model or streaming chat model itself (`chatModel`, `streamingChatModel`), for example your own `ChatModel` implementation
 
 `parentInvocationId()` is `null`:
 - for an AI Service that you call from your own code, for example from inside a listener, a `TokenStream` handler, the subscriber of a returned stream or a callback of a returned `CompletableFuture`, even while the outer invocation is still running
-- for an AI Service called from any other part, for example from your own `ChatModel` implementation
 - when your own code in one of the parts above calls the inner AI Service on another thread, for example with `CompletableFuture.supplyAsync(..., executor)`. Work that LangChain4j itself moves to another thread (for example tools executed concurrently) stays linked. So treat the link as best effort.
 
 If you only need the summaries, a summary listener on the outer AI Service is enough: the summaries of the inner invocations linked to it are nested in its `events()` (see [Listening for the whole invocation](#listening-for-the-whole-invocation)).
@@ -223,6 +223,134 @@ Assistant assistant = AiServices.builder(Assistant.class)
 Limits:
 - It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that implementation (for example through `AiServicesFactory`) return `null` until they add support for it, also for AI Services they create through `AiServices.builder(...)`.
 - Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor are not linked yet. An agent called from a tool of another agent is.
+
+### Grouping model calls by invocation
+
+The listeners of models and of other components get the `invocationId` of the AI Service invocation that made the call,
+so you can see which model calls belong to which invocation.
+The contexts of these listeners have `invocationId()` (experimental):
+- `ChatModelListener` (`ChatModelRequestContext`, `ChatModelResponseContext`, `ChatModelErrorContext`)
+- `EmbeddingModelListener`, `ModerationModelListener`, `DecisionModelListener` and `ScoringModelListener`
+- `EmbeddingStoreListener` and `ContentRetrieverListener`
+
+`invocationId()` is the id of the AI Service invocation in which the call is made: for a chat model, the one passed with
+`ChatRequestOptions.invocationId(...)` if any, otherwise the invocation that makes the call (the AI Service's own calls to the
+chat model, including the calls after tool executions, and the calls made by its tools, guardrails, retrieval, chat memory,
+moderation, ...), otherwise `null`, for example when you call the model directly from your own code or from a listener.
+It is the `invocationId` of the AI Service invocation, not an id of the model call.
+Together with `parentInvocationId()` (see above), you can build a tree of invocations with their model calls.
+
+```java
+// Counts the chat model calls of each AI Service invocation
+Map<UUID, AtomicInteger> modelCallsByInvocation = new ConcurrentHashMap<>();
+
+ChatModelListener listener = new ChatModelListener() {
+
+    @Override
+    public void onRequest(ChatModelRequestContext requestContext) {
+        UUID invocationId = requestContext.invocationId();
+        if (invocationId != null) { // null when the model is called outside of an AI Service invocation
+            modelCallsByInvocation.computeIfAbsent(invocationId, id -> new AtomicInteger()).incrementAndGet();
+        }
+    }
+};
+
+ChatModel chatModel = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_4_O_MINI)
+        .listeners(List.of(listener))
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .build();
+```
+
+To link model calls to something that is known to the AI Service but not to the model, for example the memory id
+of the conversation, combine a model listener with AI Service listeners: the `InvocationContext` of the AI Service events
+has both the `invocationId()` and the `chatMemoryId()`.
+
+```java
+interface PersonalAssistant {
+
+    String chat(@MemoryId String userId, @UserMessage String message);
+}
+
+// Adds up the token usage of each conversation
+Map<UUID, Object> memoryIdByInvocation = new ConcurrentHashMap<>();
+Map<Object, Integer> totalTokensByMemoryId = new ConcurrentHashMap<>();
+
+ChatModelListener tokenCounter = new ChatModelListener() {
+
+    @Override
+    public void onResponse(ChatModelResponseContext responseContext) {
+        Object memoryId = responseContext.invocationId() == null
+                ? null
+                : memoryIdByInvocation.get(responseContext.invocationId());
+        TokenUsage tokenUsage = responseContext.chatResponse().tokenUsage();
+        if (memoryId != null && tokenUsage != null && tokenUsage.totalTokenCount() != null) {
+            totalTokensByMemoryId.merge(memoryId, tokenUsage.totalTokenCount(), Integer::sum);
+        }
+    }
+};
+
+ChatModel chatModel = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(GPT_4_O_MINI)
+        .listeners(List.of(tokenCounter))
+        .build();
+
+PersonalAssistant assistant = AiServices.builder(PersonalAssistant.class)
+        .chatModel(chatModel)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .registerListeners(
+                (AiServiceStartedListener) event -> memoryIdByInvocation.put(
+                        event.invocationContext().invocationId(), event.invocationContext().chatMemoryId()),
+                (AiServiceCompletedListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()),
+                (AiServiceErrorListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()),
+                (AiServiceCancelledListener) event -> memoryIdByInvocation.remove(event.invocationContext().invocationId()))
+        .build();
+```
+
+The invocation id covers the AI Service's own calls to the chat model, including the calls after tool executions,
+and the calls made by the parts of the AI Service listed above (tools, guardrails, retrieval, chat memory, moderation, ...),
+in the same way as `parentInvocationId()`.
+
+You only need to pass the id yourself when your code moves a chat model call to another thread
+(for example with `CompletableFuture.supplyAsync(..., executor)` inside a tool), or when you want to group your own chat model calls
+under an invocation. This is possible only for chat models, with `ChatRequestOptions`: for the other models, embedding stores and
+content retrievers, a call that your code moves to another thread has no `invocationId`. A tool gets the `InvocationContext` of its invocation as a parameter, and a guardrail gets it from its request
+(`request.requestParams().invocationContext()`):
+
+```java
+class ResearchTools {
+
+    private final ChatModel chatModel;
+    private final ExecutorService executor;
+
+    ResearchTools(ChatModel chatModel, ExecutorService executor) {
+        this.chatModel = chatModel;
+        this.executor = executor;
+    }
+
+    @Tool("Summarizes a text")
+    String summarize(String text, InvocationContext invocationContext) {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Summarize: " + text))
+                .build();
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .invocationId(invocationContext.invocationId())
+                .build();
+        return CompletableFuture.supplyAsync(() -> chatModel.chat(chatRequest, options), executor)
+                .join()
+                .aiMessage()
+                .text();
+    }
+}
+```
+
+Frameworks that run AI Services with their own implementation (for example through `AiServicesFactory`) may not fill the id,
+or fill it only for some of the calls, depending on how they call the models.
 
 ### Creating your own events and listeners
 

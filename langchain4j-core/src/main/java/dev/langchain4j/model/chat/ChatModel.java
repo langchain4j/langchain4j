@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,14 +64,15 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
         try {
             ChatResponse chatResponse = doChat(finalChatRequest);
-            onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+            onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
             return chatResponse;
         } catch (Exception error) {
-            onError(error, finalChatRequest, provider(), attributes, listeners);
+            onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
             throw error;
         }
     }
@@ -128,14 +131,15 @@ public interface ChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
 
         CompletableFuture<ChatResponse> source;
         try {
             source = doChatAsync(finalChatRequest);
         } catch (Exception error) {
-            onError(error, finalChatRequest, provider(), attributes, listeners);
+            onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
         }
 
@@ -143,10 +147,10 @@ public interface ChatModel {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalChatRequest, provider(), attributes, listeners);
+                    onError(cause, finalChatRequest, provider(), attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+                onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
             }
         });
 

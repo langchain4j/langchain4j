@@ -12,12 +12,14 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -39,14 +41,15 @@ public interface ModerationModel {
         ModelProvider modelProvider = provider();
         List<ModerationModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
-        onRequest(finalRequest, modelProvider, attributes, listeners);
+        onRequest(finalRequest, modelProvider, attributes, invocationId, listeners);
         try {
             ModerationResponse moderationResponse = doModerate(finalRequest);
-            onResponse(moderationResponse, finalRequest, modelProvider, attributes, listeners);
+            onResponse(moderationResponse, finalRequest, modelProvider, attributes, invocationId, listeners);
             return moderationResponse;
         } catch (Exception error) {
-            onError(error, finalRequest, modelProvider, attributes, listeners);
+            onError(error, finalRequest, modelProvider, attributes, invocationId, listeners);
             throw error;
         }
     }

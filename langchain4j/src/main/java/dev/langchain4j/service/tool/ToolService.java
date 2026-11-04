@@ -727,7 +727,8 @@ public class ToolService {
             parameters = next.parameters();
 
             lastChatRequest = next.chatRequest();
-            chatResponse = chatModelInvoker.apply(next.chatRequest());
+            chatResponse = CurrentInvocation.callWith(
+                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
@@ -1050,7 +1051,8 @@ public class ToolService {
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
             lastChatRequest = next.chatRequest();
-            CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
+            CompletableFuture<ChatResponse> nextModelCall = CurrentInvocation.callWith(
+                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
                 nextModelCall.cancel(true);

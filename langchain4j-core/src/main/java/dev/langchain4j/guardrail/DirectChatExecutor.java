@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -26,11 +27,11 @@ final class DirectChatExecutor extends AbstractChatExecutor {
 
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
-        return this.chatModel.chat(chatRequest);
+        return CurrentInvocation.callWith(invocationContext, () -> this.chatModel.chat(chatRequest));
     }
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        return this.chatModel.chatAsync(chatRequest);
+        return CurrentInvocation.callWith(invocationContext, () -> this.chatModel.chatAsync(chatRequest));
     }
 }
