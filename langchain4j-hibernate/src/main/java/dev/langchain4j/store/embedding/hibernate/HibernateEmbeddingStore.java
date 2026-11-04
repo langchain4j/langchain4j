@@ -1746,7 +1746,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
          * Creates the Hibernate configuration for the embedding table.
          *
          * @param databaseKind the database kind of the store, which provides the index options of the table,
-         *                     see {@link DatabaseKind#tableIndexOptions(DistanceFunction, String, String, String, String)},
+         *                     see {@link DatabaseKind#tableIndexOptions(boolean, DistanceFunction, String, String, String, String)},
          *                     or {@code null} for no index options
          * @return the configuration
          */
@@ -1754,7 +1754,13 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             final int dimension = ensureNotNull(this.dimension, "dimension");
             final String tableIndexOptions = databaseKind == null
                     ? null
-                    : databaseKind.tableIndexOptions(distanceFunction, indexType, table, "embedding", indexOptions);
+                    : databaseKind.tableIndexOptions(
+                            getOrDefault(createIndex, false),
+                            distanceFunction,
+                            indexType,
+                            table,
+                            "embedding",
+                            indexOptions);
             final Configuration cfg = new Configuration(new BootstrapServiceRegistryBuilder()
                     .applyClassLoaderService(new ClassLoaderServiceImpl() {
                         @Override

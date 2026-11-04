@@ -174,6 +174,8 @@ public interface DatabaseKind {
      * <p>
      * The built-in database kinds return {@code null}, because they create the vector index with a separate statement.
      *
+     * @param createIndex      whether the builder is configured to create a vector index,
+     *                         see {@link HibernateEmbeddingStore.BaseBuilder#createIndex(Boolean)}
      * @param distanceFunction the distance function of the store
      * @param indexType        the index type set on the builder, or {@code null}
      * @param table            the name of the embedding table
@@ -184,6 +186,7 @@ public interface DatabaseKind {
      * @see HibernateEmbeddingStore.BaseBuilder#indexOptions(String)
      */
     default String tableIndexOptions(
+            boolean createIndex,
             DistanceFunction distanceFunction,
             String indexType,
             String table,

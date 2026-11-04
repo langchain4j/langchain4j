@@ -29,14 +29,28 @@ public final class MilvusDatabaseKind implements DatabaseKind {
         return null;
     }
 
+    /**
+     * Returns the options of the vector index of the collection.
+     * <p>
+     * A Milvus collection always has a vector index, and a search must use the metric of that index. So the metric of
+     * the distance function is always returned, also without {@code createIndex(true)}. The index type and the index
+     * options are only added with {@code createIndex(true)}, like for the relational databases.
+     *
+     * @throws IllegalArgumentException if Milvus does not support the distance function
+     */
     @Override
     public String tableIndexOptions(
+            final boolean createIndex,
             final DistanceFunction distanceFunction,
             final String indexType,
             final String table,
             final String embeddingColumn,
             final String indexOptions) {
-        return "metric=" + metric(distanceFunction) + (indexType == null ? "" : (",type=" + indexType))
+        final String metric = "metric=" + metric(distanceFunction);
+        if (!createIndex) {
+            return metric;
+        }
+        return metric + (indexType == null ? "" : (",type=" + indexType))
                 + (indexOptions == null ? "" : ("," + indexOptions));
     }
 

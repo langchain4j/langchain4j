@@ -19,6 +19,11 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.hibernate.DistanceFunction;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import io.milvus.v2.client.ConnectConfig;
+import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.IndexParam;
+import io.milvus.v2.service.index.request.DescribeIndexReq;
+import io.milvus.v2.service.index.response.DescribeIndexResp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -93,6 +98,54 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .build());
 
         assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+    }
+
+    @Test
+    void should_use_the_index_type_and_the_index_options() {
+        String table = "test_" + UUID.randomUUID().toString().replace("-", "");
+        HibernateEmbeddingStore<?> store = HibernateEmbeddingStore.dynamicBuilder()
+                .databaseKind(MilvusDatabaseKind.INSTANCE)
+                .host(databaseContainer.getHost())
+                .port(databaseContainer.getMappedPort(19530))
+                .database("default")
+                .table(table)
+                .dimension(embeddingModel.dimension())
+                .createIndex(true)
+                .indexType("HNSW")
+                .indexOptions("M=16,efConstruction=64")
+                .createTable(true)
+                .dropTableFirst(true)
+                .build();
+        try {
+            Embedding embedding = embeddingModel.embed("hello").content();
+            String id = store.add(embedding, TextSegment.from("hello"));
+
+            EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                    .queryEmbedding(embedding)
+                    .maxResults(1)
+                    .build());
+
+            assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+
+            MilvusClientV2 client = new MilvusClientV2(ConnectConfig.builder()
+                    .uri(databaseContainer.getEndpoint())
+                    .build());
+            try {
+                DescribeIndexResp.IndexDesc index = client.describeIndex(DescribeIndexReq.builder()
+                                .collectionName(table)
+                                .fieldName("embedding")
+                                .build())
+                        .getIndexDescByFieldName("embedding");
+
+                assertThat(index.getIndexType()).isEqualTo(IndexParam.IndexType.HNSW);
+                assertThat(index.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
+                assertThat(index.getExtraParams()).containsEntry("M", "16").containsEntry("efConstruction", "64");
+            } finally {
+                client.close();
+            }
+        } finally {
+            store.close();
+        }
     }
 
     @Test
