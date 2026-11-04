@@ -470,7 +470,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .build();
         final ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
         ChatModelRequestContext chatModelRequestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
+                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes, false);
         listeners.forEach((listener) -> {
             try {
                 listener.onRequest(chatModelRequestContext);
@@ -498,7 +498,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             listeners.forEach(listener -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
-                            new ChatModelErrorContext(e, listenerRequest, provider(), listenerAttributes);
+                            new ChatModelErrorContext(e, listenerRequest, provider(), listenerAttributes, false);
                     listener.onError(chatModelErrorContext);
                 } catch (Exception t) {
                     logger.warn("Exception while calling model listener (onError)", t);
@@ -543,7 +543,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                         .build())
                 .build();
         ChatModelResponseContext chatModelResponseContext =
-                new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
+                new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes, false);
         listeners.forEach((listener) -> {
             try {
                 listener.onResponse(chatModelResponseContext);

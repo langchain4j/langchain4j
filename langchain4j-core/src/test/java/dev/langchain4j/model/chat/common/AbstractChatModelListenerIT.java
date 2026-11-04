@@ -93,6 +93,8 @@ public abstract class AbstractChatModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
+                assertThat(responseContext.isStreaming()).isFalse();
+
                 assertThat(responseContext.attributes()).containsEntry("id", "12345");
             }
 
@@ -200,6 +202,8 @@ public abstract class AbstractChatModelListenerIT {
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
 
+                assertThat(requestContext.isStreaming()).isFalse();
+
                 requestContext.attributes().put("id", "12345");
             }
 
@@ -218,6 +222,8 @@ public abstract class AbstractChatModelListenerIT {
                 assertThat(errorContext.modelProvider())
                         .isNotNull()
                         .isEqualTo(modelReference.get().provider());
+
+                assertThat(errorContext.isStreaming()).isFalse();
 
                 assertThat(errorContext.attributes()).containsEntry("id", "12345");
             }
