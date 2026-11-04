@@ -975,7 +975,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .build();
 ```
 
-These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates the events they already receive.
+These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates other events.
 
 Listeners already written for AI Services can be reused for agents through `AgentListener.forAiServiceListeners`, which creates an `AgentListener` notifying each of them of the events of its own event class, as an AI Service does. Its first argument tells whether the listener is also inherited by the subagents:
 

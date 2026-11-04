@@ -109,22 +109,24 @@ class NestedInvocationSummaryTest {
         assertThat(summaries).hasSize(2);
         assertThat(summaries.get(0).events()).noneMatch(AiServiceInvocationSummaryEvent.class::isInstance);
         assertThat(summaries.get(1).invocationContext()).isEqualTo(child);
-
-        // Ending a parent removes its cross-registrar registration; an unobserved late child is not collected.
-        var unobserved = new DefaultAiServiceListenerRegistrar();
-        InvocationContext lateChild = context(parent);
-        unobserved.fireEvent(started(lateChild));
-        var lateSummaries = new ArrayList<AiServiceInvocationSummaryEvent>();
-        unobserved.register((AiServiceInvocationSummaryListener) lateSummaries::add);
-        unobserved.fireEvent(completed(lateChild));
-        assertThat(lateSummaries).isEmpty();
     }
 
-    private static InvocationContext context(InvocationContext parent) {
-        return InvocationContext.builder()
-                .invocationId(UUID.randomUUID())
-                .parentInvocationId(parent == null ? null : parent.invocationId())
-                .build();
+    @Test
+    void should_not_collect_a_child_without_a_listener_that_starts_after_its_parent_ended() {
+        var parentRegistrar = new DefaultAiServiceListenerRegistrar();
+        parentRegistrar.register((AiServiceInvocationSummaryListener) event -> {});
+        InvocationContext parent = context(null);
+        parentRegistrar.fireEvent(started(parent));
+        parentRegistrar.fireEvent(completed(parent));
+
+        var childRegistrar = new DefaultAiServiceListenerRegistrar();
+        InvocationContext lateChild = context(parent);
+        childRegistrar.fireEvent(started(lateChild));
+        var lateSummaries = new ArrayList<AiServiceInvocationSummaryEvent>();
+        childRegistrar.register((AiServiceInvocationSummaryListener) lateSummaries::add);
+        childRegistrar.fireEvent(completed(lateChild));
+
+        assertThat(lateSummaries).isEmpty();
     }
 
     @Test
@@ -146,6 +148,13 @@ class NestedInvocationSummaryTest {
         childRegistrar.register((AiServiceInvocationSummaryListener) summaries::add);
         childRegistrar.fireEvent(completed(child));
         assertThat(summaries).isEmpty();
+    }
+
+    private static InvocationContext context(InvocationContext parent) {
+        return InvocationContext.builder()
+                .invocationId(UUID.randomUUID())
+                .parentInvocationId(parent == null ? null : parent.invocationId())
+                .build();
     }
 
     private static AiServiceStartedEvent started(InvocationContext context) {

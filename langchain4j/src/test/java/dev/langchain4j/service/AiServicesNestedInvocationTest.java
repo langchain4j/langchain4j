@@ -9,10 +9,15 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
+import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceInvocationSummaryListener;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
@@ -22,6 +27,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,12 +46,17 @@ class AiServicesNestedInvocationTest {
         String chat(String message);
 
         CompletableFuture<String> chatAsync(String message);
+
+        TokenStream chatStream(String message);
+
+        String chatWithProvidedUserMessage();
     }
 
     enum Execution {
         SYNC,
         ASYNC,
-        PARALLEL
+        PARALLEL,
+        STREAMING
     }
 
     @ParameterizedTest
@@ -71,17 +82,34 @@ class AiServicesNestedInvocationTest {
         List<ToolExecutionRequest> requests = execution == Execution.PARALLEL
                 ? List.of(toolCall("1", toolName), toolCall("2", toolName))
                 : List.of(toolCall("1", toolName));
+        AiMessage[] parentResponses = {AiMessage.from(requests), AiMessage.from("parent answer")};
         var builder = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from(requests), AiMessage.from("parent answer")))
                 .tools(new NestedTools(child))
                 .registerListener((AiServiceInvocationSummaryListener) parents::add);
-        if (execution != Execution.SYNC) {
+        if (execution == Execution.STREAMING) {
+            builder.streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(parentResponses));
+        } else {
+            builder.chatModel(ChatModelMock.thatAlwaysResponds(parentResponses));
+        }
+        if (execution == Execution.ASYNC || execution == Execution.PARALLEL) {
             builder.executeToolsConcurrently(executor);
         }
         Assistant parent = builder.build();
 
         String answer =
-                execution == Execution.ASYNC ? parent.chatAsync("question").get(10, SECONDS) : parent.chat("question");
+                switch (execution) {
+                    case SYNC, PARALLEL -> parent.chat("question");
+                    case ASYNC -> parent.chatAsync("question").get(10, SECONDS);
+                    case STREAMING -> {
+                        var response = new CompletableFuture<ChatResponse>();
+                        parent.chatStream("question")
+                                .onPartialResponse(partialResponse -> {})
+                                .onCompleteResponse(response::complete)
+                                .onError(response::completeExceptionally)
+                                .start();
+                        yield response.get(10, SECONDS).aiMessage().text();
+                    }
+                };
 
         assertThat(answer).isEqualTo("parent answer");
         assertThat(parents).hasSize(1);
@@ -94,6 +122,20 @@ class AiServicesNestedInvocationTest {
                         .filter(AiServiceInvocationSummaryEvent.class::isInstance)
                         .map(AiServiceInvocationSummaryEvent.class::cast))
                 .containsExactlyInAnyOrderElementsOf(children);
+        if (execution == Execution.SYNC) {
+            // The nested summary is added when the child ends, inside the tool call
+            assertThat(parents.get(0).events())
+                    .<Class<?>>map(AiServiceEvent::eventClass)
+                    .containsExactly(
+                            AiServiceStartedEvent.class,
+                            AiServiceRequestIssuedEvent.class,
+                            AiServiceResponseReceivedEvent.class,
+                            AiServiceInvocationSummaryEvent.class,
+                            ToolExecutedEvent.class,
+                            AiServiceRequestIssuedEvent.class,
+                            AiServiceResponseReceivedEvent.class,
+                            AiServiceCompletedEvent.class);
+        }
 
         // Occupy both workers so the check also covers each thread used by parallel tool execution.
         var bothWorkersReady = new CountDownLatch(2);
@@ -114,6 +156,38 @@ class AiServicesNestedInvocationTest {
         assertThat(children.stream()
                         .filter(summary -> summary.invocationContext().parentInvocationId() == null))
                 .hasSize(2);
+    }
+
+    @Test
+    void should_nest_a_child_that_has_no_summary_listener_of_its_own() {
+        var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        Assistant child = AiServices.builder(Assistant.class)
+                .chatModel(new ChatModelMock("child answer"))
+                .build();
+        Assistant parent = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(toolCall("1", "nested")), AiMessage.from("parent answer")))
+                .tools(new NestedTools(child))
+                .registerListener((AiServiceInvocationSummaryListener) parents::add)
+                .build();
+
+        assertThat(parent.chat("question")).isEqualTo("parent answer");
+
+        assertThat(parents).hasSize(1);
+        assertThat(parents.get(0).events())
+                .filteredOn(AiServiceInvocationSummaryEvent.class::isInstance)
+                .singleElement()
+                .isInstanceOfSatisfying(AiServiceInvocationSummaryEvent.class, nested -> {
+                    assertThat(nested.invocationContext().parentInvocationId())
+                            .isEqualTo(parents.get(0).invocationContext().invocationId());
+                    assertThat(nested.events())
+                            .<Class<?>>map(AiServiceEvent::eventClass)
+                            .containsExactly(
+                                    AiServiceStartedEvent.class,
+                                    AiServiceRequestIssuedEvent.class,
+                                    AiServiceResponseReceivedEvent.class,
+                                    AiServiceCompletedEvent.class);
+                });
     }
 
     @Test
@@ -145,23 +219,43 @@ class AiServicesNestedInvocationTest {
         assertChildrenNestedInParent(children, parents, childCalls.get());
     }
 
-    @Test
-    void should_link_but_not_nest_summaries_of_ai_services_called_by_the_chat_memory_provider() {
-        // The provider runs before the AiServiceStartedEvent, so the child ends before the parent is tracked
+    enum PartRunBeforeTheStartedEvent {
+        CHAT_MEMORY_PROVIDER,
+        SYSTEM_MESSAGE_PROVIDER,
+        USER_MESSAGE_PROVIDER,
+        SYSTEM_MESSAGE_TRANSFORMER
+    }
+
+    @ParameterizedTest
+    @EnumSource(PartRunBeforeTheStartedEvent.class)
+    void should_link_but_not_nest_summaries_of_ai_services_called_before_the_started_event(
+            PartRunBeforeTheStartedEvent part) {
+        // These parts run before the AiServiceStartedEvent, so the child ends before the parent is tracked
         var children = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         Assistant child = childAssistant(children);
-        Assistant parent = AiServices.builder(Assistant.class)
+        var builder = AiServices.builder(Assistant.class)
                 .chatModel(new ChatModelMock("parent answer"))
-                .chatMemoryProvider(memoryId -> {
-                    child.chat("create a chat memory");
+                .registerListener((AiServiceInvocationSummaryListener) parents::add);
+        Function<Object, String> callChild = ignored -> child.chat("prepare the request");
+        switch (part) {
+            case CHAT_MEMORY_PROVIDER ->
+                builder.chatMemoryProvider(memoryId -> {
+                    callChild.apply(memoryId);
                     return MessageWindowChatMemory.withMaxMessages(10);
-                })
-                .registerListener((AiServiceInvocationSummaryListener) parents::add)
-                .build();
+                });
+            case SYSTEM_MESSAGE_PROVIDER -> builder.systemMessageProvider(callChild);
+            case USER_MESSAGE_PROVIDER -> builder.userMessageProvider(callChild);
+            case SYSTEM_MESSAGE_TRANSFORMER ->
+                builder.systemMessageProvider(memoryId -> "You are helpful").systemMessageTransformer(callChild::apply);
+        }
+        Assistant parent = builder.build();
 
-        assertThat(parent.chat("question")).isEqualTo("parent answer");
+        String answer = part == PartRunBeforeTheStartedEvent.USER_MESSAGE_PROVIDER
+                ? parent.chatWithProvidedUserMessage()
+                : parent.chat("question");
 
+        assertThat(answer).isEqualTo("parent answer");
         assertThat(parents).hasSize(1);
         assertThat(children).hasSize(1);
         assertThat(children.get(0).invocationContext().parentInvocationId())

@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -309,22 +310,16 @@ class AiServicesInvocationSummaryEventTest {
     }
 
     @Test
-    void nestedInvocationFiresItsOwnInvocationSummaryEvent() {
+    void invocationCalledFromTheChatModelIsNotNested() {
         var inner = AiServices.builder(InnerAssistant.class)
                 .chatModel(respondingWith("inner"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
-        // The outer AI Service calls the inner one while its own invocation is in progress
+        // The outer AI Service calls the inner one from its ChatModel while its own invocation is in progress.
+        // The ChatModel is not one of the parts that link an inner invocation to the outer one, so it is not nested.
         var outer = AiServices.builder(Assistant.class)
-                .chatModel(new ChatModel() {
-                    @Override
-                    public ChatResponse doChat(ChatRequest chatRequest) {
-                        return ChatResponse.builder()
-                                .aiMessage(AiMessage.from("outer: " + inner.chat("Hi")))
-                                .build();
-                    }
-                })
+                .chatModel(new ChatModelMock(chatRequest -> AiMessage.from("outer: " + inner.chat("Hi"))))
                 .registerListener(invocationSummaryListener)
                 .build();
 

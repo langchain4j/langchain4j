@@ -40,9 +40,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
 
-    // The events fired so far by each in-flight invocation that is being tracked for an
-    // AiServiceInvocationSummaryEvent, keyed by invocation id. A list is only ever mutated inside an atomic
-    // ConcurrentHashMap operation on its own key, so no additional locking is needed.
+    // The events fired so far by each in-flight invocation that is being tracked for an AiServiceInvocationSummaryEvent,
+    // keyed by invocation id. A list is only ever mutated inside an atomic ConcurrentHashMap operation on its own key,
+    // so no additional locking is needed.
     private final Map<UUID, List<AiServiceEvent>> trackedInvocations = new ConcurrentHashMap<>();
 
     // Defaults to false to preserve backwards compatibility
@@ -75,9 +75,12 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
      * <p>
-     * If an {@link AiServiceInvocationSummaryEvent} listener is registered, the event is also recorded against its
-     * invocation. When the invocation ends with an {@link AiServiceCompletedEvent} or an {@link AiServiceErrorEvent},
-     * a single {@link AiServiceInvocationSummaryEvent} containing all of the recorded events is fired after the event itself.
+     * If an {@link AiServiceInvocationSummaryEvent} listener is registered when the invocation starts, or the events
+     * of its {@link InvocationContext#parentInvocationId() parent invocation} are being recorded, the event is also
+     * recorded against its invocation. When the invocation ends with an {@link AiServiceCompletedEvent}, an
+     * {@link AiServiceErrorEvent} or an {@link AiServiceCancelledEvent}, a single {@link AiServiceInvocationSummaryEvent}
+     * containing all of the recorded events is added to the recorded events of the parent invocation (if it has not
+     * ended yet) and fired after the event itself.
      *
      * @param <T>   The type of the event, which must be a subtype of {@link AiServiceEvent}.
      * @param event The event to be fired to the listeners. Must not be null.
@@ -101,6 +104,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         invocationSummaryEvent.ifPresent(this::notifyListeners);
     }
 
+
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
         this.shouldThrowExceptionOnEventError.compareAndSet(
@@ -121,16 +125,12 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                         : recordInvocationSummaryEvent(invocationId, event));
     }
 
-    private Optional<AiServiceInvocationSummaryEvent> recordInvocationSummaryEvent(
-            UUID invocationId, AiServiceEvent event) {
+    private Optional<AiServiceInvocationSummaryEvent> recordInvocationSummaryEvent(UUID invocationId, AiServiceEvent event) {
         if (event instanceof AiServiceStartedEvent) {
             startTrackingInvocation(invocationId, event);
         } else {
             // Events for invocations that aren't tracked (or are no longer tracked) are ignored
-            this.trackedInvocations.computeIfPresent(invocationId, (id, events) -> {
-                events.add(event);
-                return events;
-            });
+            appendIfStillTracked(invocationId, event);
         }
 
         // Recording an event never ends an invocation
@@ -161,13 +161,16 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         if (parentId != null) {
             DefaultAiServiceListenerRegistrar parentRegistrar = INVOCATION_REGISTRARS.get(parentId);
             if (parentRegistrar != null) {
-                // The parent may already have ended, for example after cancellation. Never restart its tracking.
-                parentRegistrar.trackedInvocations.computeIfPresent(parentId, (id, events) -> {
-                    events.add(summary);
-                    return events;
-                });
+                parentRegistrar.appendIfStillTracked(parentId, summary);
             }
         }
+    }
+
+    private void appendIfStillTracked(UUID invocationId, AiServiceEvent event) {
+        this.trackedInvocations.computeIfPresent(invocationId, (id, events) -> {
+            events.add(event);
+            return events;
+        });
     }
 
     private boolean hasInvocationSummaryListeners() {
