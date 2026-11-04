@@ -10,6 +10,8 @@ import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInvocationSummaryEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,9 +35,11 @@ import org.slf4j.LoggerFactory;
 public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegistrar {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAiServiceListenerRegistrar.class);
 
-    // Parent and child AI Services can have different registrars. Keep only in-flight tracked invocations here,
-    // and remove the registrar before notifying terminal listeners, including when a listener throws.
-    private static final Map<UUID, DefaultAiServiceListenerRegistrar> INVOCATION_REGISTRARS = new ConcurrentHashMap<>();
+    // The registrar of each in-flight tracked invocation, so that a nested invocation can add its summary to the
+    // parent's events even when the parent has another registrar. Registrars are held weakly, so an invocation that
+    // never ends (for example a TokenStream that is never started) does not keep its registrar and listeners alive.
+    private static final Map<UUID, WeakReference<DefaultAiServiceListenerRegistrar>> INVOCATION_REGISTRARS =
+            new ConcurrentHashMap<>();
 
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
@@ -140,15 +144,16 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private void startTrackingInvocation(UUID invocationId, AiServiceEvent startedEvent) {
         // A parent's listener also needs the child's summary, even if the child has no summary listener.
         UUID parentId = startedEvent.invocationContext().parentInvocationId();
-        if (hasInvocationSummaryListeners() || (parentId != null && INVOCATION_REGISTRARS.containsKey(parentId))) {
+        if (hasInvocationSummaryListeners() || registrarOf(parentId).isPresent()) {
             this.trackedInvocations.putIfAbsent(invocationId, new ArrayList<>(List.of(startedEvent)));
-            INVOCATION_REGISTRARS.put(invocationId, this);
+            INVOCATION_REGISTRARS.put(invocationId, new WeakReference<>(this));
         }
     }
 
     private Optional<AiServiceInvocationSummaryEvent> endTrackedInvocation(
             UUID invocationId, InvocationContext invocationContext, Stream<AiServiceEvent> finalEvents) {
-        INVOCATION_REGISTRARS.remove(invocationId, this);
+        INVOCATION_REGISTRARS.computeIfPresent(
+                invocationId, (id, registrar) -> registrar.get() == this ? null : registrar);
         return Optional.ofNullable(this.trackedInvocations.remove(invocationId))
                 .map(events -> AiServiceInvocationSummaryEvent.builder()
                         .invocationContext(invocationContext)
@@ -158,12 +163,11 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
     private void appendToParent(AiServiceInvocationSummaryEvent summary) {
         UUID parentId = summary.invocationContext().parentInvocationId();
-        if (parentId != null) {
-            DefaultAiServiceListenerRegistrar parentRegistrar = INVOCATION_REGISTRARS.get(parentId);
-            if (parentRegistrar != null) {
-                parentRegistrar.appendIfStillTracked(parentId, summary);
-            }
-        }
+        registrarOf(parentId).ifPresent(parentRegistrar -> parentRegistrar.appendIfStillTracked(parentId, summary));
+    }
+
+    private static Optional<DefaultAiServiceListenerRegistrar> registrarOf(UUID invocationId) {
+        return Optional.ofNullable(invocationId).map(INVOCATION_REGISTRARS::get).map(Reference::get);
     }
 
     private void appendIfStillTracked(UUID invocationId, AiServiceEvent event) {

@@ -43,6 +43,7 @@ import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.RetrievalAugmentedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class DefaultAiServiceListenerRegistrarTests {
 
@@ -504,6 +507,150 @@ class DefaultAiServiceListenerRegistrarTests {
                 .doesNotHaveDuplicates();
     }
 
+    enum InvocationEnd {
+        COMPLETED,
+        ERROR,
+        CANCELLED
+    }
+
+    @ParameterizedTest
+    @EnumSource(InvocationEnd.class)
+    void shouldNestAChildFromAnotherRegistrarWithoutAChildListener(InvocationEnd end) {
+        var parentRegistrar = new DefaultAiServiceListenerRegistrar();
+        var childRegistrar = new DefaultAiServiceListenerRegistrar();
+        var summaries = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        parentRegistrar.register((AiServiceInvocationSummaryListener) summaries::add);
+        InvocationContext parent = nestedContext(null);
+        InvocationContext child = nestedContext(parent);
+        var parentStarted = started(parent);
+        var childStarted = started(child);
+        AiServiceEvent childEnd =
+                switch (end) {
+                    case COMPLETED -> completed(child);
+                    case ERROR ->
+                        AiServiceErrorEvent.builder()
+                                .invocationContext(child)
+                                .error(new IllegalStateException("child failure"))
+                                .build();
+                    case CANCELLED ->
+                        AiServiceCancelledEvent.builder()
+                                .invocationContext(child)
+                                .build();
+                };
+        var parentEnd = completed(parent);
+
+        parentRegistrar.fireEvent(parentStarted);
+        childRegistrar.fireEvent(childStarted);
+        childRegistrar.fireEvent(childEnd);
+        parentRegistrar.fireEvent(parentEnd);
+
+        assertThat(summaries).hasSize(1);
+        AiServiceInvocationSummaryEvent nested =
+                (AiServiceInvocationSummaryEvent) summaries.get(0).events().get(1);
+        assertThat(summaries.get(0).events()).containsExactly(parentStarted, nested, parentEnd);
+        assertThat(nested.invocationContext()).isEqualTo(child);
+        assertThat(nested.events()).containsExactly(childStarted, childEnd);
+    }
+
+    @Test
+    void shouldCollectMultipleLevelsWithOnlyARootListener() {
+        var rootRegistrar = new DefaultAiServiceListenerRegistrar();
+        var childRegistrar = new DefaultAiServiceListenerRegistrar();
+        var leafRegistrar = new DefaultAiServiceListenerRegistrar();
+        var summaries = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        rootRegistrar.register((AiServiceInvocationSummaryListener) summaries::add);
+        InvocationContext root = nestedContext(null);
+        InvocationContext child = nestedContext(root);
+        InvocationContext leaf = nestedContext(child);
+
+        rootRegistrar.fireEvent(started(root));
+        childRegistrar.fireEvent(started(child));
+        leafRegistrar.fireEvent(started(leaf));
+        leafRegistrar.fireEvent(completed(leaf));
+        childRegistrar.fireEvent(completed(child));
+        rootRegistrar.fireEvent(completed(root));
+
+        assertThat(summaries).hasSize(1);
+        var childSummary =
+                (AiServiceInvocationSummaryEvent) summaries.get(0).events().get(1);
+        var leafSummary =
+                (AiServiceInvocationSummaryEvent) childSummary.events().get(1);
+        assertThat(childSummary.invocationContext()).isEqualTo(child);
+        assertThat(leafSummary.invocationContext()).isEqualTo(leaf);
+    }
+
+    @Test
+    void shouldNotModifyAFinishedParentWhenAChildEndsLater() {
+        var registrar = new DefaultAiServiceListenerRegistrar();
+        var summaries = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        registrar.register((AiServiceInvocationSummaryListener) summaries::add);
+        InvocationContext parent = nestedContext(null);
+        InvocationContext child = nestedContext(parent);
+
+        registrar.fireEvent(started(parent));
+        registrar.fireEvent(started(child));
+        registrar.fireEvent(completed(parent));
+        registrar.fireEvent(completed(child));
+
+        assertThat(summaries).hasSize(2);
+        assertThat(summaries.get(0).events()).noneMatch(AiServiceInvocationSummaryEvent.class::isInstance);
+        assertThat(summaries.get(1).invocationContext()).isEqualTo(child);
+    }
+
+    @Test
+    void shouldNotCollectAChildWithoutAListenerThatStartsAfterItsParentEnded() {
+        var parentRegistrar = new DefaultAiServiceListenerRegistrar();
+        parentRegistrar.register((AiServiceInvocationSummaryListener) event -> {});
+        InvocationContext parent = nestedContext(null);
+        parentRegistrar.fireEvent(started(parent));
+        parentRegistrar.fireEvent(completed(parent));
+
+        var childRegistrar = new DefaultAiServiceListenerRegistrar();
+        InvocationContext lateChild = nestedContext(parent);
+        childRegistrar.fireEvent(started(lateChild));
+        var lateSummaries = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        childRegistrar.register((AiServiceInvocationSummaryListener) lateSummaries::add);
+        childRegistrar.fireEvent(completed(lateChild));
+
+        assertThat(lateSummaries).isEmpty();
+    }
+
+    @Test
+    void shouldRemoveTheParentRegistrationEvenIfATerminalListenerThrows() {
+        var parentRegistrar = new DefaultAiServiceListenerRegistrar();
+        parentRegistrar.shouldThrowExceptionOnEventError(true);
+        parentRegistrar.register((AiServiceInvocationSummaryListener) event -> {});
+        parentRegistrar.register((AiServiceCompletedListener) event -> {
+            throw new IllegalStateException("listener failure");
+        });
+        InvocationContext parent = nestedContext(null);
+        parentRegistrar.fireEvent(started(parent));
+        assertThatExceptionOfType(IllegalStateException.class)
+                .isThrownBy(() -> parentRegistrar.fireEvent(completed(parent)))
+                .withMessage("listener failure");
+
+        var childRegistrar = new DefaultAiServiceListenerRegistrar();
+        InvocationContext child = nestedContext(parent);
+        childRegistrar.fireEvent(started(child));
+        var summaries = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
+        childRegistrar.register((AiServiceInvocationSummaryListener) summaries::add);
+        childRegistrar.fireEvent(completed(child));
+
+        assertThat(summaries).isEmpty();
+    }
+
+    @Test
+    void shouldNotKeepTheRegistrarOfAnInvocationThatNeverEndsAlive() throws InterruptedException {
+        WeakReference<DefaultAiServiceListenerRegistrar> registrar = registrarOfAnInvocationThatNeverEnds();
+
+        for (int attempt = 0; attempt < 50 && registrar.get() != null; attempt++) {
+            System.gc();
+            Thread.sleep(10);
+        }
+
+        assertThat(registrar.get()).isNull();
+    }
+
     @Test
     void hasCorrectListeners() {
         var registrar = (DefaultAiServiceListenerRegistrar) assertThat(REGISTRAR)
@@ -543,6 +690,34 @@ class DefaultAiServiceListenerRegistrarTests {
 
         // We're back at our starting point
         assertListenersNotExecuted();
+    }
+
+    private static WeakReference<DefaultAiServiceListenerRegistrar> registrarOfAnInvocationThatNeverEnds() {
+        var registrar = new DefaultAiServiceListenerRegistrar();
+        registrar.register((AiServiceInvocationSummaryListener) event -> {});
+        registrar.fireEvent(started(nestedContext(null)));
+        return new WeakReference<>(registrar);
+    }
+
+    private static InvocationContext nestedContext(InvocationContext parent) {
+        return InvocationContext.builder()
+                .invocationId(UUID.randomUUID())
+                .parentInvocationId(parent == null ? null : parent.invocationId())
+                .build();
+    }
+
+    private static AiServiceStartedEvent started(InvocationContext context) {
+        return AiServiceStartedEvent.builder()
+                .invocationContext(context)
+                .userMessage(UserMessage.from("question"))
+                .build();
+    }
+
+    private static AiServiceCompletedEvent completed(InvocationContext context) {
+        return AiServiceCompletedEvent.builder()
+                .invocationContext(context)
+                .result("answer")
+                .build();
     }
 
     private static void assertListenersNotExecuted() {
