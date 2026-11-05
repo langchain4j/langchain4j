@@ -124,7 +124,7 @@ Streaming is also supported thanks to the `VertexAiAnthropicStreamingChatModel` 
 
 ```java
 import dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicStreamingChatModel;
-import dev.langchain4j.model.chat.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 var model = VertexAiAnthropicStreamingChatModel.builder()
         .project(PROJECT_ID)
@@ -164,8 +164,8 @@ StreamingChatResponseHandler() {
 You can use the shortcut `onPartialResponse()` and `onPartialResponseAndError()` utility functions from `LambdaStreamingResponseHandler`:
 
 ```java
-import static dev.langchain4j.model.chat.response.streaming.LambdaStreamingResponseHandler.onPartialResponse;
-import static dev.langchain4j.model.chat.response.streaming.LambdaStreamingResponseHandler.onPartialResponseAndError;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndError;
 
 model.chat(ChatRequest.builder()
     .messages(List.of(UserMessage.from("Why is the sky blue?")))
@@ -266,7 +266,7 @@ System.out.println(response.aiMessage().text());
 ```java
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.model.output.structured.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 
 ChatModel model = VertexAiAnthropicChatModel.builder()
         .project(PROJECT_ID)
