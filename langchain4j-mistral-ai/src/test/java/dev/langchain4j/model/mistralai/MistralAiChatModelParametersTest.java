@@ -18,11 +18,20 @@ class MistralAiChatModelParametersTest {
                 .modelName("mistral-small-latest")
                 .safePrompt(true)
                 .randomSeed(42)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
-        assertThat(model.defaultRequestParameters()).isInstanceOf(MistralAiChatRequestParameters.class);
-        assertThat(model.defaultRequestParameters().safePrompt()).isTrue();
-        assertThat(model.defaultRequestParameters().randomSeed()).isEqualTo(42);
+        assertThat(model.defaultRequestParameters())
+                .isInstanceOf(MistralAiChatRequestParameters.class)
+                .satisfies(parameters -> {
+                    assertThat(parameters.safePrompt()).isTrue();
+                    assertThat(parameters.randomSeed()).isEqualTo(42);
+                    assertThat(parameters.promptCacheKey()).isEqualTo("cache-key");
+                    assertThat(parameters.reasoningEffort()).isEqualTo("low");
+                    assertThat(parameters.serviceTier()).isEqualTo("standard_only");
+                });
     }
 
     @Test
@@ -34,11 +43,19 @@ class MistralAiChatModelParametersTest {
                 .defaultRequestParameters(MistralAiChatRequestParameters.builder()
                         .safePrompt(true)
                         .randomSeed(7)
+                        .promptCacheKey("cache-key")
+                        .reasoningEffort("low")
+                        .serviceTier("standard_only")
                         .build())
                 .build();
 
-        assertThat(model.defaultRequestParameters().safePrompt()).isTrue();
-        assertThat(model.defaultRequestParameters().randomSeed()).isEqualTo(7);
+        assertThat(model.defaultRequestParameters()).satisfies(parameters -> {
+            assertThat(parameters.safePrompt()).isTrue();
+            assertThat(parameters.randomSeed()).isEqualTo(7);
+            assertThat(parameters.promptCacheKey()).isEqualTo("cache-key");
+            assertThat(parameters.reasoningEffort()).isEqualTo("low");
+            assertThat(parameters.serviceTier()).isEqualTo("standard_only");
+        });
     }
 
     @Test
@@ -50,6 +67,8 @@ class MistralAiChatModelParametersTest {
                 .modelName("mistral-small-latest")
                 .safePrompt(false)
                 .maxRetries(0)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -57,6 +76,9 @@ class MistralAiChatModelParametersTest {
                 .parameters(MistralAiChatRequestParameters.builder()
                         .safePrompt(true)
                         .randomSeed(123)
+                        .promptCacheKey("cache-key-override")
+                        .reasoningEffort("high")
+                        .serviceTier("standard_only")
                         .build())
                 .build();
 
@@ -67,7 +89,10 @@ class MistralAiChatModelParametersTest {
 
         assertThat(mockHttpClient.request().body().replaceAll("\\s", ""))
                 .contains("\"safe_prompt\":true")
-                .contains("\"random_seed\":123");
+                .contains("\"random_seed\":123")
+                .contains("\"prompt_cache_key\":\"cache-key-override\"")
+                .contains("\"reasoning_effort\":\"high\"")
+                .contains("\"service_tier\":\"standard_only\"");
     }
 
     @Test
@@ -79,6 +104,9 @@ class MistralAiChatModelParametersTest {
                 .modelName("mistral-small-latest")
                 .safePrompt(true)
                 .maxRetries(0)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
         try {
@@ -86,6 +114,10 @@ class MistralAiChatModelParametersTest {
         } catch (Exception ignored) {
         }
 
-        assertThat(mockHttpClient.request().body().replaceAll("\\s", "")).contains("\"safe_prompt\":true");
+        assertThat(mockHttpClient.request().body().replaceAll("\\s", ""))
+                .contains("\"safe_prompt\":true")
+                .contains("\"prompt_cache_key\":\"cache-key\"")
+                .contains("\"reasoning_effort\":\"low\"")
+                .contains("\"service_tier\":\"standard_only\"");
     }
 }
