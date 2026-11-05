@@ -25,8 +25,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,6 +57,9 @@ import org.slf4j.LoggerFactory;
 @Internal
 public class Utils {
     private static final Logger log = LoggerFactory.getLogger(Utils.class);
+
+    private static final Comparator<Method> DECLARED_METHOD_ORDER =
+            Comparator.comparing(Method::getName).thenComparing(Method::toString);
 
     private Utils() {}
 
@@ -611,6 +616,8 @@ public class Utils {
      * and default/static methods from implemented interfaces.
      * If a subclass overrides a method, only the subclass version is included.
      * Bridge and synthetic methods are filtered out.
+     * The methods declared by each type are returned sorted by name, then by signature,
+     * so the order is the same in every JVM.
      */
     public static List<Method> allConcreteMethods(Class<?> clazz) {
         return allMethods(clazz, true);
@@ -621,6 +628,8 @@ public class Utils {
      * and all implemented interfaces.
      * If a subclass overrides a method, only the subclass version is included.
      * Bridge and synthetic methods are filtered out.
+     * The methods declared by each type are returned sorted by name, then by signature,
+     * so the order is the same in every JVM.
      */
     public static List<Method> allMethods(Class<?> clazz) {
         return allMethods(clazz, false);
@@ -639,7 +648,7 @@ public class Utils {
     }
 
     private static void collectConcreteMethods(Class<?> clazz, Set<MethodSignature> seen, List<Method> result) {
-        for (Method method : clazz.getDeclaredMethods()) {
+        for (Method method : declaredMethods(clazz)) {
             if (method.isBridge() || method.isSynthetic()) {
                 continue;
             }
@@ -663,7 +672,7 @@ public class Utils {
             if (!visited.add(iface)) {
                 continue;
             }
-            for (Method method : iface.getDeclaredMethods()) {
+            for (Method method : declaredMethods(iface)) {
                 if (method.isBridge()
                         || method.isSynthetic()
                         || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
@@ -677,6 +686,12 @@ public class Utils {
             collectInterfaceMethods(iface, seen, result, visited, concreteOnly);
         }
         collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited, concreteOnly);
+    }
+
+    private static Method[] declaredMethods(Class<?> clazz) {
+        Method[] methods = clazz.getDeclaredMethods();
+        Arrays.sort(methods, DECLARED_METHOD_ORDER);
+        return methods;
     }
 
     /**
