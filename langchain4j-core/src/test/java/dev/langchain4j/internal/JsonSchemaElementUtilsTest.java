@@ -3,6 +3,7 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -586,5 +587,78 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
         assertThat(map).containsEntry("foo", "bar");
+    }
+
+    static class DescribedBaseClass {
+
+        @Description("Base field")
+        String baseField;
+    }
+
+    static class ExtendingClass extends DescribedBaseClass {
+
+        @Description("Child field")
+        String childField;
+    }
+
+    @Test
+    void should_include_inherited_fields_in_schema() {
+
+        // given
+        Class<ExtendingClass> clazz = ExtendingClass.class;
+
+        // when
+        JsonObjectSchema schema = (JsonObjectSchema) JsonSchemaElementUtils.jsonSchemaElementFrom(clazz);
+
+        // then
+        assertThat(schema.properties()).containsOnlyKeys("baseField", "childField");
+    }
+
+    static class ClassWithIgnoredField {
+
+        String visibleField;
+
+        @JsonIgnore
+        String hiddenField;
+    }
+
+    @Test
+    void should_exclude_json_ignored_fields_from_schema() {
+
+        // given
+        Class<ClassWithIgnoredField> clazz = ClassWithIgnoredField.class;
+
+        // when
+        JsonObjectSchema schema = (JsonObjectSchema) JsonSchemaElementUtils.jsonSchemaElementFrom(clazz);
+
+        // then
+        assertThat(schema.properties()).containsOnlyKeys("visibleField");
+    }
+
+    static class ShadowingBaseClass {
+
+        @Description("Base value")
+        String value;
+    }
+
+    static class ShadowingExtendingClass extends ShadowingBaseClass {
+
+        @Description("Overridden value")
+        String value;
+
+        String extra;
+    }
+
+    @Test
+    void should_not_duplicate_shadowed_fields_in_schema() {
+
+        // given
+        Class<ShadowingExtendingClass> clazz = ShadowingExtendingClass.class;
+
+        // when
+        JsonObjectSchema schema = (JsonObjectSchema) JsonSchemaElementUtils.jsonSchemaElementFrom(clazz);
+
+        // then - the subclass field shadows the inherited one
+        assertThat(schema.properties()).containsOnlyKeys("value", "extra");
     }
 }
