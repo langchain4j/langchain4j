@@ -7,7 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingRequestParameters;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
@@ -99,6 +102,29 @@ class OpenAiOfficialEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(totalSegmentsToEmbed);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_embed_text_with_per_call_parameters() {
+
+        EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(EMBEDDING_MODEL_NAME)
+                .build();
+
+        EmbeddingResponse response = model.embed(EmbeddingRequest.builder()
+                .input("hello world")
+                .parameters(OpenAiOfficialEmbeddingRequestParameters.builder()
+                        .encodingFormat("base64")
+                        .dimensions(42)
+                        .user("langchain4j-it")
+                        .build())
+                .build());
+
+        assertThat(response.embeddings()).hasSize(1);
+        assertThat(response.embeddings().get(0).dimension()).isEqualTo(42);
+        assertThat(response.metadata().tokenUsage().inputTokenCount()).isEqualTo(2);
     }
 
     @Test
