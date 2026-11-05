@@ -1,6 +1,6 @@
 # Google AlloyDB for PostgreSQL
 
-[AlloyDB](https://cloud.google.com/alloydb) is a fully managed relational database service that offers high performance, seamless integration, and impressive scalability. AlloyDB is 100% compatible with PostgreSQL. Extend your database application to build AI-powered experiences leveraging AlloyDB's Langchain integrations.
+[AlloyDB](https://cloud.google.com/alloydb) is a fully managed relational database service that offers high performance, seamless integration, and impressive scalability. AlloyDB is 100% compatible with PostgreSQL. Extend your database application to build AI-powered experiences leveraging AlloyDB's LangChain4j integrations.
 
 This module implements `EmbeddingStore` backed by an AlloyDB for PostgreSQL database.
 
