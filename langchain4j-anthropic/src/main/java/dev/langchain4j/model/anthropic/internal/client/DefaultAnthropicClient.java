@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.client;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -63,16 +64,16 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -266,13 +267,19 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * without ever parking a thread.
      */
     @Override
-    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
-        return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+        CompletableFuture<ParsedAndRawResponse> result = httpFuture.thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
                     fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
             return new ParsedAndRawResponse(parsedResponse, rawResponse);
         });
+        // Cancelling a future produced by thenApply does not cancel its source, so
+        // without this the HTTP request keeps running after the caller cancels.
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     /**
@@ -704,9 +711,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return HttpStreamingChatPublisher.create(
-                bufferSize,
-                () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
-                tube -> {
+                bufferSize, () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()), tube -> {
                     ServerSentEventListener eventListener =
                             buildStreamingEventListener(new TubeBackedStreamingChatResponseHandler(tube), options);
                     return new HttpStreamingChatPublisher.Sink() {
