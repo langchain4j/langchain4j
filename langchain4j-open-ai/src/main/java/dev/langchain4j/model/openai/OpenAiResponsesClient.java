@@ -92,6 +92,7 @@ class OpenAiResponsesClient {
     private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
     private static final String EVENT_RESPONSE_FAILED = "response.failed";
     private static final String EVENT_RESPONSE_ERROR = "response.error";
+    private static final String EVENT_ERROR = "error";
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
@@ -1066,6 +1067,7 @@ class OpenAiResponsesClient {
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
+        private volatile boolean terminated;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
             this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
@@ -1121,6 +1123,18 @@ class OpenAiResponsesClient {
         @Override
         public void onError(Throwable error) {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(error)));
+        }
+
+        @Override
+        public void onClose() {
+            // The HTTP client calls this after the stream has been fully read. If no terminal event
+            // (response.completed/response.incomplete/response.failed/error) was seen, the handler
+            // would otherwise wait indefinitely: fail it explicitly.
+            if (!terminated && !isCancelled()) {
+                withLoggingExceptions(() -> handler.onError(new IllegalStateException(
+                        "Response stream closed without a terminal event "
+                                + "(response.completed/response.incomplete/response.failed)")));
+            }
         }
 
         private void handleDelta(String data) {
@@ -1184,7 +1198,9 @@ class OpenAiResponsesClient {
                     handleOutputItemDone(node);
                 } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
-                } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
+                } else if (EVENT_RESPONSE_FAILED.equals(type)
+                        || EVENT_RESPONSE_ERROR.equals(type)
+                        || EVENT_ERROR.equals(type)) {
                     handleResponseFailure(node);
                 }
             } catch (Exception e) {
@@ -1268,6 +1284,7 @@ class OpenAiResponsesClient {
 
             var responseBuilder = ChatResponse.builder().aiMessage(aiMessage).metadata(metadataBuilder.build());
 
+            terminated = true;
             if (!isCancelled()) {
                 try {
                     handler.onCompleteResponse(responseBuilder.build());
@@ -1278,9 +1295,13 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseFailure(Object node) {
+            terminated = true;
             Object errorNode = at(node, FIELD_ERROR);
             if (errorNode == null) {
                 errorNode = at(at(node, FIELD_RESPONSE), FIELD_ERROR);
+            }
+            if (errorNode == null && hasNonNull(node, FIELD_MESSAGE)) {
+                errorNode = node; // flat "error" event carries code/message at the top level
             }
             String message = extractErrorMessage(errorNode);
             withLoggingExceptions(() -> handler.onError(new RuntimeException(message)));

@@ -208,6 +208,39 @@ class OpenAiResponsesStreamingEventParsingTest {
     }
 
     @Test
+    @Test
+    void should_fail_with_the_error_message_of_the_flat_error_event() {
+        stream(event(
+                "{\"type\":\"error\",\"code\":\"ERR_SOMETHING\",\"message\":\"Something went wrong\",\"param\":null,\"sequence_number\":2}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasMessageContaining("Response failed: Something went wrong");
+    }
+
+    @Test
+    void should_fail_with_the_error_message_of_the_nested_error_event() {
+        stream(event(
+                "{\"type\":\"error\",\"sequence_number\":2,\"error\":{\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\",\"message\":\"You exceeded your current quota.\",\"param\":null}}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasMessageContaining("Response failed: You exceeded your current quota.");
+    }
+
+    @Test
+    void should_fail_when_the_stream_closes_without_a_terminal_event() {
+        stream(
+                event("{\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_1\"}}"),
+                event("{\"type\":\"response.output_text.delta\",\"sequence_number\":1,\"delta\":\"Hello\"}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasCauseInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("closed without a terminal event");
+    }
+
+    @Test
     void should_ignore_events_that_do_not_belong_to_a_known_tool_call() throws Exception {
         ChatResponse response = chatWith(
                 Stream.of(
