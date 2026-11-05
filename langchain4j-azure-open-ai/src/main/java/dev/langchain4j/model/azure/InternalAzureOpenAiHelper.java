@@ -30,6 +30,7 @@ import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
 import com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset;
 import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageDetailLevel;
 import com.azure.ai.openai.models.ChatMessageImageUrl;
 import com.azure.ai.openai.models.ChatMessageTextContentItem;
 import com.azure.ai.openai.models.ChatRequestAssistantMessage;
@@ -283,6 +284,10 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent imageContent) {
                                 String imageUrlString = toImageUrl(imageContent.image());
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageUrlString);
+                                ChatMessageImageDetailLevel detail = toDetail(imageContent.detailLevel());
+                                if (detail != null) {
+                                    imageUrl.setDetail(detail);
+                                }
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -314,6 +319,25 @@ class InternalAzureOpenAiHelper {
             return image.url().toString();
         }
         return String.format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
+    /**
+     * Maps a langchain4j {@link ImageContent.DetailLevel} to the Azure SDK's
+     * {@link ChatMessageImageDetailLevel}. Returns {@code null} for detail levels that
+     * Azure does not support (MEDIUM, ULTRA_HIGH) so the caller can skip {@code setDetail}
+     * and let Azure apply its server-side default. See <a
+     * href="https://github.com/langchain4j/langchain4j/issues/5508">issue #5508</a>.
+     */
+    static ChatMessageImageDetailLevel toDetail(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
+            return null;
+        }
+        return switch (detailLevel) {
+            case LOW -> ChatMessageImageDetailLevel.LOW;
+            case HIGH -> ChatMessageImageDetailLevel.HIGH;
+            case AUTO -> ChatMessageImageDetailLevel.AUTO;
+            case MEDIUM, ULTRA_HIGH -> null;
+        };
     }
 
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
