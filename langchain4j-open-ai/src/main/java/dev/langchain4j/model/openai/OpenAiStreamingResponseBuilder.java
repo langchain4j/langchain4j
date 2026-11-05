@@ -96,12 +96,13 @@ public class OpenAiStreamingResponseBuilder {
             ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
             if (rawServerSentEvent != null) {
                 rawServerSentEvents.add(rawServerSentEvent);
-                ChatCompletionResponse parsedResponse = parsedAndRawResponse.parsedResponse();
-                if (parsedResponse == null || isNullOrEmpty(parsedResponse.choices())) {
-                    String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
-                    if (errorMessage != null) {
-                        providerErrorMessage.compareAndSet(null, errorMessage);
-                    }
+                // An error reported inside the stream (HTTP 200) must fail the stream even when the chunk
+                // still carries choices, e.g. a regular chat.completion.chunk with a top-level "error"
+                // and "finish_reason": "error". This matches the OpenAI SDKs, which raise for any
+                // streamed chunk containing an "error" key.
+                String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
+                if (errorMessage != null) {
+                    providerErrorMessage.compareAndSet(null, errorMessage);
                 }
             }
 
