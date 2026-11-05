@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.annotation.added",
+          "new": "parameter java.lang.String dev.langchain4j.code.azure.acads.SessionsREPLTool::use(===java.lang.String===)",
+          "justification": "@P carries the parameter name and description sent to the LLM, not a Java API contract; the parameter is now named explicitly so that the LLM no longer sees it as arg0"
+        }
+      ]
+    }
+  }
+]
