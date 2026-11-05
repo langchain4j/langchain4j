@@ -55,8 +55,14 @@ public class HttpRequest {
         }
 
         String queryString = buildQueryString(builder.queryParams);
+        int fragmentIndex = url.indexOf('#');
+        String fragment = "";
+        if (fragmentIndex >= 0) {
+            fragment = url.substring(fragmentIndex);
+            url = url.substring(0, fragmentIndex);
+        }
         String separator = url.contains("?") ? "&" : "?";
-        return url + separator + queryString;
+        return url + separator + queryString + fragment;
     }
 
     private static String buildQueryString(Map<String, String> queryParams) {
