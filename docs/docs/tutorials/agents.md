@@ -3704,6 +3704,8 @@ This has a few consequences for what is known about the agent before its first i
 - **Tenant**: an explicitly configured tenant is sent with every message, while the [auto-detection from the agent card](#auto-detection-from-the-agent-card-url) is performed when the first message is sent.
 - **Client customization**: the a2a-java `Client` is created from the card, so the [client customizer](#customizing-the-a2a-client) runs on the first invocation and not when the agent is built. The parameters of the `@A2AClientCustomizer` method provided by a `SupplierParameterResolver` are however resolved when the agent is built, like those of the other supplier methods, so a value resolved per request, like a token, is the one of the thread building the agent and not the one of the first caller.
 
+Agent-card HTTP requests made with the default SDK JDK client have a 60-second timeout. Configure it independently of remote agent execution with `AgenticServices.a2aBuilder(serverUrl).agentCardTimeout(Duration.ofSeconds(10))`. The duration must be positive. A timeout is reported as an `A2AAgentCardException`, and the next invocation can retry the fetch. This setting affects only the dedicated JDK HTTP client used for card discovery, not the transport configured through `clientCustomizer`. Custom SDK HTTP providers discovered through SPI retain their own timeout configuration.
+
 The first invocation of the agent pays the latency of the card fetch. Calling the `agentCard()` method of the `A2AClientInstance` interface, implemented by every A2A client agent, fetches the card immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the card cannot be fetched:
 
 ```java
