@@ -19,6 +19,7 @@ public class MonitoredExecution {
 
     private final Map<Object, AgentInvocation> ongoingInvocations = new ConcurrentHashMap<>();
     private final Set<Object> submittedAgentIds = ConcurrentHashMap.newKeySet();
+    private final Map<Object, Integer> runningAsyncAgents = new ConcurrentHashMap<>();
 
     private AgentInvocationError agentInvocationError;
     private volatile boolean unrecoveredAsyncFailure;
@@ -36,6 +37,23 @@ public class MonitoredExecution {
     void asyncAgentSubmitted(AgentRequest agentRequest) {
         beforeAgentInvocation(agentRequest);
         submittedAgentIds.add(agentRequest.agentId());
+        runningAsyncAgents.merge(agentRequest.agentId(), 1, Integer::sum);
+    }
+
+    /**
+     * Records the completion of an asynchronous agent recorded by {@link #asyncAgentSubmitted}, after its error
+     * handler ran if it failed: {@code failed} tells whether a failure was not recovered, which records the execution
+     * as failed, whether that agent failed before or after the root call ended.
+     */
+    void asyncAgentCompleted(String agentId, boolean failed) {
+        runningAsyncAgents.computeIfPresent(agentId, (id, running) -> running == 1 ? null : running - 1);
+        if (failed) {
+            unrecoveredAsyncFailure = true;
+        }
+    }
+
+    boolean hasRunningAsyncAgents() {
+        return !runningAsyncAgents.isEmpty();
     }
 
     void beforeAgentInvocation(AgentRequest agentRequest) {
@@ -97,14 +115,6 @@ public class MonitoredExecution {
             }
         }
         return latest;
-    }
-
-    /**
-     * Records that an asynchronous agent of this execution failed and its error handler did not recover the failure:
-     * the execution is then recorded as failed, whether that agent failed before or after the root call ended.
-     */
-    void asyncAgentFailed() {
-        unrecoveredAsyncFailure = true;
     }
 
     boolean hasUnrecoveredAsyncFailure() {

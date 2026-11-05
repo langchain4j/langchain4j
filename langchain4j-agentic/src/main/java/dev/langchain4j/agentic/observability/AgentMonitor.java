@@ -139,27 +139,23 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            // the error of an asynchronous agent is reported before its error handler runs: whether the failure was
-            // recovered is known only when the agent completes, see asyncAgentCompleted
-            if (!agentInvocationError.agent().async()) {
-                finalizeExecution(memoryId, execution);
-            }
+            finalizeExecution(memoryId, execution);
         }
     }
 
     /**
-     * Notified by the agentic system when an asynchronous agent whose failure was reported to
-     * {@link #onAgentInvocationError} completes, after its error handler ran: {@code failed} tells whether the failure
-     * was not recovered, which records the execution as failed, whether the root call already ended or not.
+     * Notified by the agentic system when an asynchronous agent submitted with {@link #asyncAgentSubmitted}
+     * completes, after its error handler ran if it failed: the execution stays ongoing until then, since the failure
+     * of the agent is reported to {@link #onAgentInvocationError} before the handler decides whether to recover it.
+     * {@code failed} tells whether a failure was not recovered, which records the execution as failed, whether the
+     * root call already ended or not.
      */
     @Internal
-    public void asyncAgentCompleted(AgenticScope agenticScope, boolean failed) {
+    public void asyncAgentCompleted(AgenticScope agenticScope, String agentId, boolean failed) {
         Object memoryId = agenticScope.memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
-            if (failed) {
-                execution.asyncAgentFailed();
-            }
+            execution.asyncAgentCompleted(agentId, failed);
             finalizeExecution(memoryId, execution);
         }
     }
@@ -174,7 +170,9 @@ public class AgentMonitor implements AgentListener {
     }
 
     private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
-        if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
+        if (!execution.ongoingInvocations().isEmpty()
+                || execution.hasRunningAsyncAgents()
+                || (!execution.done() && !execution.hasError())) {
             return;
         }
         if (!ongoingExecutions.remove(memoryId, execution)) {

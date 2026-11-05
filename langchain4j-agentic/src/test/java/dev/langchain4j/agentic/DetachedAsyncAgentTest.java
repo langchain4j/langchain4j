@@ -485,6 +485,22 @@ class DetachedAsyncAgentTest {
     }
 
     @Test
+    void before_call_of_the_next_root_call_does_not_see_the_failure_of_a_detached_agent_of_the_previous_one() {
+        List<Object> fixesSeenBeforeCall = new CopyOnWriteArrayList<>();
+        RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
+                .subAgents(new AnalysisUnlessStable(), new OptionalFailingRemediation())
+                .outputKey("decision")
+                .beforeCall(scope -> fixesSeenBeforeCall.add(scope.readState("fix", "none")))
+                .build();
+
+        assertThat(workflow.analyze("rollout-1", "canary")).isEqualTo("promote canary");
+        assertThat(workflow.analyze("rollout-1", "stable")).isNull();
+
+        // the failed result of the first call is dropped before the second call runs its beforeCall
+        assertThat(fixesSeenBeforeCall).containsExactly("none", "none");
+    }
+
+    @Test
     void failed_result_of_a_detached_agent_is_dropped_at_the_next_root_call() {
         RolloutAnalysisWithMemory workflow = AgenticServices.sequenceBuilder(RolloutAnalysisWithMemory.class)
                 .subAgents(new AnalysisUnlessStable(), new OptionalFailingRemediation())

@@ -72,28 +72,30 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     /**
-     * The failure of an asynchronous agent is reported to the listeners before the error handler runs, so a monitor
-     * learns here, once the handler decided, whether the failure was recovered, with a result or a successful retry,
-     * or thrown to the agent reading the result, if any.
+     * Invokes an asynchronous agent on the thread of its executor. Its failure is reported to the listeners before
+     * the error handler runs, so a monitor learns only when the agent completes whether the failure was recovered,
+     * with a result or a successful retry, and keeps the execution ongoing until then.
      */
-    private Object recoverAsyncAgentFailure(
-            AgentInvocationException e,
+    private Object invokeAsync(
             DefaultAgenticScope agenticScope,
             Object invokedAgent,
             PlannerExecutor planner,
-            AgentInvocationArguments args) {
-        AgentMonitor monitor = listenerOfType(agentInvoker.listener(), AgentMonitor.class);
+            AgentInvocationArguments args,
+            AgentMonitor monitor) {
+        boolean failed = false;
         try {
-            Object result = handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
-            if (monitor != null) {
-                monitor.asyncAgentCompleted(agenticScope, false);
+            return agentInvoker.invoke(agenticScope, invokedAgent, args);
+        } catch (AgentInvocationException e) {
+            try {
+                return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
+            } catch (RuntimeException unrecovered) {
+                failed = true;
+                throw unrecovered;
             }
-            return result;
-        } catch (RuntimeException failure) {
+        } finally {
             if (monitor != null) {
-                monitor.asyncAgentCompleted(agenticScope, true);
+                monitor.asyncAgentCompleted(agenticScope, agentId(), failed);
             }
-            throw failure;
         }
     }
 
@@ -195,13 +197,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             if (monitor != null) {
                 monitor.asyncAgentSubmitted(new AgentRequest(agenticScope, agentInvoker, args.namedArgs()));
             }
-            return new AsyncResponse<>(() -> {
-                try {
-                    return agentInvoker.invoke(agenticScope, invokedAgent, args);
-                } catch (AgentInvocationException e) {
-                    return recoverAsyncAgentFailure(e, agenticScope, invokedAgent, planner, args);
-                }
-            });
+            return new AsyncResponse<>(() -> invokeAsync(agenticScope, invokedAgent, planner, args, monitor));
         }
 
         Object response = agentInvoker.invoke(agenticScope, invokedAgent, args);

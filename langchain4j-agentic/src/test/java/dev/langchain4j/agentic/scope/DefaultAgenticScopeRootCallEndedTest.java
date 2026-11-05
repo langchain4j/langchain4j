@@ -16,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 class DefaultAgenticScopeRootCallEndedTest {
@@ -231,7 +232,7 @@ class DefaultAgenticScopeRootCallEndedTest {
             // the root call returned, suspended: the result of the agent completing afterwards is saved as after a
             // completed root call
             release.countDown();
-            org.awaitility.Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
                 String json = store.getJson(key);
                 return json != null && json.contains("\"late\":\"late\"");
             });
@@ -287,7 +288,7 @@ class DefaultAgenticScopeRootCallEndedTest {
 
         // the one of the agent still running is notified when it happens
         release.countDown();
-        org.awaitility.Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 1);
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 1);
     }
 
     /** Counts the suspensions notified to the listener. */

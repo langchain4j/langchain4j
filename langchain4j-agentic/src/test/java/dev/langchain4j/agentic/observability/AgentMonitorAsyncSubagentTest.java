@@ -59,6 +59,21 @@ class AgentMonitorAsyncSubagentTest {
         }
     }
 
+    /** Holds the root call until the error handler of the asynchronous agent started deciding. */
+    public static class ReportAfterErrorHandlerStarted {
+        private final CountDownLatch errorHandlerStarted;
+
+        ReportAfterErrorHandlerStarted(CountDownLatch errorHandlerStarted) {
+            this.errorHandlerStarted = errorHandlerStarted;
+        }
+
+        @Agent(outputKey = "report")
+        public String report(@V("decision") String decision) {
+            awaitLatch(errorHandlerStarted);
+            return "report on " + decision;
+        }
+    }
+
     private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
     private final CountDownLatch executorBusy = new CountDownLatch(1);
 
@@ -205,6 +220,68 @@ class AgentMonitorAsyncSubagentTest {
         assertThat(monitor.successfulExecutions()).isEmpty();
         assertThat(monitor.failedExecutions()).hasSize(1);
         assertThat(monitor.failedExecutions().get(0).error().agentName()).isEqualTo("remediate");
+    }
+
+    /**
+     * The asynchronous remediation fails before the end of the root call, while its error handler decides only after
+     * the root call returned.
+     */
+    private static UntypedAgent remediationRecoveredAfterTheRootCall(
+            AgentMonitor monitor, CountDownLatch rootReturned, Supplier<ErrorRecoveryResult> recovery) {
+        CountDownLatch errorHandlerStarted = new CountDownLatch(1);
+        return AgenticServices.sequenceBuilder()
+                .subAgents(
+                        new Analysis(),
+                        new FailingOnceRemediation(),
+                        new ReportAfterErrorHandlerStarted(errorHandlerStarted))
+                .outputKey("decision")
+                .listener(monitor)
+                .errorHandler(errorContext -> {
+                    errorHandlerStarted.countDown();
+                    awaitLatch(rootReturned);
+                    return recovery.get();
+                })
+                .build();
+    }
+
+    @Test
+    void unrecovered_failure_of_an_async_subagent_decided_after_the_end_of_the_root_call_is_recorded_as_failed() {
+        executorBusy.countDown();
+        AgentMonitor monitor = new AgentMonitor();
+        CountDownLatch rootReturned = new CountDownLatch(1);
+        UntypedAgent root =
+                remediationRecoveredAfterTheRootCall(monitor, rootReturned, ErrorRecoveryResult::throwException);
+
+        assertThat(root.invoke(Map.of("input", "canary"))).isEqualTo("promote canary");
+        // the execution stays ongoing while the error handler decides
+        assertThat(monitor.ongoingExecutions()).hasSize(1);
+
+        rootReturned.countDown();
+        await().atMost(10, SECONDS).until(() -> monitor.ongoingExecutions().isEmpty());
+
+        assertThat(monitor.successfulExecutions()).isEmpty();
+        assertThat(monitor.failedExecutions()).hasSize(1);
+        assertThat(monitor.failedExecutions().get(0).error().agentName()).isEqualTo("remediate");
+    }
+
+    @Test
+    void retry_of_an_async_subagent_decided_after_the_end_of_the_root_call_stays_in_one_execution() {
+        executorBusy.countDown();
+        AgentMonitor monitor = new AgentMonitor();
+        CountDownLatch rootReturned = new CountDownLatch(1);
+        UntypedAgent root = remediationRecoveredAfterTheRootCall(monitor, rootReturned, ErrorRecoveryResult::retry);
+
+        assertThat(root.invoke(Map.of("input", "canary"))).isEqualTo("promote canary");
+        assertThat(monitor.ongoingExecutions()).hasSize(1);
+
+        rootReturned.countDown();
+        await().atMost(10, SECONDS).until(() -> monitor.ongoingExecutions().isEmpty());
+
+        assertThat(monitor.failedExecutions()).isEmpty();
+        assertThat(monitor.successfulExecutions()).hasSize(1);
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().nestedInvocations())
+                .extracting(invocation -> invocation.agent().name())
+                .containsExactly("analyze", "remediate", "report", "remediate");
     }
 
     private static void awaitLatch(CountDownLatch latch) {

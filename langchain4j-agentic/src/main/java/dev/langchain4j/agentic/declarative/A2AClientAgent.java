@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.observability.AgentListener;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -71,11 +72,12 @@ public @interface A2AClientAgent {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
-     * Its result is awaited only where it is read, by another agent taking it as input or by the output function or
-     * output key of the agentic system: the root call does not wait for an asynchronous agent whose result nobody
-     * reads, but returns while it is still running, and the result or the failure of that agent is then reported
-     * only to its {@link dev.langchain4j.agentic.observability.AgentListener}. A later root call on the same memory id waits for the asynchronous agents of the previous call still running
-     * before it starts.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
