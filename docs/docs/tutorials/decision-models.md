@@ -594,6 +594,7 @@ requests fall back to what they would do without a decision model:
 | `DecisionModelFilteringToolProvider` | all tools are passed on, a warning is logged | `fallbackStrategy` |
 | `DecisionModelToolSearchStrategy` | the tool search fails, and the LLM receives the error like for any tool | no |
 | `DecisionScoringModel` | the scoring fails | no |
+| `ConfidenceCascadePlanner` | the cascade fails | `onDecisionModelFailure`: `THROW`, `ACCEPT`, or `REJECT` |
 
 A question that the decision model [refuses to answer](#refusals) is handled the same way, except by the guardrails:
 a refused check fails, so the message is rejected. Decision Services throw a `ContentFilteredException`.

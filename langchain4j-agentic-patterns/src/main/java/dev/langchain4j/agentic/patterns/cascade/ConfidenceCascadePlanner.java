@@ -16,15 +16,19 @@ import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
+import java.util.concurrent.CancellationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +67,8 @@ import org.slf4j.LoggerFactory;
  * every decision model, so the acceptance threshold must be tuned on the decision model in use and tuned again when
  * it changes. The request and the answers are untrusted input to the grade, so a crafted request or answer can
  * influence it: the cascade trades cost against quality, it is not a security or review boundary. A failure of the
- * decision model fails the invocation of the cascade.
+ * decision model fails the invocation of the cascade by default. The builder can explicitly
+ * accept the current answer or escalate to the next tier when the grading service fails.
  * <p>
  * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
  * given a supplier creating a new instance at each invocation, for example
@@ -87,6 +92,7 @@ public class ConfidenceCascadePlanner implements Planner {
     private final DecisionModel decisionModel;
     private final double acceptanceThreshold;
     private final YesNoQuestion question;
+    private final DecisionModelFailure onDecisionModelFailure;
 
     private List<String> inputKeys;
     private List<AgentInstance> tiers;
@@ -140,6 +146,15 @@ public class ConfidenceCascadePlanner implements Planner {
      */
     public ConfidenceCascadePlanner(
             DecisionModel decisionModel, double acceptanceThreshold, String acceptanceCriterion) {
+        this(decisionModel, acceptanceThreshold, acceptanceCriterion, DecisionModelFailure.THROW);
+    }
+
+    private ConfidenceCascadePlanner(
+            DecisionModel decisionModel,
+            double acceptanceThreshold,
+            String acceptanceCriterion,
+            DecisionModelFailure onDecisionModelFailure) {
+        this.onDecisionModelFailure = ensureNotNull(onDecisionModelFailure, "onDecisionModelFailure");
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         if (!(acceptanceThreshold > 0.0 && acceptanceThreshold < 1.0)) {
             throw illegalArgument(
@@ -153,6 +168,47 @@ public class ConfidenceCascadePlanner implements Planner {
                 .text(QUESTION_TEXT)
                 .yesWhen(acceptanceCriterion)
                 .build();
+    }
+
+    /** Creates a builder for a cascade with an optional decision-model failure policy. */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private DecisionModel decisionModel;
+        private double acceptanceThreshold;
+        private String acceptanceCriterion;
+        private DecisionModelFailure onDecisionModelFailure = DecisionModelFailure.THROW;
+
+        public Builder decisionModel(DecisionModel decisionModel) {
+            this.decisionModel = decisionModel;
+            return this;
+        }
+
+        public Builder acceptanceThreshold(double acceptanceThreshold) {
+            this.acceptanceThreshold = acceptanceThreshold;
+            return this;
+        }
+
+        public Builder acceptanceCriterion(String acceptanceCriterion) {
+            this.acceptanceCriterion = acceptanceCriterion;
+            return this;
+        }
+
+        /**
+         * Sets the behavior when the decision model throws. Defaults to THROW.
+         * Cancellation, interruption and decision-model refusals are always propagated.
+         */
+        public Builder onDecisionModelFailure(DecisionModelFailure policy) {
+            this.onDecisionModelFailure = ensureNotNull(policy, "onDecisionModelFailure");
+            return this;
+        }
+
+        public ConfidenceCascadePlanner build() {
+            return new ConfidenceCascadePlanner(
+                    decisionModel, acceptanceThreshold, acceptanceCriterion, onDecisionModelFailure);
+        }
     }
 
     @Override
@@ -250,31 +306,64 @@ public class ConfidenceCascadePlanner implements Planner {
             return done(answer);
         }
 
-        double probability = acceptance(planningContext.agenticScope(), answer);
-        if (probability >= acceptanceThreshold) {
-            LOG.info("Accepting the answer of the tier '{}', graded {}", current.name(), probability);
+        OptionalDouble grade = acceptance(planningContext.agenticScope(), answer);
+        if (grade.isEmpty() && onDecisionModelFailure == DecisionModelFailure.ACCEPT) {
+            LOG.info("Returning the ungraded answer of tier '{}' after decision-model failure", current.name());
+            return done(answer);
+        }
+        if (grade.isPresent() && grade.getAsDouble() >= acceptanceThreshold) {
+            LOG.info("Accepting the answer of the tier '{}', graded {}", current.name(), grade.getAsDouble());
             return done(answer);
         }
         AgentInstance next = tiers.get(++tier);
-        LOG.info(
-                "Rejecting the answer of the tier '{}', graded {}, escalating to '{}'",
-                current.name(),
-                probability,
-                next.name());
+        if (grade.isPresent()) {
+            LOG.info(
+                    "Rejecting the answer of the tier '{}', graded {}, escalating to '{}'",
+                    current.name(),
+                    grade.getAsDouble(),
+                    next.name());
+        } else {
+            LOG.info("Unable to grade tier '{}', escalating to '{}'", current.name(), next.name());
+        }
         return call(next);
     }
 
-    private double acceptance(AgenticScope agenticScope, Object answer) {
+    private OptionalDouble acceptance(AgenticScope agenticScope, Object answer) {
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
         input.put(ANSWER_KEY, answerValue(answer));
-        return decisionModel
-                .decide(DecisionRequest.builder()
-                        .inputFields(input)
-                        .question(QUESTION_NAME, question)
-                        .build())
-                .yesNo(QUESTION_NAME)
-                .probability();
+        DecisionRequest request = DecisionRequest.builder()
+                .inputFields(input)
+                .question(QUESTION_NAME, question)
+                .build();
+        DecisionResponse response;
+        try {
+            response = decisionModel.decide(request);
+        } catch (RuntimeException failure) {
+            if (onDecisionModelFailure == DecisionModelFailure.THROW
+                    || Thread.currentThread().isInterrupted()
+                    || isNonRecoverable(failure)) {
+                throw failure;
+            }
+            LOG.warn("Decision model failed; applying {} policy", onDecisionModelFailure, failure);
+            return OptionalDouble.empty();
+        }
+        // Refusals and malformed responses are not availability failures.
+        return OptionalDouble.of(response.yesNo(QUESTION_NAME).probability());
+    }
+
+    private static boolean isNonRecoverable(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof CancellationException
+                    || cause instanceof InterruptedException
+                    || cause instanceof ContentFilteredException) {
+                return true;
+            }
+            if (cause == cause.getCause()) {
+                break;
+            }
+        }
+        return false;
     }
 
     /**
