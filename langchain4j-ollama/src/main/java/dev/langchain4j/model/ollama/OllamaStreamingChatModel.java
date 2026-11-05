@@ -27,7 +27,7 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        client.streamingChat(chatRequest, this.returnThinking, handler);
+        client.streamingChat(chatRequest, this.returnThinking, this.sendThinking, handler);
     }
 
     @Override
