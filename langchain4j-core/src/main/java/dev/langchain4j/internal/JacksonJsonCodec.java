@@ -13,22 +13,24 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.type.LogicalType;
 import dev.langchain4j.Internal;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -140,6 +142,13 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
                 .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
+                // "" is read as null for an enum: providers send it - an OpenAI-compatible server
+                // returning "type": "" for a tool call is what found this - and an LLM may answer "" for
+                // an optional enum. Scoped to enums on purpose, so that "" for a POJO, a Map or a List
+                // still fails.
+                .withCoercionConfig(
+                        LogicalType.Enum,
+                        config -> config.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull))
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
@@ -148,7 +157,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
     }
 
