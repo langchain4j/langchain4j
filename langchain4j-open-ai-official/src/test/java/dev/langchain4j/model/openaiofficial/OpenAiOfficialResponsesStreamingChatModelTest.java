@@ -12,9 +12,12 @@ import com.openai.core.http.Headers;
 import com.openai.core.http.HttpClient;
 import com.openai.core.http.HttpRequest;
 import com.openai.core.http.HttpResponse;
+import com.openai.errors.SseException;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseCreateParams.Input;
+import com.openai.models.responses.ResponseError;
+import com.openai.models.responses.ResponseFailedEvent;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseStreamEvent;
@@ -34,6 +37,8 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -48,8 +53,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class OpenAiOfficialResponsesStreamingChatModelTest {
 
@@ -57,6 +67,125 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
             OpenAiOfficialResponsesChatRequestParameters.builder()
                     .modelName("gpt-5.4-mini")
                     .build();
+
+    @ParameterizedTest
+    @MethodSource("streamingErrors")
+    void should_preserve_streaming_error_details_for_handler_and_listener(
+            String event, String message, String code, String type) throws Exception {
+        String sse = "data: " + event + "\n\ndata: [DONE]\n\n";
+        HttpClient httpClient = new CannedJsonHttpClient(sse) {
+            @Override
+            public HttpResponse execute(HttpRequest request, RequestOptions requestOptions) {
+                return new CannedJsonHttpResponse(sse) {
+                    @Override
+                    public Headers headers() {
+                        return Headers.builder()
+                                .put("Content-Type", "text/event-stream")
+                                .build();
+                    }
+                };
+            }
+        };
+        AtomicReference<Throwable> listenerError = new AtomicReference<>();
+        OpenAiOfficialResponsesStreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(httpClient)
+                        .build()))
+                .modelName("gpt-5.4-mini")
+                .listeners(new ChatModelListener() {
+                    @Override
+                    public void onError(ChatModelErrorContext context) {
+                        listenerError.set(context.error());
+                    }
+                })
+                .build();
+        CompletableFuture<Throwable> handlerError = new CompletableFuture<>();
+
+        model.chat("Hello", new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handlerError.completeExceptionally(new AssertionError("Expected a streaming error"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handlerError.complete(error);
+            }
+        });
+
+        Throwable error = handlerError.get(5, TimeUnit.SECONDS);
+        assertThat(error)
+                .isInstanceOf(RuntimeException.class)
+                .isInstanceOfSatisfying(OpenAiOfficialResponsesStreamingException.class, exception -> {
+                    assertThat(exception).hasMessage(message);
+                    assertThat(exception.code()).isEqualTo(code);
+                    assertThat(exception.type()).isEqualTo(type);
+                    if (message.startsWith("200: ")) {
+                        assertThat(exception.getCause()).isInstanceOf(SseException.class);
+                    } else {
+                        assertThat(exception.getCause()).isNull();
+                    }
+                });
+        assertThat(listenerError.get()).isSameAs(error);
+    }
+
+    @Test
+    void should_preserve_failed_event_message_fallback_when_message_is_blank() {
+        ResponseError error = ResponseError.builder()
+                .code(ResponseError.Code.SERVER_ERROR)
+                .message(" ")
+                .build();
+        CapturingStreamingHandler handler = new CapturingStreamingHandler();
+        var eventHandler = new OpenAiOfficialResponsesStreamingChatModel.ResponsesEventHandler(
+                handler, new AtomicReference<>(), "gpt-5.4-mini", new ActiveStreamingHandle());
+
+        eventHandler.handleEvent(ResponseStreamEvent.ofFailed(ResponseFailedEvent.builder()
+                .response(response("{\"error\":{\"code\":\"server_error\",\"message\":\" \"}}"))
+                .sequenceNumber(1)
+                .build()));
+
+        assertThat(handler.error).isInstanceOfSatisfying(OpenAiOfficialResponsesStreamingException.class, exception -> {
+            assertThat(exception).hasMessage("Response failed: " + error);
+            assertThat(exception.code()).isEqualTo("server_error");
+            assertThat(exception.type()).isNull();
+        });
+    }
+
+    private static Stream<Arguments> streamingErrors() {
+        return Stream.of(
+                Arguments.of("""
+                        {"type":"response.failed","sequence_number":1,"response":{"error":{"code":"server_error","message":"Something went wrong"}}}
+                        """.strip(), "Response failed: Something went wrong", "server_error", null),
+                Arguments.of(
+                        """
+                        {"type":"response.failed","sequence_number":1,"response":{"error":{"code":"insufficient_quota","type":"insufficient_quota","message":"Quota exceeded"}}}
+                        """.strip(), "Response failed: Quota exceeded", "insufficient_quota", "insufficient_quota"),
+                Arguments.of("""
+                        {"type":"error","sequence_number":1,"code":"rate_limit_exceeded","message":"Rate limit reached","param":null}
+                        """.strip(), "Response error: Rate limit reached", "rate_limit_exceeded", null),
+                Arguments.of("""
+                        {"type":"error","error":{"code":"insufficient_quota","type":"insufficient_quota","message":"Quota exceeded","param":null}}
+                        """.strip(), "200: Quota exceeded", "insufficient_quota", "insufficient_quota"),
+                Arguments.of("""
+                        {"type":"response.failed","sequence_number":1,"response":{"error":{"message":"Something went wrong"}}}
+                        """.strip(), "Response failed: Something went wrong", null, null),
+                Arguments.of("""
+                        {"type":"response.failed","sequence_number":1,"response":{"error":{"code":null,"type":null,"message":"Something went wrong"}}}
+                        """.strip(), "Response failed: Something went wrong", null, null),
+                Arguments.of("""
+                        {"type":"response.failed","sequence_number":1,"response":{}}
+                        """.strip(), "Response failed: Response failed", null, null),
+                Arguments.of("""
+                        {"type":"error","sequence_number":1,"message":"Something went wrong"}
+                        """.strip(), "Response error: Something went wrong", null, null),
+                Arguments.of("""
+                        {"type":"error","sequence_number":1,"code":null,"message":"Something went wrong","param":null}
+                        """.strip(), "Response error: Something went wrong", null, null),
+                Arguments.of("""
+                        {"type":"error","error":{"message":"Something went wrong"}}
+                        """.strip(), "200: Something went wrong", null, null));
+    }
 
     @Test
     void should_store_server_tools_in_streaming_default_request_parameters() {
