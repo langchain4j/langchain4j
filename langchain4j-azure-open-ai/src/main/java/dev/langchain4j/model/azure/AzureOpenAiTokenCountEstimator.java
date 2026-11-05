@@ -60,8 +60,10 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
      */
     public AzureOpenAiTokenCountEstimator(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
-        if (modelName.startsWith("o") || modelName.startsWith("gpt-4.")
-                || modelName.startsWith("gpt-5.") || modelName.startsWith("gpt-6")) {
+        if (modelName.startsWith("o")
+                || modelName.startsWith("gpt-4.")
+                || modelName.startsWith("gpt-5.")
+                || modelName.startsWith("gpt-6")) {
             // temporary fix until https://github.com/knuddelsgmbh/jtokkit/pull/118 and
             // https://github.com/knuddelsgmbh/jtokkit/pull/133 are released
             this.encoding = ENCODING_REGISTRY.getEncoding(O200K_BASE);
