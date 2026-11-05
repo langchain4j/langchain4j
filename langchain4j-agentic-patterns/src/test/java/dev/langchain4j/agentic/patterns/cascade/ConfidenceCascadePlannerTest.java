@@ -5,6 +5,9 @@ import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.
 import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.QUESTION_TEXT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
@@ -16,6 +19,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -25,7 +29,10 @@ import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Predicate;
@@ -509,6 +516,91 @@ class ConfidenceCascadePlannerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("'candidateAnswer'");
         assertThat(faqAgent.calls).hasValue(0);
+    }
+
+    @Test
+    void shouldAcceptCurrentAnswerWhenGradingFailsAndPolicyAccepts() {
+        var model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("service down");
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .onDecisionModelFailure(DecisionModelFailure.ACCEPT)
+                .build();
+        assertThat(cascade(SupportCascade.class, planner, faqAgent, expertAgent).ask(REQUEST))
+                .isEqualTo("faq answer");
+        assertThat(expertAgent.calls).hasValue(0);
+    }
+
+    @Test
+    void shouldEscalateWhenGradingFailsAndPolicyRejects() {
+        var model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("service down");
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .onDecisionModelFailure(DecisionModelFailure.REJECT)
+                .build();
+        assertThat(cascade(SupportCascade.class, planner, faqAgent, expertAgent, seniorExpertAgent)
+                        .ask(REQUEST))
+                .isEqualTo("senior answer");
+        assertThat(expertAgent.calls).hasValue(1);
+        assertThat(seniorExpertAgent.calls).hasValue(1);
+    }
+
+    @Test
+    void shouldNotAcceptARefusalWithFallbackEnabled() {
+        var model = DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, RefusalAnswer.of()));
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .onDecisionModelFailure(DecisionModelFailure.ACCEPT)
+                .build();
+        assertThatThrownBy(() -> cascade(SupportCascade.class, planner, faqAgent, expertAgent)
+                        .ask(REQUEST))
+                .isInstanceOf(ContentFilteredException.class);
+        assertThat(expertAgent.calls).hasValue(0);
+    }
+
+    @Test
+    void shouldNotSwallowCancellationWithFallbackEnabled() {
+        DecisionModel model = mock(DecisionModel.class);
+        when(model.decide(any(DecisionRequest.class))).thenThrow(new CancellationException("cancelled"));
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .onDecisionModelFailure(DecisionModelFailure.ACCEPT)
+                .build();
+        assertThatThrownBy(() -> cascade(SupportCascade.class, planner, faqAgent, expertAgent)
+                        .ask(REQUEST))
+                .isInstanceOf(CancellationException.class);
+        assertThat(expertAgent.calls).hasValue(0);
+    }
+
+    @Test
+    void shouldEscalateOnDecisionTimeout() {
+        DecisionModel model = mock(DecisionModel.class);
+        when(model.decide(any(DecisionRequest.class))).thenThrow(new CompletionException(new TimeoutException()));
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .onDecisionModelFailure(DecisionModelFailure.REJECT)
+                .build();
+        assertThat(cascade(SupportCascade.class, planner, faqAgent, expertAgent).ask(REQUEST))
+                .isEqualTo("expert answer");
+    }
+
+    @Test
+    void builderShouldPropagateFailuresByDefault() {
+        var model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("service down");
+        var planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .build();
+        assertThatThrownBy(() -> cascade(SupportCascade.class, planner, faqAgent, expertAgent)
+                        .ask(REQUEST))
+                .hasMessageContaining("service down");
+        assertThat(expertAgent.calls).hasValue(0);
+        assertThatThrownBy(() -> ConfidenceCascadePlanner.builder().onDecisionModelFailure(null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
