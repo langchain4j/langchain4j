@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -19,13 +18,12 @@ class JsonCodecTest {
 
     record Person(String name, int age) {}
 
-    private static final String PERSON_JSON =
-            """
-            {
-                "name": "Klaus",
-                "age": 42
-            }
-            """;
+    private static final String PERSON_JSON = """
+        {
+            "name": "Klaus",
+            "age": 42
+        }
+        """;
 
     static List<Json.JsonCodec> codecs() {
         return List.of(new JacksonJsonCodec());
@@ -63,13 +61,12 @@ class JsonCodecTest {
     void record_different_field_order(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "age": 42,
-                    "name": "Klaus"
-                }
-                """;
+        String json = """
+            {
+                "age": 42,
+                "name": "Klaus"
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -90,14 +87,13 @@ class JsonCodecTest {
     void should_fail_on_unknown_fields_by_default(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": 42,
-                    "married": false
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": 42,
+                "married": false
+            }
+            """;
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, Person.class))
@@ -118,13 +114,12 @@ class JsonCodecTest {
     void record_null_value(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": null
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": null
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -139,13 +134,12 @@ class JsonCodecTest {
     void record_wrong_type(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": "42"
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": "42"
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -160,13 +154,12 @@ class JsonCodecTest {
     void record_wrong_type_2(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": 42.0
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": 42.0
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -185,15 +178,14 @@ class JsonCodecTest {
     void record_with_nested_record(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "address": {
-                        "city": "Langley Falls"
-                    }
+        String json = """
+            {
+                "name": "Klaus",
+                "address": {
+                    "city": "Langley Falls"
                 }
-                """;
+            }
+            """;
 
         // when
         PersonRecordWithNestedRecord pojo = codec.fromJson(json, PersonRecordWithNestedRecord.class);
@@ -217,10 +209,10 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus"
-                }
-                """;
+            {
+                "name": "Klaus"
+            }
+            """;
 
         // when
         PersonRecordWithCollections pojo = codec.fromJson(json, PersonRecordWithCollections.class);
@@ -239,17 +231,16 @@ class JsonCodecTest {
     void record_with_empty_collections(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "collection": [],
-                    "list": [],
-                    "set": [],
-                    "array": [],
-                    "map": {}
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "collection": [],
+                "list": [],
+                "set": [],
+                "array": [],
+                "map": {}
+            }
+            """;
 
         // when
         PersonRecordWithCollections pojo = codec.fromJson(json, PersonRecordWithCollections.class);
@@ -265,7 +256,6 @@ class JsonCodecTest {
 
     record PersonRecordWithOptional(String name, Optional<Integer> age) {}
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_present(Json.JsonCodec codec) {
@@ -278,17 +268,16 @@ class JsonCodecTest {
         assertThat(pojo.age()).hasValue(42);
     }
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_absent(Json.JsonCodec codec) {
 
         // given
         String json = """
-                {
-                    "name": "Klaus"
-                }
-                """;
+            {
+                "name": "Klaus"
+            }
+            """;
 
         // when
         PersonRecordWithOptional pojo = codec.fromJson(json, PersonRecordWithOptional.class);
@@ -298,19 +287,17 @@ class JsonCodecTest {
         assertThat(pojo.age()).isEmpty();
     }
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_null(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": null
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": null
+            }
+            """;
 
         // when
         PersonRecordWithOptional pojo = codec.fromJson(json, PersonRecordWithOptional.class);
@@ -349,13 +336,12 @@ class JsonCodecTest {
     void record_with_validation(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
-                {
-                    "name": "Klaus",
-                    "age": -1
-                }
-                """;
+        String json = """
+            {
+                "name": "Klaus",
+                "age": -1
+            }
+            """;
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, PersonRecordWithValidation.class))
@@ -377,13 +363,11 @@ class JsonCodecTest {
     void record_with_custom_ctor(Json.JsonCodec codec) {
 
         // when
-        PersonRecordCustomCtor pojo = codec.fromJson(
-                """
-                {
-                    "name": "Klaus"
-                }
-                """,
-                PersonRecordCustomCtor.class);
+        PersonRecordCustomCtor pojo = codec.fromJson("""
+            {
+                "name": "Klaus"
+            }
+            """, PersonRecordCustomCtor.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");
