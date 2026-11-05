@@ -456,7 +456,9 @@ public class OpenAiUtils {
 
     public static String noChoicesErrorMessage(SuccessfulHttpResponse rawHttpResponse) {
         String providerErrorMessage = rawHttpResponse == null ? null : providerErrorMessageFrom(rawHttpResponse.body());
-        return providerErrorMessage != null ? "Chat completion failed: " + providerErrorMessage : NO_CHOICES_ERROR_MESSAGE;
+        return providerErrorMessage != null
+                ? "Chat completion failed: " + providerErrorMessage
+                : NO_CHOICES_ERROR_MESSAGE;
     }
 
     /**
@@ -528,7 +530,7 @@ public class OpenAiUtils {
         }
 
         return AiMessage.builder()
-                .text(isNullOrEmpty(content) ? null : content)
+                .text(content)
                 .thinking(isNullOrEmpty(reasoningContent) ? null : reasoningContent)
                 .toolExecutionRequests(toolExecutionRequests)
                 .build();
