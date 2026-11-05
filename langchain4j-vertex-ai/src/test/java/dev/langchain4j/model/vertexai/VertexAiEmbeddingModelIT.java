@@ -14,7 +14,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.io.IOException;
 import java.util.*;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -143,8 +142,8 @@ class VertexAiEmbeddingModelIT {
 
         // 617 segments requires splitting in batches of 125 or less
         // 617 times 21 tokens is above the 10k token limit
-        List<TextSegment> segments = Collections.nCopies(
-                617, TextSegment.from("Once upon a time, in forrest, lived a squirrel."));
+        List<TextSegment> segments =
+                Collections.nCopies(617, TextSegment.from("Once upon a time, in forrest, lived a squirrel."));
 
         List<Integer> tokenCounts = model.calculateTokensCounts(segments);
         assertThat(tokenCounts).hasSize(617);
@@ -319,6 +318,7 @@ class VertexAiEmbeddingModelIT {
         Response<Embedding> response = model.embed("Hello, how are you?");
 
         assertThat(response.content().dimension()).isEqualTo(128);
+        assertThat(model.dimension()).isEqualTo(128);
     }
 
     @Test
