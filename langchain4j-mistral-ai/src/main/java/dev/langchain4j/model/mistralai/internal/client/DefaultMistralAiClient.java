@@ -31,6 +31,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
     private final String baseUrl;
     private final String apiKey;
     private final Supplier<Map<String, String>> customHeadersSupplier;
+    private final Supplier<Map<String, String>> customQueryParamsSupplier;
 
     public static Builder builder() {
         return new Builder();
@@ -65,6 +66,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
         this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
         this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
+        this.customQueryParamsSupplier = getOrDefault(builder.customQueryParamsSupplier, () -> Map::of);
     }
 
     private java.util.Map<String, String> buildRequestHeaders() {
@@ -73,6 +75,14 @@ public class DefaultMistralAiClient extends MistralAiClient {
             return Map.of();
         }
         return dynamicHeaders;
+    }
+
+    private Map<String, String> buildRequestQueryParams() {
+        Map<String, String> dynamicQueryParams = customQueryParamsSupplier.get();
+        if (isNullOrEmpty(dynamicQueryParams)) {
+            return Map.of();
+        }
+        return dynamicQueryParams;
     }
 
     @Override
@@ -90,6 +100,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -116,6 +127,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -137,6 +149,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -156,6 +169,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -179,6 +193,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -196,11 +211,29 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), MistralAiModerationResponse.class);
+    }
+
+    @Override
+    public MistralAiOcrResponse ocr(MistralAiOcrRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "ocr")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
+                .body(toJson(request))
+                .build();
+
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+        return fromJson(successfulHttpResponse.body(), MistralAiOcrResponse.class);
     }
 
     @Override
@@ -212,6 +245,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .build();
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -227,6 +261,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .body(toJson(request))
                 .build();
 
@@ -243,6 +278,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
@@ -258,6 +294,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
@@ -285,6 +322,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
@@ -299,6 +337,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("User-Agent", "langchain4j-mistral-ai")
                 .addHeaders(buildRequestHeaders())
+                .addQueryParams(buildRequestQueryParams())
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
