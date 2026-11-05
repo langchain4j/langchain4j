@@ -47,6 +47,19 @@ class IsInTest {
     }
 
     @Test
+    void shouldBeConsistentWithIsEqualToWhenActualValueIsNonUUIDString() {
+        // given: a string metadata value that is not a UUID and a UUID comparison value
+        UUID uuid = UUID.randomUUID();
+        IsEqualTo isEqualTo = new IsEqualTo("key", uuid);
+        IsIn isIn = new IsIn("key", List.of(uuid));
+        Metadata metadata = new Metadata(Map.of("key", "not-a-uuid"));
+
+        // then: isIn(x) must not match (nor throw) whenever isEqualTo(x) does not match
+        assertThat(isEqualTo.test(metadata)).isFalse();
+        assertThat(isIn.test(metadata)).isFalse();
+    }
+
+    @Test
     void shouldReturnTrueWhenComparingDifferentNumberTypes() {
         IsIn isIn = new IsIn("key", List.of(1L));
         Metadata metadata = new Metadata(Map.of("key", 1));
