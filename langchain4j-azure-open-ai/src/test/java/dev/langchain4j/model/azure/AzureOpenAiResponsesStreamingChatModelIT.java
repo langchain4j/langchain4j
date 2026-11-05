@@ -8,7 +8,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.azure.ai.openai.OpenAIAsyncClient;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -21,34 +21,21 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.azure.ai.openai.models.ReasoningEffortValue;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-class AzureOpenAiStreamingChatModelIT {
+class AzureOpenAiResponsesStreamingChatModelIT {
+
+    public static final String DEPLOYMENT_NAME = "gpt-6-luna";
 
     @ParameterizedTest(name = "Deployment name {0} using {1} with custom async client set to {2} ")
-    @CsvSource({"gpt-4o, true", "gpt-4o, false"})
-    void should_custom_models_work(String deploymentName, boolean useCustomAsyncClient) {
+    @CsvSource({"gpt-6-luna, true", "gpt-6-luna, false"})
+    void should_custom_models_work(String deploymentName) {
 
-        OpenAIAsyncClient asyncClient = null;
-        if (useCustomAsyncClient) {
-            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(
-                    System.getenv("AZURE_OPENAI_ENDPOINT"),
-                    null, // serviceVersion: use latest (this slot was incorrectly receiving the model name)
-                    AzureModelBuilders.getAzureOpenaiKey(),
-                    Duration.ofSeconds(30),
-                    5,
-                    null,
-                    null,
-                    null,
-                    true,
-                    null,
-                    null);
-        }
-
-        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
-                .openAIAsyncClient(asyncClient)
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(AzureModelBuilders.getAzureOpenaiKey())
                 .deploymentName(deploymentName)
+                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -70,16 +57,16 @@ class AzureOpenAiStreamingChatModelIT {
     }
 
     @ParameterizedTest(name = "Deployment name {0}")
-    @ValueSource(strings = {"gpt-4o"})
+    @ValueSource(strings = {"gpt-6-luna"})
     void should_use_json_format(String deploymentName) {
 
-        StreamingChatModel model = AzureModelBuilders.streamingChatModelBuilder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(AzureModelBuilders.getAzureOpenaiKey())
                 .deploymentName(deploymentName)
                 .responseFormat(JSON)
-                .temperature(0.0)
-                .maxCompletionTokens(50)
+                .temperature(1.0)
+                .maxOutputTokens(200)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -101,12 +88,12 @@ class AzureOpenAiStreamingChatModelIT {
         // given
         Duration timeout = Duration.ofMillis(millis);
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("gpt-4o")
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(AzureModelBuilders.getAzureOpenaiKey())
+                .deploymentName("gpt-6-luna")
+                .temperature(1.0)
                 .logRequestsAndResponses(true)
-                .maxRetries(0)
                 .timeout(timeout)
                 .build();
 
@@ -140,10 +127,11 @@ class AzureOpenAiStreamingChatModelIT {
     void should_work_with_o_models() {
 
         // given
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
                 .deploymentName("o4-mini")
+                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -161,11 +149,12 @@ class AzureOpenAiStreamingChatModelIT {
         // given
         int maxCompletionTokens = 200;
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
-                .deploymentName("o4-mini")
-                .maxCompletionTokens(maxCompletionTokens)
+                .deploymentName(DEPLOYMENT_NAME)
+                .temperature(1.0)
+                .maxOutputTokens(maxCompletionTokens)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -186,11 +175,12 @@ class AzureOpenAiStreamingChatModelIT {
         // given
         ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
 
-        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+        StreamingChatModel model = AzureModelBuilders.responsesStreamingChatModelBuilder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
-                .deploymentName("o4-mini")
-                .reasoningEffort(reasoningEffort)
+                .deploymentName("gpt-6-luna")
+                .temperature(1.0)
+                .reasoningEffort(reasoningEffort.toString())
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -200,7 +190,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().aiMessage().text()).contains("Berlin");
-    }      
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {

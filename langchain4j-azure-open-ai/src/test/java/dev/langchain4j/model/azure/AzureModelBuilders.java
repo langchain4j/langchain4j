@@ -43,6 +43,27 @@ public class AzureModelBuilders {
                 .logRequestsAndResponses(true);
     }
 
+    public static AzureOpenAiResponsesChatModel.Builder responsesChatModelBuilder() {
+        return AzureOpenAiResponsesChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(DEFAULT_CHAT_MODEL)
+                .temperature(DEFAULT_TEMPERATURE)
+                .maxOutputTokens(DEFAULT_MAX_TOKENS)
+                .logRequestsAndResponses(true);
+    }
+
+    public static AzureOpenAiResponsesStreamingChatModel.Builder responsesStreamingChatModelBuilder() {
+
+        return AzureOpenAiResponsesStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName(DEFAULT_CHAT_MODEL)
+                .temperature(DEFAULT_TEMPERATURE)
+                .maxOutputTokens(DEFAULT_MAX_TOKENS)
+                .logRequestsAndResponses(true);
+    }
+
     public static AzureOpenAiEmbeddingModel.Builder embeddingModelBuilder() {
         return AzureOpenAiEmbeddingModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
