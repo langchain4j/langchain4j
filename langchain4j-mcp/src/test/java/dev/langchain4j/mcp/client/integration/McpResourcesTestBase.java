@@ -44,7 +44,7 @@ public abstract class McpResourcesTestBase {
         assertThat(response.contents()).hasSize(1);
 
         McpResourceContents contents = response.contents().get(0);
-        assertThat(contents.type().equals(McpResourceContents.Type.TEXT));
+        assertThat(contents.type()).isEqualTo(McpResourceContents.Type.TEXT);
         assertThat(((McpTextResourceContents) contents).uri()).hasToString("file:///text");
         assertThat(((McpTextResourceContents) contents).text()).isEqualTo("text");
     }
@@ -55,7 +55,7 @@ public abstract class McpResourcesTestBase {
         assertThat(response.contents()).hasSize(1);
 
         McpResourceContents contents = response.contents().get(0);
-        assertThat(contents.type().equals(McpResourceContents.Type.BLOB));
+        assertThat(contents.type()).isEqualTo(McpResourceContents.Type.BLOB);
         assertThat(((McpBlobResourceContents) contents).uri()).hasToString("file:///blob");
         assertThat(((McpBlobResourceContents) contents).blob()).isEqualTo("blob");
     }
@@ -82,7 +82,7 @@ public abstract class McpResourcesTestBase {
         assertThat(response.contents()).hasSize(1);
 
         McpResourceContents contents = response.contents().get(0);
-        assertThat(contents.type().equals(McpResourceContents.Type.TEXT));
+        assertThat(contents.type()).isEqualTo(McpResourceContents.Type.TEXT);
         assertThat(((McpTextResourceContents) contents).uri()).hasToString("file:///text-template/hello");
         assertThat(((McpTextResourceContents) contents).text()).isEqualTo("text hello");
     }
@@ -93,7 +93,7 @@ public abstract class McpResourcesTestBase {
         assertThat(response.contents()).hasSize(1);
 
         McpResourceContents contents = response.contents().get(0);
-        assertThat(contents.type().equals(McpResourceContents.Type.BLOB));
+        assertThat(contents.type()).isEqualTo(McpResourceContents.Type.BLOB);
         assertThat(((McpBlobResourceContents) contents).uri()).hasToString("file:///blob-template/hello");
         assertThat(((McpBlobResourceContents) contents).blob()).isEqualTo("blob hello");
     }
