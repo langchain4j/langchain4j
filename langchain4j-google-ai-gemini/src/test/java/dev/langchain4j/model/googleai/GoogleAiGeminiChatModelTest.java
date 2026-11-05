@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -24,11 +26,14 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandid
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -363,6 +368,41 @@ class GoogleAiGeminiChatModelTest {
     class RequestVerificationTest {
         @Captor
         ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @ParameterizedTest
+        @CsvSource({"42,84,,42", ",84,,84", "42,84,7,7", ",,,"})
+        void should_expose_effective_seed_to_listener(
+                Integer modelSeed, Integer defaultSeed, Integer requestSeed, Integer expectedSeed) {
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(createGeminiResponse("Response"));
+            List<Integer> observedSeeds = new ArrayList<>();
+            ChatModelListener listener = new ChatModelListener() {
+                @Override
+                public void onRequest(ChatModelRequestContext context) {
+                    observedSeeds.add(context.chatRequest().parameters().seed());
+                }
+            };
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .seed(modelSeed)
+                    .defaultRequestParameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .seed(defaultSeed)
+                            .build())
+                    .listeners(List.of(listener))
+                    .build(mockGeminiService);
+
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hello"))
+                    .parameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .seed(requestSeed)
+                            .build())
+                    .build());
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            assertThat(observedSeeds).containsExactly(expectedSeed);
+            assertThat(requestCaptor.getValue().generationConfig().seed()).isEqualTo(expectedSeed);
+        }
 
         @Test
         void shouldSendRequestWithAllParameters() {

@@ -410,6 +410,7 @@ ChatModelListener listener = new ChatModelListener() {
         System.out.println(parameters.modelName());
         System.out.println(parameters.temperature());
         System.out.println(parameters.topP());
+        System.out.println(parameters.seed());
         System.out.println(parameters.topK());
         System.out.println(parameters.frequencyPenalty());
         System.out.println(parameters.presencePenalty());
@@ -423,7 +424,6 @@ ChatModelListener listener = new ChatModelListener() {
             System.out.println(openAiParameters.maxCompletionTokens());
             System.out.println(openAiParameters.logitBias());
             System.out.println(openAiParameters.parallelToolCalls());
-            System.out.println(openAiParameters.seed());
             System.out.println(openAiParameters.user());
             System.out.println(openAiParameters.store());
             System.out.println(openAiParameters.metadata());

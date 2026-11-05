@@ -2,10 +2,35 @@ package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import org.junit.jupiter.api.Test;
 
 class GoogleAiGeminiChatRequestParametersTest {
+
+    @Test
+    void should_expose_and_merge_seed() {
+        GoogleAiGeminiChatRequestParameters original =
+                GoogleAiGeminiChatRequestParameters.builder().seed(42).build();
+        GoogleAiGeminiChatRequestParameters override =
+                GoogleAiGeminiChatRequestParameters.builder().seed(7).build();
+        ChatRequestParameters parameters = original;
+
+        assertThat(parameters.seed()).isEqualTo(42);
+        assertThat(original.overrideWith(override).seed()).isEqualTo(7);
+        assertThat(original.overrideWith(DefaultChatRequestParameters.EMPTY).seed())
+                .isEqualTo(42);
+        assertThat(original.defaultedBy(override).seed()).isEqualTo(42);
+        assertThat(GoogleAiGeminiChatRequestParameters.EMPTY
+                        .defaultedBy(original)
+                        .seed())
+                .isEqualTo(42);
+        assertThat(GoogleAiGeminiChatRequestParameters.EMPTY.seed()).isNull();
+        assertThat(original)
+                .isEqualTo(
+                        GoogleAiGeminiChatRequestParameters.builder().seed(42).build());
+        assertThat(original).isNotEqualTo(override);
+    }
 
     @Test
     void should_build_with_gemini_specific_parameters() {
