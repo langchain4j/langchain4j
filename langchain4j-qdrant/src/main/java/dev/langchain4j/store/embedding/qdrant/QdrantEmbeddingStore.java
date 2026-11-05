@@ -162,6 +162,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             client.upsertAsync(collectionName, points).get();
         } catch (InterruptedException | ExecutionException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
@@ -193,6 +194,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .build())
                     .get();
         } catch (InterruptedException | ExecutionException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
@@ -211,6 +213,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .build())
                     .get();
         } catch (InterruptedException | ExecutionException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
@@ -240,6 +243,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         try {
             results = client.queryAsync(queryBuilder.build()).get();
         } catch (InterruptedException | ExecutionException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 
@@ -272,6 +276,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .build())
                     .get();
         } catch (InterruptedException | ExecutionException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
