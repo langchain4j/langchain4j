@@ -67,7 +67,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // .googleCredentials(...) // Optional: explicitly provide credentials
     .projectId("your-google-cloud-project-id")
     .location("us-central1")
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 ```
 
@@ -75,13 +75,13 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-4-argon`
+* `gemini-3.8-flash`
+* `gemini-3.5-flash`
+* `gemini-3.5-flash-lite`
 * `gemini-3.1-pro-preview`
 * `gemini-3.1-flash-lite`
-* `gemini-3-pro-preview`
 * `gemini-3-flash-preview`
-* `gemini-2.5-pro`
-* `gemini-2.5-flash`
-* `gemini-2.5-flash-lite`
 
 (See the [official documentation](https://ai.google.dev/gemini-api/docs/models) for the full list of specialized preview models like `-image`, `-tts`, and `-live`).
 
@@ -92,7 +92,7 @@ The usual `chat(...)` methods are available:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 String response = gemini.chat("Hello Gemini!");
@@ -103,7 +103,7 @@ As well as the `ChatResponse chat(ChatRequest req)` method:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse chatResponse = gemini.chat(ChatRequest.builder()
@@ -122,7 +122,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // or .googleCredentials(...)
     .projectId(...)
     .location(...)
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .temperature(1.0)
     .topP(0.95)
     .topK(64)
@@ -155,7 +155,7 @@ ones while the per-request tools and system instruction are preserved.
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
     .build();
 ```
@@ -171,7 +171,7 @@ To capture these logs, configure `.logRequests(true)`, `.logResponses(true)` (or
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .logRequests(true)
     .logResponses(true)
     // Or: .logRequestsAndResponses(true)
@@ -265,7 +265,7 @@ The response must be handled by a `StreamingChatResponseHandler`.
 ```java
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-        .modelName("gemini-2.5-flash")
+        .modelName("gemini-3.8-flash")
         .build();
 
 CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -304,7 +304,7 @@ ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // or yo
 
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .executor(executor)
     .build();
 ```
@@ -329,7 +329,7 @@ WeatherForecastService weatherForecastService = new WeatherForecastService();
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .temperature(0.0)
     .build();
 
@@ -415,7 +415,7 @@ interface WeatherForecastAssistant {
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 WeatherForecastAssistant forecastAssistant = AiServices.builder(WeatherForecastAssistant.class)
@@ -444,7 +444,7 @@ String cachedContentUri = "projects/123456/locations/us-central1/cachedContents/
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-pro")
+    .modelName("gemini-3.1-pro-preview")
     .cachedContent(cachedContentUri)
     .build();
 
@@ -465,7 +465,7 @@ GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
 
 // Cache a large, reusable context (a system instruction plus a long document)
 CachedContent cache = caches.createCache(
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
     List.of(
         SystemMessage.from("You are a precise assistant answering questions about the attached document."),
         UserMessage.from(longDocumentText)),
@@ -474,7 +474,7 @@ CachedContent cache = caches.createCache(
 // Reuse it across many requests via cachedContent
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .cachedContent(cache.name().orElseThrow())
     .build();
 
@@ -490,13 +490,13 @@ caches.deleteCache(cache.name().orElseThrow());
 
 ## Thinking Models (Gemini 3.0+)
 
-Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
+Gemini 3 models (like `gemini-3.1-pro-preview` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
 You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.0-pro")
+    .modelName("gemini-3.1-pro-preview")
     .thinkingLevel("MEDIUM")
     .build();
 ```
@@ -569,7 +569,7 @@ via `GoogleGenAiChatRequestParameters`:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .automaticContinuation(false)
     .build();
 ```
@@ -684,7 +684,7 @@ You can create batch jobs inline or from an uploaded file on Google Cloud.
 ```java
 GoogleGenAiBatchChatModel batchChatModel = GoogleGenAiBatchChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 BatchResponse<ChatResponse> batchResponse = batchChatModel.submit(
@@ -707,7 +707,7 @@ If you enable Google Search grounding or use a Vertex AI Search datastore, the G
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .enableGoogleSearch(true)
     .build();
 
@@ -740,7 +740,7 @@ You can apply custom key-value labels to your Google Gen AI requests, which can 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .labels(Map.of("environment", "production", "team", "backend"))
     .build();
 ```
@@ -774,7 +774,7 @@ String uploadedFileUri = fileApi.uploadFile(
 // You can now use this URI in your chat requests
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse response = gemini.chat(ChatRequest.builder()
@@ -792,7 +792,7 @@ The integration fully supports LangChain4j's multimodal content types. The under
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse response = gemini.chat(ChatRequest.builder()
@@ -929,7 +929,7 @@ You can accurately estimate the number of tokens in your prompts and messages us
 ```java
 TokenCountEstimator estimator = GoogleGenAiTokenCountEstimator.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 int tokenCount = estimator.estimateTokenCount("How many tokens is this sentence?");
