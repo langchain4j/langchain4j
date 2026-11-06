@@ -20,6 +20,11 @@ class AgentUtilTest {
 
     record Person(String name, int age, Address address) {}
 
+    enum Category {
+        LEGAL,
+        MEDICAL
+    }
+
     @Test
     void should_pass_string_argument_as_is() throws Exception {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
@@ -100,6 +105,51 @@ class AgentUtilTest {
                 AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(byte.class, "count")));
 
         assertThat(args.positionalArgs()[0]).isEqualTo((byte) 42);
+    }
+
+    @Test
+    void should_coerce_string_to_enum() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", "LEGAL");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.LEGAL);
+    }
+
+    @Test
+    void should_coerce_string_to_enum_ignoring_case_and_surrounding_whitespace() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", " medical ");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.MEDICAL);
+    }
+
+    @Test
+    void should_still_read_json_string_as_enum() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", "\"LEGAL\"");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.LEGAL);
+    }
+
+    @Test
+    void should_throw_when_string_is_not_an_enum_constant() {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", "SPORTS");
+
+        assertThatThrownBy(() -> AgentUtil.agentInvocationArguments(
+                        scope, List.of(new AgentArgument(Category.class, "category"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'category'")
+                .hasMessageNotContaining("SPORTS");
     }
 
     @Test
