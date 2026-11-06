@@ -56,11 +56,12 @@ public class DeclarativeUtil {
 
     /**
      * Applies the static helper methods of the given agent type to its builder, when the builder is created
-     * programmatically: the chat model is left to the builder.
+     * programmatically: the chat model is left to the builder, and a non-static helper is an error, since the builder
+     * has no helper objects.
      */
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
         configureAgent(
-                AgentHelpers.staticOnly(agentType),
+                AgentHelpers.of(agentType, List.of()),
                 null,
                 true,
                 agentBuilder,
@@ -228,7 +229,7 @@ public class DeclarativeUtil {
     }
 
     public static void configureDecisionAgent(Class<?> agentType, DecisionAgentBuilder<?> builder) {
-        configureDecisionAgentFeatures(AgentHelpers.staticOnly(agentType), builder);
+        configureDecisionAgentFeatures(AgentHelpers.of(agentType, List.of()), builder);
     }
 
     /**

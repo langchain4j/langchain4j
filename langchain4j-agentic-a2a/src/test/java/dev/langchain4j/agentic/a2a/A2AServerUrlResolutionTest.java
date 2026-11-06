@@ -139,7 +139,8 @@ class A2AServerUrlResolutionTest {
     void should_fail_when_supplier_is_not_static() {
         assertThatThrownBy(() ->
                 AgenticServices.createAgenticSystem(A2AWithNonStaticSupplier.class, (ChatModel) null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("@A2AServerUrlSupplier");
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@A2AServerUrlSupplier")
+                .hasMessageContaining("is not static: make it static, or provide the agent as one of its helper objects");
     }
 }

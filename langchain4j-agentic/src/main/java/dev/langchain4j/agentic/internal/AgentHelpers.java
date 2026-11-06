@@ -1,7 +1,32 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
+import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
+import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.declarative.BeforeCall;
+import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
+import dev.langchain4j.agentic.declarative.ChatMemorySupplier;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.ContentRetrieverSupplier;
+import dev.langchain4j.agentic.declarative.DecisionModelSupplier;
+import dev.langchain4j.agentic.declarative.DecisionThresholdSupplier;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
+import dev.langchain4j.agentic.declarative.ErrorHandler;
+import dev.langchain4j.agentic.declarative.ExitCondition;
+import dev.langchain4j.agentic.declarative.McpClientSupplier;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.PlannerSupplier;
+import dev.langchain4j.agentic.declarative.RetrievalAugmentorSupplier;
+import dev.langchain4j.agentic.declarative.StreamingChatModelSupplier;
+import dev.langchain4j.agentic.declarative.SupervisorRequest;
+import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.ToolProviderSupplier;
+import dev.langchain4j.agentic.declarative.ToolSearchStrategySupplier;
+import dev.langchain4j.agentic.declarative.ToolsSupplier;
+import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -23,9 +48,44 @@ import java.util.function.Predicate;
  * configuration error. When the static helpers have already been applied to a builder, as by the constructor of a
  * workflow builder, the instance given by {@link #instanceOnly} still detects the conflicts but only returns the
  * instance helpers.
+ * <p>
+ * A helper declared by the agent type itself that is not static needs one of the helper objects to be invoked on,
+ * an instance of its declaring class, typically the agent bean of a container: {@link #checkNonStaticHelpers}
+ * rejects the agent otherwise, instead of skipping the helper silently.
  */
 @Internal
 public final class AgentHelpers {
+
+    /**
+     * The annotations marking the helper methods of a declarative agent, as opposed to the ones marking its agent
+     * method and the parameters.
+     */
+    public static final List<Class<? extends Annotation>> HELPER_ANNOTATIONS = List.of(
+            ChatModelSupplier.class,
+            StreamingChatModelSupplier.class,
+            DecisionModelSupplier.class,
+            DecisionThresholdSupplier.class,
+            ToolsSupplier.class,
+            ToolProviderSupplier.class,
+            ToolSearchStrategySupplier.class,
+            ContentRetrieverSupplier.class,
+            RetrievalAugmentorSupplier.class,
+            ChatMemorySupplier.class,
+            ChatMemoryProviderSupplier.class,
+            AgentListenerSupplier.class,
+            SystemMessageProviderSupplier.class,
+            UserMessageProviderSupplier.class,
+            McpClientSupplier.class,
+            PlannerSupplier.class,
+            A2AServerUrlSupplier.class,
+            A2AClientCustomizer.class,
+            ParallelExecutor.class,
+            ExitCondition.class,
+            ActivationCondition.class,
+            Output.class,
+            BeforeCall.class,
+            ErrorHandler.class,
+            SupervisorRequest.class);
 
     private final Class<?> agentType;
     private final List<Object> helperObjects;
@@ -45,18 +105,50 @@ public final class AgentHelpers {
     }
 
     /**
-     * The helpers of an agent: its static methods and the instance methods of the given helper objects.
+     * The helpers of an agent: its static methods and the instance methods of the given helper objects, which are
+     * all the ones of the agent, so a non-static helper of the type without an object to be invoked on is rejected.
      */
     public static AgentHelpers of(Class<?> agentType, List<Object> helperObjects) {
-        return new AgentHelpers(agentType, helperObjects, false);
+        AgentHelpers helpers = new AgentHelpers(agentType, helperObjects, false);
+        checkNonStaticHelpers(agentType, helpers.helperObjects);
+        return helpers;
     }
 
     /**
      * The helpers of an agent whose static methods have already been applied: the lookups return the instance
-     * methods of the given helper objects only, but a conflict with a static method is still an error.
+     * methods of the given helper objects only, but a conflict with a static method is still an error. The builders
+     * using it check the non-static helpers of the type with {@link #checkNonStaticHelpers} when they build the
+     * agent.
      */
     public static AgentHelpers instanceOnly(Class<?> agentType, List<Object> helperObjects) {
         return new AgentHelpers(agentType, helperObjects, true);
+    }
+
+    /**
+     * Checks that every non-static method of the agent type annotated with a helper annotation has an object to be
+     * invoked on: one of the helper objects must be an instance of its declaring class, typically the agent itself
+     * when it is the bean of a container.
+     *
+     * @throws AgenticSystemConfigurationException if such a method has none, instead of skipping it silently
+     */
+    public static void checkNonStaticHelpers(Class<?> agentType, List<Object> helperObjects) {
+        for (Method method : methodsAnnotatedWith(agentType, HELPER_ANNOTATIONS)) {
+            if (!Modifier.isStatic(method.getModifiers())
+                    && helperObjects.stream().noneMatch(method.getDeclaringClass()::isInstance)) {
+                throw new AgenticSystemConfigurationException("The method " + method + " of the agent "
+                        + agentType.getName() + " is annotated with @" + helperAnnotationOf(method).getSimpleName()
+                        + " but it is not static: make it static, or provide the agent as one of its helper objects.");
+            }
+        }
+    }
+
+    private static Class<? extends Annotation> helperAnnotationOf(Method method) {
+        for (Class<? extends Annotation> annotation : HELPER_ANNOTATIONS) {
+            if (method.isAnnotationPresent(annotation)) {
+                return annotation;
+            }
+        }
+        throw new IllegalStateException("No helper annotation on " + method);
     }
 
     public Class<?> agentType() {

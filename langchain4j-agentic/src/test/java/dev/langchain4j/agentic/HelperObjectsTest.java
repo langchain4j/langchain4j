@@ -1253,6 +1253,75 @@ class HelperObjectsTest {
         assertThat(rootResolutions).hasValue(1);
     }
 
+    // ── A non-static helper on the agent type needs a helper object that is an instance of its declaring class ──
+
+    public interface ChattyAgent {
+
+        @dev.langchain4j.service.UserMessage("Chat about {{topic}}")
+        @Agent(outputKey = "chat")
+        String chat(@V("topic") String topic);
+
+        @ChatModelSupplier
+        default ChatModel chatModel() {
+            return scriptedModel("never used");
+        }
+    }
+
+    public interface Chat {
+
+        @SequenceAgent(outputKey = "chat", subAgents = ChattyAgent.class)
+        String run(@V("topic") String topic);
+    }
+
+    @Test
+    void non_static_helper_on_an_ai_agent_type_without_helper_object_is_rejected() {
+        // the agent would otherwise run silently with the chat model of its parent
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(Chat.class, echoModel()))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@ChatModelSupplier")
+                .hasMessageContaining("chatModel")
+                .hasMessageContaining(
+                        "is not static: make it static, or provide the agent as one of its helper objects");
+    }
+
+    @Test
+    void non_static_helper_on_a_workflow_agent_type_without_helper_object_is_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(LoopWithDefaultExit.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@ExitCondition")
+                .hasMessageContaining("reached");
+        // the programmatic builder of the same type has no helper objects either
+        assertThatThrownBy(() -> AgenticServices.loopBuilder(LoopWithDefaultExit.class)
+                        .subAgents(Counter.class)
+                        .build())
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@ExitCondition");
+    }
+
+    public interface ExitRule {
+
+        @ExitCondition
+        default boolean reached(@V("count") int count) {
+            return count >= 2;
+        }
+    }
+
+    public interface LoopWithInheritedExit extends ExitRule {
+
+        @LoopAgent(outputKey = "count", maxIterations = 10, subAgents = Counter.class)
+        int count(@V("count") int count);
+    }
+
+    @Test
+    void helper_object_can_be_an_instance_of_the_interface_declaring_the_non_static_helper() {
+        ExitRule rule = new ExitRule() {};
+
+        LoopWithInheritedExit loop = AgenticServices.createAgenticSystem(
+                LoopWithInheritedExit.class, rootHelpers(LoopWithInheritedExit.class, rule));
+
+        assertThat(loop.count(0)).isEqualTo(2);
+    }
+
     // ── Conflicts ──
 
     public interface CountingLoopWithStaticExit {

@@ -61,6 +61,8 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected Executor executor;
 
+    protected List<Object> helperObjects = List.of();
+
     protected AbstractServiceBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
         this.agenticMethod = agenticMethod;
@@ -178,6 +180,7 @@ public abstract class AbstractServiceBuilder<T, S> {
      * of an {@link AgenticServices.AgentConfigurator}.
      */
     public S helperObjects(List<Object> helperObjects) {
+        this.helperObjects = helperObjects;
         applyHelperObjects(helperObjects);
         return (S) this;
     }
@@ -194,6 +197,8 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
+        // the helper objects are all known only now: a non-static helper of the type needs one to be invoked on
+        AgentHelpers.checkNonStaticHelpers(agentServiceClass, helperObjects);
         AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
         if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
             monitor = new AgentMonitor();
