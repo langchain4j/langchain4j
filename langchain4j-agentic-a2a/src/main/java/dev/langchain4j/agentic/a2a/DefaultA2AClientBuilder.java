@@ -36,6 +36,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +62,9 @@ import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
 import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.http.A2ACardResolver;
+import org.a2aproject.sdk.client.http.A2AHttpClient;
 import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
+import org.a2aproject.sdk.client.http.JdkA2AHttpClient;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.a2aproject.sdk.spec.A2AClientError;
@@ -107,6 +110,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private String description;
     private InternalAgent parent;
     private String tenant;
+    private Duration agentCardTimeout = Duration.ofSeconds(60);
 
     private String[] inputKeys;
     private String outputKey;
@@ -154,18 +158,27 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.clientFactory = clientFactory != null ? clientFactory : this::buildClient;
     }
 
-    private static A2ACardResolver cardResolver(String a2aServerUrl, String tenant) {
+    private A2AHttpClient agentCardHttpClient() {
+        A2AHttpClient client = A2AHttpClientFactory.create();
+        // Preserve SDK SPI providers and their own timeout configuration.
+        return client.getClass() == JdkA2AHttpClient.class
+                ? new JdkA2AHttpClient(new AgentCardHttpClient(() -> agentCardTimeout))
+                : client;
+    }
+
+    private A2ACardResolver cardResolver(String a2aServerUrl, String tenant) {
         A2ACardResolver cardResolver;
         try {
             cardResolver = A2ACardResolver.builder()
-                    .httpClient(A2AHttpClientFactory.create())
+                    .httpClient(agentCardHttpClient())
                     .baseUrl(a2aServerUrl)
                     .agentCardPath(null)
                     .tenant(tenant)
                     .authHeaders(null)
                     .build();
         } catch (A2AClientError | IllegalArgumentException e) {
-            String invalidValue = "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
+            String invalidValue =
+                    "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
             throw new AgenticSystemConfigurationException("Invalid " + invalidValue + ": " + e.getMessage(), e);
         }
         URI uri = URI.create(a2aServerUrl);
@@ -254,7 +267,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
 
         if (description == null) {
-            description = agentMethod().map(DefaultA2AClientBuilder::annotatedDescription).orElse(null);
+            description = agentMethod()
+                    .map(DefaultA2AClientBuilder::annotatedDescription)
+                    .orElse(null);
         }
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out
         agentId();
@@ -877,6 +892,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.AI_AGENT;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> agentCardTimeout(Duration timeout) {
+        if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+            throw new IllegalArgumentException("agentCardTimeout must be positive");
+        }
+        this.agentCardTimeout = timeout;
+        return this;
     }
 
     @Override

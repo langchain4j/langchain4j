@@ -4,6 +4,7 @@ import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -137,6 +138,18 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     A2AClientBuilder<T> streamingClientListener(A2AStreamingClientListener<?> clientListener);
+
+    /**
+     * Sets the HTTP timeout for fetching the remote agent card (default: 60 seconds).
+     * This applies to the default JDK card client, independently of remote agent execution.
+     * Custom A2A SDK HTTP providers keep their own timeout configuration. Failed fetches remain retryable.
+     *
+     * @param timeout a positive duration
+     * @return this builder
+     */
+    default A2AClientBuilder<T> agentCardTimeout(Duration timeout) {
+        throw new UnsupportedOperationException("Agent-card timeouts are not supported by this builder");
+    }
 
     /**
      * Sets the tenant identifier that will be sent with every A2A message.
