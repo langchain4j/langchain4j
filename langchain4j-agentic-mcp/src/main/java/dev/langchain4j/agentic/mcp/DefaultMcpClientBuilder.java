@@ -57,6 +57,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
     private final Class<T> agentServiceClass;
+    private final Optional<Method> agentMethod;
     private Supplier<McpClient> mcpClientSupplier;
     private final ReentrantLock lazyInitLock = new ReentrantLock();
 
@@ -84,6 +85,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     DefaultMcpClientBuilder(Supplier<McpClient> mcpClientSupplier, Class<T> agentServiceClass) {
         this.mcpClientSupplier = mcpClientSupplier;
         this.agentServiceClass = agentServiceClass;
+        this.agentMethod = agentMethod(agentServiceClass);
     }
 
     @Override
@@ -141,11 +143,14 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     @Override
     public T build() {
         if (description == null) {
-            description = agentMethod().map(DefaultMcpClientBuilder::annotatedDescription).orElse(null);
+            description = agentMethod.map(DefaultMcpClientBuilder::annotatedDescription).orElse(null);
         }
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out, and the
         // arguments are the local ones until the tool is resolved
-        agentId();
+        if (name == null) {
+            name = defaultName();
+        }
+        agentId = name;
         if (placeholderName) {
             LOG.warn(
                     "The MCP client agent has neither a name nor a tool name and is named with the placeholder '{}': "
@@ -175,10 +180,10 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     private List<AgentArgument> typedArguments() {
-        return agentMethod().map(AgentUtil::argumentsFromMethod).orElse(List.of());
+        return agentMethod.map(AgentUtil::argumentsFromMethod).orElse(List.of());
     }
 
-    private Optional<Method> agentMethod() {
+    private static Optional<Method> agentMethod(Class<?> agentServiceClass) {
         if (agentServiceClass == UntypedAgent.class) {
             return Optional.empty();
         }
@@ -450,7 +455,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public void appendId(String idSuffix) {
-        this.agentId = agentId() + idSuffix;
+        this.agentId = agentId + idSuffix;
     }
 
     @Override
@@ -469,21 +474,17 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     /**
-     * The name is always known locally, without contacting the MCP server: it is the explicit one, else the one of
-     * the annotation of the agent method, else the name of that method for a typed agent, else the configured tool
-     * name for an untyped agent, else a placeholder. It never changes afterwards, not even when the tool is resolved,
-     * because the agent id is derived from it.
+     * The name, fixed by {@link #build()}, is always known locally, without contacting the MCP server: it is the
+     * explicit one, else the one of the annotation of the agent method, else the name of that method for a typed
+     * agent, else the configured tool name for an untyped agent, else a placeholder. It never changes afterwards, not
+     * even when the tool is resolved, because the agent id is derived from it.
      */
     @Override
     public String name() {
-        if (name == null) {
-            name = defaultName();
-        }
         return name;
     }
 
     private String defaultName() {
-        Optional<Method> agentMethod = agentMethod();
         if (agentMethod.isPresent()) {
             String annotatedName = annotatedName(agentMethod.get());
             return isNullOrBlank(annotatedName) ? agentMethod.get().getName() : annotatedName;
@@ -498,9 +499,6 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public String agentId() {
-        if (agentId == null) {
-            agentId = name();
-        }
         return agentId;
     }
 
