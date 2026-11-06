@@ -146,8 +146,9 @@ class HelperObjectsTest {
 
     /** The configurator of an integration providing the given helper objects to the agents of the given type only. */
     static AgentConfigurator rootHelpers(Class<?> rootAgentType, Object... helperObjects) {
-        return new AgentConfigurator(
-                ctx -> {}, null, null, null, type -> type == rootAgentType ? List.of(helperObjects) : List.of());
+        return AgentConfigurator.builder()
+                .helperObjectsResolver(type -> type == rootAgentType ? List.of(helperObjects) : List.of())
+                .build();
     }
 
     // ── Services provided by the resolver ──
@@ -1237,13 +1238,17 @@ class HelperObjectsTest {
         register(Persona.class, new Persona("translator"));
         RephrasingModel rephrasingModel = new RephrasingModel();
         AtomicInteger rootResolutions = new AtomicInteger();
-        var configurator = new AgentConfigurator(ctx -> {}, null, null, null, type -> {
-            if (type != Rephrasing.class) {
-                return List.of();
-            }
-            rootResolutions.incrementAndGet();
-            return List.of(rephrasingModel);
-        });
+        // the beans of a container come as a list of their own type, not as a List<Object>
+        List<RephrasingModel> beans = List.of(rephrasingModel);
+        var configurator = AgentConfigurator.builder()
+                .helperObjectsResolver(type -> {
+                    if (type != Rephrasing.class) {
+                        return List.of();
+                    }
+                    rootResolutions.incrementAndGet();
+                    return beans;
+                })
+                .build();
 
         Rephrasing rephrasing = AgenticServices.createAgenticSystem(Rephrasing.class, configurator);
 

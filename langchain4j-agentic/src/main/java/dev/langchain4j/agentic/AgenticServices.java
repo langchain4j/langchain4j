@@ -82,6 +82,7 @@ import dev.langchain4j.model.decision.DecisionModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -417,13 +418,16 @@ public class AgenticServices {
      * would run on the proxy, without its injected fields. A helper method declared by the agent type itself that is
      * not static needs one of the helper objects to be invoked on, an instance of its declaring class, typically the
      * agent bean: the agentic system fails to build otherwise, instead of skipping the helper silently.
+     * <p>
+     * Create a configurator with {@link #builder()}, setting only the hooks needed: the constructors are kept, but
+     * each hook added to the record adds a positional component to them.
      */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
             Function<InternalAgent, Object> agentInstanceFactory,
             Supplier<Object> defaultMemoryIdSupplier,
-            Function<Class<?>, List<Object>> helperObjectsResolver) {
+            Function<Class<?>, List<?>> helperObjectsResolver) {
 
         private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {});
 
@@ -451,6 +455,13 @@ public class AgenticServices {
         }
 
         /**
+         * A builder of a configurator: every hook is optional, and the {@code configurator} does nothing by default.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /**
          * The helper objects of the given agent type returned by the {@code helperObjectsResolver}, or an empty list
          * when there is no resolver or it returns nothing.
          */
@@ -458,8 +469,53 @@ public class AgenticServices {
             if (helperObjectsResolver == null) {
                 return List.of();
             }
-            List<Object> helperObjects = helperObjectsResolver.apply(agentType);
-            return helperObjects == null ? List.of() : helperObjects;
+            List<?> helperObjects = helperObjectsResolver.apply(agentType);
+            return helperObjects == null ? List.of() : new ArrayList<>(helperObjects);
+        }
+
+        public static final class Builder {
+
+            private Consumer<DeclarativeAgentCreationContext<?>> configurator = ctx -> {};
+            private Function<Class<?>, Object> subAgentResolver;
+            private Function<InternalAgent, Object> agentInstanceFactory;
+            private Supplier<Object> defaultMemoryIdSupplier;
+            private Function<Class<?>, List<?>> helperObjectsResolver;
+
+            private Builder() {}
+
+            public Builder configurator(Consumer<DeclarativeAgentCreationContext<?>> configurator) {
+                this.configurator = configurator;
+                return this;
+            }
+
+            public Builder subAgentResolver(Function<Class<?>, Object> subAgentResolver) {
+                this.subAgentResolver = subAgentResolver;
+                return this;
+            }
+
+            public Builder agentInstanceFactory(Function<InternalAgent, Object> agentInstanceFactory) {
+                this.agentInstanceFactory = agentInstanceFactory;
+                return this;
+            }
+
+            public Builder defaultMemoryIdSupplier(Supplier<Object> defaultMemoryIdSupplier) {
+                this.defaultMemoryIdSupplier = defaultMemoryIdSupplier;
+                return this;
+            }
+
+            public Builder helperObjectsResolver(Function<Class<?>, List<?>> helperObjectsResolver) {
+                this.helperObjectsResolver = helperObjectsResolver;
+                return this;
+            }
+
+            public AgentConfigurator build() {
+                return new AgentConfigurator(
+                        configurator,
+                        subAgentResolver,
+                        agentInstanceFactory,
+                        defaultMemoryIdSupplier,
+                        helperObjectsResolver);
+            }
         }
 
         /**
