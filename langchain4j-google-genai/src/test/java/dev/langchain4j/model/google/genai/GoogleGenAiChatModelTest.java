@@ -20,6 +20,7 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -512,6 +513,50 @@ class GoogleGenAiChatModelTest {
         assertThat(response.aiMessage().text())
                 .isEqualTo("Code executed:\n```python\nprint(6 * 7)\n```\n\nOutput:\n```\n42\n```\n\n"
                         + "6 times 7 is 42.");
+    }
+
+    @Test
+    void should_include_server_side_tool_invocations_on_the_gemini_developer_api() throws Exception {
+        Models models = mockModels();
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(responseWithParts(Part.fromText("42")));
+
+        modelWithGoogleSearch(clientWith(models)).chat(chatRequestWithFunction());
+
+        assertThat(configCaptor.getValue().toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .hasValue(true);
+    }
+
+    @Test
+    void should_not_include_server_side_tool_invocations_on_vertex_ai() throws Exception {
+        Models models = mockModels();
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(responseWithParts(Part.fromText("42")));
+        Client client = clientWith(models);
+        when(client.vertexAI()).thenReturn(true);
+
+        modelWithGoogleSearch(client).chat(chatRequestWithFunction());
+
+        assertThat(configCaptor.getValue().toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .isEmpty();
+    }
+
+    private static GoogleGenAiChatModel modelWithGoogleSearch(Client client) {
+        return GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableGoogleSearch(true)
+                .build();
+    }
+
+    private static ChatRequest chatRequestWithFunction() {
+        return ChatRequest.builder()
+                .messages(UserMessage.from("When was the Eiffel Tower completed?"))
+                .toolSpecifications(
+                        ToolSpecification.builder().name("record_fact").build())
+                .build();
     }
 
     private static Models mockModels() {
