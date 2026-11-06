@@ -707,6 +707,78 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+The root call of the agentic system does not wait either for an asynchronous agent whose result nobody reads: it returns as soon as the other agents are done, while that agent is still running, and the `AgenticScope` is ended at that point as for any other root call, without waiting for it. This makes it possible to delegate a long side task to the last agent of a workflow, like a fix delegated to a remote coding agent that takes minutes, while the workflow returns its own result in seconds:
+
+```java
+RemediationAgent remediation = AgenticServices
+        .a2aBuilder(REMEDIATION_SERVER_URL, RemediationAgent.class)
+        .async(true)
+        .outputKey("fix")
+        .listener(new AgentListener() {
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                // called when the remediation completes, after analyze(...) returned
+                notifyTeam(response.output());
+            }
+        })
+        .build();
+
+RolloutAnalysis analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysis.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+String decision = analysis.analyze(rollout); // returns while the remediation is still running
+```
+
+The result of such an agent reaches you in two ways:
+
+- the `afterAgentInvocation` of its `AgentListener` is called when the agent completes. This is the way to consume it, which is why the listener is registered on the agent itself in the example above.
+- the result is written to the `AgenticScope` under the output key of the agent, where a later root call on the same memory id can read it.
+
+To wait for such an agent anyway, for example in a test, call the agentic system through a method returning a `ResultWithAgenticScope` and read the output key of the agent: `readState` waits until the agent completes.
+
+```java
+public interface RolloutAnalysisWithScope {
+
+    @Agent
+    ResultWithAgenticScope<String> analyze(@V("rollout") String rollout);
+}
+
+RolloutAnalysisWithScope analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysisWithScope.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+ResultWithAgenticScope<String> result = analysis.analyze(rollout); // returns while the remediation is still running
+String fix = result.agenticScope().readState("fix", ""); // waits for the remediation to complete
+```
+
+When such an agent fails:
+
+- the error handler of the agentic system handles the failure, on the thread of the agent, and the `onAgentInvocationError` of its listener is notified. The root call has already returned its result, so no compensation runs for it.
+- an `AgentMonitor` records the execution as failed, unless the error handler recovered the failure.
+- reading the result of the failed agent throws its failure, until the next root call on the same memory id starts and drops it. A saved copy of the `AgenticScope` never contains it.
+
+When such an agent suspends the agentic system, like an A2A client agent whose remote task needs more input:
+
+- its pending response is left in the `AgenticScope`, as for a synchronous agent, and an agent reading its result suspends the agentic system as usual.
+- when the root call returns without noticing the suspension, it cannot throw the `AgenticSystemSuspendedException` to its caller, so the `onAgenticSystemSuspended` of the listener of the agentic system is notified instead. The next root call on the same memory id resumes from the pending response once it is completed, or suspends again otherwise.
+
+The `AgenticScope` and the later root calls behave as follows:
+
+- an ephemeral `AgenticScope` is destroyed at the end of the root call as usual, so `beforeAgenticScopeDestroyed` is notified before the events of the asynchronous agents of that scope still running. These agents keep writing their results to it, where the caller can read them through a `ResultWithAgenticScope`.
+- a persistent `AgenticScope` is saved at the end of the root call without the pending results, and again when each of them completes.
+- a later root call on the same memory id waits for the asynchronous agents of the previous call still running before it starts, so that only one root call at a time runs on an `AgenticScope`. A caller invoking the same memory id again right after the previous call returned may therefore block until they complete.
+
+Also note that:
+
+- asynchronous agents run on the default executor of LangChain4j, so their pending work is lost when the JVM exits.
+- when the root call ends while some asynchronous agents are still running, the `AgenticScope` logs their output keys at debug level. This tells whether the root call was blocked by an asynchronous agent or returned without waiting for it.
+- the `output` function or the output key of the root agent reads the `AgenticScope` like any other agent does: an asynchronous agent whose result they read is awaited before the root call returns, as in the evening planner example above.
+
 ## Streaming agents
 
 In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 

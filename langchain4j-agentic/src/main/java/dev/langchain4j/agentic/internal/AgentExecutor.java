@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentSkipped;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
@@ -8,6 +9,8 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -66,6 +69,34 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 yield completeAgentInvocation(recoveryResult.result(), agenticScope, planner, args);
             }
         };
+    }
+
+    /**
+     * Invokes an asynchronous agent on the thread of its executor. Its failure is reported to the listeners before
+     * the error handler runs, so a monitor learns only when the agent completes whether the failure was recovered,
+     * with a result or a successful retry, and keeps the execution ongoing until then.
+     */
+    private Object invokeAsync(
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner,
+            AgentInvocationArguments args,
+            AgentMonitor monitor) {
+        boolean failed = false;
+        try {
+            return agentInvoker.invoke(agenticScope, invokedAgent, args);
+        } catch (AgentInvocationException e) {
+            try {
+                return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
+            } catch (RuntimeException unrecovered) {
+                failed = true;
+                throw unrecovered;
+            }
+        } finally {
+            if (monitor != null) {
+                monitor.asyncAgentCompleted(agenticScope, agentId(), failed);
+            }
+        }
     }
 
     private Object internalExecute(
@@ -136,6 +167,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             Object stateValue = response instanceof ResultWithAgenticScope<?> r ? r.result() : response;
             agenticScope.writeState(outputKey, stateValue);
         }
+        if (response instanceof AsyncResponse<?> asyncResponse) {
+            // tracked only now, after the response has been written to the scope, so that the result of an agent
+            // completing before that write takes its place anyway
+            agenticScope.asyncPending(name(), outputKey, asyncResponse);
+        }
 
         Map<String, Object> namedArgs = args != null ? args.namedArgs() : Map.of();
         AgentInvocation agentInvocation = new AgentInvocation(
@@ -154,13 +190,14 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             AgentInvocationArguments args,
             boolean async) {
         if (async) {
-            return new AsyncResponse<>(() -> {
-                try {
-                    return agentInvoker.invoke(agenticScope, invokedAgent, args);
-                } catch (AgentInvocationException e) {
-                    return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
-                }
-            });
+            // a monitor learns about the submission on this thread, so that it nests the agent under its still
+            // ongoing parent also when the executor starts it after that parent completed, while the listeners are
+            // notified on the thread of the executor, as for every invocation
+            AgentMonitor monitor = listenerOfType(agentInvoker.listener(), AgentMonitor.class);
+            if (monitor != null) {
+                monitor.asyncAgentSubmitted(new AgentRequest(agenticScope, agentInvoker, args.namedArgs()));
+            }
+            return new AsyncResponse<>(() -> invokeAsync(agenticScope, invokedAgent, planner, args, monitor));
         }
 
         Object response = agentInvoker.invoke(agenticScope, invokedAgent, args);

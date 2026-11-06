@@ -280,7 +280,16 @@ public class DecisionAgentBuilder<T> {
 
     /**
      * Controls whether this agent executes asynchronously within an agentic system: the decision call then runs
-     * on the executor used for every asynchronous agent, and the agents reading its output wait for it.
+     * on the executor used for every asynchronous agent.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
+     *
+     * @param async {@code true} to run asynchronously
+     * @return this builder
      */
     public DecisionAgentBuilder<T> async(boolean async) {
         this.async = async;
