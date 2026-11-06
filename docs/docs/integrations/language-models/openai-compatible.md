@@ -45,12 +45,13 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, PopNow, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
+- [PopNow](#popnow)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -118,6 +119,24 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+## PopNow
+
+**Deployment:** SaaS (key required)
+
+**Description:** [PopNow](https://popnow.ai/api) is a pay-as-you-go API that serves Claude, GPT, Gemini, DeepSeek, Kimi and other chat models through one OpenAI-compatible endpoint, billed per token in USD. Model IDs follow the `<lab>/<model>/chat` format, for example `anthropic/claude-sonnet-5.5/chat` or `deepseek/v4-flash/chat`.
+
+**Setup:**
+To use PopNow, create an API key in the [PopNow API console](https://popnow.ai/api/console/keys) (keys start with `sk-popnow-`) and add funds to your API balance.
+
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.popnow.ai/v1")
+        .apiKey(System.getenv("POPNOW_API_KEY")) // Your actual key, e.g. "sk-popnow-..."
+        .modelName("google/gemini-3.7-flash/chat") // Or any other model offered by PopNow
+        .build();
+```
+You can find available model names and prices in the [PopNow chat API docs](https://popnow.ai/docs/chat).
 
 ## Groq
 
