@@ -9,6 +9,8 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.of;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -1437,6 +1439,28 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
         assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIMESTAMP)"))
                 .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
+    }
+
+    @Test
+    void should_read_clock_once_per_parse() {
+
+        Clock clock = mock(Clock.class);
+        when(clock.getZone()).thenReturn(UTC);
+        when(clock.instant())
+                .thenReturn(Instant.parse("2025-12-31T23:59:59Z"))
+                .thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
+        FilterParser parser = new SqlFilterParser(clock);
+
+        String sql = "year = YEAR(CURDATE()) AND month = MONTH(CURDATE())";
+
+        assertThat(parser.parse(sql))
+                .isEqualTo(metadataKey("year")
+                        .isEqualTo(2025L)
+                        .and(metadataKey("month").isEqualTo(12L)));
+        assertThat(parser.parse(sql))
+                .isEqualTo(metadataKey("year")
+                        .isEqualTo(2026L)
+                        .and(metadataKey("month").isEqualTo(1L)));
     }
 
     private long currentYear() {

@@ -81,7 +81,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 @Experimental
 public class SqlFilterParser implements FilterParser {
 
-    private final LocalDateTime localDateTime;
+    private final Clock clock;
 
     /**
      * Creates an instance of {@code SqlFilterParser}.
@@ -104,7 +104,7 @@ public class SqlFilterParser implements FilterParser {
      *              the provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
      */
     public SqlFilterParser(Clock clock) {
-        this.localDateTime = LocalDateTime.now(ensureNotNull(clock, "clock"));
+        this.clock = ensureNotNull(clock, "clock");
     }
 
     @Override
@@ -116,23 +116,24 @@ public class SqlFilterParser implements FilterParser {
 
         try {
             PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sql);
-            return mapParenthesis(select.getWhere());
+            // read the clock once, so that all date functions in the statement resolve to the same date and time
+            return mapParenthesis(select.getWhere(), LocalDateTime.now(clock));
         } catch (JSQLParserException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Filter mapParenthesis(Expression expression) {
+    private Filter mapParenthesis(Expression expression, LocalDateTime now) {
         if (expression instanceof BinaryExpression) {
-            return mapBinaryExpression((BinaryExpression) expression);
+            return mapBinaryExpression((BinaryExpression) expression, now);
         } else if (expression instanceof NotExpression) {
-            return new Not(mapParenthesis(((NotExpression) expression).getExpression()));
+            return new Not(mapParenthesis(((NotExpression) expression).getExpression(), now));
         } else if (expression instanceof Parenthesis) {
-            return mapParenthesis(((Parenthesis) expression).getExpression());
+            return mapParenthesis(((Parenthesis) expression).getExpression(), now);
         } else if (expression instanceof InExpression) {
-            return mapInExpression(((InExpression) expression));
+            return mapInExpression(((InExpression) expression), now);
         } else if (expression instanceof Between) {
-            return mapBetween(((Between) expression));
+            return mapBetween(((Between) expression), now);
         } else {
             throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
         }
@@ -148,29 +149,29 @@ public class SqlFilterParser implements FilterParser {
         }
     }
 
-    private Filter mapBinaryExpression(BinaryExpression exp) {
+    private Filter mapBinaryExpression(BinaryExpression exp, LocalDateTime now) {
         if (exp instanceof AndExpression) {
-            return new And(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
+            return new And(mapParenthesis(exp.getLeftExpression(), now), mapParenthesis(exp.getRightExpression(), now));
         } else if (exp instanceof OrExpression) {
-            return new Or(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
+            return new Or(mapParenthesis(exp.getLeftExpression(), now), mapParenthesis(exp.getRightExpression(), now));
         } else if (exp instanceof EqualsTo) {
-            return new IsEqualTo(getKey(exp), getValue(exp));
+            return new IsEqualTo(getKey(exp), getValue(exp, now));
         } else if (exp instanceof NotEqualsTo) {
-            return new IsNotEqualTo(getKey(exp), getValue(exp));
+            return new IsNotEqualTo(getKey(exp), getValue(exp, now));
         } else if (exp instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThan) {
-            return new IsGreaterThan(getKey(exp), getValue(exp));
+            return new IsGreaterThan(getKey(exp), getValue(exp, now));
         } else if (exp instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals) {
-            return new IsGreaterThanOrEqualTo(getKey(exp), getValue(exp));
+            return new IsGreaterThanOrEqualTo(getKey(exp), getValue(exp, now));
         } else if (exp instanceof MinorThan) {
-            return new IsLessThan(getKey(exp), getValue(exp));
+            return new IsLessThan(getKey(exp), getValue(exp, now));
         } else if (exp instanceof MinorThanEquals) {
-            return new IsLessThanOrEqualTo(getKey(exp), getValue(exp));
+            return new IsLessThanOrEqualTo(getKey(exp), getValue(exp, now));
         } else {
             throw illegalArgument("Unsupported expression: '%s'%s", exp, createGithubIssueLink(exp));
         }
     }
 
-    private Filter mapInExpression(InExpression inExpression) {
+    private Filter mapInExpression(InExpression inExpression, LocalDateTime now) {
         String key = getKey(inExpression.getLeftExpression());
 
         Expression rightExpression = inExpression.getRightExpression();
@@ -181,7 +182,7 @@ public class SqlFilterParser implements FilterParser {
 
         Collection<Object> comparisonValues = new ArrayList<>();
         for (Expression expression : expressionList) {
-            comparisonValues.add(getValue(expression));
+            comparisonValues.add(getValue(expression, now));
         }
 
         if (inExpression.isNot()) {
@@ -191,10 +192,10 @@ public class SqlFilterParser implements FilterParser {
         }
     }
 
-    private Filter mapBetween(Between between) {
+    private Filter mapBetween(Between between, LocalDateTime now) {
         String key = getKey(between.getLeftExpression());
-        Comparable<?> from = getValue(between.getBetweenExpressionStart());
-        Comparable<?> to = getValue(between.getBetweenExpressionEnd());
+        Comparable<?> from = getValue(between.getBetweenExpressionStart(), now);
+        Comparable<?> to = getValue(between.getBetweenExpressionEnd(), now);
         Filter range = new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
         return between.isNot() ? new Not(range) : range;
     }
@@ -226,11 +227,11 @@ public class SqlFilterParser implements FilterParser {
         throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
     }
 
-    private Comparable<?> getValue(BinaryExpression binaryExpression) {
-        return getValue(binaryExpression.getRightExpression());
+    private Comparable<?> getValue(BinaryExpression binaryExpression, LocalDateTime now) {
+        return getValue(binaryExpression.getRightExpression(), now);
     }
 
-    private Comparable<?> getValue(Expression expression) {
+    private Comparable<?> getValue(Expression expression, LocalDateTime now) {
         if (expression instanceof StringValue) {
             return ((StringValue) expression).getValue();
         } else if (expression instanceof LongValue) {
@@ -255,7 +256,7 @@ public class SqlFilterParser implements FilterParser {
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
                     Function function2 = (Function) parameters.get(0);
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentYear();
+                        return currentYear(now);
                     }
                 }
             } else if (function.getName().equalsIgnoreCase("MONTH")) {
@@ -263,14 +264,14 @@ public class SqlFilterParser implements FilterParser {
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
                     Function function2 = (Function) parameters.get(0);
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentMonth();
+                        return currentMonth(now);
                     }
                 }
             } else if (function.getName().equalsIgnoreCase("WEEKOFYEAR")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentWeekOfYear();
+                        return currentWeekOfYear(now);
                     }
                 }
             } else if (function.getName().equalsIgnoreCase("DAYOFYEAR")) {
@@ -278,21 +279,21 @@ public class SqlFilterParser implements FilterParser {
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
                     Function function2 = (Function) parameters.get(0);
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentDayOfYear();
+                        return currentDayOfYear(now);
                     }
                 }
             } else if (function.getName().equalsIgnoreCase("DAYOFMONTH")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentDayOfMonth();
+                        return currentDayOfMonth(now);
                     }
                 }
             } else if (function.getName().equalsIgnoreCase("DAYOFWEEK")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
                     if (function2.getName().equalsIgnoreCase("CURDATE")) {
-                        return currentDayOfWeek();
+                        return currentDayOfWeek(now);
                     }
                 }
             }
@@ -306,21 +307,21 @@ public class SqlFilterParser implements FilterParser {
                     String field = extractExpression.getName().toUpperCase(Locale.ROOT);
                     switch (field) {
                         case "YEAR":
-                            return currentYear();
+                            return currentYear(now);
                         case "MONTH":
-                            return currentMonth();
+                            return currentMonth(now);
                         case "WEEK":
-                            return currentWeekOfYear();
+                            return currentWeekOfYear(now);
                         case "DAY":
-                            return currentDayOfMonth();
+                            return currentDayOfMonth(now);
                         case "DOW":
-                            return currentDayOfWeek();
+                            return currentDayOfWeek(now);
                         case "DOY":
-                            return currentDayOfYear();
+                            return currentDayOfYear(now);
                         case "HOUR":
-                            return currentHour();
+                            return currentHour(now);
                         case "MINUTE":
-                            return currentMinute();
+                            return currentMinute(now);
                         // TODO add other
                     }
                 } else {
@@ -328,32 +329,32 @@ public class SqlFilterParser implements FilterParser {
                 }
             }
         } else if (expression instanceof Addition) {
-            Comparable<?> left = getValue(((Addition) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Addition) expression).getRightExpression());
+            Comparable<?> left = getValue(((Addition) expression).getLeftExpression(), now);
+            Comparable<?> right = getValue(((Addition) expression).getRightExpression(), now);
             if (left instanceof Long && right instanceof Long) {
                 return (Long) left + (Long) right;
             } else if (left instanceof Double && right instanceof Double) {
                 return (Double) left + (Double) right;
             }
         } else if (expression instanceof Subtraction) {
-            Comparable<?> left = getValue(((Subtraction) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Subtraction) expression).getRightExpression());
+            Comparable<?> left = getValue(((Subtraction) expression).getLeftExpression(), now);
+            Comparable<?> right = getValue(((Subtraction) expression).getRightExpression(), now);
             if (left instanceof Long && right instanceof Long) {
                 return (Long) left - (Long) right;
             } else if (left instanceof Double && right instanceof Double) {
                 return (Double) left - (Double) right;
             }
         } else if (expression instanceof Multiplication) {
-            Comparable<?> left = getValue(((Multiplication) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Multiplication) expression).getRightExpression());
+            Comparable<?> left = getValue(((Multiplication) expression).getLeftExpression(), now);
+            Comparable<?> right = getValue(((Multiplication) expression).getRightExpression(), now);
             if (left instanceof Long && right instanceof Long) {
                 return (Long) left * (Long) right;
             } else if (left instanceof Double && right instanceof Double) {
                 return (Double) left * (Double) right;
             }
         } else if (expression instanceof Division) {
-            Comparable<?> left = getValue(((Division) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Division) expression).getRightExpression());
+            Comparable<?> left = getValue(((Division) expression).getLeftExpression(), now);
+            Comparable<?> right = getValue(((Division) expression).getRightExpression(), now);
             if (left instanceof Long && right instanceof Long) {
                 return (Long) left / (Long) right;
             } else if (left instanceof Double && right instanceof Double) {
@@ -364,36 +365,36 @@ public class SqlFilterParser implements FilterParser {
         throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
     }
 
-    private long currentYear() {
-        return localDateTime.getYear();
+    private long currentYear(LocalDateTime now) {
+        return now.getYear();
     }
 
-    private long currentMonth() {
-        return localDateTime.getMonthValue();
+    private long currentMonth(LocalDateTime now) {
+        return now.getMonthValue();
     }
 
-    private long currentWeekOfYear() {
-        return localDateTime.get(WEEK_OF_WEEK_BASED_YEAR);
+    private long currentWeekOfYear(LocalDateTime now) {
+        return now.get(WEEK_OF_WEEK_BASED_YEAR);
     }
 
-    private long currentDayOfMonth() {
-        return localDateTime.getDayOfMonth();
+    private long currentDayOfMonth(LocalDateTime now) {
+        return now.getDayOfMonth();
     }
 
-    private long currentDayOfWeek() {
-        return localDateTime.getDayOfWeek().getValue();
+    private long currentDayOfWeek(LocalDateTime now) {
+        return now.getDayOfWeek().getValue();
     }
 
-    private long currentDayOfYear() {
-        return localDateTime.getDayOfYear();
+    private long currentDayOfYear(LocalDateTime now) {
+        return now.getDayOfYear();
     }
 
-    private long currentHour() {
-        return localDateTime.getHour();
+    private long currentHour(LocalDateTime now) {
+        return now.getHour();
     }
 
-    private long currentMinute() {
-        return localDateTime.getMinute();
+    private long currentMinute(LocalDateTime now) {
+        return now.getMinute();
     }
 
     // TODO FallbackStrategy? FAIL/IGNORE_UNSUPPORTED?
