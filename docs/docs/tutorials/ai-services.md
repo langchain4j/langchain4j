@@ -806,6 +806,8 @@ List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
 boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
 ```
 
+Only the chat memories created by a `ChatMemoryProvider` can be evicted. When an AI Service is configured with a single `ChatMemory`, shared by all its invocations, `evictChatMemory` throws an `UnsupportedOperationException`.
+
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
 the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
