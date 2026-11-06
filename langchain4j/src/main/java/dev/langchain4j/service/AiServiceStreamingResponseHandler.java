@@ -235,7 +235,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        if (toolExecutor != null) {
+        // The complete-response handler reports exhausted budgets; do not dispatch tools before that check.
+        if (toolExecutor != null && toolCallingRoundTripsLeft > 0) {
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
             var future = CompletableFuture.supplyAsync(
                     () -> {
@@ -568,11 +569,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         return context.toolService.executeTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                beforeToolExecutionHandler,
-                toolExecutionHandler);
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
