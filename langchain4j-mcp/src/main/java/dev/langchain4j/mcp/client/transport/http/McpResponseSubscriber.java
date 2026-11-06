@@ -6,12 +6,14 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
+import java.util.function.Predicate;
 
 /** Serializes response callbacks on the transport executor without buffering an entire response. */
 final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent> {
 
     private final Flow.Subscriber<? super HttpStreamingEvent> delegate;
     private final Executor executor;
+    private final Predicate<HttpErrorResponseReceived> readsErrorBody;
     private final Queue<Runnable> pending = new ArrayDeque<>();
     private Flow.Subscription upstream;
     private long demand;
@@ -21,8 +23,20 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
     private boolean stopped;
 
     McpResponseSubscriber(Flow.Subscriber<? super HttpStreamingEvent> delegate, Executor executor) {
+        this(delegate, executor, errorResponse -> false);
+    }
+
+    /**
+     * @param readsErrorBody whether the delegate reads the body of an error response, which then fails the stream
+     *     like any other error; otherwise the body is not read
+     */
+    McpResponseSubscriber(
+            Flow.Subscriber<? super HttpStreamingEvent> delegate,
+            Executor executor,
+            Predicate<HttpErrorResponseReceived> readsErrorBody) {
         this.delegate = delegate;
         this.executor = executor;
+        this.readsErrorBody = readsErrorBody;
     }
 
     @Override
@@ -59,7 +73,7 @@ final class McpResponseSubscriber implements Flow.Subscriber<HttpStreamingEvent>
 
     @Override
     public void onNext(HttpStreamingEvent event) {
-        if (event instanceof HttpErrorResponseReceived) {
+        if (event instanceof HttpErrorResponseReceived errorResponse && !readsErrorBody.test(errorResponse)) {
             // Keep the error queued for MCP handling, but stop body reads even if the executor is busy.
             enqueue(() -> delegate.onNext(event), true);
             Flow.Subscription subscription;
