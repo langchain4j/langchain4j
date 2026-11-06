@@ -4,6 +4,7 @@ import static dev.langchain4j.http.client.log.HttpRequestLogger.format;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import java.util.Locale;
 import org.slf4j.Logger;
 
 @Internal
@@ -11,16 +12,12 @@ class HttpResponseLogger {
 
     static void log(Logger log, SuccessfulHttpResponse response) {
         try {
-            log.info(
-                    """
+            log.info("""
                             HTTP response:
                             - status code: {}
                             - headers: {}
                             - body: {}
-                            """,
-                    response.statusCode(),
-                    format(response.headers()),
-                    formatBody(response));
+                            """, response.statusCode(), format(response.headers()), formatBody(response));
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP response: {}", e.getMessage());
         }
@@ -44,7 +41,7 @@ class HttpResponseLogger {
             // Unknown content type: preserve the previous behavior and log the body as text.
             return true;
         }
-        String type = contentType.toLowerCase();
+        String type = contentType.toLowerCase(Locale.ROOT);
         return type.contains("json")
                 || type.contains("text")
                 || type.contains("xml")
