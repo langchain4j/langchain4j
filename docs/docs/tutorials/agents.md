@@ -1428,7 +1428,7 @@ The resolver is called once for each agent of the system when it is built, and t
 
 - for one annotation an agent has one helper: a static method of the agent type together with an instance method of a helper object, or two helper objects with the same annotation, is a configuration error, except for the annotations allowed several times on an agent, like `@ActivationCondition` with a value on a conditional agent;
 - a non-static helper declared by the agent type itself, like a `default` method of the interface, needs a helper object that is an instance of its declaring type, otherwise creating the agentic system fails instead of ignoring the method;
-- an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields;
+- an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields; a final method of a final class, as in a Kotlin class by default, is fine, since no proxy can subclass such a class;
 - an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
 - in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
 

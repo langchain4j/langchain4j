@@ -50,8 +50,9 @@ import java.util.function.Predicate;
  * A helper declared by the agent type itself that is not static needs one of the helper objects to be invoked on,
  * an instance of its declaring class, typically the agent bean of a container: {@link #checkNonStaticHelpers}
  * rejects the agent otherwise, instead of skipping the helper silently. An instance helper can have any visibility
- * but private, and cannot be final: a container invokes it through the proxy of its bean, which cannot override such
- * a method, so it would run on the proxy itself, without the injected fields of the bean.
+ * but private, and cannot be final unless its class is final too: a container invokes it through the proxy of its
+ * bean, which cannot override such a method, so it would run on the proxy itself, without the injected fields of the
+ * bean, while no proxy subclasses a final class.
  */
 @Internal
 public final class AgentHelpers {
@@ -137,13 +138,16 @@ public final class AgentHelpers {
     /**
      * Checks that the given instance helper method can be overridden by the proxy a container puts in front of its
      * bean: a private or final method cannot, so it would run on the proxy itself, without the injected fields of the
-     * bean, failing or using wrong values at its first call.
+     * bean, failing or using wrong values at its first call. A final method of a final class, as in a Kotlin class by
+     * default, is fine: no proxy can subclass the class, so there is nothing to protect against.
      *
-     * @throws AgenticSystemConfigurationException if the method is private or final
+     * @throws AgenticSystemConfigurationException if the method is private, or final in a non-final class
      */
     private static void checkOverridable(Method method, Class<? extends Annotation> annotation) {
         int modifiers = method.getModifiers();
-        if (Modifier.isPrivate(modifiers) || Modifier.isFinal(modifiers)) {
+        boolean finalInProxyableClass =
+                Modifier.isFinal(modifiers) && !Modifier.isFinal(method.getDeclaringClass().getModifiers());
+        if (Modifier.isPrivate(modifiers) || finalInProxyableClass) {
             throw new AgenticSystemConfigurationException("The method " + method + " annotated with @"
                     + annotation.getSimpleName() + " is " + (Modifier.isPrivate(modifiers) ? "private" : "final")
                     + ": an instance helper cannot be private or final, because the proxy of a container cannot"

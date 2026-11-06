@@ -1491,6 +1491,33 @@ class HelperObjectsTest {
         }
     }
 
+    /** A final class with final methods, as a Kotlin class is by default: no proxy can subclass it. */
+    public static final class FinalGreeter {
+
+        @Agent(outputKey = "greeting")
+        public final String greet(@V("name") String name) {
+            return "Hi " + name;
+        }
+
+        @ActivationCondition(description = "the name is allowed")
+        public final boolean allowed(@V("name") String name, @Injected Policy policy) {
+            return policy.allows(name);
+        }
+    }
+
+    @Test
+    void final_helper_of_a_final_class_is_accepted() {
+        register(Policy.class, new Policy("Voldemort"));
+
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(new FinalGreeter())
+                .outputKey("greeting")
+                .build();
+
+        assertThat(sequence.invoke(Map.of("name", "Mario"))).isEqualTo("Hi Mario");
+        assertThat(sequence.invoke(Map.of("name", "Voldemort"))).isNull();
+    }
+
     @Test
     void private_or_final_instance_helpers_are_rejected() {
         assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
