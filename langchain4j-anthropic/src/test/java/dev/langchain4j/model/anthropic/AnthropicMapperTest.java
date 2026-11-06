@@ -21,7 +21,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.model.anthropic.internal.client.Json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -50,10 +49,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
@@ -64,10 +66,64 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class AnthropicMapperTest {
+
+    @ParameterizedTest
+    @CsvSource({"false, true, true", "false, false, false", "true, true, false", "true, false, false"})
+    void should_preserve_additional_properties_in_tool_schemas(
+            boolean strict, boolean additionalProperties, boolean expected) {
+        JsonObjectSchema object = JsonObjectSchema.builder()
+                .additionalProperties(additionalProperties)
+                .build();
+        ToolSpecification specification = ToolSpecification.builder()
+                .name("produce")
+                .parameters(object.toBuilder()
+                        .addProperty(
+                                "message",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(
+                                                object,
+                                                JsonStringSchema.builder().build())
+                                        .build())
+                        .addProperty(
+                                "metadata",
+                                JsonReferenceSchema.builder()
+                                        .reference("Metadata")
+                                        .build())
+                        .required("message", "metadata")
+                        .definitions(Map.of(
+                                "Metadata",
+                                object.toBuilder().addStringProperty("label").build()))
+                        .build())
+                .build();
+
+        AnthropicTool tool = toAnthropicTools(List.of(specification), AnthropicCacheType.NO_CACHE, strict)
+                .get(0);
+
+        Map<String, Object> expectedObject = Map.of(
+                "type", "object", "properties", Map.of(), "required", List.of(), "additionalProperties", expected);
+        Map<String, Map<String, Object>> expectedProperties = Map.of(
+                "message", Map.of("anyOf", List.of(expectedObject, Map.of("type", "string"))),
+                "metadata", Map.of("$ref", "#/$defs/Metadata"));
+
+        Map<String, Object> expectedDefinition = Map.of(
+                "type",
+                "object",
+                "properties",
+                Map.of("label", Map.of("type", "string")),
+                "required",
+                List.of(),
+                "additionalProperties",
+                expected);
+
+        assertThat(tool.inputSchema.additionalProperties).isEqualTo(expected);
+        assertThat(tool.inputSchema.properties).isEqualTo(expectedProperties);
+        assertThat(tool.inputSchema.defs).containsEntry("Metadata", expectedDefinition);
+    }
 
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
@@ -1269,10 +1325,8 @@ class AnthropicMapperTest {
         Map<String, Object> cacheControl = singletonMap("cache_control", "ephemeral");
         UserMessage userText = UserMessage.from("Hello");
         userText.attributes().putAll(cacheControl);
-        UserMessage userImage = UserMessage.from(ImageContent.from(Image.builder()
-                .base64Data("base64data")
-                .mimeType("image/jpeg")
-                .build()));
+        UserMessage userImage = UserMessage.from(ImageContent.from(
+                Image.builder().base64Data("base64data").mimeType("image/jpeg").build()));
         userImage.attributes().putAll(cacheControl);
         UserMessage userPdf = UserMessage.from(PdfFileContent.from("base64data", "application/pdf"));
         userPdf.attributes().putAll(cacheControl);
@@ -1308,7 +1362,10 @@ class AnthropicMapperTest {
     void should_apply_cache_ttl_to_last_system_message_and_last_tool() {
         // when
         List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(
-                List.of(SystemMessage.from("one"), SystemMessage.from("two")), AnthropicCacheType.EPHEMERAL, false, "1h");
+                List.of(SystemMessage.from("one"), SystemMessage.from("two")),
+                AnthropicCacheType.EPHEMERAL,
+                false,
+                "1h");
         List<AnthropicTool> tools = AnthropicMapper.toAnthropicTools(
                 List.of(
                         ToolSpecification.builder().name("one").build(),

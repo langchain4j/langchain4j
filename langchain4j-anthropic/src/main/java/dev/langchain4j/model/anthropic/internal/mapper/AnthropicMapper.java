@@ -102,10 +102,7 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(
-            List<ChatMessage> messages,
-            boolean sendThinking,
-            boolean midConversationSystemMessages,
-            String cacheTtl) {
+            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages, String cacheTtl) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -199,14 +196,15 @@ public class AnthropicMapper {
 
             if (content instanceof TextContent textContent) {
                 if (applyCache) {
-                    anthropicContents.add(
-                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
+                    anthropicContents.add(new AnthropicTextContent(
+                            textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
                 } else {
                     anthropicContents.add(new AnthropicTextContent(textContent.text()));
                 }
             } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
-                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
+                AnthropicCacheControl cacheControl =
+                        applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
                 if (image.url() != null) {
                     anthropicContents.add(
                             AnthropicImageContent.fromUrl(image.url().toString(), cacheControl));
@@ -218,7 +216,8 @@ public class AnthropicMapper {
                 }
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 PdfFile pdfFile = pdfFileContent.pdfFile();
-                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
+                AnthropicCacheControl cacheControl =
+                        applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
                 if (pdfFile.url() != null) {
                     anthropicContents.add(
                             AnthropicPdfContent.fromUrl(pdfFile.url().toString(), cacheControl));
@@ -260,7 +259,8 @@ public class AnthropicMapper {
             boolean applyCache = shouldCache && !hasToolExecutionRequests;
             contents.add(
                     applyCache
-                            ? new AnthropicTextContent(message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
+                            ? new AnthropicTextContent(
+                                    message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
                             : new AnthropicTextContent(message.text()));
         }
 
@@ -528,8 +528,12 @@ public class AnthropicMapper {
                 .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
                 .required(parameters != null ? parameters.required() : emptyList())
                 .additionalProperties(strict ? Boolean.FALSE : null);
+        if (!strict && parameters != null) {
+            inputSchemaBuilder.additionalProperties(parameters.additionalProperties());
+        }
         if (parameters != null && !parameters.definitions().isEmpty()) {
-            inputSchemaBuilder.defs(mapDefs(parameters.definitions()));
+            inputSchemaBuilder.defs(
+                    strict ? mapDefs(parameters.definitions()) : toMap(parameters.definitions(), false));
         }
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()

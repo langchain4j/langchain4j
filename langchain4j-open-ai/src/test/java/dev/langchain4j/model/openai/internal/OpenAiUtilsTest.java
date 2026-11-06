@@ -17,7 +17,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
@@ -26,14 +29,71 @@ import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class OpenAiUtilsTest {
+
+    @ParameterizedTest
+    @CsvSource({"false, true, true", "false, false, false", "true, true, false", "true, false, false"})
+    void should_preserve_additional_properties_in_tool_schemas(
+            boolean strict, boolean additionalProperties, boolean expected) {
+        JsonObjectSchema object = JsonObjectSchema.builder()
+                .additionalProperties(additionalProperties)
+                .build();
+        ToolSpecification specification = ToolSpecification.builder()
+                .name("produce")
+                .parameters(object.toBuilder()
+                        .addProperty(
+                                "message",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(
+                                                object,
+                                                JsonStringSchema.builder().build())
+                                        .build())
+                        .addProperty(
+                                "metadata",
+                                JsonReferenceSchema.builder()
+                                        .reference("Metadata")
+                                        .build())
+                        .required("message", "metadata")
+                        .definitions(Map.of(
+                                "Metadata",
+                                object.toBuilder().addStringProperty("label").build()))
+                        .build())
+                .build();
+
+        Map<String, Object> parameters =
+                toTools(List.of(specification), strict).get(0).function().parameters();
+
+        Map<String, Object> expectedObject = Map.of(
+                "type", "object", "properties", Map.of(), "required", List.of(), "additionalProperties", expected);
+        Map<String, Map<String, Object>> expectedProperties = Map.of(
+                "message", Map.of("anyOf", List.of(expectedObject, Map.of("type", "string"))),
+                "metadata", Map.of("$ref", "#/$defs/Metadata"));
+
+        Map<String, Object> expectedDefinition = Map.of(
+                "type",
+                "object",
+                "properties",
+                Map.of("label", Map.of("type", strict ? List.of("string", "null") : "string")),
+                "required",
+                strict ? List.of("label") : List.of(),
+                "additionalProperties",
+                expected);
+
+        assertThat(parameters)
+                .containsEntry("additionalProperties", expected)
+                .containsEntry("properties", expectedProperties);
+        assertThat(Json.fromJson(Json.toJson(parameters.get("$defs")), Map.class))
+                .containsEntry("Metadata", expectedDefinition);
+    }
 
     @Test
     void should_return_ai_message_with_text_when_no_functions_and_tool_calls_are_present() {
@@ -382,7 +442,8 @@ class OpenAiUtilsTest {
                 Arguments.of("{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("\n\n{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("{\"error\":\"Service is too busy\"}", "Service is too busy"),
-                Arguments.of("{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
+                Arguments.of(
+                        "{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
                 Arguments.of("{\"error\":{\"code\":503}}", "{\"error\":{\"code\":503}}"),
                 Arguments.of("{\"id\":\"chatcmpl-123\",\"choices\":[]}", "no choices returned in response"),
                 Arguments.of("{\"error\":null}", "no choices returned in response"),
