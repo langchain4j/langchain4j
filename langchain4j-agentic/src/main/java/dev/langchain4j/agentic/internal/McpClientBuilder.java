@@ -19,8 +19,10 @@ public interface McpClientBuilder<T> {
      * the error handler context is derived. When not set, a typed agent takes the name of the annotation of its agent
      * method or, when that is not set either, the name of the method, and an untyped one takes its configured tool
      * name or, without one, the placeholder {@code mcp-agent}, so that the name is known without contacting the MCP
-     * server, which happens only on the first invocation. The name never changes once the agent is built, even after
-     * the tool has been resolved.
+     * server, which happens only on the first invocation. The placeholder logs a warning when the agent is built, and
+     * an agentic system can contain at most one agent named with it, otherwise its construction fails with an
+     * {@code AgenticSystemConfigurationException}, since those agents could not be told apart. The name never changes
+     * once the agent is built, even after the tool has been resolved.
      *
      * @param name the name of the agent, ignored when null or blank
      * @return this builder for method chaining

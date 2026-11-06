@@ -47,7 +47,11 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultMcpClientBuilder.class);
 
-    /** The name of an untyped agent without a configured tool name, whose tool is only known once resolved. */
+    /**
+     * The name of an untyped agent without a configured tool name, whose tool is only known once resolved. Using it
+     * logs a warning, and at most one agent of an agentic system can be named with it, since those agents could not
+     * be told apart otherwise, as {@link McpClientAgentInvoker} checks.
+     */
     static final String PLACEHOLDER_NAME = "mcp-agent";
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
@@ -63,6 +67,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private String toolName;
     private String name;
+    private boolean placeholderName;
     private String agentId;
     private String description;
     private InternalAgent parent;
@@ -141,6 +146,13 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out, and the
         // arguments are the local ones until the tool is resolved
         agentId();
+        if (placeholderName) {
+            LOG.warn(
+                    "The MCP client agent has neither a name nor a tool name and is named with the placeholder '{}': "
+                            + "set McpClientBuilder.name(...) or toolName(...) to give it a meaningful name, "
+                            + "which is mandatory when an agentic system contains more than one such agent",
+                    PLACEHOLDER_NAME);
+        }
         this.arguments = localArguments();
 
         Object agent = Proxy.newProxyInstance(
@@ -477,7 +489,11 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
             return isNullOrBlank(annotatedName) ? agentMethod.get().getName() : annotatedName;
         }
         String configuredToolName = configuredToolName();
-        return configuredToolName != null ? configuredToolName : PLACEHOLDER_NAME;
+        if (configuredToolName != null) {
+            return configuredToolName;
+        }
+        placeholderName = true;
+        return PLACEHOLDER_NAME;
     }
 
     @Override

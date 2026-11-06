@@ -672,12 +672,15 @@ class McpAgentTest {
         McpClient mcpClient2 = mockMcpClient("uppercase", "Uppercase text", "story");
         mockToolResult(mcpClient2, "A STORY ABOUT DRAGONS");
 
+        // two untyped agents in the same system need a tool name, or a name, to be told apart
         UntypedAgent generator = McpAgent.builder(mcpClient1)
+                .toolName("generate")
                 .inputKeys("topic")
                 .outputKey("story")
                 .build();
 
         UntypedAgent uppercaser = McpAgent.builder(mcpClient2)
+                .toolName("uppercase")
                 .inputKeys("story")
                 .outputKey("story")
                 .build();
