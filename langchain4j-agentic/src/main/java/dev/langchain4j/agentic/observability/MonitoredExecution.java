@@ -57,6 +57,10 @@ public class MonitoredExecution {
     }
 
     void beforeAgentInvocation(AgentRequest agentRequest) {
+        if (agentRequest.agent().parent() == null && ongoingInvocations.containsKey(agentRequest.agentId())) {
+            // Resuming a suspended root invokes its handler again without finishing the original invocation.
+            return;
+        }
         if (submittedAgentIds.remove(agentRequest.agentId())) {
             // the invocation was recorded at the submission of this asynchronous agent
             return;
