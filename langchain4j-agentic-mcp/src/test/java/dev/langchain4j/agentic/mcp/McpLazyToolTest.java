@@ -249,6 +249,28 @@ class McpLazyToolTest {
         }
     }
 
+    public interface StoryAgentWithWrongClientType {
+
+        @McpClientAgent(toolName = "writer", outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @McpClientSupplier
+        static String mcpClient() {
+            return "not a client";
+        }
+    }
+
+    public interface StoryAgentWithTypedClient {
+
+        @McpClientAgent(toolName = "writer", outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @McpClientSupplier
+        static McpClient mcpClient() {
+            return server.get();
+        }
+    }
+
     /** A typed agent for the programmatic builder. */
     public interface Writer {
 
@@ -517,6 +539,7 @@ class McpLazyToolTest {
 
     @Test
     void a_supplier_returning_something_else_than_a_client_is_a_configuration_error() {
+        // the supplier is declared to return Object, so the instance is only checked when the client is created
         StoryAgentWithWrongClient storyAgent =
                 AgenticServices.createAgenticSystem(StoryAgentWithWrongClient.class, (ChatModel) null);
 
@@ -526,6 +549,25 @@ class McpLazyToolTest {
                 .hasMessageContaining(StoryAgentWithWrongClient.class.getName())
                 .hasMessageContaining("java.lang.String")
                 .hasMessageContaining("McpClient");
+    }
+
+    @Test
+    void a_supplier_declared_with_a_type_that_cannot_be_a_client_fails_when_the_agent_is_built() {
+        Throwable failure = catchThrowable(
+                () -> AgenticServices.createAgenticSystem(StoryAgentWithWrongClientType.class, (ChatModel) null));
+
+        assertThat(failure)
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining(StoryAgentWithWrongClientType.class.getName())
+                .hasMessageContaining("java.lang.String")
+                .hasMessageContaining("McpClient");
+
+        // a supplier declared to return an McpClient passes the check at build and still runs at the first invocation
+        StoryAgentWithTypedClient storyAgent =
+                AgenticServices.createAgenticSystem(StoryAgentWithTypedClient.class, (ChatModel) null);
+        assertThat(server.clients).hasValue(0);
+        assertThat(storyAgent.generateStory("dragons")).isEqualTo("a story about dragons");
+        assertThat(server.clients).hasValue(1);
     }
 
     @Test

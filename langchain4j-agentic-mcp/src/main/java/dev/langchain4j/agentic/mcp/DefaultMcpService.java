@@ -17,7 +17,15 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 public class DefaultMcpService implements McpService {
 
     @Override
-    public <T> McpClientBuilder<T> mcpBuilder(Supplier<Object> mcpClientSupplier, Class<T> agentServiceClass) {
+    public <T> McpClientBuilder<T> mcpBuilder(
+            Supplier<Object> mcpClientSupplier, Class<?> mcpClientType, Class<T> agentServiceClass) {
+        // A supplier method declared to return something that cannot be an McpClient is a configuration error
+        // reported now, at build; one declared with a supertype such as Object is checked when the client is created
+        if (!McpClient.class.isAssignableFrom(mcpClientType) && !mcpClientType.isAssignableFrom(McpClient.class)) {
+            throw new AgenticSystemConfigurationException("The @McpClientSupplier method of "
+                    + agentServiceClass.getName() + " is declared to return " + mcpClientType.getName()
+                    + " instead of an McpClient");
+        }
         return new DefaultMcpClientBuilder<>(
                 () -> mcpClient(mcpClientSupplier.get(), agentServiceClass), agentServiceClass);
     }

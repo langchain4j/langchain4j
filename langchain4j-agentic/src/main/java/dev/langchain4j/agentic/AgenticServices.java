@@ -962,6 +962,8 @@ public class AgenticServices {
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+        // A void or primitive return type is rejected here, like for every other helper method, while the declared
+        // type is checked against McpClient, which this module cannot see, by the MCP service when the agent is built
         checkReturnType(mcpClientSupplierMethod, Object.class);
         // The method is invoked when the MCP client is first needed, on the first invocation of the agent, because
         // creating the client normally connects to the MCP server, while its resolved parameters are resolved now,
@@ -971,7 +973,10 @@ public class AgenticServices {
                 .resolvedNow();
 
         var mcpClientBuilder = McpService.get()
-                .mcpBuilder(() -> invokeMcpClientSupplier(mcpClientSupplier), agentServiceClass)
+                .mcpBuilder(
+                        () -> invokeMcpClientSupplier(mcpClientSupplier),
+                        mcpClientSupplierMethod.getReturnType(),
+                        agentServiceClass)
                 .toolName(mcpAgent.toolName())
                 .inputKeys(Stream.of(mcpMethod.getParameters())
                         .map(AgentInvoker::parameterName)
