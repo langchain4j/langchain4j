@@ -20,7 +20,8 @@ public interface AgenticScopeAccess {
      * Evicts the {@link AgenticScope} with the given id, together with the chat memories that the agents of this
      * agentic system hold for that id, with the meaning of {@link ChatMemoryAccess#evictChatMemory}: the chat memory
      * objects are forgotten, the messages they stored stay in their {@link ChatMemoryStore}. Use
-     * {@link #deleteAgenticScope} to delete the messages too.
+     * {@link #deleteAgenticScope} to delete the messages too. An AI agent configured with a single chat memory,
+     * shared by all the memory ids, has nothing of the scope to evict and is left alone by both methods.
      *
      * @param memoryId The id of the {@link AgenticScope} to be evicted.
      * @return true if {@link AgenticScope} with the given id existed, and it was successfully evicted, false otherwise.

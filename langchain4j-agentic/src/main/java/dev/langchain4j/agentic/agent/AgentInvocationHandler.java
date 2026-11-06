@@ -138,9 +138,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                             ? context.chatMemoryService.getChatMemory(args[0])
                             : null;
                 case "evictChatMemory" ->
-                    context.hasChatMemory()
-                            && builder.hasNonDefaultChatMemory()
-                            && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                    context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on ChatMemoryAccess class : " + method.getName());

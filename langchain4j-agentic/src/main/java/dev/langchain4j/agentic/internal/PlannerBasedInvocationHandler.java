@@ -268,7 +268,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     /**
      * Evicts the chat memory of the given agent for the given memory id, after clearing it when asked, so that its
      * messages leave its store too: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory
-     * object. A chat memory whose clearing fails stays cached.
+     * object. A chat memory whose clearing fails stays cached. An AI agent configured with a single chat memory,
+     * shared by all the memory ids, refuses to evict it and has nothing of this scope to clear: it is skipped.
      */
     private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId, boolean delete) {
         if (delete) {
@@ -277,7 +278,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 chatMemory.clear();
             }
         }
-        chatMemoryAccess.evictChatMemory(memoryId);
+        try {
+            chatMemoryAccess.evictChatMemory(memoryId);
+        } catch (UnsupportedOperationException e) {
+            // a single chat memory, not keyed by the memory id: nothing to evict for this scope
+        }
     }
 
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {

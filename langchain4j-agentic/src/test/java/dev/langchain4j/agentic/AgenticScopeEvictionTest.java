@@ -340,6 +340,17 @@ class AgenticScopeEvictionTest {
     }
 
     @Test
+    void evicting_the_single_chat_memory_of_an_agent_fails_like_for_an_ai_service() {
+        SingleMemoryGreeter greeter = AgenticServices.agentBuilder(SingleMemoryGreeter.class)
+                .chatModel(echoModel())
+                .build();
+
+        assertThatThrownBy(() -> ((ChatMemoryAccess) greeter).evictChatMemory("mario"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("single chat memory");
+    }
+
+    @Test
     void deleting_an_agentic_scope_leaves_the_single_chat_memory_of_an_agent_alone() {
         SingleMemoryAssistant assistant =
                 AgenticServices.createAgenticSystem(SingleMemoryAssistant.class, echoModel());
