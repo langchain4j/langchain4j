@@ -38,7 +38,6 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
@@ -122,40 +121,11 @@ public class AgentUtil {
         // an agent passed as an instance is its own helper object: its activation condition and listener can be
         // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver
         AgentHelpers helpers = AgentHelpers.of(agent.getClass(), List.of(agent));
-        Method humanInTheLoopMethod = instanceHumanInTheLoopMethod(agent.getClass());
-        if (humanInTheLoopMethod != null) {
-            return humanInTheLoopExecutor(humanInTheLoopMethod, agent, helpers);
+        Method agentMethod = validateAgentClass(agent.getClass(), true, HumanInTheLoop.class);
+        if (agentMethod.isAnnotationPresent(HumanInTheLoop.class)) {
+            return humanInTheLoopExecutor(agentMethod, agent, helpers);
         }
-        return nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()), helpers);
-    }
-
-    /**
-     * @return the instance method of the given class annotated with {@link HumanInTheLoop @HumanInTheLoop}, or
-     *         {@code null} when there is none
-     * @throws IllegalArgumentException if there is more than one, or if the class also declares an
-     *         {@link Agent @Agent} method
-     */
-    private static Method instanceHumanInTheLoopMethod(Class<?> agentClass) {
-        Method humanInTheLoopMethod = null;
-        boolean hasAgentMethod = false;
-        for (Method method :
-                AgentHelpers.methodsAnnotatedWith(agentClass, List.of(Agent.class, HumanInTheLoop.class))) {
-            if (method.isAnnotationPresent(Agent.class)) {
-                hasAgentMethod = true;
-            }
-            if (method.isAnnotationPresent(HumanInTheLoop.class) && !Modifier.isStatic(method.getModifiers())) {
-                if (humanInTheLoopMethod != null) {
-                    throw new IllegalArgumentException(
-                            "Multiple @HumanInTheLoop methods found in class: " + agentClass.getName());
-                }
-                humanInTheLoopMethod = method;
-            }
-        }
-        if (humanInTheLoopMethod != null && hasAgentMethod) {
-            throw new IllegalArgumentException("The class " + agentClass.getName()
-                    + " declares both an @Agent and a @HumanInTheLoop method: an agent class must declare one of them");
-        }
-        return humanInTheLoopMethod;
+        return nonAiAgentToExecutor(agent, agentMethod, helpers);
     }
 
     /**
