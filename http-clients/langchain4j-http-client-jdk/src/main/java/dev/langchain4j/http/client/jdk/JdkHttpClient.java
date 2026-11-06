@@ -206,6 +206,10 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
             }
         });
 
+        if (request.headers().keySet().stream().noneMatch(k -> k.equalsIgnoreCase("User-Agent"))) {
+            builder.header("User-Agent", "LangChain4j");
+        }
+
         BodyPublisher bodyPublisher;
         if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
             if (request.body() != null) {
