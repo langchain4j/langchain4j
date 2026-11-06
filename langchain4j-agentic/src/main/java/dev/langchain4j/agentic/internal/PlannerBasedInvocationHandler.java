@@ -162,7 +162,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         if (method.getDeclaringClass() == AgenticScopeAccess.class) {
             return switch (method.getName()) {
                 case "getAgenticScope" -> registry.get(args[0]);
-                case "evictAgenticScope" -> evictAgenticScope(registry, args[0]);
+                case "evictAgenticScope" -> evictAgenticScope(registry, args[0], false);
+                case "deleteAgenticScope" -> evictAgenticScope(registry, args[0], true);
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeAccess class : " + method.getName());
@@ -207,45 +208,72 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     /**
-     * Evicts the scope with the given memory id from the registry, and with it the chat memories the agents of this
-     * agentic system created for that memory id: the ones of the AI agents reachable from the agent tree, and the
-     * ones of the agents created for the scope only, like the AI agents whose configuration depends on the scope and
-     * the planner agent of a supervisor.
+     * Evicts the scope with the given memory id from the registry, then the chat memories the agents of this agentic
+     * system hold for that memory id: the ones of the AI agents reachable from the agent tree, and the ones of the
+     * agents created for the scope only, like the AI agents whose configuration depends on the scope and the planner
+     * agent of a supervisor. The scope goes first, so that the listeners see the chat memories intact and a failing
+     * chat memory store cannot leave the scope behind; it is looked up in memory only, because a scope that is not
+     * there has no agents cached for it, and loading it from its store just to evict it could fail.
+     *
+     * @param delete whether to clear each chat memory, deleting its messages from its store, before evicting it; the
+     *        first failure is rethrown after the other chat memories have been visited, and the ones it left cached
+     *        are deleted by a later call, whether the scope still exists or not
      */
-    private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId) {
-        DefaultAgenticScope scope = registry.get(memoryId);
+    private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId, boolean delete) {
+        DefaultAgenticScope scope = registry.getInMemory(memoryId);
+        boolean evicted = registry.evict(memoryId, agentListener);
+
+        List<ChatMemoryAccess> aiAgents = new ArrayList<>();
+        collectAiAgents(subagents, aiAgents);
         if (scope != null) {
-            evictChatMemories(subagents, memoryId);
             for (Object cachedAgent : scope.cachedAgents()) {
                 if (cachedAgent instanceof ChatMemoryAccess chatMemoryAccess) {
-                    evictChatMemory(chatMemoryAccess, memoryId);
+                    aiAgents.add(chatMemoryAccess);
                 }
             }
         }
-        return registry.evict(memoryId, agentListener);
+        RuntimeException failure = null;
+        for (ChatMemoryAccess aiAgent : aiAgents) {
+            try {
+                evictChatMemory(aiAgent, memoryId, delete);
+            } catch (RuntimeException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+        return evicted;
     }
 
-    private static void evictChatMemories(List<AgentInstance> agents, Object memoryId) {
+    private static void collectAiAgents(List<AgentInstance> agents, List<ChatMemoryAccess> aiAgents) {
         for (AgentInstance agent : agents) {
             // the planner-based agents have no chat memory of their own, and the one of a supervisor is reached
-            // through the scope: only the AI agents are asked to evict theirs
+            // through the scope: only the AI agents are asked for theirs
             if (agent.topology() == AgenticSystemTopology.AI_AGENT
                     && agent instanceof AgentExecutor executor
                     && executor.agent() instanceof ChatMemoryAccess chatMemoryAccess) {
-                evictChatMemory(chatMemoryAccess, memoryId);
+                aiAgents.add(chatMemoryAccess);
             }
-            evictChatMemories(agent.subagents(), memoryId);
+            collectAiAgents(agent.subagents(), aiAgents);
         }
     }
 
     /**
-     * Clears the chat memory of the given agent for the given memory id, so that its messages leave the chat memory
-     * store too, then evicts it: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory object.
+     * Evicts the chat memory of the given agent for the given memory id, after clearing it when asked, so that its
+     * messages leave its store too: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory
+     * object. A chat memory whose clearing fails stays cached.
      */
-    private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId) {
-        ChatMemory chatMemory = chatMemoryAccess.getChatMemory(memoryId);
-        if (chatMemory != null) {
-            chatMemory.clear();
+    private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId, boolean delete) {
+        if (delete) {
+            ChatMemory chatMemory = chatMemoryAccess.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                chatMemory.clear();
+            }
         }
         chatMemoryAccess.evictChatMemory(memoryId);
     }

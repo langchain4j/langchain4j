@@ -3366,6 +3366,8 @@ Conversely, when the agentic system uses a memory, the `AgenticScope` is saved i
 agent.evictAgenticScope(memoryId);
 ```
 
+`evictAgenticScope` removes the `AgenticScope` from the registry and forgets the chat memory objects that the agents of the system hold for that ID, with the meaning of `ChatMemoryAccess.evictChatMemory` for an AI service: the messages they stored stay in their `ChatMemoryStore`. When the conversation has to be deleted too, call `deleteAgenticScope(memoryId)` instead: it clears each of those chat memories, which deletes their messages from the store, before evicting them. Both methods reach only the chat memories created in this JVM for that ID; the messages stored by another node, or before a restart, have to be deleted through the store.
+
 Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
 
 ```java
