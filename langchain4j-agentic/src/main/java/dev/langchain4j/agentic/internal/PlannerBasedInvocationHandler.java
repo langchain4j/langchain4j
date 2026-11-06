@@ -282,12 +282,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {
         DefaultAgenticScope currentScope = currentAgenticScope(registry, method, args);
+        if (isRootCall()) {
+            // before writing the inputs of this call to the scope, which the asynchronous agents of the previous
+            // call still running could read
+            currentScope.rootCallStarted(registry);
+        }
         writeAgenticScope(currentScope, method, args);
         beforeCall.accept(currentScope);
 
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
-            currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
@@ -300,13 +304,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             currentScope.compensateAll();
             if (isRootCall()) {
                 agentError(agentListener, currentScope, this, namedArgs, e);
-                currentScope.rootCallEnded(registry, agentListener);
+                currentScope.rootCallEnded(registry, agentListener, true);
             }
             throw e;
         }
 
         if (result instanceof Action action && action.isSuspended()) {
             onAgenticSystemSuspended(agentListener, currentScope);
+            if (isRootCall()) {
+                currentScope.rootCallSuspended(registry, agentListener);
+            }
             if (isRootCall() && method.getReturnType().equals(ResultWithAgenticScope.class)) {
                 return new ResultWithAgenticScope<>(currentScope, null, true, () ->
                         (ResultWithAgenticScope) executeAgentMethod(registry, method, args));
@@ -318,7 +325,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
-            currentScope.rootCallEnded(registry, agentListener);
+            currentScope.rootCallEnded(registry, agentListener, false);
         }
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)

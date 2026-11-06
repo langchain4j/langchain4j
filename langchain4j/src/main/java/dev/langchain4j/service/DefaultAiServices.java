@@ -899,7 +899,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         CompletableFuture<Object> result = new CompletableFuture<>();
 
-                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        CompletableFuture<ChatResponse> firstModelCall = CurrentInvocation.callWith(
+                                invocationContext, () -> context.chatModel.chatAsync(chatRequest));
                         propagateCancellation(result, firstModelCall);
 
                         firstModelCall

@@ -4,6 +4,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
@@ -16,6 +17,7 @@ public class ModerationModelMock implements ModerationModel {
 
     private final Function<ModerationRequest, Moderation> moderation;
     private final List<ModerationRequest> requests = new CopyOnWriteArrayList<>();
+    private List<ModerationModelListener> listeners = List.of();
 
     public ModerationModelMock(Moderation moderation) {
         this(request -> moderation);
@@ -47,5 +49,15 @@ public class ModerationModelMock implements ModerationModel {
 
     public static ModerationModelMock thatModerates(Function<ModerationRequest, Moderation> moderation) {
         return new ModerationModelMock(moderation);
+    }
+
+    public ModerationModelMock withListeners(ModerationModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<ModerationModelListener> listeners() {
+        return listeners;
     }
 }

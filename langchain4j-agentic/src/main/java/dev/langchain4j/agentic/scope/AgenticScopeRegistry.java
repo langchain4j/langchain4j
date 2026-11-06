@@ -80,6 +80,7 @@ public class AgenticScopeRegistry {
         DefaultAgenticScope agenticScope = inMemoryAgenticScope.remove(key);
         boolean removed = agenticScope != null;
         if (removed) {
+            agenticScope.markEvicted();
             beforeAgenticScopeDestroyed(listener, agenticScope);
         }
         if (hasStore()) {

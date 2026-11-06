@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -116,11 +117,14 @@ final class RouteSelector<M> {
     /**
      * Adds the selected route to the listener attributes, so that listeners of the selected model can report it.
      */
-    static ChatRequestOptions withRoute(ChatRequestOptions options, String routeName) {
+    static ChatRequestOptions withRoute(ChatRequestOptions options, String routeName, UUID invocationId) {
         Map<Object, Object> attributes =
                 new LinkedHashMap<>(options == null ? Map.of() : options.listenerAttributes());
         attributes.put(ROUTE_ATTRIBUTE, routeName);
-        return ChatRequestOptions.builder().listenerAttributes(attributes).build();
+        return ChatRequestOptions.builder()
+                .listenerAttributes(attributes)
+                .invocationId(invocationId)
+                .build();
     }
 
     /**

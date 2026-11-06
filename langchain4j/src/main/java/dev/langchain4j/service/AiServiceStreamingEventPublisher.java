@@ -347,7 +347,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 return null;
             });
 
-            context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
+            CurrentInvocation.callWith(invocationContext, () -> context.streamingChatModel.chat(chatRequest))
+                    .subscribe(new Flow.Subscriber<>() {
 
                 private ChatResponse roundResponse;
 

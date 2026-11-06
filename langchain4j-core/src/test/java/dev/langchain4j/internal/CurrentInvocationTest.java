@@ -13,7 +13,7 @@ class CurrentInvocationTest {
     void should_set_the_current_invocation_only_during_the_action() {
         InvocationContext invocationContext = invocationContext();
 
-        UUID seen = CurrentInvocation.callWith(invocationContext, CurrentInvocation::invocationId);
+        UUID seen = CurrentInvocation.callWith(invocationContext, () -> CurrentInvocation.invocationId());
 
         assertThat(seen).isEqualTo(invocationContext.invocationId());
         assertThat(CurrentInvocation.invocationId()).isNull();
@@ -25,7 +25,7 @@ class CurrentInvocationTest {
         InvocationContext inner = invocationContext();
 
         UUID seenAfterInner = CurrentInvocation.callWith(outer, () -> {
-            assertThat(CurrentInvocation.callWith(inner, CurrentInvocation::invocationId)).isEqualTo(inner.invocationId());
+            assertThat(CurrentInvocation.callWith(inner, () -> CurrentInvocation.invocationId())).isEqualTo(inner.invocationId());
             return CurrentInvocation.invocationId();
         });
 
@@ -54,7 +54,7 @@ class CurrentInvocationTest {
         InvocationContext outer = invocationContext();
 
         UUID seen = CurrentInvocation.callWith(
-                outer, () -> CurrentInvocation.callWith(null, CurrentInvocation::invocationId));
+                outer, () -> CurrentInvocation.callWith(null, () -> CurrentInvocation.invocationId()));
 
         assertThat(seen).isEqualTo(outer.invocationId());
     }
@@ -64,7 +64,7 @@ class CurrentInvocationTest {
         InvocationContext outer = invocationContext();
 
         UUID[] seen = CurrentInvocation.callWith(outer, () -> new UUID[] {
-            CurrentInvocation.callWithout(CurrentInvocation::invocationId), CurrentInvocation.invocationId()
+            CurrentInvocation.callWithout(() -> CurrentInvocation.invocationId()), CurrentInvocation.invocationId()
         });
 
         assertThat(seen[0]).isNull();
