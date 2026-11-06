@@ -10,6 +10,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.apache.ApacheHttpClient;
 import dev.langchain4j.http.client.okhttp.OkHttpClient;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
+import dev.langchain4j.mcp.client.McpException;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
@@ -29,11 +30,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StreamableHttpMcpTransportStatusCodeTest {
 
@@ -41,6 +44,10 @@ class StreamableHttpMcpTransportStatusCodeTest {
             "{\"jsonrpc\":\"2.0\",\"id\":0,\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"serverInfo\":{\"name\":\"test-server\",\"version\":\"1.0\"}}}";
 
     private static final String TOOLS_LIST_RESULT = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"tools\":[]}}";
+
+    // the answer of a legacy server built with the TypeScript SDK to a request without a valid session
+    private static final String NO_VALID_SESSION =
+            "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Bad Request: No valid session ID provided\"},\"id\":null}";
 
     private HttpServer server;
     private final ExecutorService serverExecutor = Executors.newCachedThreadPool();
@@ -193,8 +200,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
         useResponseExecutor = onExecutor;
         startServer(400, false, backend);
 
-        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
-        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+        CompletableFuture<String> response = listToolsWithModernProtocol();
 
         assertThat(McpJson.toMap(response.get(5, TimeUnit.SECONDS)))
                 .containsEntry("id", 1)
@@ -206,12 +212,9 @@ class StreamableHttpMcpTransportStatusCodeTest {
         errorBody = "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\"}}";
         startServer(400);
 
-        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
-        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+        CompletableFuture<String> response = listToolsWithModernProtocol();
 
-        assertThat(McpJson.toMap(response.get(5, TimeUnit.SECONDS)))
-                .containsEntry("id", 1)
-                .containsEntry("error", Map.of("code", -32700, "message", "Parse error"));
+        assertThat(response.get(5, TimeUnit.SECONDS)).isEqualTo(errorBody);
     }
 
     @Test
@@ -219,8 +222,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
         errorBody = "{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}";
         startServer(400);
 
-        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
-        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+        CompletableFuture<String> response = listToolsWithModernProtocol();
 
         HttpException failure = failureOf(response);
         assertThat(failure.statusCode()).isEqualTo(400);
@@ -230,11 +232,42 @@ class StreamableHttpMcpTransportStatusCodeTest {
     @ParameterizedTest
     @CsvSource(
             delimiter = '|',
-            value = {"application/json | {\"message\":\"Bad request\"}", "text/html | <html>Bad request</html>"})
+            value = {
+                "application/json | {\"message\":\"Bad request\"}",
+                "text/html | <html>Bad request</html>",
+                // a JSON-RPC error is only read from a JSON body
+                "text/plain | {\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}"
+            })
     void client_error_without_a_json_rpc_error_fails_with_the_status_code(String contentType, String body)
             throws Exception {
         errorContentType = contentType;
         errorBody = body;
+        startServer(400);
+
+        CompletableFuture<String> response = listToolsWithModernProtocol();
+
+        HttpException failure = failureOf(response);
+        assertThat(failure.statusCode()).isEqualTo(400);
+        assertThat(failure).hasMessage("Unexpected status code: 400");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 403, 429})
+    void json_rpc_error_with_an_authorization_or_rate_limit_status_fails_with_the_status_code(int status)
+            throws Exception {
+        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"Rejected\"}}";
+        startServer(status);
+
+        CompletableFuture<String> response = listToolsWithModernProtocol();
+
+        HttpException failure = failureOf(response);
+        assertThat(failure.statusCode()).isEqualTo(status);
+        assertThat(failure).hasMessage("Unexpected status code: " + status);
+    }
+
+    @Test
+    void json_rpc_error_of_a_legacy_server_fails_with_the_status_code() throws Exception {
+        errorBody = NO_VALID_SESSION;
         startServer(400);
 
         transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
@@ -243,6 +276,58 @@ class StreamableHttpMcpTransportStatusCodeTest {
         HttpException failure = failureOf(response);
         assertThat(failure.statusCode()).isEqualTo(400);
         assertThat(failure).hasMessage("Unexpected status code: 400");
+    }
+
+    @Test
+    void legacy_health_check_fails_when_the_server_no_longer_knows_the_session() throws Exception {
+        try (DefaultMcpClient client = startClient(legacyServer(NO_VALID_SESSION, true))) {
+            Throwable failure = catchThrowable(client::checkHealth);
+
+            assertThat(failure).hasRootCauseInstanceOf(HttpException.class);
+            assertThat(failure).hasRootCauseMessage("Unexpected status code: 400");
+        }
+    }
+
+    @Test
+    void legacy_initialization_rejected_with_a_json_rpc_error_fails() throws Exception {
+        String alreadyInitialized =
+                "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request: Server already initialized\"},\"id\":null}";
+
+        Throwable failure = catchThrowable(() -> startClient(legacyServer(alreadyInitialized, false)));
+
+        assertThat(failure).hasRootCauseInstanceOf(HttpException.class);
+        assertThat(failure).hasRootCauseMessage("Unexpected status code: 400");
+    }
+
+    @Test
+    void modern_health_check_fails_when_the_server_answers_with_a_json_rpc_error() throws Exception {
+        AtomicInteger discoverRequests = new AtomicInteger();
+        String unsupportedVersion =
+                "{\"jsonrpc\":\"2.0\",\"id\":%s,\"error\":{\"code\":-32022,\"message\":\"Unsupported protocol version\",\"data\":{\"supported\":[\"2027-01-01\"]}}}";
+        HttpHandler server = exchange -> {
+            Map<String, Object> request =
+                    McpJson.toMap(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            Object id = request.get("id");
+            if ("server/discover".equals(request.get("method")) && discoverRequests.getAndIncrement() == 0) {
+                respond(
+                        exchange,
+                        200,
+                        "{\"jsonrpc\":\"2.0\",\"id\":" + id
+                                + ",\"result\":{\"supportedVersions\":[\"2026-07-28\"],\"capabilities\":{},\"resultType\":\"complete\"}}");
+            } else {
+                // e.g. the server was redeployed with another protocol version
+                respond(exchange, 400, unsupportedVersion.formatted(id));
+            }
+        };
+
+        try (DefaultMcpClient client = startClient(server)) {
+            assertThat(client.isModernProtocol()).isTrue();
+
+            Throwable failure = catchThrowable(client::checkHealth);
+
+            assertThat(failure).isInstanceOf(McpException.class);
+            assertThat(((McpException) failure).errorCode()).isEqualTo(-32022);
+        }
     }
 
     @Test
@@ -263,11 +348,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
     void legacy_server_that_rejects_the_detection_request_with_a_json_rpc_error_is_initialized_as_legacy()
             throws Exception {
         List<String> initializedVersions = new CopyOnWriteArrayList<>();
-        // the answer of a legacy server built with the TypeScript SDK to a request without a session
-        String noSession =
-                "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Bad Request: No valid session ID provided\"},\"id\":null}";
-
-        try (DefaultMcpClient client = startClient(detectingServer(noSession, initializedVersions))) {
+        try (DefaultMcpClient client = startClient(detectingServer(NO_VALID_SESSION, initializedVersions))) {
             assertThat(client.isModernProtocol()).isFalse();
         }
 
@@ -282,6 +363,34 @@ class StreamableHttpMcpTransportStatusCodeTest {
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThat(response.get(5, TimeUnit.SECONDS)).contains("\"tools\":[]");
+    }
+
+    private CompletableFuture<String> listToolsWithModernProtocol() {
+        transport.setModernProtocol(true);
+        return transport.sendRequest(new McpListToolsRequest(1L, null));
+    }
+
+    /**
+     * A legacy server that rejects {@code server/discover} like a TypeScript SDK server, and answers
+     * {@code initialize} with the given rejection, or accepts it and then rejects every request with it.
+     */
+    private static HttpHandler legacyServer(String rejection, boolean acceptsInitialize) {
+        return exchange -> {
+            Map<String, Object> request =
+                    McpJson.toMap(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            Object method = request.get("method");
+            if ("server/discover".equals(method)) {
+                respond(exchange, 400, NO_VALID_SESSION);
+            } else if ("initialize".equals(method) && acceptsInitialize) {
+                exchange.getResponseHeaders().set("Mcp-Session-Id", "session-1");
+                respond(exchange, 200, INITIALIZE_RESULT.replace("\"id\":0", "\"id\":" + request.get("id")));
+            } else if ("notifications/initialized".equals(method)) {
+                exchange.sendResponseHeaders(202, -1);
+                exchange.close();
+            } else {
+                respond(exchange, 400, rejection);
+            }
+        };
     }
 
     private DefaultMcpClient startClient(HttpHandler handler) throws IOException {

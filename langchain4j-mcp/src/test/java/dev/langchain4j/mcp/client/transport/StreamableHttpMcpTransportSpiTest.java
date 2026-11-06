@@ -205,10 +205,7 @@ class StreamableHttpMcpTransportSpiTest {
 
         httpClient.nextExchange().fail(new HttpException(400, error));
 
-        assertThat(McpJson.toMap(result.get(5, TimeUnit.SECONDS)))
-                .containsEntry("id", 1)
-                .containsEntry("error", Map.of("code", -32020, "message", "Header mismatch"));
-        assertThat(pendingOperations).isEmpty();
+        assertThat(result.get(5, TimeUnit.SECONDS)).isEqualTo(error);
     }
 
     @ParameterizedTest

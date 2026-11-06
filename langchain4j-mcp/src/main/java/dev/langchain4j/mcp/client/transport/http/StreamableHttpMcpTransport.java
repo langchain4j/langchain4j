@@ -30,7 +30,6 @@ import dev.langchain4j.spi.CapturedContext;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -544,6 +543,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final boolean firstAttempt;
         private final CompletableFuture<Void> opened;
         private final CapturedContext requestContext;
+        private final boolean modern = modernProtocol;
         private final AtomicBoolean finished = new AtomicBoolean();
         private final StringBuilder body = new StringBuilder();
         private final StringBuilder sseData = new StringBuilder();
@@ -638,29 +638,34 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         /**
-         * Only a client error can carry a JSON-RPC error, except a rejected credential and an expired legacy
-         * session, which are recognized by their status code alone.
+         * In the 2026-07-28 protocol, a server rejects a request with a client error status and a JSON-RPC error,
+         * for example 404 with -32601 for a method it does not know, and that error is the answer to the request.
+         * A rejected credential (401), a refused request (403) and a rate limit (429) still fail the request with
+         * their status code, which callers act on. So does every error status of a legacy server: its health
+         * check and initialization rely on that failure.
          */
         private boolean readsErrorBody(int statusCode) {
-            return expectResponse
+            return modern
+                    && expectResponse
                     && context.message().getId() != null
                     && statusCode >= 400
                     && statusCode < 500
                     && statusCode != 401
-                    && !expiresSession(statusCode);
+                    && statusCode != 403
+                    && statusCode != 429;
         }
 
         private boolean expiresSession(int statusCode) {
-            return statusCode == 404 && !modernProtocol && !(context.message() instanceof McpInitializeRequest);
+            return statusCode == 404 && !modern && !(context.message() instanceof McpInitializeRequest);
         }
 
         /**
-         * Passes a JSON-RPC error carried by an error response to the operation handler, which completes the
-         * request with it, as if it had arrived with a successful status.
+         * Completes the request with a JSON-RPC error carried by an error response, as if it had arrived with a
+         * successful status.
          *
          * @return whether the response carried a JSON-RPC error for this request
          */
-        private boolean dispatchJsonRpcError(HttpException error) {
+        private boolean completeWithJsonRpcError(HttpException error) {
             if (!readsErrorBody(error.statusCode()) || error.getMessage() == null) {
                 return false;
             }
@@ -674,29 +679,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
                 return false;
             }
-            Long id = context.message().getId();
-            Object messageId = message.get("id");
-            String body = error.getMessage();
-            if (messageId == null) {
-                // a server that could not read the request answers without an id, but the error is still its answer
-                Map<String, Object> answer = new LinkedHashMap<>(message);
-                answer.put("id", id);
-                body = McpJson.serialize(answer);
-            } else if (!(messageId instanceof Number number) || number.longValue() != id) {
+            // a server that could not read the request answers without an id, but the error is still its answer
+            Object id = message.get("id");
+            if (id != null && !(id instanceof Number number && number.longValue() == context.message().getId())) {
                 return false;
             }
             if (logResponses) {
                 trafficLog.info("Response: {}", error.getMessage());
             }
-            try {
-                operationHandler.onMessage(body);
-            } catch (RuntimeException e) {
-                future.completeExceptionally(e);
-            }
-            if (!future.isDone()) {
-                future.completeExceptionally(
-                        new HttpException(error.statusCode(), "Unexpected status code: " + error.statusCode()));
-            }
+            future.complete(error.getMessage());
             return true;
         }
 
@@ -776,7 +767,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (!finish()) {
                 return;
             }
-            if (!closed.get() && error instanceof HttpException httpError && dispatchJsonRpcError(httpError)) {
+            if (!closed.get() && error instanceof HttpException httpError && completeWithJsonRpcError(httpError)) {
                 return;
             }
             if (error instanceof HttpException httpError) {
