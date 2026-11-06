@@ -14,6 +14,11 @@ import java.lang.annotation.Target;
  * Like every helper method, it can be an instance method of a helper object of the agent instead of a static method
  * of the agent type: see the "Helper objects" section of the agentic tutorial and
  * {@link AgenticServices.AgentConfigurator}.
+ * <p>
+ * The method is invoked when the client is first needed, which is normally the first invocation of the agent, and
+ * not when the agentic system is built, because creating an MCP client normally connects to the MCP server. Its
+ * parameters are however resolved when the agent is built, like those of the other supplier methods, and its return
+ * type is checked at that moment too.
  */
 @Retention(RUNTIME)
 @Target({METHOD})

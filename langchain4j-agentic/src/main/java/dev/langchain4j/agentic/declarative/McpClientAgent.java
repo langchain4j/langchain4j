@@ -10,21 +10,25 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as an MCP client agent that wraps a single MCP tool as a non-AI agent.
+ * Marks a method as an MCP client agent that wraps a single MCP tool as a non-AI agent. The MCP client is obtained
+ * from the {@link McpClientSupplier} method and the tool is looked up on the MCP server the first time they are
+ * needed, which is normally the first invocation of the agent, never when the agentic system is built.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface McpClientAgent {
 
     /**
-     * Name of the MCP tool to bind and invoke as non-AI agent.
+     * Name of the MCP tool to bind and invoke as non-AI agent. If not provided, the single tool exposed by the MCP
+     * server is bound, and the first invocation of the agent fails when the server exposes more than one.
      *
      * @return name of the MCP tool.
      */
     String toolName() default "";
 
     /**
-     * Name of the agent. If not provided, method name will be used.
+     * Name of the agent. If not provided, method name will be used. The name is known without contacting the MCP
+     * server and never changes, not even after the tool has been resolved.
      *
      * @return name of the agent.
      */
@@ -33,6 +37,8 @@ public @interface McpClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code description} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description of the MCP tool is used, which is read from the MCP server the first time the
+     * description is requested.
      *
      * @return description of the agent.
      */
@@ -41,6 +47,8 @@ public @interface McpClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code value} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description of the MCP tool is used, which is read from the MCP server the first time the
+     * description is requested.
      *
      * @return description of the agent.
      */

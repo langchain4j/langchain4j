@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.mcp;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -19,37 +18,26 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Map;
 
 public class McpClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
-    private final Map<String, String> inputDescriptions;
 
     private final McpClientInstance mcpClientInstance;
 
-    private final String toolName;
-    private final String toolDescription;
     private final Method method;
-    private final List<AgentArgument> arguments;
 
     private InternalAgent parent;
 
     public McpClientAgentInvoker(McpClientInstance mcpClientInstance, Method method) {
         this.method = method;
         this.mcpClientInstance = mcpClientInstance;
-        this.toolName = mcpClientInstance.toolName();
-        this.toolDescription = mcpClientInstance.toolDescription();
         this.agentId = name();
-        this.inputDescriptions = mcpClientInstance.inputDescriptions();
-        this.arguments = isUntyped()
-                ? mcpClientInstance.arguments()
-                : McpSchemaToType.mergeDescriptions(argumentsFromMethod(method), inputDescriptions);
     }
 
     @Override
     public String name() {
-        return toolName;
+        return mcpClientInstance.name();
     }
 
     @Override
@@ -59,7 +47,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String description() {
-        return toolDescription;
+        return mcpClientInstance.description();
     }
 
     @Override
@@ -99,7 +87,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public List<AgentArgument> arguments() {
-        return arguments;
+        return mcpClientInstance.arguments();
     }
 
     @Override
@@ -110,14 +98,16 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         if (isUntyped()) {
-            for (AgentArgument argument : arguments) {
+            // the required inputs of an untyped agent are only known from the input schema of its tool
+            mcpClientInstance.toolSpecification();
+            for (AgentArgument argument : arguments()) {
                 if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
                     throw new MissingArgumentException(argument.name());
                 }
             }
             return untypedAgentInvocationArguments(agenticScope);
         }
-        return agentInvocationArguments(agenticScope, arguments);
+        return agentInvocationArguments(agenticScope, arguments());
     }
 
     private boolean isUntyped() {
@@ -137,6 +127,18 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public AgentInstance parent() {
         return parent;
+    }
+
+    /**
+     * Gives access to the wrapped MCP client agent, for instance to resolve its tool before the first invocation of
+     * the declarative agentic system containing it: {@code subagent.as(McpClientInstance.class).toolSpecification()}.
+     */
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        if (agentInstanceClass.isInstance(mcpClientInstance)) {
+            return agentInstanceClass.cast(mcpClientInstance);
+        }
+        return AgentInvoker.super.as(agentInstanceClass);
     }
 
     @Override

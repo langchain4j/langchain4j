@@ -80,6 +80,13 @@ class McpAgentTest {
         when(mcpClient.executeTool(any())).thenReturn(result);
     }
 
+    /** The arguments of an agent once its tool has been resolved, which normally happens on its first invocation. */
+    private static List<AgentArgument> resolvedArguments(Object agent) {
+        McpClientInstance mcpAgent = (McpClientInstance) agent;
+        mcpAgent.toolSpecification();
+        return mcpAgent.arguments();
+    }
+
     @Test
     void untyped_mcp_agent_derives_input_keys_from_schema() {
         McpClient mcpClient = mockMcpClient("translate", "Translate text to a target language", "text", "language");
@@ -127,7 +134,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
 
-        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+        List<AgentArgument> arguments = resolvedArguments(agent);
         assertThat(arguments)
                 .extracting(AgentArgument::name)
                 .containsExactly("recordType", "fields", "limit", "filters");
@@ -167,7 +174,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
 
-        assertThat(((McpClientInstance) agent).arguments())
+        assertThat(resolvedArguments(agent))
                 .extracting(AgentArgument::rawType)
                 .containsExactly(String.class, Integer.class, Double.class, Boolean.class, String.class);
     }
@@ -191,8 +198,7 @@ class McpAgentTest {
 
         UntypedAgent agent =
                 McpAgent.builder(mcpClient).inputKeys("fields", "query").build();
-        McpClientInstance mcpAgent = (McpClientInstance) agent;
-        List<AgentArgument> arguments = mcpAgent.arguments();
+        List<AgentArgument> arguments = resolvedArguments(agent);
 
         assertThat(arguments).extracting(AgentArgument::name).containsExactly("fields", "query");
         ParameterizedType fieldsType = (ParameterizedType) arguments.get(0).type();
@@ -214,7 +220,7 @@ class McpAgentTest {
 
         UntypedAgent agent =
                 McpAgent.builder(mcpClient).inputKeys("known", "missing").build();
-        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+        List<AgentArgument> arguments = resolvedArguments(agent);
 
         assertThat(arguments.get(0).type()).isEqualTo(String.class);
         assertThat(arguments.get(1).type()).isEqualTo(Object.class);
@@ -237,7 +243,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
 
-        assertThat(((McpClientInstance) agent).arguments().get(0).type()).isEqualTo(Object.class);
+        assertThat(resolvedArguments(agent).get(0).type()).isEqualTo(Object.class);
     }
 
     @Test
@@ -262,7 +268,7 @@ class McpAgentTest {
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
 
         ParameterizedType addressType = (ParameterizedType)
-                ((McpClientInstance) agent).arguments().get(0).type();
+                resolvedArguments(agent).get(0).type();
         assertThat(addressType.getRawType()).isEqualTo(Map.class);
         assertThat(addressType.getActualTypeArguments()).containsExactly(String.class, Object.class);
     }
@@ -280,7 +286,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
 
-        assertThat(((McpClientInstance) agent).arguments().get(0).type()).isEqualTo(Object.class);
+        assertThat(resolvedArguments(agent).get(0).type()).isEqualTo(Object.class);
     }
 
     @Test
@@ -302,7 +308,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
         ParameterizedType outerType = (ParameterizedType)
-                ((McpClientInstance) agent).arguments().get(0).type();
+                resolvedArguments(agent).get(0).type();
         ParameterizedType innerType = (ParameterizedType) outerType.getActualTypeArguments()[0];
 
         assertThat(outerType.getRawType()).isEqualTo(List.class);
@@ -358,7 +364,7 @@ class McpAgentTest {
                         .build()));
 
         UntypedAgent agent = McpAgent.builder(mcpClient).build();
-        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+        List<AgentArgument> arguments = resolvedArguments(agent);
 
         assertThat(arguments)
                 .extracting(AgentArgument::name)
@@ -444,7 +450,7 @@ class McpAgentTest {
                 McpAgent.builder(mcpClient, TypedCollectionAgent.class).build();
 
         Method method = TypedCollectionAgent.class.getMethod("search", List.class, String[].class);
-        List<AgentArgument> clientArguments = ((McpClientInstance) agent).arguments();
+        List<AgentArgument> clientArguments = resolvedArguments(agent);
         assertThat(clientArguments).extracting(AgentArgument::name).containsExactly("fields", "recordIds");
         assertThat(clientArguments.get(0).type()).isEqualTo(method.getGenericParameterTypes()[0]);
         assertThat(clientArguments.get(1).type()).isEqualTo(method.getGenericParameterTypes()[1]);
@@ -482,7 +488,7 @@ class McpAgentTest {
                 McpAgent.builder(mcpClient, TypedDescribedCollectionAgent.class).build();
         Method method = TypedDescribedCollectionAgent.class.getMethod("search", List.class, String[].class);
 
-        List<AgentArgument> clientArguments = ((McpClientInstance) agent).arguments();
+        List<AgentArgument> clientArguments = resolvedArguments(agent);
         assertThat(clientArguments)
                 .extracting(AgentArgument::type)
                 .containsExactly(method.getGenericParameterTypes()[0], method.getGenericParameterTypes()[1]);
@@ -528,8 +534,10 @@ class McpAgentTest {
                 .build();
         when(mcpClient.listTools()).thenReturn(List.of(otherTool));
 
-        assertThatThrownBy(() ->
-                        McpAgent.builder(mcpClient).toolName("nonexistent_tool").build())
+        // the tool is looked up on the first invocation, not when the agent is built
+        UntypedAgent agent = McpAgent.builder(mcpClient).toolName("nonexistent_tool").build();
+
+        assertThatThrownBy(() -> agent.invoke(Map.of()))
                 .isInstanceOf(dev.langchain4j.agentic.planner.AgenticSystemConfigurationException.class)
                 .hasMessageContaining("nonexistent_tool")
                 .hasMessageContaining("not found");
@@ -694,12 +702,15 @@ class McpAgentTest {
         McpClient mcpClient2 = mockMcpClient("uppercase", "Uppercase text", "story");
         mockToolResult(mcpClient2, "A STORY ABOUT DRAGONS");
 
+        // an untyped agent is named after its configured tool
         UntypedAgent generator = McpAgent.builder(mcpClient1)
+                .toolName("generate")
                 .inputKeys("topic")
                 .outputKey("story")
                 .build();
 
         UntypedAgent uppercaser = McpAgent.builder(mcpClient2)
+                .toolName("uppercase")
                 .inputKeys("story")
                 .outputKey("upperCaseStory")
                 .build();
@@ -768,7 +779,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).outputKey("time").build();
 
-        assertThat(((McpClientInstance) agent).arguments()).isEmpty();
+        assertThat(resolvedArguments(agent)).isEmpty();
         Object result = agent.invoke(Map.of());
         assertThat(result).isEqualTo("2024-01-01T00:00:00Z");
     }
