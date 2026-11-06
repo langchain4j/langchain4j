@@ -401,6 +401,42 @@ class McpLazyToolTest {
     }
 
     @Test
+    void at_most_one_mcp_agent_of_a_system_can_be_named_with_the_placeholder() {
+        // two agents with neither a name nor a tool name could not be told apart, in the same workflow...
+        Throwable siblings = catchThrowable(() -> AgenticServices.sequenceBuilder()
+                .subAgents(namelessWriter(), namelessWriter())
+                .build());
+        assertThat(siblings)
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("more than one MCP client agent named with the placeholder 'mcp-agent'")
+                .hasMessageContaining("McpClientBuilder.name(...) or toolName(...)");
+
+        // ...or in different branches of the same system, where only their ids would differ
+        Throwable nested = catchThrowable(() -> AgenticServices.sequenceBuilder()
+                .subAgents(
+                        AgenticServices.parallelBuilder().subAgents(namelessWriter()).build(),
+                        namelessWriter())
+                .build());
+        assertThat(nested).isInstanceOf(AgenticSystemConfigurationException.class);
+
+        // one agent named with the placeholder next to named ones is fine, and the check never contacts the server
+        UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+                .subAgents(
+                        namelessWriter(),
+                        McpAgent.builder(server).name("rewriter").inputKeys("story").outputKey("story").build())
+                .outputKey("story")
+                .build();
+        assertThat(((AgentInstance) pipeline).subagents())
+                .extracting(AgentInstance::name)
+                .containsExactly("mcp-agent", "rewriter");
+        assertThat(server.clients).hasValue(0);
+    }
+
+    private static UntypedAgent namelessWriter() {
+        return McpAgent.builder(server).inputKeys("topic").outputKey("story").build();
+    }
+
+    @Test
     void the_description_comes_from_the_tool_and_the_name_does_not_change_after_the_resolution() {
         Writer writer = McpAgent.builder(server, Writer.class).outputKey("story").build();
         AgentInstance writerInstance = (AgentInstance) writer;

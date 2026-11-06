@@ -12,12 +12,14 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class McpClientAgentInvoker implements AgentInvoker {
 
@@ -144,6 +146,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        checkPlaceholderCollision();
     }
 
     @Override
@@ -154,5 +157,38 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public void appendId(String idSuffix) {
         this.agentId = this.agentId + idSuffix;
+        // also called when an ancestor of this agent is attached to a parent, when a wider system is known
+        checkPlaceholderCollision();
+    }
+
+    /**
+     * An agentic system can contain at most one MCP agent named with the placeholder, otherwise those agents could
+     * not be told apart in the events, the reports and the supervisor prompts. Checked whenever this agent or one of
+     * its ancestors is attached to a parent, that is at every step of the construction of the system, over all the
+     * agents of the topmost parent known at that point, so that the agents of different branches are covered too.
+     */
+    private void checkPlaceholderCollision() {
+        if (parent == null || !DefaultMcpClientBuilder.PLACEHOLDER_NAME.equals(name())) {
+            return;
+        }
+        AgentInstance root = parent;
+        while (root.parent() != null) {
+            root = root.parent();
+        }
+        long placeholderAgents = allAgents(root)
+                .filter(agent -> DefaultMcpClientBuilder.PLACEHOLDER_NAME.equals(agent.name()))
+                .count();
+        if (placeholderAgents > 1) {
+            throw new AgenticSystemConfigurationException("The agentic system '" + root.name()
+                    + "' contains more than one MCP client agent named with the placeholder '"
+                    + DefaultMcpClientBuilder.PLACEHOLDER_NAME
+                    + "', the name of an untyped MCP agent with neither a name nor a tool name: give each of them "
+                    + "a name through McpClientBuilder.name(...) or toolName(...)");
+        }
+    }
+
+    private static Stream<AgentInstance> allAgents(AgentInstance agent) {
+        return Stream.concat(
+                Stream.of(agent), agent.subagents().stream().flatMap(McpClientAgentInvoker::allAgents));
     }
 }
