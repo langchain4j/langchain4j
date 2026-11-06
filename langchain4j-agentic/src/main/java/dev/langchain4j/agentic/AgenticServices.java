@@ -1016,7 +1016,8 @@ public class AgenticServices {
         if (!builder.hasDecisionModel()) {
             throw new AgenticSystemConfigurationException("DecisionModel not provided for the decision agent "
                     + agentServiceClass.getName()
-                    + ". Please provide one with a static method annotated with @DecisionModelSupplier.");
+                    + ". Please provide one with a method annotated with @DecisionModelSupplier, static on the agent "
+                    + "type or declared by a helper object.");
         }
         return builder.build();
     }

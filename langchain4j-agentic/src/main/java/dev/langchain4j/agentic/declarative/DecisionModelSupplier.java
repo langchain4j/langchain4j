@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as the supplier of the decision model used by a decision agent (see
- * {@link AgenticServices#decisionAgentBuilder(Class)}). The method must be static and
+ * {@link AgenticServices#decisionAgentBuilder(Class)}). The method must be static on the agent type and
  * return a {@link DecisionModel}.
  * <p>
  * When the method has no parameters, it is invoked once at build time to provide a fixed model.
@@ -48,6 +48,10 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * @since 1.23.0
+ * <p>
+ * Like every helper method, it can be an instance method of a helper object of the agent instead of a static method
+ * of the agent type: see the "Helper objects" section of the agentic tutorial and
+ * {@link AgenticServices.AgentConfigurator}.
  */
 @Experimental
 @Retention(RUNTIME)

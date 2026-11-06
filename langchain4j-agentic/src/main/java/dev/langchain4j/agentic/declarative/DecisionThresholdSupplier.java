@@ -4,6 +4,7 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.service.decision.ThresholdContext;
 import dev.langchain4j.service.decision.ThresholdProvider;
 import java.lang.annotation.Retention;
@@ -12,7 +13,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as the supplier of the threshold of the {@code boolean} answers of a decision agent: the answer is
  * {@code true} when the probability of "yes" is at least the threshold, 0.5 when no supplier is declared. The method
- * must be static, take the {@link ThresholdContext} describing the question, and
+ * must be static on the agent type, take the {@link ThresholdContext} describing the question, and
  * return a {@code double} between 0 and 1, or a {@code Double} that is {@code null} to use the default of 0.5. Like a
  * {@link ThresholdProvider}, it is invoked at every invocation of the agent, so the
  * threshold can come from configuration that changes at runtime, and it can be called concurrently: it must be
@@ -45,6 +46,10 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * @since 1.23.0
+ * <p>
+ * Like every helper method, it can be an instance method of a helper object of the agent instead of a static method
+ * of the agent type: see the "Helper objects" section of the agentic tutorial and
+ * {@link AgenticServices.AgentConfigurator}.
  */
 @Experimental
 @Retention(RUNTIME)

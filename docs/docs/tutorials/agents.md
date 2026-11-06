@@ -1324,6 +1324,42 @@ Map<String, Object> input = Map.of(
 String story = (String) novelCreator.invoke(input);
 ```
 
+### Helper objects
+
+The methods annotated with `@Output`, `@ExitCondition`, `@ActivationCondition`, `@ChatModelSupplier` and the other annotations of the two tables above are the *helper methods* of an agent. In an agent interface they are static. They can also be instance methods of the *helper objects* of the agent: plain objects that an integration provides for each agent type through the `helperObjectsResolver` of an `AgentConfigurator`, built with `AgentConfigurator.builder()`. This is how a dependency injection container, like the Quarkus extension, keeps the helpers of an agent on a bean, with its injected fields and its interceptors: there the agent class itself is its own helper object. For instance the `EveningPlannerAgent` above can get its listener from a helper object holding it, instead of a static method creating it:
+
+```java
+public class PlannerHelpers {
+
+    private final AgentListener listener; // in a container, an injected bean
+
+    public PlannerHelpers(AgentListener listener) {
+        this.listener = listener;
+    }
+
+    @AgentListenerSupplier
+    AgentListener listener() {
+        return listener;
+    }
+}
+
+AgentConfigurator configurator = AgentConfigurator.builder()
+        .helperObjectsResolver(agentType -> agentType == EveningPlannerAgent.class
+                ? List.of(new PlannerHelpers(new AgentMonitor()))
+                : List.of())
+        .build();
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
+        .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL, configurator);
+```
+
+The resolver is called once for each agent of the system when it is built, and the objects it returns are shared by all the invocations of the agent. An instance helper takes the same parameters as the static form: values read from the `AgenticScope`, the parameters provided by the framework, like `@LoopCounter` or the `ErrorContext`, and the ones resolved through a `SupplierParameterResolver`. The rules are the following:
+
+- for one annotation an agent has one helper: a static method of the agent type together with an instance method of a helper object, or two helper objects with the same annotation, is a configuration error, except for the annotations allowed several times on an agent, like `@ActivationCondition` with a value on a conditional agent;
+- a non-static helper declared by the agent type itself, like a `default` method of the interface, needs a helper object that is an instance of its declaring type, otherwise creating the agentic system fails instead of ignoring the method;
+- an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields;
+- an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
+- in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
+
 ## Strongly typed inputs and outputs
 
 Up to this point, all input and output keys used to pass data to and from agents have been identified by a simple `String`. However, this approach can be error-prone, as it relies on the correct spelling of those keys. Also in this way it is not possible to strongly bind these variables to a specific types, thus obliging to type checks and casts when reading their values from the `AgenticScope`. To avoid these issues, it is optionally allowed to define strongly typed input and output keys using the `TypedKey` interface.
@@ -2951,7 +2987,7 @@ public class ExchangeOperator {
 }
 ```
 
-so that it can be used in the same way as the other subagents made available to the supervisor. 
+so that it can be used in the same way as the other subagents made available to the supervisor. An agent passed as an instance like this is also its own [helper object](#helper-objects): its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`. 
 
 ```java
 WithdrawAgent withdrawAgent = AgenticServices
@@ -3016,7 +3052,7 @@ public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 }
 ```
 
-This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
+This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user. Like every agent passed as an instance, such an object is also its own [helper object](#helper-objects).
 
 The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows you to define this function together with the agent description, and the output variable where the user's response will be written.
 
@@ -3360,7 +3396,7 @@ By doing so it internally sends a summarization prompt, similar to the one of th
 
 The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
 
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry together with the chat memory objects of its agents, or `deleteAgenticScope` to delete also the messages they stored.
 
 ```java
 agent.evictAgenticScope(memoryId);
