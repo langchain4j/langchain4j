@@ -100,6 +100,32 @@ class AiServicesTest {
         verify(chatModel, times(1)).chat(any(ChatRequest.class));
     }
 
+    interface AssistantWithSingleMemoryAccess extends ChatMemoryAccess {
+
+        String chat(String message);
+    }
+
+    @Test
+    void should_fail_with_a_clear_error_when_evicting_the_single_chat_memory_of_an_AI_service() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        AssistantWithSingleMemoryAccess assistant = AiServices.builder(AssistantWithSingleMemoryAccess.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Hi"))
+                .chatMemory(chatMemory)
+                .build();
+        assistant.chat("Hello");
+
+        // when-then
+        assertThatThrownBy(() -> assistant.evictChatMemory("default"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("Cannot evict the chat memory of the memory id 'default': this AI service has a single"
+                        + " chat memory, shared by all the memory ids. Configure it with chatMemoryProvider(...)"
+                        + " instead of chatMemory(...) to have a chat memory for each memory id, which can be"
+                        + " evicted.");
+        assertThat(chatMemory.messages()).hasSize(2);
+    }
+
     @Test
     void test_getClass() {
         // dynamic proxies don't intercept final methods
