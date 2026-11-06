@@ -150,7 +150,8 @@ class StreamableHttpMcpTransportMaxMessageSizeTest {
 
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(7L, null));
 
-        assertThatThrownBy(() -> response.get(10, TimeUnit.SECONDS))
+        // reading 20 MiB takes well under a second on an idle machine, but more than 10 s on a busy CI runner
+        assertThatThrownBy(() -> response.get(60, TimeUnit.SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
                 .isInstanceOf(IllegalStateException.class)
