@@ -293,16 +293,6 @@ public class DeclarativeUtil {
     }
 
     /**
-     * Checks that the given type, built as an agent of another kind, declares no static method annotated with
-     * {@link DecisionModelSupplier} or {@link DecisionThresholdSupplier}, which would be silently ignored.
-     *
-     * @throws AgenticSystemConfigurationException if it does
-     */
-    public static void checkNoDecisionSuppliers(Class<?> agentType) {
-        checkNoDecisionSuppliers(AgentHelpers.staticOnly(agentType));
-    }
-
-    /**
      * Checks that the given agent, built as an agent of another kind, has no helper method annotated with
      * {@link DecisionModelSupplier} or {@link DecisionThresholdSupplier}, which would be silently ignored.
      *
@@ -342,25 +332,10 @@ public class DeclarativeUtil {
         }
     }
 
-    public static <T> void configureOutput(Class<T> agentServiceClass, AgenticService<?, ?> builder) {
-        configureOutput(AgentHelpers.staticOnly(agentServiceClass), builder);
-    }
-
     public static void configureOutput(AgentHelpers helpers, AgenticService<?, ?> builder) {
         helpers.select(Output.class)
                 .map(helper -> agenticScopeFunction(helpers.agentType(), helper, Object.class))
                 .ifPresent(builder::output);
-    }
-
-    /**
-     * Selects the static condition method matching the given selector.
-     *
-     * @throws IllegalArgumentException if the selected method doesn't return a boolean
-     */
-    public static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
-        Optional<Method> method = selectMethod(agentServiceClass, methodSelector);
-        method.ifPresent(DeclarativeUtil::checkBooleanReturnType);
-        return method;
     }
 
     /**
@@ -392,10 +367,6 @@ public class DeclarativeUtil {
         }
     }
 
-    public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
-        buildAgentFeatures(AgentHelpers.staticOnly(agentServiceClass), builder);
-    }
-
     /**
      * Applies to the builder of a workflow, planner or supervisor agent the helpers common to every kind of them:
      * the {@link BeforeCall}, the {@link ErrorHandler}, the {@link AgentListenerSupplier} and the
@@ -410,20 +381,6 @@ public class DeclarativeUtil {
         if (activationCondition != null) {
             builder.activationCondition(activationCondition.description(), activationCondition.predicate());
         }
-    }
-
-    /**
-     * Reads the activation condition of the agent declared by the given class or interface: the static method
-     * annotated with {@link ActivationCondition} without a value. An {@link ActivationCondition} with a value is
-     * allowed only on a {@link ConditionalAgent}, where it selects the subagents to activate, and where a condition
-     * without value is not allowed.
-     *
-     * @return the activation condition of the agent, or {@code null} when it has none
-     * @throws AgenticSystemConfigurationException if there is more than one such method, if it doesn't return a
-     *         boolean, or if a condition with a value is declared on a class that is not a conditional agent
-     */
-    public static AgentCondition activationCondition(Class<?> agentClass) {
-        return activationCondition(AgentHelpers.staticOnly(agentClass));
     }
 
     /**
@@ -510,10 +467,6 @@ public class DeclarativeUtil {
         });
     }
 
-    public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
-        return parallelExecutor(AgentHelpers.staticOnly(agentServiceClass));
-    }
-
     public static Optional<Executor> parallelExecutor(AgentHelpers helpers) {
         return helpers.select(ParallelExecutor.class).map(helper -> {
             checkReturnType(helper.method(), Executor.class);
@@ -562,14 +515,6 @@ public class DeclarativeUtil {
         return Optional.empty();
     }
 
-    public static Predicate<AgenticScope> agenticScopePredicate(Method predicateMethod) {
-        return agenticScopePredicate(predicateMethod.getDeclaringClass(), predicateMethod);
-    }
-
-    public static Predicate<AgenticScope> agenticScopePredicate(Class<?> agentType, Method predicateMethod) {
-        return agenticScopeFunction(agentType, predicateMethod, boolean.class)::apply;
-    }
-
     public static Predicate<AgenticScope> agenticScopePredicate(Class<?> agentType, HelperMethod predicateMethod) {
         return agenticScopeFunction(agentType, predicateMethod, boolean.class)::apply;
     }
@@ -585,16 +530,6 @@ public class DeclarativeUtil {
     }
 
     /**
-     * Invokes a static supplier method: all its parameters must be provided by the registered
-     * {@link SupplierParameterResolver}s.
-     *
-     * @throws AgenticSystemConfigurationException if a parameter is not supported by any resolver
-     */
-    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
-        return invokeSupplierWithResolvers(agentType, HelperMethod.ofStatic(method), targetClass);
-    }
-
-    /**
      * Invokes a supplier method, a static method of the agent type or an instance method of a helper object: all its
      * parameters must be provided by the registered {@link SupplierParameterResolver}s.
      *
@@ -605,20 +540,6 @@ public class DeclarativeUtil {
             return helper.invoke();
         }
         return ResolvedParameters.of(agentType, helper).checkAllResolved().invoke();
-    }
-
-    public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
-        return agenticScopeFunction(functionMethod.getDeclaringClass(), functionMethod, targetClass);
-    }
-
-    /**
-     * Creates a function invoking the given static method declared on, or inherited by, the given agent type: its
-     * parameters supported by a registered {@link SupplierParameterResolver} are resolved, the others are read from
-     * the {@link AgenticScope}, and are {@code null} when the function is applied without one.
-     */
-    public static <T> Function<AgenticScope, T> agenticScopeFunction(
-            Class<?> agentType, Method functionMethod, Class<T> targetClass) {
-        return agenticScopeFunction(agentType, HelperMethod.ofStatic(functionMethod), targetClass, true);
     }
 
     /**
