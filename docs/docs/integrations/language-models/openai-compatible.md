@@ -45,13 +45,14 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, EmpirioLabs AI, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
+- [EmpirioLabs AI](#empiriolabs-ai)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
 - [Ollama](#ollama)
@@ -138,6 +139,25 @@ ChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 You can find available model names on the [Groq models page](https://console.groq.com/docs/models).
+
+## EmpirioLabs AI
+
+**Deployment:** SaaS (key required)
+
+**Description:** [EmpirioLabs AI](https://empiriolabs.ai) is specialized AI model hosting for open, proprietary, and custom stacks. It serves open-source and proprietary models through an OpenAI-compatible API.
+
+**Setup:**
+To use EmpirioLabs AI, you'll need an API key from the [EmpirioLabs AI dashboard](https://platform.empiriolabs.ai/dashboard/api-keys).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.empiriolabs.ai/v1")
+        .apiKey(System.getenv("EMPIRIOLABS_API_KEY")) // Or your actual key
+        .modelName("qwen3-7-max") // Or any other model offered by EmpirioLabs AI
+        .build();
+```
+You can find available model names on the [EmpirioLabs AI models page](https://empiriolabs.ai/models), and the API reference in the [EmpirioLabs AI docs](https://docs.empiriolabs.ai).
 
 ## Docker Model Runner
 
