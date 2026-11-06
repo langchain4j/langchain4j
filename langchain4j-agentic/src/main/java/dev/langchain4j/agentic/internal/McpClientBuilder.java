@@ -27,9 +27,7 @@ public interface McpClientBuilder<T> {
      * @param name the name of the agent, ignored when null or blank
      * @return this builder for method chaining
      */
-    default McpClientBuilder<T> name(String name) {
-        return this;
-    }
+    McpClientBuilder<T> name(String name);
 
     /**
      * Sets the description of the agent, used by the supervisor and the other planners to decide when to invoke
@@ -41,9 +39,7 @@ public interface McpClientBuilder<T> {
      * @param description the description of the agent, ignored when null or blank
      * @return this builder for method chaining
      */
-    default McpClientBuilder<T> description(String description) {
-        return this;
-    }
+    McpClientBuilder<T> description(String description);
 
     McpClientBuilder<T> inputKeys(String... inputKeys);
 

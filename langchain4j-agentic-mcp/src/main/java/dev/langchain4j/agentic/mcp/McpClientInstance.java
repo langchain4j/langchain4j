@@ -2,8 +2,14 @@ package dev.langchain4j.agentic.mcp;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import java.util.Map;
 
+/**
+ * Implemented by every MCP client agent, created with {@link McpAgent} or declared with the
+ * {@code @McpClientAgent} annotation: gives access to the MCP tool bound by the agent.
+ */
 public interface McpClientInstance extends InternalAgent {
 
     /**
@@ -32,10 +38,12 @@ public interface McpClientInstance extends InternalAgent {
      * blocks until the resolution completes and can be used to warm up the agent, or to fail fast, before its first
      * invocation. Inside a declarative agentic system the MCP agent is wrapped: reach it through
      * {@code subagent.as(McpClientInstance.class)} on the corresponding subagent of the
-     * {@link dev.langchain4j.agentic.planner.AgentInstance} of the system.
+     * {@link AgentInstance} of the system.
      *
+     * @return the specification of the MCP tool bound by the agent
      * @throws McpToolResolutionException if the client cannot be created or the tools cannot be listed
-     * @throws dev.langchain4j.agentic.planner.AgenticSystemConfigurationException if the tool is not found
+     * @throws AgenticSystemConfigurationException if the tool is not found, if no tool name is configured and the
+     *         server exposes more than one tool, or if the client supplier does not return an MCP client
      * @since 1.24.0
      */
     ToolSpecification toolSpecification();

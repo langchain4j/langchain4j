@@ -4103,7 +4103,7 @@ public interface DeclarativeA2AWithUrlSupplier {
 
 The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
 
-This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents, although that method is invoked later, when the MCP client is first needed.
 
 ## MCP-based Tool Agents
 
@@ -4127,7 +4127,21 @@ UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
 String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
 ```
 
-The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema, once the tool is resolved, if not provided explicitly.
+
+A `DefaultMcpClient` connects to its server when it is created. To defer that until the client is first needed, give the builder a `Supplier<McpClient>` instead of the client:
+
+```java
+UntypedAgent storyGenerator = McpAgent.builder(() -> new DefaultMcpClient.Builder()
+                .transport(myMcpTransport)
+                .build())
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
 
 As with other agents, MCP tool agents can also be created with a typed interface:
 
@@ -4148,7 +4162,7 @@ String story = storyGenerator.generateStory("dragons and wizards");
 
 In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
 
-Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance. This method is invoked when the client is first needed, on the first invocation of the agent, and not when the agentic system is built, so that creating a `DefaultMcpClient`, which connects to its server, does not require the server to be up at that time.
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance. This method is invoked when the client is first needed, normally on the first invocation of the agent, and not when the agentic system is built, so that creating a `DefaultMcpClient`, which connects to its server, does not require the server to be up at that time. As for the supplier given to `McpAgent.builder()`, the client it returns is used by every invocation of the agent, and the agent never closes it.
 
 ```java
 public interface DeclarativeMcpStoryGenerator {
@@ -4171,32 +4185,39 @@ public interface DeclarativeMcpStoryGenerator {
 
 ### Tool resolution
 
-Building an MCP tool agent, or an agentic system containing one, never contacts the MCP server: the tool is looked up, through the `listTools()` method of the `McpClient`, the first time it is needed, which is normally the first invocation of the agent. In this way an MCP server that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an MCP agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The `McpClient` given to `McpAgent.builder()` is created by the caller, so a `DefaultMcpClient`, which connects to its server when it is created, still does so at that moment: to defer the connection too, give the builder a `Supplier<McpClient>` instead, which is invoked when the client is first needed, as the `@McpClientSupplier` method of a declarative agent is.
+Building an MCP tool agent, or an agentic system containing one, never contacts the MCP server: the tool is looked up, through the `listTools()` method of the `McpClient`, the first time it is needed, which is normally the first invocation of the agent. In this way an MCP server that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an MCP agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The `McpClient` given to `McpAgent.builder()` is created by the caller, so a `DefaultMcpClient`, which connects to its server when it is created, does so at that moment: to defer the connection too, give the builder a `Supplier<McpClient>` instead, as shown above, which is invoked when the client is first needed, as the `@McpClientSupplier` method of a declarative agent is.
 
 This has a few consequences for what is known about the agent before its first invocation.
 
-- **Name**: the name of an MCP agent is always known locally, without the tool. It is the one set through the `name` attribute of the `@McpClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `McpAgent.builder(mcpClient)` takes its configured `toolName` or, without one, the placeholder `mcp-agent`, which logs a warning when the agent is built: at most one agent of an agentic system can be named with the placeholder, and building a system containing two of them fails with an `AgenticSystemConfigurationException`, since they could not be told apart in the events, the reports and the supervisor prompts. Setting a meaningful name is recommended for untyped agents anyway, especially when they are used by a supervisor, whose model sees the name of every subagent. The agent id is derived from the name: it is used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and it never changes, not even after the tool has been resolved. The name of the tool itself stays available through the `toolName()` method of the `McpClientInstance` interface, implemented by every MCP tool agent.
-- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@McpClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is the one of the tool, which is resolved the first time the description is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor resolves the tool. When the tool cannot be resolved, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. Setting the description explicitly avoids all this, and also keeps text controlled by the MCP server out of the prompt of the supervisor.
-- **Arguments**: the arguments of the agent never contact the server, because every workflow reads them when it is built. Until the tool is resolved they are those of the agent method for a typed agent, and the explicit `inputKeys`, without type information, for an untyped one, which has no argument at all when its input keys are not configured, since they can only be derived from the input schema of the tool. Once the tool is resolved, the arguments carry the types, the optionality and the descriptions of that schema, as before. A typed agent checks that its inputs are available before contacting the server, while an untyped one resolves the tool first, because its required inputs are only known from the schema.
+- **Name**: the name of an MCP agent is always known locally, without the tool. It is the one set through the `name` attribute of the `@McpClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `McpAgent.builder(mcpClient)` takes its configured `toolName` or, without one, the placeholder `mcp-agent`, which logs a warning when the agent is built: at most one agent of an agentic system can be named with the placeholder, and building a system containing two of them fails with an `AgenticSystemConfigurationException`, since they could not be told apart in the events, the reports and the supervisor prompts. Setting a meaningful name is recommended for untyped agents anyway, especially when they are used by a supervisor, whose model sees the name of every subagent. The name, and the agent id derived from it, are used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and they never change, not even after the tool has been resolved. The name of the tool itself is available through the `toolName()` method of the `McpClientInstance` interface, implemented by every MCP tool agent, which resolves the tool when no `toolName` is configured.
+- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@McpClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is the one of the tool, which is resolved the first time the description is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor resolves the tool. When the tool cannot be resolved, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. Setting the description explicitly avoids all this, and also keeps the description of the tool, which is controlled by the MCP server, out of the prompt of the supervisor. The descriptions of the input parameters of the tool still reach that prompt once the tool is resolved, and so do their names for an untyped agent without explicit `inputKeys`.
+- **Arguments**: the arguments of the agent never contact the server, because every workflow reads them when it is built. Until the tool is resolved they are those of the agent method for a typed agent, and the explicit `inputKeys`, without type information, for an untyped one, which has no argument at all when its input keys are not configured, since they can only be derived from the input schema of the tool. Once the tool is resolved, the arguments carry the descriptions of that schema and, for an untyped agent, also its types and optionality. A typed agent checks that its inputs are available before contacting the server, while an untyped one resolves the tool first, because its required inputs are only known from the schema.
 - **Client supplier**: the parameters of the `@McpClientSupplier` method provided by a `SupplierParameterResolver` are resolved when the agent is built, like those of the other supplier methods, while the method itself runs when the client is first needed, so a value resolved per request is the one of the thread building the agent and not the one of the first caller. The declared return type of the method is checked when the agent is built too: it must be `McpClient`, a subtype, or a supertype such as `Object`, in which case the instance it returns is checked when the client is created.
 
-The first invocation of the agent pays the latency of the tool resolution. Calling the `toolSpecification()` method of the `McpClientInstance` interface resolves the tool immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the tool cannot be resolved:
+The tool is resolved once: a later change of the tool on the MCP server is only seen after the agent is built again. The first invocation of the agent pays the latency of the tool resolution. Calling the `toolSpecification()` method of the `McpClientInstance` interface resolves the tool immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the tool cannot be resolved:
 
 ```java
 ToolSpecification tool = ((McpClientInstance) storyGenerator).toolSpecification();
 ```
 
-Inside a declarative agentic system the MCP agent is wrapped, so it is reached through the `as` method of the corresponding subagent, found by name among the `subagents()` of the `AgentInstance` of the system:
+Inside a declarative agentic system the MCP agent is wrapped, so it is reached through the `as` method of the corresponding subagent, found by name among the `subagents()` of the `AgentInstance` of the system. For instance, for a sequence using the `DeclarativeMcpStoryGenerator` above, whose MCP agent is named after its `generateStory` method:
 
 ```java
-AgentInstance storyGenerator = ((AgentInstance) storyCreator).subagents().stream()
+public interface StoryPipeline {
+
+    @SequenceAgent(outputKey = "story", subAgents = DeclarativeMcpStoryGenerator.class)
+    String write(@V("topic") String topic);
+}
+
+StoryPipeline storyPipeline = AgenticServices.createAgenticSystem(StoryPipeline.class);
+AgentInstance mcpSubagent = ((AgentInstance) storyPipeline).subagents().stream()
         .filter(subagent -> subagent.name().equals("generateStory"))
         .findFirst()
         .orElseThrow();
-ToolSpecification tool = storyGenerator.as(McpClientInstance.class).toolSpecification();
+ToolSpecification tool = mcpSubagent.as(McpClientInstance.class).toolSpecification();
 ```
 
-When the MCP client cannot be created or the tools cannot be listed, the invocation fails with an `McpToolResolutionException`, carrying the name of the agent and the configured name of the tool, with the original error as cause. The failure is not cached: the next invocation resolves the tool again, so an MCP server that becomes available later works without rebuilding the agentic system. A tool that is not found on the server, or a missing `toolName` when the server exposes more than one tool, is instead a configuration error, reported with an `AgenticSystemConfigurationException` at the first resolution. Being thrown during the invocation of the agent, these exceptions also reach the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional MCP agent whose server is down:
+When the MCP client cannot be created or the tools cannot be listed, the invocation fails with an `McpToolResolutionException`, carrying the name of the agent and the configured name of the tool, with the original error as cause. The failure is not cached: the next invocation resolves the tool again, so an MCP server that becomes available later works without rebuilding the agentic system. A tool that is not found on the server, or a missing `toolName` when the server exposes more than one tool, is instead a configuration error, reported with an `AgenticSystemConfigurationException` at the first resolution. Being thrown during the invocation of the agent, these exceptions also reach the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional MCP agent whose server is down. Here `storyGenerator` is one of the MCP tool agents created with `McpAgent.builder()` above, and `analyzer` any other agent writing the `topic` it needs:
 
 ```java
 UntypedAgent pipeline = AgenticServices.sequenceBuilder()

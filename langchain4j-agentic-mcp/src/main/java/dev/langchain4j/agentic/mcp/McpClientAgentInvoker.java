@@ -2,8 +2,10 @@ package dev.langchain4j.agentic.mcp;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentInvoker;
@@ -19,6 +21,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class McpClientAgentInvoker implements AgentInvoker {
@@ -101,7 +104,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         if (isUntyped()) {
             // the required inputs of an untyped agent are only known from the input schema of its tool
-            mcpClientInstance.toolSpecification();
+            resolveTool(agenticScope);
             for (AgentArgument argument : arguments()) {
                 if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
                     throw new MissingArgumentException(argument.name());
@@ -110,6 +113,21 @@ public class McpClientAgentInvoker implements AgentInvoker {
             return untypedAgentInvocationArguments(agenticScope);
         }
         return agentInvocationArguments(agenticScope, arguments());
+    }
+
+    /**
+     * Resolves the tool before the invocation, reporting a failure as a failed invocation of the agent, so that it
+     * reaches the listeners and the error handler as it does for a typed agent, which resolves it when invoked.
+     */
+    private void resolveTool(AgenticScope agenticScope) {
+        try {
+            mcpClientInstance.toolSpecification();
+        } catch (RuntimeException e) {
+            AgentInvocationException failure =
+                    new AgentInvocationException("Failed to resolve the MCP tool of agent '" + name() + "'", e);
+            agentError(listener(), agenticScope, this, Map.of(), failure);
+            throw failure;
+        }
     }
 
     private boolean isUntyped() {

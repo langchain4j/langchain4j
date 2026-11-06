@@ -13,6 +13,11 @@ public interface AgentInstance {
 
     String agentId();
 
+    /**
+     * The description of this agent. For a remote agent without an explicit description, like an A2A or an MCP one,
+     * it is read from the remote server the first time it is requested, so this call can block, and it fails when
+     * the server is unavailable.
+     */
     String description();
 
     Type outputType();

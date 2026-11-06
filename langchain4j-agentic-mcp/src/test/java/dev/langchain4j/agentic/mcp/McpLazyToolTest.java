@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +23,8 @@ import dev.langchain4j.agentic.declarative.McpClientSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentInvocationError;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -535,6 +539,7 @@ class McpLazyToolTest {
         assertThat(causeOfType(failure, AgenticSystemConfigurationException.class))
                 .hasMessageContaining("'poet' not found")
                 .hasMessageContaining("writer");
+        assertThat(hasCauseOfType(failure, McpToolResolutionException.class)).isFalse();
     }
 
     @Test
@@ -549,6 +554,7 @@ class McpLazyToolTest {
                 .hasMessageContaining(StoryAgentWithWrongClient.class.getName())
                 .hasMessageContaining("java.lang.String")
                 .hasMessageContaining("McpClient");
+        assertThat(hasCauseOfType(failure, McpToolResolutionException.class)).isFalse();
     }
 
     @Test
@@ -724,5 +730,108 @@ class McpLazyToolTest {
 
         assertThat(writer.invoke(Map.of("topic", "dragons"))).isEqualTo("a story about dragons");
         assertThat(server.clients).hasValue(1);
+    }
+
+    @Test
+    void an_error_handler_can_skip_an_untyped_agent_whose_mcp_server_is_down() {
+        server.down = true;
+        List<AgentInvocationError> reportedErrors = new CopyOnWriteArrayList<>();
+        UntypedAgent storyAgent = McpAgent.builder(server)
+                .toolName("writer")
+                .inputKeys("topic")
+                .outputKey("story")
+                .listener(new AgentListener() {
+                    @Override
+                    public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
+                        reportedErrors.add(agentInvocationError);
+                    }
+                })
+                .build();
+        AgenticScopeFunction<String> analyzer = AgenticServices.nonAiAgentBuilder(
+                        scope -> "topic of " + scope.readState("request", ""))
+                .name("analyzer")
+                .description("Analyzes the request")
+                .outputKey("topic")
+                .build();
+        List<String> failedAgents = new CopyOnWriteArrayList<>();
+        UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+                .subAgents(analyzer, storyAgent)
+                .outputKey("story")
+                .errorHandler(errorContext -> {
+                    failedAgents.add(errorContext.agentName());
+                    return hasCauseOfType(errorContext.exception(), McpToolResolutionException.class)
+                            ? ErrorRecoveryResult.result("no story available, the MCP server is down")
+                            : ErrorRecoveryResult.throwException();
+                })
+                .build();
+
+        assertThat(pipeline.invoke(Map.of("request", "dragons")))
+                .isEqualTo("no story available, the MCP server is down");
+        assertThat(failedAgents).containsExactly("writer");
+        assertThat(reportedErrors).hasSize(1);
+        assertThat(hasCauseOfType(reportedErrors.get(0).error(), McpToolResolutionException.class))
+                .isTrue();
+    }
+
+    @Test
+    void a_failed_listing_of_the_tools_of_a_given_client_is_retried_with_the_same_client() {
+        McpClient client = mock(McpClient.class);
+        when(client.listTools())
+                .thenThrow(new IllegalStateException("connection lost"))
+                .thenReturn(List.of(WRITER_TOOL));
+        when(client.executeTool(any()))
+                .thenReturn(ToolExecutionResult.builder()
+                        .resultText("a story about dragons")
+                        .isError(false)
+                        .build());
+        Writer writer = McpAgent.builder(client, Writer.class)
+                .toolName("writer")
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasCauseInstanceOf(IllegalStateException.class);
+        assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
+        verify(client, times(2)).listTools();
+    }
+
+    @Test
+    void a_missing_tool_name_with_several_tools_on_the_server_fails_at_the_first_invocation() {
+        McpServer serverWithTwoTools =
+                new McpServer("a story about dragons", WRITER_TOOL, tool("poet", "Writes a poem", "topic"));
+        Writer writer = McpAgent.builder(serverWithTwoTools, Writer.class)
+                .outputKey("story")
+                .build();
+        assertThat(serverWithTwoTools.clients).hasValue(0);
+
+        assertThatThrownBy(() -> ((McpClientInstance) writer).toolSpecification())
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("Tool name is required")
+                .hasMessageContaining("writer")
+                .hasMessageContaining("poet");
+        assertThatThrownBy(() -> writer.write("dragons")).isInstanceOf(AgenticSystemConfigurationException.class);
+    }
+
+    @Test
+    void a_supplier_returning_null_is_a_configuration_error() {
+        Writer writer = McpAgent.builder(() -> null, Writer.class)
+                .toolName("writer")
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("returned null");
+    }
+
+    @Test
+    void a_null_client_or_supplier_fails_when_the_builder_is_created() {
+        assertThatThrownBy(() -> McpAgent.builder((McpClient) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mcpClient");
+        assertThatThrownBy(() -> McpAgent.builder((Supplier<McpClient>) null, Writer.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mcpClientSupplier");
     }
 }

@@ -19,7 +19,10 @@ import java.lang.annotation.Target;
  * not when the agentic system is built, because creating an MCP client normally connects to the MCP server. Its
  * parameters are however resolved when the agent is built, like those of the other supplier methods, and its declared
  * return type is checked at that moment too: it must be the McpClient, a subtype, or a supertype such as Object, in
- * which case the instance it returns is checked when the client is created.
+ * which case the instance it returns is checked when the client is created. The method runs on the thread that first
+ * needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on
+ * per-request or per-user state. When it fails, it is invoked again the next time the client is needed. The agent
+ * never closes the client.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
