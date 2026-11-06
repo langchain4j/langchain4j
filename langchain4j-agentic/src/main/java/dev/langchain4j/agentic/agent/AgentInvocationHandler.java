@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeA
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgentAiServiceEvent;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.internal.AgentModelResponse;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
@@ -81,6 +82,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
      *         agent type: an integration that builds its own AI service implementation reaches it here, for instance
      *         to manage the chat memories it created
      */
+    @Internal
     public Object aiService() {
         return agent;
     }
