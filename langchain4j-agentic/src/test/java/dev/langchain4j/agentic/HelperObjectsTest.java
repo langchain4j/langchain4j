@@ -28,6 +28,7 @@ import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
+import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
@@ -143,7 +144,7 @@ class HelperObjectsTest {
                 .toList();
     }
 
-    /** The configurator of an integration providing the given helper objects to the root agent only. */
+    /** The configurator of an integration providing the given helper objects to the agents of the given type only. */
     static AgentConfigurator rootHelpers(Class<?> rootAgentType, Object... helperObjects) {
         return new AgentConfigurator(
                 ctx -> {}, null, null, null, type -> type == rootAgentType ? List.of(helperObjects) : List.of());
@@ -1140,6 +1141,116 @@ class HelperObjectsTest {
                 .extracting(AgentInstance::name)
                 .containsExactly("write", "polish");
         assertThat(resolvedMethods()).contains("polished", "output");
+    }
+
+    // ── The agent kinds whose helpers used to be static only: the resolver reaches them too ──
+
+    public static class SignRequest {
+
+        @HumanInTheLoop(description = "Asks a signature", outputKey = "signature")
+        public static String sign(@V("name") String name) {
+            return name + " signed";
+        }
+    }
+
+    public interface Signing {
+
+        @SequenceAgent(outputKey = "signature", subAgents = SignRequest.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void declarative_human_in_the_loop_class_gets_the_activation_condition_of_its_helper_object() {
+        register(Policy.class, new Policy("Voldemort"));
+
+        Signing signing =
+                AgenticServices.createAgenticSystem(Signing.class, rootHelpers(SignRequest.class, new GreetingGate()));
+
+        assertThat(signing.run("Mario")).isEqualTo("Mario signed");
+        assertThat(signing.run("Voldemort")).isNull();
+        assertThat(resolvedMethods()).contains("allowed");
+    }
+
+    public interface Shouting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = Shouter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void non_ai_agent_class_with_a_static_agent_method_gets_the_activation_condition_of_its_helper_object() {
+        register(Policy.class, new Policy("Voldemort"));
+
+        Shouting shouting =
+                AgenticServices.createAgenticSystem(Shouting.class, rootHelpers(Shouter.class, new GreetingGate()));
+
+        assertThat(shouting.run("Mario")).isEqualTo("MARIO!");
+        assertThat(shouting.run("Voldemort")).isNull();
+        assertThat(resolvedMethods()).contains("allowed");
+    }
+
+    public interface RegistryGreeter {
+
+        @RegistryAgent("greeter")
+        String greet(@V("name") String name);
+    }
+
+    public interface RegistryGreeting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = RegistryGreeter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void registry_agent_rejects_the_activation_condition_of_its_helper_object() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        RegistryGreeting.class, rootHelpers(RegistryGreeter.class, new GreetingGate())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("not supported on the @RegistryAgent")
+                .hasMessageContaining("'greeter'");
+    }
+
+    public interface Rephraser {
+
+        @dev.langchain4j.service.UserMessage("Rephrase {{text}}")
+        @Agent(outputKey = "rephrased")
+        String translate(@V("text") String text);
+    }
+
+    public interface Rephrasing {
+
+        @SequenceAgent(outputKey = "rephrased", subAgents = Rephraser.class)
+        String run(@V("text") String text);
+    }
+
+    public static class RephrasingModel {
+        final ChatModelMock model = scriptedModel("ciao");
+
+        @ChatModelSupplier
+        ChatModel chatModel(@Injected Persona persona) {
+            return model;
+        }
+    }
+
+    @Test
+    void default_chat_model_of_the_system_comes_from_the_helper_object_of_the_root_agent() {
+        register(Persona.class, new Persona("translator"));
+        RephrasingModel rephrasingModel = new RephrasingModel();
+        AtomicInteger rootResolutions = new AtomicInteger();
+        var configurator = new AgentConfigurator(ctx -> {}, null, null, null, type -> {
+            if (type != Rephrasing.class) {
+                return List.of();
+            }
+            rootResolutions.incrementAndGet();
+            return List.of(rephrasingModel);
+        });
+
+        Rephrasing rephrasing = AgenticServices.createAgenticSystem(Rephrasing.class, configurator);
+
+        assertThat(rephrasing.run("hello")).isEqualTo("ciao");
+        assertThat(rephrasingModel.model.requests()).hasSize(1);
+        // the helpers of the root agent are read twice, for its default chat model and to build it, resolved once
+        assertThat(rootResolutions).hasValue(1);
     }
 
     // ── Conflicts ──
