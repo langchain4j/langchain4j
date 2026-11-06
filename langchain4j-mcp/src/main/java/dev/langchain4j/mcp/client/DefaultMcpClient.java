@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
@@ -49,6 +50,7 @@ import dev.langchain4j.mcp.protocol.McpSubscriptionsListenParams;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -1540,8 +1542,9 @@ public class DefaultMcpClient implements McpClient {
                 triggerReconnection();
             }
         };
+        CapturedContext capturedContext = getOrDefault(DefaultExecutorProvider.captureContext(), CapturedContext.NONE);
         healthCheckScheduler.scheduleAtFixedRate(
-                healthCheckTask,
+                capturedContext.wrap(healthCheckTask),
                 autoHealthCheckInterval.toMillis(),
                 autoHealthCheckInterval.toMillis(),
                 TimeUnit.MILLISECONDS);
@@ -1982,6 +1985,7 @@ public class DefaultMcpClient implements McpClient {
          * Enables or disables the automatic health check feature.
          * When enabled, the client will periodically send ping messages to the server
          * to ensure the connection is alive, and will attempt to reconnect if it's not.
+         * These checks and their reconnection attempts run in the context captured when the client is built.
          * The default is enabled
          */
         public Builder autoHealthCheck(boolean autoHealthCheck) {
