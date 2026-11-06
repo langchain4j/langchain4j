@@ -4,18 +4,17 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A debate planner that orchestrates iterative adversarial rounds among debater agents.
@@ -24,6 +23,9 @@ import java.util.stream.Collectors;
  * each other's reasoning (via a {@code "debateContext"} scope key) and can revise their positions.
  * Rounds continue until the {@link ConvergenceStrategy} reports convergence or {@code maxRounds}
  * is reached, at which point the judge agent (the last registered subagent) renders a final verdict.
+ * <p>
+ * A debate suspended while its judge is running, for example because the judge waits for a human, resumes at the
+ * judge when it is invoked again, so that the verdict is not lost.
  */
 public class DebatePlanner implements Planner {
 
@@ -74,6 +76,13 @@ public class DebatePlanner implements Planner {
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
+        if (judgePhase) {
+            // a debate suspended while its judge was running, for instance because the judge waits for a human,
+            // resumes at the judge: starting a new debate would skip the debaters that already ran and end it
+            // before the judge has rendered its verdict
+            LOG.info("Resuming the debate at the judge of round {}", currentRound);
+            return call(judge);
+        }
         planningContext.agenticScope().writeState(DEBATE_CONTEXT_KEY, "");
         LOG.info("Starting debate round 1 with {} debaters", debaters.size());
         return call(debaters);
@@ -129,7 +138,10 @@ public class DebatePlanner implements Planner {
 
     @Override
     public Map<String, Object> executionState() {
-        return Map.of("currentRound", currentRound, "lastDebatersMessages", lastDebatersMessages);
+        return Map.of(
+                "currentRound", currentRound,
+                "judgePhase", judgePhase,
+                "lastDebatersMessages", lastDebatersMessages);
     }
 
     @Override
@@ -137,6 +149,14 @@ public class DebatePlanner implements Planner {
         Object savedRound = state.get("currentRound");
         if (savedRound instanceof Number n) {
             this.currentRound = n.intValue();
+        }
+        Object savedJudgePhase = state.get("judgePhase");
+        if (savedJudgePhase instanceof Boolean savedJudge) {
+            this.judgePhase = savedJudge;
+        }
+        Object savedMessages = state.get("lastDebatersMessages");
+        if (savedMessages instanceof Map<?, ?> messages) {
+            messages.forEach((name, message) -> lastDebatersMessages.put(String.valueOf(name), message));
         }
     }
 
