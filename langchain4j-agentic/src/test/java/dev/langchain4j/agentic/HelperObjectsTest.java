@@ -1322,6 +1322,57 @@ class HelperObjectsTest {
         assertThat(loop.count(0)).isEqualTo(2);
     }
 
+    // ── Private and final instance helpers cannot be overridden by the proxy of a container ──
+
+    public static class PrivateLoopHelpers {
+
+        @ExitCondition
+        private boolean reached(@V("count") int count) {
+            return count >= 2;
+        }
+    }
+
+    public static class FinalLoopHelpers {
+
+        @ExitCondition
+        public final boolean reached(@V("count") int count) {
+            return count >= 2;
+        }
+    }
+
+    /** A class-based agent whose own instance helper is private. */
+    public static class PrivateExitLoop {
+
+        @LoopAgent(outputKey = "count", maxIterations = 10, subAgents = Counter.class)
+        public native int count(@V("count") int count);
+
+        @ExitCondition
+        private boolean reached(@V("count") int count) {
+            return count >= 2;
+        }
+    }
+
+    @Test
+    void private_or_final_instance_helpers_are_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        CountingLoop.class, rootHelpers(CountingLoop.class, new PrivateLoopHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("reached")
+                .hasMessageContaining("@ExitCondition")
+                .hasMessageContaining("is private: an instance helper cannot be private or final");
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        CountingLoop.class, rootHelpers(CountingLoop.class, new FinalLoopHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("reached")
+                .hasMessageContaining("is final: an instance helper cannot be private or final");
+        // also when the private helper is on the agent type, provided as its own helper object
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        PrivateExitLoop.class, rootHelpers(PrivateExitLoop.class, new PrivateExitLoop())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining(PrivateExitLoop.class.getName() + ".reached")
+                .hasMessageContaining("is private");
+    }
+
     // ── Conflicts ──
 
     public interface CountingLoopWithStaticExit {

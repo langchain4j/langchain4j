@@ -407,9 +407,11 @@ public class AgenticServices {
      * shared by all the invocations of the agent, also by the ones running at the same time, so they must be
      * thread-safe, or be proxies finding the current instance at each call, like the client proxies of the
      * normal-scoped beans of a CDI container. Their annotated methods are found and invoked through reflection, on the
-     * class of each object, its superclasses and its interfaces. A helper method declared by the agent type itself
-     * that is not static needs one of the helper objects to be invoked on, an instance of its declaring class,
-     * typically the agent bean: the agentic system fails to build otherwise, instead of skipping the helper silently.
+     * class of each object, its superclasses and its interfaces. They can have any visibility but private, and cannot
+     * be final: a container invokes them through the proxy of its bean, which cannot override such methods, so they
+     * would run on the proxy, without its injected fields. A helper method declared by the agent type itself that is
+     * not static needs one of the helper objects to be invoked on, an instance of its declaring class, typically the
+     * agent bean: the agentic system fails to build otherwise, instead of skipping the helper silently.
      */
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
