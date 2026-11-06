@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.activationCondition;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildListener;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agentListener;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkNoDecisionSuppliers;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -20,6 +20,7 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -149,7 +150,10 @@ public class AgentUtil {
                 .responseProvider(scope -> helper.invoke(
                         parameters.invocationArguments(scope, Map.of(), true).positionalArgs()));
 
-        buildListener(helpers, humanInTheLoopBuilder::listener);
+        AgentListener listener = agentListener(helpers);
+        if (listener != null) {
+            humanInTheLoopBuilder.listener(listener);
+        }
 
         String name = isNullOrBlank(humanInTheLoop.name()) ? method.getName() : humanInTheLoop.name();
         AgentInvoker agentInvoker = nonAiAgentInvoker(
@@ -159,7 +163,8 @@ public class AgentUtil {
                 humanInTheLoop.outputKey(),
                 humanInTheLoop.async(),
                 false,
-                activationCondition(helpers));
+                activationCondition(helpers),
+                listener);
         // the invoker calls the method on the agent of the executor, which is the target of an instance method
         return new AgentExecutor(agentInvoker, target != null ? target : humanInTheLoopBuilder.build());
     }
@@ -232,7 +237,8 @@ public class AgentUtil {
                 outputKey,
                 async,
                 optional,
-                activationCondition(helpers));
+                activationCondition(helpers),
+                agentListener(helpers));
     }
 
     public static AgentInvoker nonAiAgentInvoker(
@@ -265,8 +271,8 @@ public class AgentUtil {
 
     /**
      * Creates the invoker of a non-AI agent method: its parameters provided by a
-     * {@link dev.langchain4j.agentic.declarative.SupplierParameterResolver} are not agent arguments, and are resolved
-     * at each invocation.
+     * {@link SupplierParameterResolver} are not agent arguments, and are resolved at each invocation. The given
+     * listener, {@code null} when the agent has none, is notified of its invocations.
      */
     public static AgentInvoker nonAiAgentInvoker(
             ResolvedParameters parameters,
@@ -275,7 +281,8 @@ public class AgentUtil {
             String outputKey,
             boolean async,
             boolean optional,
-            AgentCondition activationCondition) {
+            AgentCondition activationCondition,
+            AgentListener listener) {
         Method agenticMethod = parameters.method();
         NonAiAgentInstance agentInstance = new NonAiAgentInstance(
                 agenticMethod.getDeclaringClass(),
@@ -286,7 +293,7 @@ public class AgentUtil {
                 async,
                 optional,
                 parameters.frameworkArguments(),
-                null,
+                listener,
                 activationCondition);
         return parameters.frameworkParameterCount() == agenticMethod.getParameterCount()
                 ? AgentInvoker.fromMethod(agentInstance, agenticMethod)

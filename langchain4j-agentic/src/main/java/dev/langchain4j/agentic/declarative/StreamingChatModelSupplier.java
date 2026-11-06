@@ -12,11 +12,12 @@ import java.lang.annotation.Target;
  * Marks a method as a supplier of the streaming chat model to be used by an agent.
  * The method must be static on the agent type and return an instance of {@link StreamingChatModel}.
  * <p>
- * When the method has no parameters, it is invoked once at build time to provide a fixed model.
+ * When the method has no parameters, or only parameters provided by a {@link SupplierParameterResolver}, it is
+ * invoked once at build time to provide a fixed model.
  * When the method has parameters annotated with {@link dev.langchain4j.service.V @V},
  * they are resolved from the current {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope}
- * at each invocation, enabling dynamic model selection based on runtime state. Parameters resolved through a
- * {@link SupplierParameterResolver} are resolved each time the method is invoked.
+ * at each invocation, enabling dynamic model selection based on runtime state. Its parameters provided by a
+ * {@link SupplierParameterResolver} are then resolved each time the method is invoked too.
  * <p>
  * Example:
  * <pre>

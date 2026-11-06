@@ -488,10 +488,23 @@ public class DeclarativeUtil {
      * of its builder, which composes the listener with the ones already registered.
      */
     public static void buildListener(AgentHelpers helpers, Consumer<AgentListener> listenerRegistration) {
-        helpers.select(AgentListenerSupplier.class).ifPresent(helper -> {
-            checkReturnType(helper.method(), AgentListener.class);
-            listenerRegistration.accept(invokeSupplierWithResolvers(helpers.agentType(), helper, AgentListener.class));
-        });
+        AgentListener listener = agentListener(helpers);
+        if (listener != null) {
+            listenerRegistration.accept(listener);
+        }
+    }
+
+    /**
+     * @return the listener returned by the {@link AgentListenerSupplier} helper of the given agent, or {@code null}
+     *         when it has none
+     */
+    public static AgentListener agentListener(AgentHelpers helpers) {
+        return helpers.select(AgentListenerSupplier.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), AgentListener.class);
+                    return invokeSupplierWithResolvers(helpers.agentType(), helper, AgentListener.class);
+                })
+                .orElse(null);
     }
 
     public static Optional<Method> selectMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {

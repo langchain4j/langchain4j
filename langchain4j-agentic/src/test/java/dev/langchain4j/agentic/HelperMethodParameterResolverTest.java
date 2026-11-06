@@ -603,6 +603,36 @@ class HelperMethodParameterResolverTest {
         assertThat(store.memories.get("mario").messages()).isNotEmpty();
     }
 
+    public interface ResolvedModelTranslator {
+
+        @dev.langchain4j.service.UserMessage("Translate {{text}}")
+        @Agent(outputKey = "translation")
+        String translate(@V("text") String text);
+
+        @ChatModelSupplier
+        static ChatModel chatModel(@Injected ChatModelMock model) {
+            return model;
+        }
+    }
+
+    public interface ResolvedModelTranslation {
+
+        @SequenceAgent(outputKey = "translation", subAgents = ResolvedModelTranslator.class)
+        String run(@V("text") String text);
+    }
+
+    @Test
+    void chat_model_supplier_with_only_resolved_parameters_is_invoked_once_when_the_agent_is_built() {
+        ChatModelMock model = register(ChatModelMock.class, echoModel());
+
+        ResolvedModelTranslation translation = AgenticServices.createAgenticSystem(ResolvedModelTranslation.class);
+        translation.run("ciao");
+        translation.run("hello");
+
+        assertThat(model.requests()).hasSize(2);
+        assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).containsExactly("chatModel");
+    }
+
     // ── @A2AServerUrlSupplier ──
 
     public interface RemoteAgent {

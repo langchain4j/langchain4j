@@ -677,6 +677,40 @@ class HelperObjectsTest {
         assertThat(helpers.english.requests()).hasSize(1);
     }
 
+    static final ChatModelMock INHERITED_MODEL = ChatModelMock.thatAlwaysResponds("inherited");
+
+    public interface ModelDefaults {
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return INHERITED_MODEL;
+        }
+    }
+
+    public interface InheritingTranslator extends ModelDefaults {
+
+        @dev.langchain4j.service.UserMessage("Translate {{text}}")
+        @Agent(outputKey = "translation")
+        String translate(@V("text") String text);
+    }
+
+    public interface InheritingTranslation {
+
+        @SequenceAgent(outputKey = "translation", subAgents = InheritingTranslator.class)
+        String run(@V("text") String text);
+    }
+
+    @Test
+    void static_chat_model_supplier_of_a_super_interface_of_an_ai_agent_is_applied() {
+        ChatModelMock systemModel = ChatModelMock.thatAlwaysResponds("system");
+
+        InheritingTranslation translation =
+                AgenticServices.createAgenticSystem(InheritingTranslation.class, systemModel);
+
+        assertThat(translation.run("ciao")).isEqualTo("inherited");
+        assertThat(systemModel.requests()).isEmpty();
+    }
+
     // ── @PlannerSupplier ──
 
     public interface PlannedStory {
@@ -882,6 +916,106 @@ class HelperObjectsTest {
         assertThat(greeterAgent.arguments()).extracting(AgentArgument::name).containsExactly("name");
         assertThat(greeterAgent.topology()).isEqualTo(AgenticSystemTopology.NON_AI_AGENT);
         assertThat(resolvedMethods()).contains("greet", "allowed");
+    }
+
+    // ── @AgentListenerSupplier of the non-AI and human-in-the-loop agents ──
+
+    public static class ListenedGreeter {
+        final RecordingListener listener = new RecordingListener();
+
+        @Agent(outputKey = "greeting")
+        public String greet(@V("name") String name) {
+            return "Hello " + name;
+        }
+
+        @AgentListenerSupplier
+        AgentListener listener() {
+            return listener;
+        }
+    }
+
+    @Test
+    void non_ai_agent_passed_as_object_notifies_the_listener_of_its_instance_supplier() {
+        ListenedGreeter greeter = new ListenedGreeter();
+
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(greeter)
+                .outputKey("greeting")
+                .build();
+
+        assertThat(sequence.invoke(Map.of("name", "Mario"))).isEqualTo("Hello Mario");
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    public static class ListenedConfirmation {
+        final RecordingListener listener = new RecordingListener();
+
+        @HumanInTheLoop(description = "Asks a confirmation", outputKey = "confirmation")
+        public String ask(@V("name") String name) {
+            return "Confirm " + name;
+        }
+
+        @AgentListenerSupplier
+        AgentListener listener() {
+            return listener;
+        }
+    }
+
+    @Test
+    void human_in_the_loop_object_notifies_the_listener_of_its_instance_supplier() {
+        ListenedConfirmation confirmation = new ListenedConfirmation();
+
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(confirmation)
+                .outputKey("confirmation")
+                .build();
+
+        assertThat(sequence.invoke(Map.of("name", "Mario"))).isEqualTo("Confirm Mario");
+        assertThat(confirmation.listener.invokedAgents).containsExactly("ask");
+    }
+
+    static final RecordingListener STATIC_SUPPLIED_LISTENER = new RecordingListener();
+
+    public static class ListenedSignRequest {
+
+        @HumanInTheLoop(description = "Asks a signature", outputKey = "signature")
+        public static String sign(@V("name") String name) {
+            return name + " signed";
+        }
+
+        @AgentListenerSupplier
+        public static AgentListener listener() {
+            return STATIC_SUPPLIED_LISTENER;
+        }
+    }
+
+    public static class ListenedShouter {
+
+        @Agent(outputKey = "shout")
+        public static String shout(@V("signature") String signature) {
+            return signature.toUpperCase();
+        }
+
+        @AgentListenerSupplier
+        public static AgentListener listener() {
+            return STATIC_SUPPLIED_LISTENER;
+        }
+    }
+
+    public interface ListenedSigning {
+
+        @SequenceAgent(outputKey = "shout", subAgents = {ListenedSignRequest.class, ListenedShouter.class})
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void declarative_human_in_the_loop_and_non_ai_classes_notify_the_listener_of_their_static_supplier() {
+        STATIC_SUPPLIED_LISTENER.invokedAgents.clear();
+
+        ListenedSigning signing = AgenticServices.createAgenticSystem(ListenedSigning.class);
+
+        assertThat(signing.run("Mario")).isEqualTo("MARIO SIGNED");
+        assertThat(STATIC_SUPPLIED_LISTENER.invokedAgents).containsExactly("sign", "shout");
     }
 
     // ── Class-based workflow agents with an agentInstanceFactory: the contract an integration relies on ──

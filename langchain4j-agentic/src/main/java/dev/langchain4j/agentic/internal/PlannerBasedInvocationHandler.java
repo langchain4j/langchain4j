@@ -216,8 +216,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
      * there has no agents cached for it, and loading it from its store just to evict it could fail.
      *
      * @param delete whether to clear each chat memory, deleting its messages from its store, before evicting it; the
-     *        first failure is rethrown after the other chat memories have been visited, and the ones it left cached
-     *        are deleted by a later call, whether the scope still exists or not
+     *        first failure is rethrown after the other chat memories have been visited. The ones of the agent tree
+     *        that it left cached are deleted by a later call, whether the scope still exists or not; the agents
+     *        created for the scope only are not reachable once it is evicted, so the messages they could not delete
+     *        stay in their store
      */
     private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId, boolean delete) {
         DefaultAgenticScope scope = registry.getInMemory(memoryId);
