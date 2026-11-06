@@ -755,7 +755,12 @@ public abstract class AbstractAiServiceWithToolsIT {
         static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
                 .name("getUsernameFromId")
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("arg0", "String in a UUID format")
+                        .addProperty(
+                                "arg0",
+                                JsonStringSchema.builder()
+                                        .description("String in a UUID format")
+                                        .format("uuid")
+                                        .build())
                         .required("arg0")
                         .build())
                 .build();
@@ -1213,7 +1218,8 @@ public abstract class AbstractAiServiceWithToolsIT {
     protected Image catImage() {
         if (catImage == null) {
             String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-            catImage = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+            catImage =
+                    Image.builder().base64Data(base64Data).mimeType("image/png").build();
         }
         return catImage;
     }

@@ -37,6 +37,9 @@ class JsonSchemaElementJsonUtilsTest {
     void should_round_trip_scalar_types() {
         assertRoundTrip(JsonStringSchema.builder().description("a name").build());
         assertRoundTrip(new JsonStringSchema());
+        assertRoundTrip(JsonStringSchema.builder().format("uuid").build());
+        assertRoundTrip(
+                JsonStringSchema.builder().description("a name").format("uuid").build());
         assertRoundTrip(JsonIntegerSchema.builder().description("count").build());
         assertRoundTrip(new JsonIntegerSchema());
         assertRoundTrip(JsonNumberSchema.builder().description("price").build());
@@ -44,6 +47,15 @@ class JsonSchemaElementJsonUtilsTest {
         assertRoundTrip(JsonBooleanSchema.builder().description("active").build());
         assertRoundTrip(new JsonBooleanSchema());
         assertRoundTrip(new JsonNullSchema());
+    }
+
+    @Test
+    void toMap_should_omit_format_when_null() {
+        Map<String, Object> map = JsonSchemaElementJsonUtils.toMap(
+                JsonStringSchema.builder().description("a name").build());
+
+        assertThat(map).containsEntry("type", "string").containsEntry("description", "a name");
+        assertThat(map).doesNotContainKey("format");
     }
 
     @Test
@@ -269,11 +281,17 @@ class JsonSchemaElementJsonUtilsTest {
     // ---- raw fallback for extra keywords ----
 
     @Test
-    void should_fallback_to_raw_for_string_with_format() {
+    void should_round_trip_string_with_format() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "string");
         map.put("format", "date-time");
-        assertRawFallback(map);
+
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+        assertThat(element).isInstanceOf(JsonStringSchema.class);
+        assertThat(((JsonStringSchema) element).format()).isEqualTo("date-time");
+
+        Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
+        assertThat(restored).isEqualTo(map);
     }
 
     @Test
@@ -309,10 +327,10 @@ class JsonSchemaElementJsonUtilsTest {
 
     @Test
     void should_round_trip_nested_with_raw_fallback_child() {
-        // outer object is typed, child with format falls back to raw
+        // outer object is typed, child with pattern falls back to raw
         Map<String, Object> childMap = new LinkedHashMap<>();
         childMap.put("type", "string");
-        childMap.put("format", "date-time");
+        childMap.put("pattern", "^\\d{4}-\\d{2}-\\d{2}$");
 
         Map<String, Object> propsMap = new LinkedHashMap<>();
         propsMap.put("name", Map.of("type", "string"));
@@ -330,6 +348,28 @@ class JsonSchemaElementJsonUtilsTest {
         assertThat(obj.properties().get("timestamp")).isInstanceOf(JsonRawSchema.class);
 
         // round-trip should preserve structure
+        Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
+        assertThat(restored).isEqualTo(objectMap);
+    }
+
+    @Test
+    void should_round_trip_nested_string_with_format() {
+        Map<String, Object> childMap = new LinkedHashMap<>();
+        childMap.put("type", "string");
+        childMap.put("format", "date");
+
+        Map<String, Object> propsMap = new LinkedHashMap<>();
+        propsMap.put("birthDate", childMap);
+
+        Map<String, Object> objectMap = new LinkedHashMap<>();
+        objectMap.put("type", "object");
+        objectMap.put("properties", propsMap);
+
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(objectMap);
+        assertThat(element).isInstanceOf(JsonObjectSchema.class);
+        assertThat(((JsonObjectSchema) element).properties().get("birthDate"))
+                .isEqualTo(JsonStringSchema.builder().format("date").build());
+
         Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
         assertThat(restored).isEqualTo(objectMap);
     }
