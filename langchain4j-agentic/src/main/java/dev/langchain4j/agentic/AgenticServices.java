@@ -73,6 +73,7 @@ import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -463,6 +464,11 @@ public class AgenticServices {
             Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
             if (a2aClientMethod.isPresent()) {
                 return createA2AClient(agentServiceClass, a2aClientMethod.get());
+            }
+
+            Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
+            if (mcpClientMethod.isPresent()) {
+                return createMcpClient(agentServiceClass, mcpClientMethod.get());
             }
 
             if (isDecisionAgent(agentServiceClass)) {
@@ -945,20 +951,27 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
+        return agentToExecutor(createMcpClient(agentServiceClass, mcpMethod));
+    }
+
+    private static <T> T createMcpClient(Class<T> agentServiceClass, Method mcpMethod) {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
-        Object mcpClient = selectMethod(
+        Method mcpClientSupplierMethod = selectMethod(
                         agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
-                .map(method -> {
-                    checkReturnType(method, Object.class);
-                    return invokeSupplierWithResolvers(agentServiceClass, method, Object.class);
-                })
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+        checkReturnType(mcpClientSupplierMethod, Object.class);
+        // The method is invoked when the MCP client is first needed, on the first invocation of the agent, because
+        // creating the client normally connects to the MCP server, while its resolved parameters are resolved now,
+        // like those of the other supplier methods
+        ResolvedParameters mcpClientSupplier = ResolvedParameters.of(agentServiceClass, mcpClientSupplierMethod)
+                .checkAllResolved()
+                .resolvedNow();
 
         var mcpClientBuilder = McpService.get()
-                .mcpBuilder(mcpClient, agentServiceClass)
+                .mcpBuilder(() -> invokeMcpClientSupplier(mcpClientSupplier), agentServiceClass)
                 .toolName(mcpAgent.toolName())
                 .inputKeys(Stream.of(mcpMethod.getParameters())
                         .map(AgentInvoker::parameterName)
@@ -978,7 +991,24 @@ public class AgenticServices {
                             invokeSupplierWithResolvers(agentServiceClass, method, AgentListener.class));
                 });
 
-        return agentToExecutor(mcpClientBuilder.build());
+        return mcpClientBuilder.build();
+    }
+
+    /**
+     * Invokes the MCP client supplier, reporting a failure of the method itself, which normally means that the MCP
+     * server is unreachable, as it is, without the reflection wrappers, so that it is the cause of the exception
+     * reaching the caller and the error handler.
+     */
+    private static Object invokeMcpClientSupplier(ResolvedParameters mcpClientSupplier) {
+        try {
+            return mcpClientSupplier.invoke();
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InvocationTargetException invocationFailure
+                    && invocationFailure.getCause() instanceof RuntimeException failure) {
+                throw failure;
+            }
+            throw e;
+        }
     }
 
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {

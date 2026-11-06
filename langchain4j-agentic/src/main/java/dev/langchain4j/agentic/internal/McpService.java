@@ -3,10 +3,16 @@ package dev.langchain4j.agentic.internal;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.function.Supplier;
 
 public interface McpService {
 
-    <T> McpClientBuilder<T> mcpBuilder(Object mcpClient, Class<T> agentServiceClass);
+    /**
+     * Creates the builder of an MCP client agent. The supplier returns the {@code McpClient} and is invoked when the
+     * client is first needed, on the first invocation of the agent, because creating a client normally connects to
+     * the MCP server.
+     */
+    <T> McpClientBuilder<T> mcpBuilder(Supplier<Object> mcpClientSupplier, Class<T> agentServiceClass);
 
     Optional<AgentExecutor> methodToAgentExecutor(InternalAgent mcpClient, Method method);
 
@@ -36,7 +42,7 @@ public interface McpService {
         private DummyMcpService() { }
 
         @Override
-        public <T> McpClientBuilder<T> mcpBuilder(Object mcpClient, Class<T> agentServiceClass) {
+        public <T> McpClientBuilder<T> mcpBuilder(Supplier<Object> mcpClientSupplier, Class<T> agentServiceClass) {
             throw noMcpException();
         }
 
