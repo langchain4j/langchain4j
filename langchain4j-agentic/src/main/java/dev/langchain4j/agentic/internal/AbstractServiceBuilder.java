@@ -7,7 +7,6 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
@@ -60,8 +59,6 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected Supplier<Object> defaultMemoryIdSupplier;
 
     protected Executor executor;
-
-    protected List<Object> helperObjects = List.of();
 
     protected AbstractServiceBuilder(Class<T> agentServiceClass, Method agenticMethod) {
         this.agentServiceClass = agentServiceClass;
@@ -173,32 +170,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
-    /**
-     * Applies the helper objects of the agent to this builder: the objects whose instance methods, annotated with
-     * the declarative annotations, configure the agent next to the static methods of its type, applied by the
-     * constructor. Used by the declarative API with the helper objects returned by the {@code helperObjectsResolver}
-     * of an {@link AgenticServices.AgentConfigurator}.
-     */
-    public S helperObjects(List<Object> helperObjects) {
-        this.helperObjects = helperObjects;
-        applyHelperObjects(helperObjects);
-        return (S) this;
-    }
-
-    /**
-     * Applies the instance helper methods of the given helper objects to this builder, whose static helpers have
-     * been applied by its constructor, with
-     * {@link AgentHelpers#instanceOnly(Class, List)}.
-     */
-    protected abstract void applyHelperObjects(List<Object> helperObjects);
-
     private void addSubagents(List<AgentExecutor> agents) {
         this.subagents.addAll(agents);
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
-        // the helper objects are all known only now: a non-static helper of the type needs one to be invoked on
-        AgentHelpers.checkNonStaticHelpers(agentServiceClass, helperObjects);
         AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
         if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
             monitor = new AgentMonitor();

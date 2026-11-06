@@ -431,8 +431,7 @@ public class DeclarativeUtil {
      * {@link ActivationCondition} with a value is allowed only on a {@link ConditionalAgent}, where it selects the
      * subagents to activate, and where a condition without value is not allowed.
      *
-     * @return the activation condition of the agent, or {@code null} when it has none, or when it is a static method
-     *         already applied
+     * @return the activation condition of the agent, or {@code null} when it has none
      * @throws AgenticSystemConfigurationException if there is more than one such method, if it doesn't return a
      *         boolean, or if a condition with a value is declared on a class that is not a conditional agent
      */
@@ -468,7 +467,7 @@ public class DeclarativeUtil {
             }
             conditionMethod = helper;
         }
-        return conditionMethod == null || !helpers.isApplicable(conditionMethod)
+        return conditionMethod == null
                 ? null
                 : new AgentCondition(
                         conditionMethod

@@ -16,13 +16,16 @@ public class ParallelAgentServiceImpl<T> extends AbstractServiceBuilder<T, Paral
         implements ParallelAgentService<T> {
 
     public ParallelAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
-        super(agentServiceClass, agenticMethod);
-        configureParallel(AgentHelpers.staticOnly(agentServiceClass));
+        this(agentServiceClass, agenticMethod, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configureParallel(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public ParallelAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        configureParallel(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override

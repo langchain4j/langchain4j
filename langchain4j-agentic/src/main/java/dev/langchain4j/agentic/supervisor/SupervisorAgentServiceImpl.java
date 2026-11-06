@@ -47,15 +47,20 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     }
 
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, ChatModel chatModel) {
-        super(agentServiceClass, agenticMethod);
-        if (!configureSupervisor(AgentHelpers.staticOnly(agentServiceClass))) {
-            this.chatModel(chatModel);
-        }
+        this(agentServiceClass, agenticMethod, chatModel, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configureSupervisor(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param chatModel the chat model of the supervisor, unless a {@link ChatModelSupplier} helper provides one
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public SupervisorAgentServiceImpl(
+            Class<T> agentServiceClass, Method agenticMethod, ChatModel chatModel, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        if (!configureSupervisor(AgentHelpers.of(agentServiceClass, helperObjects))) {
+            this.chatModel(chatModel);
+        }
     }
 
     public T build() {

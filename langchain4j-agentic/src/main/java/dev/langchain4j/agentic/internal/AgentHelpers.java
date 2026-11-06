@@ -45,9 +45,7 @@ import java.util.function.Predicate;
  * <p>
  * For one annotation an agent can have a single helper, unless the annotation is allowed several times: a static
  * method on the type together with an instance method on a helper object, or two instance methods, are a
- * configuration error. When the static helpers have already been applied to a builder, as by the constructor of a
- * workflow builder, the instance given by {@link #instanceOnly} still detects the conflicts but only returns the
- * instance helpers.
+ * configuration error.
  * <p>
  * A helper declared by the agent type itself that is not static needs one of the helper objects to be invoked on,
  * an instance of its declaring class, typically the agent bean of a container: {@link #checkNonStaticHelpers}
@@ -91,19 +89,17 @@ public final class AgentHelpers {
 
     private final Class<?> agentType;
     private final List<Object> helperObjects;
-    private final boolean staticsApplied;
 
-    private AgentHelpers(Class<?> agentType, List<Object> helperObjects, boolean staticsApplied) {
+    private AgentHelpers(Class<?> agentType, List<Object> helperObjects) {
         this.agentType = agentType;
         this.helperObjects = distinct(agentType, helperObjects);
-        this.staticsApplied = staticsApplied;
     }
 
     /**
      * The helpers of an agent without helper objects: its static methods only.
      */
     public static AgentHelpers staticOnly(Class<?> agentType) {
-        return new AgentHelpers(agentType, List.of(), false);
+        return new AgentHelpers(agentType, List.of());
     }
 
     /**
@@ -111,19 +107,9 @@ public final class AgentHelpers {
      * all the ones of the agent, so a non-static helper of the type without an object to be invoked on is rejected.
      */
     public static AgentHelpers of(Class<?> agentType, List<Object> helperObjects) {
-        AgentHelpers helpers = new AgentHelpers(agentType, helperObjects, false);
+        AgentHelpers helpers = new AgentHelpers(agentType, helperObjects);
         checkNonStaticHelpers(agentType, helpers.helperObjects);
         return helpers;
-    }
-
-    /**
-     * The helpers of an agent whose static methods have already been applied: the lookups return the instance
-     * methods of the given helper objects only, but a conflict with a static method is still an error. The builders
-     * using it check the non-static helpers of the type with {@link #checkNonStaticHelpers} when they build the
-     * agent.
-     */
-    public static AgentHelpers instanceOnly(Class<?> agentType, List<Object> helperObjects) {
-        return new AgentHelpers(agentType, helperObjects, true);
     }
 
     /**
@@ -180,14 +166,6 @@ public final class AgentHelpers {
     }
 
     /**
-     * @return whether the given helper has to be applied: a static helper is not, when the static helpers have
-     *         already been applied
-     */
-    public boolean isApplicable(HelperMethod helper) {
-        return !staticsApplied || !helper.isStatic();
-    }
-
-    /**
      * Selects the single helper method annotated with the given annotation.
      *
      * @throws AgenticSystemConfigurationException if there is more than one such method
@@ -214,13 +192,12 @@ public final class AgentHelpers {
         if (!instanceMethods.isEmpty()) {
             return Optional.of(instanceMethods.get(0));
         }
-        return staticsApplied ? Optional.empty() : staticMethod.map(HelperMethod::ofStatic);
+        return staticMethod.map(HelperMethod::ofStatic);
     }
 
     /**
      * Selects all the helper methods annotated with the given annotation, for the annotations allowed several times
-     * on one agent. The static methods are included also when they have already been applied, so that the caller
-     * can check them against the instance ones: {@link #isApplicable} tells which ones have to be applied.
+     * on one agent.
      */
     public List<HelperMethod> selectAll(Class<? extends Annotation> annotation) {
         List<HelperMethod> helpers = new ArrayList<>();

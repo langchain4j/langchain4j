@@ -19,13 +19,16 @@ public class PlannerBasedServiceImpl<T> extends AbstractServiceBuilder<T, Planne
     private Supplier<Planner> plannerSupplier;
 
     public PlannerBasedServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
-        super(agentServiceClass, agenticMethod);
-        configurePlanner(AgentHelpers.staticOnly(agentServiceClass));
+        this(agentServiceClass, agenticMethod, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configurePlanner(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public PlannerBasedServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        configurePlanner(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     public static <T> PlannerBasedService<T> builder(Class<T> agentServiceClass) {

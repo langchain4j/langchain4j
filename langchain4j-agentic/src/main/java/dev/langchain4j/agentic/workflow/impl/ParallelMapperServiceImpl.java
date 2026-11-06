@@ -25,13 +25,16 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
     private String itemsProvider;
 
     public ParallelMapperServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
-        super(agentServiceClass, agenticMethod);
-        configureParallelMapper(AgentHelpers.staticOnly(agentServiceClass));
+        this(agentServiceClass, agenticMethod, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configureParallelMapper(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public ParallelMapperServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        configureParallelMapper(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override

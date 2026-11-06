@@ -31,13 +31,16 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
     protected boolean testExitAtLoopEnd = false;
 
     public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
-        super(agentServiceClass, agenticMethod);
-        configureLoop(AgentHelpers.staticOnly(agentServiceClass));
+        this(agentServiceClass, agenticMethod, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configureLoop(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        configureLoop(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override

@@ -71,6 +71,11 @@ import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import dev.langchain4j.agentic.workflow.ParallelMapperService;
 import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
+import dev.langchain4j.agentic.workflow.impl.ConditionalAgentServiceImpl;
+import dev.langchain4j.agentic.workflow.impl.LoopAgentServiceImpl;
+import dev.langchain4j.agentic.workflow.impl.ParallelAgentServiceImpl;
+import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
+import dev.langchain4j.agentic.workflow.impl.SequentialAgentServiceImpl;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -618,17 +623,6 @@ public class AgenticServices {
         }
     }
 
-    /**
-     * Applies the helper objects of the agent to a workflow, planner or supervisor builder, whose constructor applied
-     * the static helpers of the agent type: the helpers of the objects are applied on top of them, before the
-     * attributes of the agent annotation.
-     */
-    private static void setHelperObjects(Object builder, List<Object> helperObjects) {
-        if (!helperObjects.isEmpty()) {
-            ((AbstractServiceBuilder<?, ?>) builder).helperObjects(helperObjects);
-        }
-    }
-
     private static void buildAgentSpecs(
             Method agentMethod,
             String name,
@@ -655,11 +649,11 @@ public class AgenticServices {
     private static <T> T buildSequentialAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         SequenceAgent annotation = agentMethod.getAnnotation(SequenceAgent.class);
-        var builder = sequenceBuilder(agentServiceClass)
+        var builder = new SequentialAgentServiceImpl<>(
+                        agentServiceClass, agentMethod, agentConfigurator.helperObjects(agentServiceClass))
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -675,12 +669,12 @@ public class AgenticServices {
     private static <T> T buildLoopAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         LoopAgent annotation = agentMethod.getAnnotation(LoopAgent.class);
-        var builder = loopBuilder(agentServiceClass)
+        var builder = new LoopAgentServiceImpl<>(
+                        agentServiceClass, agentMethod, agentConfigurator.helperObjects(agentServiceClass))
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(annotation.maxIterations());
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -696,11 +690,10 @@ public class AgenticServices {
     private static <T> T buildConditionalAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         ConditionalAgent annotation = agentMethod.getAnnotation(ConditionalAgent.class);
-        var builder = conditionalBuilder(agentServiceClass);
         List<Object> helperObjects = agentConfigurator.helperObjects(agentServiceClass);
+        var builder = new ConditionalAgentServiceImpl<>(agentServiceClass, agentMethod, helperObjects);
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, helperObjects);
 
         buildAgentSpecs(
                 agentMethod,
@@ -732,11 +725,11 @@ public class AgenticServices {
     private static <T> T buildParallelAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         ParallelAgent annotation = agentMethod.getAnnotation(ParallelAgent.class);
-        var builder = parallelBuilder(agentServiceClass)
+        var builder = new ParallelAgentServiceImpl<>(
+                        agentServiceClass, agentMethod, agentConfigurator.helperObjects(agentServiceClass))
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -752,12 +745,12 @@ public class AgenticServices {
     private static <T> T buildParallelMapperAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         ParallelMapperAgent annotation = agentMethod.getAnnotation(ParallelMapperAgent.class);
-        var builder = parallelMapperBuilder(agentServiceClass)
+        var builder = new ParallelMapperServiceImpl<>(
+                        agentServiceClass, agentMethod, agentConfigurator.helperObjects(agentServiceClass))
                 .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
                 .itemsProvider(annotation.itemsProvider());
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -773,11 +766,11 @@ public class AgenticServices {
     private static <T> T buildPlannerAgent(
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         PlannerAgent annotation = agentMethod.getAnnotation(PlannerAgent.class);
-        var builder = new PlannerBasedServiceImpl<>(agentServiceClass, agentMethod)
+        var builder = new PlannerBasedServiceImpl<>(
+                        agentServiceClass, agentMethod, agentConfigurator.helperObjects(agentServiceClass))
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         buildAgentSpecs(
                 agentMethod,
@@ -794,14 +787,14 @@ public class AgenticServices {
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         dev.langchain4j.agentic.declarative.SupervisorAgent supervisorAgent =
                 agentMethod.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
-        var builder = new SupervisorAgentServiceImpl<>(agentServiceClass, agentMethod, chatModel)
+        var builder = new SupervisorAgentServiceImpl<>(
+                        agentServiceClass, agentMethod, chatModel, agentConfigurator.helperObjects(agentServiceClass))
                 .maxAgentsInvocations(supervisorAgent.maxAgentsInvocations())
                 .contextGenerationStrategy(supervisorAgent.contextStrategy())
                 .responseStrategy(supervisorAgent.responseStrategy())
                 .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel, agentConfigurator));
 
         setAgentInstanceFactory(builder, agentConfigurator);
-        setHelperObjects(builder, agentConfigurator.helperObjects(agentServiceClass));
 
         if (!isNullOrBlank(supervisorAgent.name())) {
             builder.name(supervisorAgent.name());

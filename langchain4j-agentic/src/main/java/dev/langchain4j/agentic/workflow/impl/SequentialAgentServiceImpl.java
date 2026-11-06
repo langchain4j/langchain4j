@@ -14,13 +14,16 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 public class SequentialAgentServiceImpl<T> extends AbstractServiceBuilder<T, SequentialAgentService<T>> implements SequentialAgentService<T> {
 
     public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
-        super(agentServiceClass, agenticMethod);
-        configureSequential(AgentHelpers.staticOnly(agentServiceClass));
+        this(agentServiceClass, agenticMethod, List.of());
     }
 
-    @Override
-    protected void applyHelperObjects(List<Object> helperObjects) {
-        configureSequential(AgentHelpers.instanceOnly(agentServiceClass, helperObjects));
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public SequentialAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
+        super(agentServiceClass, agenticMethod);
+        configureSequential(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override
