@@ -67,6 +67,20 @@ class SegmentBuilderTest implements WithAssertions {
     }
 
     @Test
+    void whitespace_only_segment_should_count_as_empty() {
+        SegmentBuilder builder = new SegmentBuilder(10, String::length, " ");
+        builder.append("   ");
+
+        assertThat(builder.isNotEmpty()).isFalse();
+        assertThat(builder.hasSpaceFor("x")).isTrue();
+        assertThat(builder.toString()).isEmpty();
+
+        builder.append("x");
+        assertThat(builder.isNotEmpty()).isTrue();
+        assertThat(builder.toString()).isEqualTo("x");
+    }
+
+    @Test
     void should_handle_many_appends_efficiently() {
         // Regression test: with String += this was O(n²) and took minutes for large inputs.
         // With StringBuilder it should complete in well under 1 second.
