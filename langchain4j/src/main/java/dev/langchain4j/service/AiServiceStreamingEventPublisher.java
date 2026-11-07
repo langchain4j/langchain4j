@@ -662,7 +662,17 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return;
                 }
                 if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                    emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
+                    // persist the tool results first, so that the memory is not left with an AI message
+                    // whose tool execution requests have no result
+                    context.toolService
+                            .persistToolResultsAndResolveMessages(
+                                    context, getMemory(), null, outcome.resultMessages(), invocationContext)
+                            .thenAccept(ignored ->
+                                    emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters))
+                            .exceptionally(error -> {
+                                fail(error);
+                                return null;
+                            });
                     return;
                 }
 

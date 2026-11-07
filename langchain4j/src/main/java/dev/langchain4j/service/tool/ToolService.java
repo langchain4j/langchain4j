@@ -985,24 +985,33 @@ public class ToolService {
                                     unwrapCompletionException(compensationError));
                         }
 
-                        if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                            return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                    intermediateResponses, toolExecutions, aggregateTokenUsage, lastChatRequest));
-                        }
+                        boolean returnImmediately =
+                                shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors());
 
-                        if (isCancelled(cancellation)) {
+                        if (!returnImmediately && isCancelled(cancellation)) {
                             return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
                         }
 
+                        // the tool results are persisted before returning immediately too, so that the memory
+                        // is not left with an AI message whose tool execution requests have no result
                         return persistToolResultsAndResolveMessages(
                                         context, chatMemory, accumulator, outcome.resultMessages(), invocationContext)
-                                .thenCompose(nextMessages -> callModelAndContinue(
-                                        parameters,
-                                        toolServiceContext,
-                                        aggregateTokenUsage,
-                                        roundTripsLeft,
-                                        toolResults,
-                                        nextMessages))
+                                .thenCompose(nextMessages -> {
+                                    if (returnImmediately) {
+                                        return CompletableFuture.completedFuture(immediateToolServiceResult(
+                                                intermediateResponses,
+                                                toolExecutions,
+                                                aggregateTokenUsage,
+                                                lastChatRequest));
+                                    }
+                                    return callModelAndContinue(
+                                            parameters,
+                                            toolServiceContext,
+                                            aggregateTokenUsage,
+                                            roundTripsLeft,
+                                            toolResults,
+                                            nextMessages);
+                                })
                                 .toCompletableFuture();
                     });
         }
