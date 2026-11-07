@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -59,6 +61,13 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String VECTOR = "vector";
     private static final String VECTORS = "vectors";
     private static final String DEFAULT_VECTOR_NAME = "default";
+
+    /**
+     * The number of objects requested per page when a class is read in full. Weaviate returns only one page when no
+     * limit is given (25 objects unless the server is configured otherwise), so reading a class in full has to ask
+     * for a limit and follow the {@code after} cursor.
+     */
+    private static final int OBJECTS_PAGE_SIZE = 100;
 
     private final WeaviateClient client;
     private final String objectClass;
@@ -191,16 +200,10 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        List<WeaviateObject> objects =
-                client.data().objectsGetter().withClassName(objectClass).run().getResult();
-
-        if (objects == null || objects.isEmpty()) {
-            return;
-        }
-
-        List<String> allIds = objects.stream().map(WeaviateObject::getId).collect(Collectors.toList());
-
-        removeAll(allIds);
+        forEachObjectPage(OBJECTS_PAGE_SIZE, this::objectsPage, objects -> {
+            List<String> pageIds = objects.stream().map(WeaviateObject::getId).collect(Collectors.toList());
+            removeAll(pageIds);
+        });
     }
 
     @Override
@@ -220,21 +223,59 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         // WhereFilter cannot reliably filter nested map fields.
         // Therefore we fallback to client-side filtering.
 
-        List<WeaviateObject> objects =
-                client.data().objectsGetter().withClassName(objectClass).run().getResult();
+        forEachObjectPage(OBJECTS_PAGE_SIZE, this::objectsPage, objects -> {
+            List<String> idsToDelete = objects.stream()
+                    .filter(obj -> obj.getProperties() != null
+                            && matchesFilter(obj.getProperties(), metadataFieldName, textFieldName, filter))
+                    .map(WeaviateObject::getId)
+                    .collect(Collectors.toList());
 
-        if (objects == null || objects.isEmpty()) {
-            return;
-        }
+            if (!idsToDelete.isEmpty()) {
+                removeAll(idsToDelete);
+            }
+        });
+    }
 
-        List<String> idsToDelete = objects.stream()
-                .filter(obj -> obj.getProperties() != null
-                        && matchesFilter(obj.getProperties(), metadataFieldName, textFieldName, filter))
-                .map(WeaviateObject::getId)
-                .collect(Collectors.toList());
+    private List<WeaviateObject> objectsPage(int limit, String after) {
+        // A null "after" is dropped by the client, so the first page needs no special casing.
+        return client.data()
+                .objectsGetter()
+                .withClassName(objectClass)
+                .withLimit(limit)
+                .withAfter(after)
+                .run()
+                .getResult();
+    }
 
-        if (!idsToDelete.isEmpty()) {
-            removeAll(idsToDelete);
+    /**
+     * Reads every object of {@link #objectClass} one page at a time and hands each page to {@code pageConsumer}.
+     * <p>
+     * Pages are followed with the {@code after} cursor, which orders by UUID and is unaffected by the deletions a
+     * consumer performs, so the class can be read and modified in a single pass.
+     *
+     * @param pageSize      the number of objects requested per page
+     * @param pageFetcher   fetches one page for the given limit and {@code after} cursor (null for the first page)
+     * @param pageConsumer  receives every non-empty page
+     */
+    static void forEachObjectPage(
+            int pageSize,
+            BiFunction<Integer, String, List<WeaviateObject>> pageFetcher,
+            Consumer<List<WeaviateObject>> pageConsumer) {
+
+        String after = null;
+        while (true) {
+            List<WeaviateObject> page = pageFetcher.apply(pageSize, after);
+            if (page == null || page.isEmpty()) {
+                return;
+            }
+
+            pageConsumer.accept(page);
+
+            if (page.size() < pageSize) {
+                return;
+            }
+
+            after = page.get(page.size() - 1).getId();
         }
     }
 
@@ -481,7 +522,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             return true;
         }
 
-        Result<WeaviateClass> result = client.schema().classGetter().withClassName(objectClass).run();
+        Result<WeaviateClass> result =
+                client.schema().classGetter().withClassName(objectClass).run();
         if (result.hasErrors()) {
             throw new IllegalArgumentException(result.getError().getMessages().stream()
                     .map(WeaviateErrorMessage::getMessage)
@@ -603,7 +645,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public String toString() {
-            return "WeaviateEmbeddingStore.WeaviateEmbeddingStoreBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", scheme="
+            return "WeaviateEmbeddingStore.WeaviateEmbeddingStoreBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", scheme="
                     + this.scheme + ", host=" + this.host + ", port=" + this.port + ", useGrpcForInserts="
                     + this.useGrpcForInserts + ", securedGrpc=" + this.securedGrpc + ", grpcPort=" + this.grpcPort
                     + ", objectClass=" + this.objectClass + ", avoidDups=" + this.avoidDups + ", consistencyLevel="
