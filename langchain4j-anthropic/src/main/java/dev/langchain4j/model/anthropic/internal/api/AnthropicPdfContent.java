@@ -4,19 +4,21 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicPdfContent extends AnthropicMessageContent {
 
     public AnthropicPdfContentSource source;
 
     public AnthropicPdfContent(AnthropicPdfContentSource source) {
         super("document");
+        this.source = source;
+    }
+
+    public AnthropicPdfContent(AnthropicPdfContentSource source, AnthropicCacheControl cacheControl) {
+        super("document", cacheControl);
         this.source = source;
     }
 
@@ -37,6 +39,14 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
         return new AnthropicPdfContent(AnthropicPdfContentSource.fromUrl(url));
     }
 
+    public static AnthropicPdfContent fromBase64(String mediaType, String data, AnthropicCacheControl cacheControl) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromBase64(mediaType, data), cacheControl);
+    }
+
+    public static AnthropicPdfContent fromUrl(String url, AnthropicCacheControl cacheControl) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromUrl(url), cacheControl);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -53,6 +63,9 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     @Override
     public String toString() {
-        return "AnthropicPdfContent{" + "source=" + source + '}';
+        return "AnthropicPdfContent{" + "source="
+                + source + ", type='"
+                + type + '\'' + ", cacheControl="
+                + cacheControl + '}';
     }
 }

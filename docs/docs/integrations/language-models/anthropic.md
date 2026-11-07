@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.17.2</version>
+    <version>1.23.0</version>
 </dependency>
 ```
 
@@ -51,6 +51,8 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
+    .cacheAutomatically(...)
+    .cacheTtl(...)
     .returnCacheDiagnostics(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
@@ -73,7 +75,8 @@ See the description of some of the parameters above [here](https://docs.anthropi
 
 ### Per-Request Parameters
 
-The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `returnCacheDiagnostics`,
+The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `cacheAutomatically`,
+`cacheTtl`, `returnCacheDiagnostics`,
 `thinkingType`, `thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`,
 `toolChoiceName`, `disableParallelToolUse` and `userId`), as well as `previousMessageId` (request-only, see
 [Cache Diagnostics](#cache-diagnostics)),
@@ -133,6 +136,66 @@ model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 
 Identical to the `AnthropicChatModel`, see above.
 
+## Batch API
+
+The [Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches) processes many chat requests
+asynchronously at 50% of the standard per-token price. `AnthropicBatchChatModel` implements the core `BatchChatModel`
+interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted with the same parameters an
+`AnthropicChatModel` call would use.
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(1024)
+    .build();
+
+// Submit a batch of requests
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (typically well under an hour)
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    TimeUnit.SECONDS.sleep(30); // throws InterruptedException
+    batch = model.retrieve(batchId);
+}
+
+// Read the per-request results, in submission order
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+Use `model.list(...)` to page through recent batches and `model.cancel(batchId)` to cancel one that is still processing.
+A batch that you cancel also finishes in the `ended` state on Anthropic's side, and is reported as `BatchState.CANCELLED`;
+it may still contain results for the requests that completed before the cancellation took effect.
+
+Anthropic-specific options such as thinking or prompt caching are configured through `defaultRequestParameters(...)`,
+exactly as for `AnthropicChatModel`, and can be overridden per request:
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(4096)
+    .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(2000)
+        .cacheSystemMessages(true)
+        .cacheTtl("1h") // batches can take longer than the default 5-minute cache TTL
+        .build())
+    .returnThinking(true) // store the returned thinking in AiMessage.thinking()
+    .build();
+```
+
 ## Tools
 
 Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
@@ -143,8 +206,11 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 ## Tool Choice
 
 Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use)
-feature is available for both streaming and non-streaming interactions
-by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
+feature is available for both streaming and non-streaming interactions:
+
+- `toolChoice(ToolChoice.REQUIRED)` forces the model to call one of the available tools instead of answering with text.
+- `toolChoiceName("get_weather")` forces the model to call one specific tool. It can be used on its own,
+  and when `toolChoice(ToolChoice)` is set as well, the named tool takes precedence over it.
 
 ## Parallel Tool Use
 
@@ -475,24 +541,148 @@ to see an example of specifying tool `metadata` in the low-level `ToolSpecificat
 
 ## Caching
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
-Caching is disabled by default.
-It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+Anthropic can cache the beginning of a prompt (tools, system messages and earlier messages) so that the next request
+starting with the same content reads it from the cache instead of processing it again. Reading from the cache is much
+cheaper and faster than processing the same tokens again, while writing to the cache costs a bit more than regular
+input tokens. Caching therefore pays off when the same prompt prefix is sent more than once, which is the case for
+multi-turn conversations, AI Services that call tools, and agents.
 
-When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
+Caching is disabled by default. It is enabled per part of the prompt with the options described below.
+Anthropic matches the cached content exactly, in the order tools → system messages → messages,
+so anything that changes between requests (for example, the current time in a system message or a different set of
+tools) prevents a cache hit for everything that comes after it. Prompts shorter than a
+[model-specific minimum](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+(between 512 and 4,096 tokens) are not cached.
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
-contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+Which options to use:
 
-More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
-### Caching User Messages
+- Enable `cacheSystemMessages` and `cacheTools` (see [below](#caching-system-messages-and-tools)) whenever the system
+  messages and tools stay the same between requests. They pay off for any kind of usage, including independent calls
+  without chat memory.
+- Additionally enable `cacheAutomatically` (see [Automatic Caching](#automatic-caching)) when the conversation history
+  is kept and grows from one request to the next, for example when an AI Service or an agent calls tools in a loop.
+  Do not enable it when the beginning of the conversation changes on every request, for example when the chat memory
+  evicts old messages on every turn (a full `MessageWindowChatMemory` or `TokenWindowChatMemory`), or for independent
+  calls without chat memory: it then costs more than it saves.
 
-To enable prompt caching for a `UserMessage`, you need to set the `cache_control` attribute to `ephemeral`. The cache control marker will be automatically applied to the last content block of the message.
+Anthropic allows at most 4 cache breakpoints per request. `cacheSystemMessages`, `cacheTools` and
+`cacheAutomatically` use one each, and so does every message marked with the `cache_control` attribute.
+A request with more breakpoints is rejected by Anthropic.
+
+Cached content is stored by Anthropic for the duration of the [cache TTL](#cache-ttl) and is not shared with other
+organizations. See the [prompt caching docs](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+for details.
+
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in the response,
+which contains `cacheCreationInputTokens` (tokens written to the cache) and `cacheReadInputTokens`
+(tokens read from the cache).
+
+More info on caching can be found [here](https://platform.claude.com/docs/en/build-with-claude/prompt-caching).
+
+### Caching System Messages and Tools
+
+`cacheSystemMessages` marks the last system message with `cache_control`, and `cacheTools` marks the last tool.
+Since tools come before system messages, the system message breakpoint caches both of them.
+The tool breakpoint additionally keeps the tools cached when the system messages change between requests.
+
+These breakpoints stay at the same position in every request, so they pay off whenever the system messages and tools
+stay the same, also for independent calls without chat memory:
+
+```java
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-opus-5-5")
+    .cacheSystemMessages(true)
+    .cacheTools(true)
+    .build();
+```
+
+### Automatic Caching
+
+When `cacheAutomatically` is enabled, Anthropic places the cache breakpoint on the last block of each request and
+moves it forward as the conversation grows, so that each request reads everything sent before it from the cache.
+No message needs to be marked for caching by hand, which also makes it work for [AI Services](/tutorials/ai-services)
+and [agents](/tutorials/agents), where messages are created by LangChain4j.
+
+It only pays off when each request starts with everything the previous request sent
+(see [which options to use](#caching)). Otherwise, each request pays the cache write price for the whole prompt and
+nothing is read back, which costs more than not caching at all.
+When using it, enable `cacheSystemMessages` and `cacheTools` as well, to keep system messages and tools cached even
+when the beginning of the conversation changes.
+
+In the following example, each tool call within one `assistant.chat(...)` call adds to the conversation,
+so the following requests of the same tool loop read the earlier ones from the cache:
+
+```java
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-opus-5-5")
+    .cacheSystemMessages(true)
+    .cacheTools(true)
+    .cacheAutomatically(true)
+    .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .tools(new MyTools())
+    .build();
+```
+
+Automatic caching is sent as a top-level `cache_control` field of the request. Anthropic-compatible gateways and
+proxies that do not support this field may reject the request or ignore the field. In that case, cache system messages,
+tools and [individual messages](#caching-individual-messages) instead.
+
+### Caching Individual Messages
+
+`UserMessage`, `AiMessage`, and `ToolExecutionResultMessage` can each be marked for caching by setting
+the `cache_control` attribute to `ephemeral`. The cache control marker is automatically applied to the
+last content block of the message (for `ToolExecutionResultMessage`, this is the `tool_result` block
+itself).
+
+`UserMessage` exposes a mutable attributes map:
 
 ```java
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
 ```
+
+`AiMessage` and `ToolExecutionResultMessage` carry an immutable attributes map, so set it via
+`toBuilder()`. To cache a conversation that grows on every turn, such as an agentic tool-execution loop,
+[automatic caching](#automatic-caching) is simpler, because no message needs to be marked.
+Marking individual messages is useful when you need control over where the cache breakpoints are.
+
+```java
+AiMessage aiMessage = someAiMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+
+ToolExecutionResultMessage toolExecutionResultMessage = someToolExecutionResultMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+```
+
+### Cache TTL
+
+Cached content is kept for 5 minutes by default, and every cache hit refreshes this time.
+If requests that share the same prompt prefix are usually more than 5 minutes apart (for example, a user replying
+after 20 minutes, or [batch processing](#batch-api)), the cache can be kept for 1 hour instead:
+
+```java
+ChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-opus-5-5")
+    .cacheAutomatically(true)
+    .cacheTtl("1h") // "5m" by default
+    .build();
+```
+
+Both values are also available as the constants `AnthropicChatRequestParameters.CACHE_TTL_5M` and
+`AnthropicChatRequestParameters.CACHE_TTL_1H`.
+
+The TTL applies to all cached content: system messages, tools, automatically cached messages and messages marked
+with the `cache_control` attribute. It has no effect unless at least one of them is cached.
+Writing to the 1-hour cache costs 2 times the base input token price, compared to 1.25 times for the 5-minute cache,
+so it pays off only when the cached content is read at least a few times within the hour.
 
 ### Cache Diagnostics
 
@@ -544,11 +734,18 @@ and [adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/ad
 It is controlled by the following parameters:
 - `thinkingType` and `thinkingBudgetTokens`: enable thinking,
   see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
-- `thinkingDisplay`: controls how thinking content is returned. Valid values are `"summarized"` and `"omitted"`.
+- `thinkingDisplay`: controls whether the API returns readable thinking text next to the thinking signature.
+  Valid values are `"summarized"` (thinking blocks contain a readable summary of the reasoning)
+  and `"omitted"` (thinking blocks contain an empty thinking text, only the encrypted signature is returned).
+  When it is not set, the API picks a default that depends on the model: recent Claude models default to `"omitted"`,
+  older ones to `"summarized"`, see [Anthropic documentation](https://platform.claude.com/docs/en/build-with-claude/thinking).
+  Set it to `"summarized"` whenever the thinking text itself is needed, for example in order to show it to the end user.
+  The model thinks and is billed the same way in both cases; only the visibility of the thinking text changes.
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
-  callbacks when using `BedrockStreamingChatModel`.
-  Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+  callbacks when using `AnthropicStreamingChatModel`.
+  Disabled by default. If enabled, thinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+  Please note that `AiMessage.thinking()` stays empty when the API returns no thinking text, see `thinkingDisplay` above.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
 Enabled by default.
 
@@ -556,7 +753,7 @@ In order to configure `effort` parameter, set `customParameters` when building t
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-        .modelName("claude-sonnet-4-7")
+        .modelName("claude-sonnet-5")
         .customParameters(Map.of("output_config", Map.of("effort", "max")))
         ...
         .build();
@@ -570,6 +767,20 @@ ChatModel model = AnthropicChatModel.builder()
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
         .maxTokens(1024 + 100)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
+```
+
+Recent Claude models return no thinking text unless `thinkingDisplay` asks for it,
+so `AiMessage.thinking()` is empty when it is not set:
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-sonnet-5")
+        .thinkingType("adaptive")
+        .thinkingDisplay("summarized")
+        .maxTokens(16000)
         .returnThinking(true)
         .sendThinking(true)
         .build();
@@ -740,10 +951,15 @@ Import Spring Boot starter for Anthropic:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.17.2-beta27</version>
+    <artifactId>langchain4j-anthropic-spring-boot4-starter</artifactId>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-anthropic-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 Configure `AnthropicChatModel` bean:
 ```

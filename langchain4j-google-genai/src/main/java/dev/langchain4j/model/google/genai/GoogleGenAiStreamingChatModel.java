@@ -1,6 +1,13 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_AUDIO_KEY;
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -8,10 +15,12 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.ResponseStream;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -28,6 +37,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -36,7 +46,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,15 +66,25 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
+    private final boolean codeExecutionEnabled;
+    private final boolean includeCodeExecutionOutput;
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
+    private final Boolean automaticContinuation;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
-    private final ExecutorService executor;
+    private final Executor executor;
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
@@ -71,13 +93,23 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
+        this.codeExecutionEnabled = getOrDefault(builder.codeExecution, false);
+        this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
+        this.automaticContinuation = builder.automaticContinuation;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -111,9 +143,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
+                .labels(getOrDefault(this.labels, genAiParameters.labels()))
+                .automaticContinuation(
+                        getOrDefault(builder.automaticContinuation, genAiParameters.automaticContinuation()))
                 .build();
 
-        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutor);
     }
 
     @Override
@@ -121,7 +156,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         String modelName = chatRequest.modelName();
 
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
@@ -131,14 +166,21 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                codeExecutionEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                parameters.cachedContent());
+                parameters.cachedContent(),
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -152,47 +194,56 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 new MappingTrackingStreamingChatResponseHandler(handler);
 
         executor.execute(() -> {
-            try {
-                ResponseStream<GenerateContentResponse> stream =
-                        client.models.generateContentStream(modelName, contents, config);
+            GoogleGenAiStreamingHandle streamingHandle = null;
+            try (ResponseStream<GenerateContentResponse> stream =
+                    client.models.generateContentStream(modelName, contents, config)) {
+                streamingHandle = new GoogleGenAiStreamingHandle(stream);
 
                 StringBuilder textBuilder = new StringBuilder();
+                StringBuilder thinkingBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 Map<String, Object> attributes = new java.util.HashMap<>();
-                TokenUsage tokenUsage = new TokenUsage();
+                TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
                 FinishReason finishReason = null;
                 GenerateContentResponse lastChunk = null;
 
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
                     trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
-                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
+                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(
+                            chunk, modelName, returnThinking, includeCodeExecutionOutput, textBuilder);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
                     if (aiMessage.attributes() != null
                             && !aiMessage.attributes().isEmpty()) {
-                        attributes.putAll(aiMessage.attributes());
+                        mergeAttributes(attributes, aiMessage.attributes());
+                    }
+
+                    if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
+                        thinkingBuilder.append(aiMessage.thinking());
+                        onPartialThinking(trackingHandler, aiMessage.thinking(), streamingHandle);
+                        if (streamingHandle.isCancelled()) {
+                            return;
+                        }
                     }
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
-                        try {
-                            trackingHandler.onPartialResponse(aiMessage.text());
-                        } catch (Exception userException) {
-                            trackingHandler.onError(userException);
+                        onPartialResponse(trackingHandler, aiMessage.text(), streamingHandle);
+                        if (streamingHandle.isCancelled()) {
+                            return;
                         }
                     }
 
                     if (aiMessage.toolExecutionRequests() != null) {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
-                            try {
-                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
-                            } catch (Exception userException) {
-                                trackingHandler.onError(userException);
-                            }
+                            onCompleteToolCall(trackingHandler, new CompleteToolCall(toolIndex++, req));
                         }
                     }
 
@@ -211,6 +262,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     }
                 }
 
+                if (streamingHandle.isCancelled()) {
+                    return;
+                }
+
                 AiMessage finalAiMessage;
                 if (!toolRequests.isEmpty() && textBuilder.length() > 0) {
                     finalAiMessage = new AiMessage(textBuilder.toString(), toolRequests);
@@ -218,6 +273,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     finalAiMessage = AiMessage.from(toolRequests);
                 } else {
                     finalAiMessage = AiMessage.from(textBuilder.toString());
+                }
+
+                if (thinkingBuilder.length() > 0) {
+                    finalAiMessage = finalAiMessage.toBuilder()
+                            .thinking(thinkingBuilder.toString())
+                            .build();
                 }
 
                 if (!attributes.isEmpty()) {
@@ -244,11 +305,42 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
                 }
 
-                trackingHandler.onCompleteResponse(finalChatResponse);
+                onCompleteResponse(trackingHandler, finalChatResponse);
             } catch (Exception e) {
-                trackingHandler.onError(e);
+                if (streamingHandle != null && streamingHandle.isCancelled()) {
+                    return;
+                }
+                withLoggingExceptions(
+                        () -> trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e)));
             }
         });
+    }
+
+    private static class GoogleGenAiStreamingHandle implements StreamingHandle {
+
+        private final ResponseStream<?> stream;
+        private volatile boolean cancelled;
+
+        GoogleGenAiStreamingHandle(ResponseStream<?> stream) {
+            this.stream = stream;
+        }
+
+        @Override
+        public void cancel() {
+            if (cancelled) {
+                return;
+            }
+            cancelled = true;
+            try {
+                stream.close();
+            } catch (Exception ignored) {
+            }
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled;
+        }
     }
 
     @Override
@@ -275,6 +367,27 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         return new Builder();
     }
 
+    /**
+     * Copies the attributes of one chunk into the attributes accumulated so far. Generated images
+     * and audio segments are concatenated rather than replaced, because each chunk carries its own
+     * media parts and the last chunk would otherwise discard the ones before it.
+     */
+    private static void mergeAttributes(Map<String, Object> accumulated, Map<String, Object> partial) {
+        partial.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key) || GENERATED_AUDIO_KEY.equals(key)) {
+                accumulated.merge(key, value, GoogleGenAiStreamingChatModel::concatenate);
+            } else {
+                accumulated.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object accumulated, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) accumulated);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
+    }
+
     public static class Builder {
 
         private Client client;
@@ -283,11 +396,16 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Double temperature, topP, frequencyPenalty, presencePenalty;
         private Integer topK, maxOutputTokens, thinkingBudget, seed;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private List<String> stopSequences;
         private Duration timeout;
         private Boolean googleSearch;
         private Boolean googleMaps;
         private Boolean urlContext;
+        private Boolean codeExecution;
+        private Boolean includeCodeExecutionOutput;
         private List<SafetySetting> safetySettings;
         private ResponseFormat responseFormat;
         private List<String> allowedFunctionNames;
@@ -301,6 +419,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
+        private Boolean automaticContinuation;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -485,6 +608,59 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and to invoke {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            return this;
+        }
+
+        /**
          * Sets the random seed for deterministic output.
          * Requests with the same seed and parameters should produce the same response.
          *
@@ -566,6 +742,33 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder enableUrlContext(boolean urlContext) {
             this.urlContext = urlContext;
+            return this;
+        }
+
+        /**
+         * Enables the code execution tool: the model can write Python code, run it in a sandbox hosted by Google, and use
+         * the result in its answer. Charts the code draws are returned as images, see {@link AiMessage#images()}.
+         * The current Gemini models reject a request that combines this tool with your own tools.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/code-execution">code execution docs</a>.
+         *
+         * @param codeExecution whether to enable code execution
+         * @return {@code this}
+         */
+        public Builder enableCodeExecution(boolean codeExecution) {
+            this.codeExecution = codeExecution;
+            return this;
+        }
+
+        /**
+         * Adds the code the model executed, and the output of that code, to the {@link AiMessage} text as Markdown code
+         * blocks. When the code fails, the outcome and the error output are added instead. Defaults to {@code false}:
+         * only the answer of the model is returned.
+         *
+         * @param includeCodeExecutionOutput whether to add the executed code and its output to the text
+         * @return {@code this}
+         */
+        public Builder includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
+            this.includeCodeExecutionOutput = includeCodeExecutionOutput;
             return this;
         }
 
@@ -712,6 +915,81 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AudioTranscriptionConfig} applied when the model transcribes audio input:
+         * the transcription mode ({@code VERBATIM} or {@code SMART}), the spoken languages, a custom vocabulary,
+         * word-level timestamps and speaker diarization.
+         * <p>
+         * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
+         * Word-level timestamps ({@code startOffset} and {@code endOffset}) and speaker labels are not part of the
+         * {@link AiMessage} text, and {@link GoogleGenAiChatResponseMetadata#rawResponse()} only holds the last
+         * streamed chunk, so use {@link GoogleGenAiChatModel} to read them.
+         *
+         * @param audioTranscriptionConfig the audio transcription configuration
+         * @return {@code this}
+         */
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        /**
+         * Sets the {@link SpeechConfig} used when the model generates speech/audio output
+         * (for example, single-speaker or multi-speaker voice configuration, language code, and
+         * custom pronunciation dictionaries).
+         * <p>
+         * When generating audio, also configure {@link #responseModalities(List)} to include
+         * {@code "AUDIO"} (e.g., {@code List.of("AUDIO")}). Generated audio parts are exposed on the
+         * returned {@link AiMessage} via {@link AiMessage#audios()}.
+         *
+         * @param speechConfig the speech generation configuration
+         * @return {@code this}
+         */
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        /**
+         * Sets the requested response modalities (for example {@code List.of("TEXT")},
+         * {@code List.of("AUDIO")}, or {@code List.of("TEXT", "IMAGE")}).
+         *
+         * @param responseModalities the requested response modalities
+         * @return {@code this}
+         */
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        /**
+         * Controls whether automatic continuation is enabled when the model needs multiple internal
+         * hops to complete a response.
+         * <p>
+         * Can also be overridden per request via {@link GoogleGenAiChatRequestParameters#automaticContinuation()}.
+         *
+         * @param automaticContinuation whether to enable automatic continuation
+         * @return {@code this}
+         */
+        public Builder automaticContinuation(Boolean automaticContinuation) {
+            this.automaticContinuation = automaticContinuation;
             return this;
         }
 

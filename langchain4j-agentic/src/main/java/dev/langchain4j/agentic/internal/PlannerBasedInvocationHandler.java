@@ -6,9 +6,41 @@ import static dev.langchain4j.agentic.internal.AgentUtil.rawType;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
-import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticSystemSuspended;
 
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.planner.Action;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
+import dev.langchain4j.agentic.planner.InitPlanningContext;
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
+import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -18,6 +50,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -26,33 +59,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.agent.ErrorContext;
-import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.MonitoredAgent;
-import dev.langchain4j.agentic.planner.Action;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.planner.AgenticSystemTopology;
-import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
-import dev.langchain4j.agentic.scope.AgentInvocation;
-import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
-import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
-import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
-import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 
 public class PlannerBasedInvocationHandler implements InvocationHandler, InternalAgent {
     private final Executor executor;
@@ -84,8 +90,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     private final List<AgentArgument> arguments;
     private final List<AgentInstance> subagents;
 
+    private final Supplier<Object> defaultMemoryIdSupplier;
+
     private String agentId;
     private InternalAgent parent;
+    private boolean crossAgentCompensationEnabled;
 
     public PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier) {
         this(service, null, service.name, plannerSupplier, null);
@@ -96,7 +105,12 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         agenticSystemDataTypes(this);
     }
 
-    private PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, InternalAgent parent, String agentId, Supplier<Planner> plannerSupplier, DefaultAgenticScope agenticScope) {
+    private PlannerBasedInvocationHandler(
+            AbstractServiceBuilder<?, ?> service,
+            InternalAgent parent,
+            String agentId,
+            Supplier<Planner> plannerSupplier,
+            DefaultAgenticScope agenticScope) {
         this.service = service;
         this.agentId = agentId;
         this.output = service.output;
@@ -112,24 +126,24 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         this.name = service.name;
         this.description = service.description;
         this.outputType = service.agentReturnType();
-        this.allowStreamingOutput = UntypedAgent.class.isAssignableFrom(this.type) ||
-                TokenStream.class.isAssignableFrom(rawType(this.outputType));
+        this.allowStreamingOutput = UntypedAgent.class.isAssignableFrom(this.type)
+                || TokenStream.class.isAssignableFrom(rawType(this.outputType));
         this.outputKey = service.outputKey;
         this.arguments = service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of();
-        this.subagents = service.subagents.stream().map(AgentInstance.class::cast).toList();
+        this.subagents =
+                service.subagents.stream().map(AgentInstance.class::cast).toList();
+        this.defaultMemoryIdSupplier = service.defaultMemoryIdSupplier;
         setParent(parent);
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
-        PlannerBasedInvocationHandler newHandler = new PlannerBasedInvocationHandler(
-                service, parent, agentId, plannerSupplier, agenticScope);
+        PlannerBasedInvocationHandler newHandler =
+                new PlannerBasedInvocationHandler(service, parent, agentId, plannerSupplier, agenticScope);
         if (service.agentInstanceFactory != null) {
             return (AgenticScopeOwner) service.agentInstanceFactory.apply(newHandler);
         }
         return (AgenticScopeOwner) Proxy.newProxyInstance(
-                type.getClassLoader(),
-                new Class<?>[] {type, InternalAgent.class, AgenticScopeOwner.class},
-                newHandler);
+                type.getClassLoader(), new Class<?>[] {type, InternalAgent.class, AgenticScopeOwner.class}, newHandler);
     }
 
     @Override
@@ -148,7 +162,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         if (method.getDeclaringClass() == AgenticScopeAccess.class) {
             return switch (method.getName()) {
                 case "getAgenticScope" -> registry.get(args[0]);
-                case "evictAgenticScope" -> registry.evict(args[0], agentListener);
+                case "evictAgenticScope" -> evictAgenticScope(registry, args[0], false);
+                case "deleteAgenticScope" -> evictAgenticScope(registry, args[0], true);
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeAccess class : " + method.getName());
@@ -169,11 +184,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (method.getDeclaringClass() == Object.class) {
             return switch (method.getName()) {
+                case "equals" -> proxy == args[0];
                 case "toString" -> service.serviceType() + "<" + type.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(this);
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on Object class : " + method.getName());
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
             };
         }
 
@@ -192,25 +207,130 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         return agenticScopeRegistry.get();
     }
 
+    /**
+     * Evicts the scope with the given memory id from the registry, then the chat memories the agents of this agentic
+     * system hold for that memory id: the ones of the AI agents reachable from the agent tree, and the ones of the
+     * agents created for the scope only, like the AI agents whose configuration depends on the scope and the planner
+     * agent of a supervisor. The scope goes first, so that the listeners see the chat memories intact and a failing
+     * chat memory store cannot leave the scope behind; it is looked up in memory only, because a scope that is not
+     * there has no agents cached for it, and loading it from its store just to evict it could fail.
+     *
+     * @param delete whether to clear each chat memory, deleting its messages from its store, before evicting it; the
+     *        first failure is rethrown after the other chat memories have been visited. The ones of the agent tree
+     *        that it left cached are deleted by a later call, whether the scope still exists or not; the agents
+     *        created for the scope only are not reachable once it is evicted, so the messages they could not delete
+     *        stay in their store
+     */
+    private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId, boolean delete) {
+        DefaultAgenticScope scope = registry.getInMemory(memoryId);
+        boolean evicted = registry.evict(memoryId, agentListener);
+
+        List<ChatMemoryAccess> aiAgents = new ArrayList<>();
+        collectAiAgents(subagents, aiAgents);
+        if (scope != null) {
+            for (Object cachedAgent : scope.cachedAgents()) {
+                if (cachedAgent instanceof ChatMemoryAccess chatMemoryAccess) {
+                    aiAgents.add(chatMemoryAccess);
+                }
+            }
+        }
+        RuntimeException failure = null;
+        for (ChatMemoryAccess aiAgent : aiAgents) {
+            try {
+                evictChatMemory(aiAgent, memoryId, delete);
+            } catch (RuntimeException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+        return evicted;
+    }
+
+    private static void collectAiAgents(List<AgentInstance> agents, List<ChatMemoryAccess> aiAgents) {
+        for (AgentInstance agent : agents) {
+            // the planner-based agents have no chat memory of their own, and the one of a supervisor is reached
+            // through the scope: only the AI agents are asked for theirs
+            if (agent.topology() == AgenticSystemTopology.AI_AGENT
+                    && agent instanceof AgentExecutor executor
+                    && executor.agent() instanceof ChatMemoryAccess chatMemoryAccess) {
+                aiAgents.add(chatMemoryAccess);
+            }
+            collectAiAgents(agent.subagents(), aiAgents);
+        }
+    }
+
+    /**
+     * Evicts the chat memory of the given agent for the given memory id, after clearing it when asked, so that its
+     * messages leave its store too: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory
+     * object. A chat memory whose clearing fails stays cached. An AI agent configured with a single chat memory,
+     * shared by all the memory ids, refuses to evict it and has nothing of this scope to clear: it is skipped.
+     */
+    private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId, boolean delete) {
+        if (delete) {
+            ChatMemory chatMemory = chatMemoryAccess.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                chatMemory.clear();
+            }
+        }
+        try {
+            chatMemoryAccess.evictChatMemory(memoryId);
+        } catch (UnsupportedOperationException e) {
+            // a single chat memory, not keyed by the memory id: nothing to evict for this scope
+        }
+    }
+
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {
         DefaultAgenticScope currentScope = currentAgenticScope(registry, method, args);
+        if (isRootCall()) {
+            // before writing the inputs of this call to the scope, which the asynchronous agents of the previous
+            // call still running could read
+            currentScope.rootCallStarted(registry);
+        }
         writeAgenticScope(currentScope, method, args);
         beforeCall.accept(currentScope);
 
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
-            currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
-        Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, this, subagents));
-        Object result = new PlannerLoop(planner, currentScope, registry).loop();
+        Object result;
+        try {
+            Planner planner = plannerSupplier.get();
+            planner.init(new InitPlanningContext(currentScope, this, subagents));
+            result = new PlannerLoop(planner, currentScope, registry).loop();
+        } catch (Exception e) {
+            currentScope.compensateAll();
+            if (isRootCall()) {
+                agentError(agentListener, currentScope, this, namedArgs, e);
+                currentScope.rootCallEnded(registry, agentListener, true);
+            }
+            throw e;
+        }
+
+        if (result instanceof Action action && action.isSuspended()) {
+            onAgenticSystemSuspended(agentListener, currentScope);
+            if (isRootCall()) {
+                currentScope.rootCallSuspended(registry, agentListener);
+            }
+            if (isRootCall() && method.getReturnType().equals(ResultWithAgenticScope.class)) {
+                return new ResultWithAgenticScope<>(currentScope, null, true, () ->
+                        (ResultWithAgenticScope) executeAgentMethod(registry, method, args));
+            }
+            throw new AgenticSystemSuspendedException(currentScope);
+        }
+
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
-            currentScope.rootCallEnded(registry, agentListener);
+            currentScope.rootCallEnded(registry, agentListener, false);
         }
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)
@@ -278,6 +398,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return service.activationCondition;
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
         return arguments;
     }
@@ -285,6 +410,21 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     @Override
     public AgentInstance parent() {
         return parent;
+    }
+
+    @Override
+    public boolean compensateOnError() {
+        if (service.compensateOnError) return true;
+        return parent != null && parent.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        if (crossAgentCompensationEnabled) {
+            return;
+        }
+        crossAgentCompensationEnabled = true;
+        subagents.stream().map(InternalAgent.class::cast).forEach(InternalAgent::enableCrossAgentCompensation);
     }
 
     @Override
@@ -297,13 +437,17 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         if (!parent.allowStreamingOutput()) {
             this.allowStreamingOutput = false;
         }
+        if (compensateOnError()) {
+            enableCrossAgentCompensation();
+        }
     }
 
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
         if (parentListener != null && parentListener.inheritedBySubagents()) {
             agentListener = composeWithInherited(agentListener, parentListener);
-            subagents().stream().map(InternalAgent.class::cast)
+            subagents().stream()
+                    .map(InternalAgent.class::cast)
                     .forEach(agent -> agent.registerInheritedParentListener(parentListener));
         }
     }
@@ -345,11 +489,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private class PlannerLoop implements PlannerExecutor {
         static final String EXECUTION_STATE_PREFIX = "__planner_state_";
+        private static final String COMPLETED_AGENTS_KEY = "__completedAgents";
 
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
         private final AgenticScopeRegistry registry;
         private final ReentrantLock lock = new ReentrantLock();
+        private final Set<String> completedAgentIds = new java.util.HashSet<>();
 
         private volatile Action nextAction = null;
 
@@ -363,15 +509,23 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         public Object loop() {
             Map<String, Object> savedState = agenticScope.readState(executionStateId(), Map.of());
             if (!savedState.isEmpty()) {
+                restoreCompletedAgents(savedState);
                 planner.restoreExecutionState(savedState);
             }
 
             nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
+            nextAction = filterCompletedAgents(nextAction);
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
                     Thread.yield();
                     continue;
                 }
+
+                if (hasSuspendedResponses(agenticScope)) {
+                    nextAction = planner.suspend();
+                    break;
+                }
+
                 List<AgentExecutor> agents = ((Action.AgentCallAction) nextAction).agentsToCall();
                 nextAction = null;
                 switch (agents.size()) {
@@ -381,10 +535,39 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 }
             }
 
+            if (nextAction != null && nextAction.isSuspended()) {
+                return nextAction;
+            }
+
+            if (hasSuspendedResponses(agenticScope)) {
+                return planner.suspend();
+            }
+
             // Clear execution state when planner is done
             agenticScope.writeState(executionStateId(), null);
 
             return result();
+        }
+
+        private Action filterCompletedAgents(Action action) {
+            if (completedAgentIds.isEmpty()
+                    || !(action instanceof Action.AgentCallAction aca)
+                    || aca.agentsToCall().size() <= 1) {
+                return action;
+            }
+            List<AgentExecutor> remaining = aca.agentsToCall().stream()
+                    .filter(a -> !completedAgentIds.contains(a.agentId()))
+                    .toList();
+            return remaining.isEmpty() ? planner.done() : new Action.AgentCallAction(remaining);
+        }
+
+        private void restoreCompletedAgents(Map<String, Object> savedState) {
+            Object completed = savedState.get(COMPLETED_AGENTS_KEY);
+            if (completed instanceof List<?> list) {
+                for (Object id : list) {
+                    completedAgentIds.add(id.toString());
+                }
+            }
         }
 
         private String executionStateId() {
@@ -392,9 +575,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private void parallelExecution(List<AgentExecutor> agents) {
-            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
+            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor();
             var tasks = agents.stream()
-                    .map(agentExecutor -> CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))
+                    .map(agentExecutor ->
+                            CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))
                     .toArray(CompletableFuture[]::new);
             try {
                 CompletableFuture.allOf(tasks).get();
@@ -402,9 +586,17 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
-                throw new RuntimeException(e);
+                Throwable cause = e.getCause();
+                if (cause instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                if (cause instanceof Error error) {
+                    throw error;
+                }
+                throw new RuntimeException(cause);
             }
         }
+
         private Object result() {
             Object result = output != null ? output.apply(agenticScope) : nextAction.result();
 
@@ -419,18 +611,39 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             return result;
         }
 
+        private void saveExecutionState() {
+            Map<String, Object> execState = planner.executionState();
+            if (!completedAgentIds.isEmpty()) {
+                execState = new HashMap<>(execState);
+                execState.put(COMPLETED_AGENTS_KEY, new ArrayList<>(completedAgentIds));
+            }
+            if (!execState.isEmpty()) {
+                agenticScope.writeState(executionStateId(), execState);
+            }
+        }
+
+        @Override
+        public void onSubagentSuspended() {
+            lock.lock();
+            try {
+                this.nextAction = planner.suspend();
+                saveExecutionState();
+                if (registry != null) {
+                    agenticScope.checkpoint(registry);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
         @Override
         public void onSubagentInvoked(AgentInvocation agentInvocation) {
             lock.lock();
             try {
-                this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
-
-                // Save planner execution state after each agent invocation
-                Map<String, Object> execState = planner.executionState();
-                if (!execState.isEmpty()) {
-                    agenticScope.writeState(executionStateId(), execState);
-                }
-
+                completedAgentIds.add(agentInvocation.agentId());
+                this.nextAction = composeActions(
+                        this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+                saveExecutionState();
                 if (registry != null) {
                     agenticScope.checkpoint(registry);
                 }
@@ -459,8 +672,14 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private static boolean isEmptyCall(Action action) {
-            return action instanceof Action.AgentCallAction aca && aca.agentsToCall().isEmpty();
+            return action instanceof Action.AgentCallAction aca
+                    && aca.agentsToCall().isEmpty();
         }
+    }
+
+    private static boolean hasSuspendedResponses(AgenticScope agenticScope) {
+        return agenticScope.state().values().stream()
+                .anyMatch(v -> v instanceof SuspendedResponse<?> sr && !sr.isDone());
     }
 
     private boolean isRootCall() {
@@ -492,7 +711,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         Object memoryId = memoryId(method, args);
-        DefaultAgenticScope newAgenticScope = memoryId != null ? getOrCreateAgenticScope(registry, memoryId) : createEphemeralAgenticScope(registry);
+        DefaultAgenticScope newAgenticScope =
+                memoryId != null ? getOrCreateAgenticScope(registry, memoryId) : createEphemeralAgenticScope(registry);
         return newAgenticScope.withErrorHandler(errorHandler);
     }
 
@@ -518,15 +738,20 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 return args[i];
             }
         }
+        if (defaultMemoryIdSupplier != null) {
+            return defaultMemoryIdSupplier.get();
+        }
         return null;
     }
 
     private Object accessChatMemory(AgenticScope agenticScope, String methodName, Object memoryId) {
-        ChatMemoryAccess chatMemoryAccess = ((ChatMemoryAccessProvider) defaultPlannerInstance).chatMemoryAccess(agenticScope);
+        ChatMemoryAccess chatMemoryAccess =
+                ((ChatMemoryAccessProvider) defaultPlannerInstance).chatMemoryAccess(agenticScope);
         return switch (methodName) {
             case "getChatMemory" -> chatMemoryAccess.getChatMemory(memoryId);
             case "evictChatMemory" -> chatMemoryAccess.evictChatMemory(memoryId);
-            default -> throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + methodName);
+            default ->
+                throw new UnsupportedOperationException("Unknown method on ChatMemoryAccess class : " + methodName);
         };
     }
 }

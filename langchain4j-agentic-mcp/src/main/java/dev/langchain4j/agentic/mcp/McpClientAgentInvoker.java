@@ -1,5 +1,9 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
@@ -7,27 +11,27 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 public class McpClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
-    private final String[] inputKeys;
+    private final Map<String, String> inputDescriptions;
 
     private final McpClientInstance mcpClientInstance;
 
     private final String toolName;
     private final String toolDescription;
     private final Method method;
+    private final List<AgentArgument> arguments;
 
     private InternalAgent parent;
 
@@ -37,15 +41,10 @@ public class McpClientAgentInvoker implements AgentInvoker {
         this.toolName = mcpClientInstance.toolName();
         this.toolDescription = mcpClientInstance.toolDescription();
         this.agentId = name();
-        this.inputKeys = inputKeys(mcpClientInstance);
-    }
-
-    private String[] inputKeys(McpClientInstance mcpClientInstance) {
-        return isUntyped()
-                ? mcpClientInstance.inputKeys()
-                : Stream.of(method.getParameters())
-                        .map(AgentInvoker::parameterName)
-                        .toArray(String[]::new);
+        this.inputDescriptions = mcpClientInstance.inputDescriptions();
+        this.arguments = isUntyped()
+                ? mcpClientInstance.arguments()
+                : McpSchemaToType.mergeDescriptions(argumentsFromMethod(method), inputDescriptions);
     }
 
     @Override
@@ -94,10 +93,13 @@ public class McpClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return mcpClientInstance.activationCondition();
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
-        return Stream.of(inputKeys)
-                .map(input -> new AgentArgument(Object.class, input))
-                .toList();
+        return arguments;
     }
 
     @Override
@@ -107,25 +109,15 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
-                : agentInvocationArguments(agenticScope);
-    }
-
-    private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
-        Map<String, Object> namedArgs = new HashMap<>();
-        Object[] positionalArgs = new Object[inputKeys.length];
-
-        int i = 0;
-        for (String argName : inputKeys) {
-            Object argValue = agenticScope.readState(argName);
-            if (argValue == null) {
-                throw new MissingArgumentException(argName);
+        if (isUntyped()) {
+            for (AgentArgument argument : arguments) {
+                if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
+                    throw new MissingArgumentException(argument.name());
+                }
             }
-            positionalArgs[i++] = argValue;
-            namedArgs.put(argName, argValue);
+            return untypedAgentInvocationArguments(agenticScope);
         }
-        return new AgentInvocationArguments(namedArgs, positionalArgs);
+        return agentInvocationArguments(agenticScope, arguments);
     }
 
     private boolean isUntyped() {

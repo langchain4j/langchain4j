@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -471,7 +472,11 @@ public class Metadata {
         final var commonKeys = new HashSet<>(thisMap.keySet());
         commonKeys.retainAll(anotherMap.keySet());
         if (!commonKeys.isEmpty()) {
-            throw illegalArgument("Metadata keys are not unique. Common keys: %s", commonKeys);
+            final var conflicts = commonKeys.stream()
+                    .sorted()
+                    .map(key -> "%s=(\"%s\", \"%s\")".formatted(key, thisMap.get(key), anotherMap.get(key)))
+                    .collect(joining(", ", "{", "}"));
+            throw illegalArgument("Metadata keys are not unique. Common keys and their values: %s", conflicts);
         }
         final var mergedMap = new HashMap<>(thisMap);
         mergedMap.putAll(anotherMap);

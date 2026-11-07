@@ -4,14 +4,11 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicToolResultContent extends AnthropicMessageContent {
 
     public String toolUseId;
@@ -32,8 +29,26 @@ public class AnthropicToolResultContent extends AnthropicMessageContent {
     }
 
     public AnthropicToolResultContent(
-            String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
+            String toolUseId, String content, Boolean isError, AnthropicCacheControl cacheControl) {
+        super("tool_result", cacheControl);
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
         super("tool_result");
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(
+            String toolUseId,
+            List<AnthropicMessageContent> content,
+            Boolean isError,
+            AnthropicCacheControl cacheControl) {
+        super("tool_result", cacheControl);
         this.toolUseId = toolUseId;
         this.content = content;
         this.isError = isError;

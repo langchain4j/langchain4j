@@ -22,7 +22,22 @@ class GeminiGenerationConfigTest {
         void defaultValues() {
             GeminiGenerationConfig result = GeminiGenerationConfig.builder().build();
 
-            assertThatCharSequence(Json.toJson(result)).doesNotContain("\"seed\"");
+            assertThatCharSequence(Json.toJson(result))
+                    .doesNotContain("\"seed\"")
+                    .doesNotContain("\"responseLogprobs\"")
+                    .doesNotContain("\"enableEnhancedCivicAnswers\"");
+        }
+
+        @Test
+        void settingOptionalFlagsToFalseProducesConfigWithOptionalFlags() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .responseLogprobs(false)
+                    .enableEnhancedCivicAnswers(false)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result))
+                    .contains("\"responseLogprobs\" : false")
+                    .contains("\"enableEnhancedCivicAnswers\" : false");
         }
 
         @Test

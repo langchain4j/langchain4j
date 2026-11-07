@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static java.util.Arrays.copyOf;
+
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.MapperAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
@@ -13,8 +15,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Arrays.copyOf;
-
 public class ParallelMapperPlanner implements Planner {
 
     private final String itemsProvider;
@@ -22,8 +22,9 @@ public class ParallelMapperPlanner implements Planner {
     private final Class<? extends Object[]> arrayclass;
 
     private AgentExecutor subagent;
+    private String mapperAgentId;
     private String outputKey;
-    private String resultKeyPrefix;
+    private List<String> instanceOutputKeys;
     private int itemCount;
     private final AtomicInteger completedCount = new AtomicInteger();
 
@@ -36,6 +37,7 @@ public class ParallelMapperPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.subagent = (AgentExecutor) initPlanningContext.subagents().get(0);
+        this.mapperAgentId = initPlanningContext.plannerAgent().agentId();
         this.outputKey = initPlanningContext.plannerAgent().outputKey();
     }
 
@@ -49,18 +51,20 @@ public class ParallelMapperPlanner implements Planner {
         List<?> items = collectItems(collectionObj);
 
         if (items.isEmpty()) {
-            return done();
+            return doneWithResults(planningContext, List.of());
         }
 
         this.itemCount = items.size();
-        this.resultKeyPrefix = subagent.agentInvoker().outputKey();
 
         List<AgentInstance> instances = new ArrayList<>(items.size());
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            MapperAgentInvoker instanceInvoker = new MapperAgentInvoker(subagent.agentInvoker(), item, i);
+            MapperAgentInvoker instanceInvoker =
+                    new MapperAgentInvoker(subagent.agentInvoker(), item, i, mapperAgentId);
             instances.add(new AgentExecutor(instanceInvoker, subagent.agent()));
         }
+        this.instanceOutputKeys =
+                instances.stream().map(AgentInstance::outputKey).toList();
 
         return call(instances);
     }
@@ -86,16 +90,21 @@ public class ParallelMapperPlanner implements Planner {
         if (completedCount.incrementAndGet() >= itemCount) {
             List<Object> results = new ArrayList<>(itemCount);
             for (int i = 0; i < itemCount; i++) {
-                results.add(planningContext.agenticScope().readState(resultKeyPrefix + "_" + i));
-                planningContext.agenticScope().writeState(resultKeyPrefix + "_" + i, null);
+                String instanceOutputKey = instanceOutputKeys.get(i);
+                results.add(planningContext.agenticScope().readState(instanceOutputKey));
+                planningContext.agenticScope().writeState(instanceOutputKey, null);
             }
-            Object result = isArrayResult ? copyOf(results.toArray(), results.size(), arrayclass) : results;
-            if (outputKey != null && !outputKey.isBlank()) {
-                planningContext.agenticScope().writeState(outputKey, result);
-            }
-            return done(result);
+            return doneWithResults(planningContext, results);
         }
         return done();
+    }
+
+    private Action doneWithResults(PlanningContext planningContext, List<Object> results) {
+        Object result = isArrayResult ? copyOf(results.toArray(), results.size(), arrayclass) : results;
+        if (outputKey != null && !outputKey.isBlank()) {
+            planningContext.agenticScope().writeState(outputKey, result);
+        }
+        return done(result);
     }
 
     @Override

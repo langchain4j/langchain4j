@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 @Internal
@@ -51,50 +52,76 @@ public class ComposedAgentListener implements AgentListener {
 
     @Override
     public void beforeAgentInvocation(final AgentRequest agentRequest) {
-        for (AgentListener listener : listeners) {
-            listener.beforeAgentInvocation(agentRequest);
-        }
+        notifyEach(listener -> listener.beforeAgentInvocation(agentRequest));
     }
 
     @Override
     public void afterAgentInvocation(final AgentResponse agentResponse) {
-        for (AgentListener listener : listeners) {
-            listener.afterAgentInvocation(agentResponse);
-        }
+        notifyEach(listener -> listener.afterAgentInvocation(agentResponse));
     }
 
     @Override
     public void onAgentInvocationError(final AgentInvocationError agentInvocationError) {
-        for (AgentListener listener : listeners) {
-            listener.onAgentInvocationError(agentInvocationError);
-        }
+        notifyEach(listener -> listener.onAgentInvocationError(agentInvocationError));
+    }
+
+    @Override
+    public void onAgentSkipped(final AgentSkipped agentSkipped) {
+        notifyEach(listener -> listener.onAgentSkipped(agentSkipped));
     }
 
     @Override
     public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
-        for (AgentListener listener : listeners) {
-            listener.afterAgentToolExecution(afterAgentToolExecution);
-        }
+        notifyEach(listener -> listener.afterAgentToolExecution(afterAgentToolExecution));
     }
 
     @Override
     public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
-        for (AgentListener listener : listeners) {
-            listener.beforeAgentToolExecution(beforeAgentToolExecution);
-        }
+        notifyEach(listener -> listener.beforeAgentToolExecution(beforeAgentToolExecution));
+    }
+
+    @Override
+    public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
+        notifyEach(listener -> listener.onAgentAiServiceEvent(agentAiServiceEvent));
     }
 
     @Override
     public void afterAgenticScopeCreated(final AgenticScope agenticScope) {
-        for (AgentListener listener : listeners) {
-            listener.afterAgenticScopeCreated(agenticScope);
-        }
+        notifyEach(listener -> listener.afterAgenticScopeCreated(agenticScope));
     }
 
     @Override
     public void beforeAgenticScopeDestroyed(final AgenticScope agenticScope) {
+        notifyEach(listener -> listener.beforeAgenticScopeDestroyed(agenticScope));
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(final AgenticScope agenticScope) {
+        notifyEach(listener -> listener.onAgenticSystemSuspended(agenticScope));
+    }
+
+    /**
+     * Notifies every composed listener, even when one of them throws: a failing listener must not keep the others,
+     * which may depend on the notification (e.g. to propagate a context), from being notified. Since the listeners are
+     * kept in a {@link HashSet}, their order is not deterministic, so without this a listener that throws would skip a
+     * different set of listeners from one run to the next. The first failure is rethrown once all the listeners have
+     * been notified, with any further ones added to it as suppressed exceptions.
+     */
+    private void notifyEach(Consumer<AgentListener> notification) {
+        RuntimeException failure = null;
         for (AgentListener listener : listeners) {
-            listener.beforeAgenticScopeDestroyed(agenticScope);
+            try {
+                notification.accept(listener);
+            } catch (RuntimeException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
         }
     }
 
@@ -108,6 +135,23 @@ public class ComposedAgentListener implements AgentListener {
     @Override
     public boolean inheritedBySubagents() {
         return listeners.stream().anyMatch(AgentListener::inheritedBySubagents);
+    }
+
+    /**
+     * Composes a newly registered listener with the existing one, if any. When the existing listener is already a
+     * {@link ComposedAgentListener}, the new listener is added to it.
+     *
+     * @return the listener to be used in place of the existing one
+     */
+    public static AgentListener compose(AgentListener existingListener, AgentListener newListener) {
+        if (existingListener == null) {
+            return newListener;
+        }
+        if (existingListener instanceof ComposedAgentListener composed) {
+            composed.addListener(newListener);
+            return composed;
+        }
+        return new ComposedAgentListener(existingListener, newListener);
     }
 
     public static AgentListener composeWithInherited(AgentListener localListener, AgentListener parentListener) {
@@ -128,7 +172,8 @@ public class ComposedAgentListener implements AgentListener {
         add(existingListeners, newListener, AgentListener::inheritedBySubagents);
     }
 
-    private static void add(List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
+    private static void add(
+            List<AgentListener> existingListeners, AgentListener newListener, Predicate<AgentListener> filter) {
         if (newListener == null) {
             return;
         }

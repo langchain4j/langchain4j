@@ -14,6 +14,9 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
@@ -57,6 +60,7 @@ public class EmbeddingStoreIngestor {
     private final TextSegmentTransformer textSegmentTransformer;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
+    private final EmbeddingInputType embeddingInputType;
 
     /**
      * Creates an instance of an {@code EmbeddingStoreIngestor}.
@@ -75,12 +79,23 @@ public class EmbeddingStoreIngestor {
             TextSegmentTransformer textSegmentTransformer,
             EmbeddingModel embeddingModel,
             EmbeddingStore<TextSegment> embeddingStore) {
+        this(documentTransformer, documentSplitter, textSegmentTransformer, embeddingModel, embeddingStore, null);
+    }
+
+    private EmbeddingStoreIngestor(
+            DocumentTransformer documentTransformer,
+            DocumentSplitter documentSplitter,
+            TextSegmentTransformer textSegmentTransformer,
+            EmbeddingModel embeddingModel,
+            EmbeddingStore<TextSegment> embeddingStore,
+            EmbeddingInputType embeddingInputType) {
         this.documentTransformer = documentTransformer;
         this.documentSplitter = getOrDefault(documentSplitter, EmbeddingStoreIngestor::loadDocumentSplitter);
         this.textSegmentTransformer = textSegmentTransformer;
         this.embeddingModel = ensureNotNull(
                 getOrDefault(embeddingModel, EmbeddingStoreIngestor::loadEmbeddingModel), "embeddingModel");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
+        this.embeddingInputType = embeddingInputType;
     }
 
     private static DocumentSplitter loadDocumentSplitter() {
@@ -195,7 +210,7 @@ public class EmbeddingStoreIngestor {
         }
 
         log.debug("Starting to embed {} text segments", segments.size());
-        Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
+        Response<List<Embedding>> embeddingsResponse = embedSegments(segments);
         log.debug("Finished embedding {} text segments", segments.size());
 
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
@@ -203,6 +218,17 @@ public class EmbeddingStoreIngestor {
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
         return new IngestionResult(embeddingsResponse.tokenUsage());
+    }
+
+    private Response<List<Embedding>> embedSegments(List<TextSegment> segments) {
+        if (embeddingInputType == null) {
+            return embeddingModel.embedAll(segments);
+        }
+        EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+                .textSegments(segments)
+                .inputType(embeddingInputType)
+                .build());
+        return Response.from(response.embeddings(), response.metadata().tokenUsage());
     }
 
     /**
@@ -224,11 +250,29 @@ public class EmbeddingStoreIngestor {
         private TextSegmentTransformer textSegmentTransformer;
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
+        private EmbeddingInputType embeddingInputType;
 
         /**
          * Creates a new EmbeddingStoreIngestor builder.
          */
         public Builder() {}
+
+        /**
+         * Embeds the text segments with the given {@link EmbeddingInputType} (typically
+         * {@link EmbeddingInputType#DOCUMENT}), so providers that encode queries and documents differently can
+         * produce a document-optimized embedding.
+         * <p>
+         * When left {@code null} (the default), no input type is sent. If set, the chosen {@link EmbeddingModel}
+         * must {@link EmbeddingModel#supportedParameters() support} the input type parameter, otherwise ingestion
+         * fails fast.
+         *
+         * @param embeddingInputType the input type to embed documents with.
+         * @return {@code this}
+         */
+        public Builder embeddingInputType(EmbeddingInputType embeddingInputType) {
+            this.embeddingInputType = embeddingInputType;
+            return this;
+        }
 
         /**
          * Sets the document transformer. Optional.
@@ -296,7 +340,12 @@ public class EmbeddingStoreIngestor {
          */
         public EmbeddingStoreIngestor build() {
             return new EmbeddingStoreIngestor(
-                    documentTransformer, documentSplitter, textSegmentTransformer, embeddingModel, embeddingStore);
+                    documentTransformer,
+                    documentSplitter,
+                    textSegmentTransformer,
+                    embeddingModel,
+                    embeddingStore,
+                    embeddingInputType);
         }
     }
 }

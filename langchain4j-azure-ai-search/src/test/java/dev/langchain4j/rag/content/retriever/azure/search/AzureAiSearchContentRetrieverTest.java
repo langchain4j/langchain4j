@@ -36,7 +36,12 @@ class AzureAiSearchContentRetrieverTest {
         TokenCredential tokenCredential = new BasicAuthenticationCredential("TEST", "TEST");
         int dimensions = 1536;
         SearchIndex index = new SearchIndex("TEST");
-        EmbeddingModel embeddingModel = textSegments -> Response.from(List.of(Embedding.from(List.of())));
+        EmbeddingModel embeddingModel = new EmbeddingModel() {
+            @Override
+            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+                return Response.from(List.of(Embedding.from(List.of())));
+            }
+        };
 
         // Test empty endpoint
         try {

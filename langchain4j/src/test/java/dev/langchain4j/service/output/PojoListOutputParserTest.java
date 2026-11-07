@@ -35,7 +35,15 @@ class PojoListOutputParserTest {
                 Arguments.of("", List.of()),
                 Arguments.of(" ", List.of()),
                 Arguments.of("{\"values\":[]}", List.of()),
-                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", List.of(new Person("Klaus"))));
+                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", List.of(new Person("Klaus"))),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[{\"name\":\"Klaus\"}]", List.of(new Person("Klaus"))),
+                Arguments.of(
+                        "[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]",
+                        List.of(new Person("Klaus"), new Person("Franny"))),
+                Arguments.of("[]", List.of()),
+                Arguments.of(" [{\"name\":\"Klaus\"}] ", List.of(new Person("Klaus"))));
     }
 
     @ParameterizedTest
@@ -107,8 +115,9 @@ class PojoListOutputParserTest {
     @ValueSource(
             strings = {
                 "{\"values\":{\"name\":\"Alice\"}}",
-                "[{\"name\":\"Alice\"}]",
                 "{\"values\":[\"Alice\"]}",
+                "[\"Alice\"]",
+                "[{\"name\":\"Alice\"}] and more",
             })
     void should_fail_to_parse_malformed_json(String malformedJson) {
         assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(malformedJson))

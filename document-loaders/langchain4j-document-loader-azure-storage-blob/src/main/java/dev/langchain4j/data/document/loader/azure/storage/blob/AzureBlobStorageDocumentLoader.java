@@ -13,6 +13,7 @@ import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.azure.storage.blob.AzureBlobStorageSource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,7 @@ public class AzureBlobStorageDocumentLoader {
      */
     public List<Document> loadDocuments(String containerName, String prefix, DocumentParser parser) {
         List<Document> documents = new ArrayList<>();
+        AtomicInteger failed = new AtomicInteger();
 
         ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
 
@@ -69,6 +71,7 @@ public class AzureBlobStorageDocumentLoader {
                     try {
                         documents.add(loadDocument(containerName, blob.getName(), parser));
                     } catch (Exception e) {
+                        failed.incrementAndGet();
                         log.warn(
                                 "Failed to load blob '{}' from container '{}', skipping it.",
                                 blob.getName(),
@@ -76,6 +79,15 @@ public class AzureBlobStorageDocumentLoader {
                                 e);
                     }
                 });
+
+        if (failed.get() > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from container '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed.get(),
+                    containerName,
+                    failed.get());
+        }
 
         return documents;
     }

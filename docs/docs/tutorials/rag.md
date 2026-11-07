@@ -105,9 +105,11 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.17.2-beta27</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
+On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
+See the Windows note on the [In-process (ONNX)](/integrations/embedding-models/in-process) page.
 
 2. Let's load your documents:
 ```java
@@ -539,6 +541,42 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 - `EmbeddingModel.dimension()` returns the dimension of the `Embedding` produced by this model
 </details>
 
+#### Request/response API and per-call parameters
+
+Besides the convenience methods above, `EmbeddingModel` accepts an `EmbeddingRequest` and returns an
+`EmbeddingResponse`, which lets you pass **per-call parameters**:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input("What is the capital of France?")
+    .inputType(EmbeddingInputType.QUERY) // query vs document, see the section below
+    .dimensions(256)                     // reduce output dimensionality (on models that support it)
+    .build());
+
+List<Embedding> embeddings = response.embeddings();
+```
+
+Per-call parameters are strictly opt-in: each provider declares what it supports via `supportedParameters()`.
+If a request uses a parameter the model does not support, it fails fast with `UnsupportedFeatureException`
+rather than silently ignoring it. See also
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in).
+
+#### Multimodal embeddings
+
+Some models embed images (and interleaved text + image) into the same vector space. Build inputs from `Content`
+parts; on models that support it (Cohere Embed v4, Voyage multimodal, Google Gemini Embedding 2, Amazon Titan
+Multimodal, Jina CLIP, ...) the parts are fused into a single embedding:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input(TextContent.from("a photo of a cat"), ImageContent.from("https://example.com/cat.png"))
+    .build());
+```
+
+A model declares its supported modalities via `supportedContentTypes()`; passing an image to a text-only model
+fails fast with `UnsupportedFeatureException`. `EmbeddingModel` observability (listeners) is described in the
+[Observability](/tutorials/observability) tutorial.
+
 
 ### Embedding Store
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
@@ -591,6 +629,28 @@ Currently, the following `Filter` types/operations are supported:
 -  `And`
 -  `Not`
 -  `Or`
+
+A comparison value must be a `String`, `UUID`, `Boolean`, `Integer`, `Long`, `Float`, `Double`,
+`Byte`, `Short`, `BigInteger`, `BigDecimal`, an enum, or a date/time value:
+`LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`, `ZonedDateTime`, `Instant`,
+`Year`, `YearMonth`, `MonthDay`, `java.util.Date`, `java.sql.Date`, `java.sql.Time` or `java.sql.Timestamp`.
+A `Float` or `Double` must be a finite number, not `NaN` or infinite.
+For `IsIn` and `IsNotIn`, this applies to every value in the collection.
+Any other value, for example a nested `List`, a `Map`, a `Character` or `Double.NaN`,
+is rejected with an `IllegalArgumentException` when the `Filter` is created.
+
+`Metadata` itself stores only `String`, `UUID`, `Integer`, `Long`, `Float` and `Double` values (see [Metadata](#metadata)),
+so compare with a value of the same type as the stored one, for example an enum by its name:
+
+```java
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+
+Filter filter = metadataKey("category").isEqualTo(category.name());
+```
+
+The other types are for stores that also hold data written outside LangChain4j,
+and are passed to the store as they are.
+Individual embedding stores may support only some of these value types.
 
 :::note
 Not all embedding stores support filtering by `Metadata`,
@@ -667,6 +727,25 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .embeddingStore(embeddingStore)
     .build();
 ```
+
+#### Query vs Document Embeddings (opt-in)
+
+Some embedding models (e.g. Cohere Embed v4, Voyage, Google) produce better retrieval quality when documents
+and queries are embedded differently. You can opt in by declaring the input type: `DOCUMENT` on the
+`EmbeddingStoreIngestor` (for the indexed segments) and `QUERY` on the `EmbeddingStoreContentRetriever` (for the
+query, see [Embedding Store Content Retriever](#embedding-store-content-retriever)).
+
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .embeddingInputType(EmbeddingInputType.DOCUMENT)
+    .build();
+```
+
+When `embeddingInputType` is not set, no input type is sent. When it is set, the selected `EmbeddingModel` must
+support the input type parameter (see its `supportedParameters()`), otherwise embedding fails fast with
+`UnsupportedFeatureException`.
 
 
 ## Naive RAG
@@ -870,6 +949,19 @@ InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12
 String response = assistant.chat("Hello", parameters);
 ```
 
+To embed the query with `input_type=query` (pairing with the ingestor's `DOCUMENT`, see
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in)), set the input type on the retriever:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .embeddingInputType(EmbeddingInputType.QUERY)
+    .build();
+```
+
+The default is unchanged (no input type is sent). The `EmbeddingModel` must support the `input_type` parameter.
+
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
 
@@ -930,6 +1022,10 @@ It routes each `Query` to all configured `ContentRetriever`s.
 #### Language Model Query Router
 `LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
 
+#### Decision Model Query Router
+`DecisionModelQueryRouter` uses a [decision model](/tutorials/decision-models) to decide which `ContentRetriever`s
+can help answer the given `Query`. When none can, no retrieval is performed.
+
 ### Content Aggregator
 The `ContentAggregator` is responsible for aggregating multiple ranked lists of `Content` from:
 - multiple `Query`s
@@ -943,6 +1039,8 @@ Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langc
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
+A [decision model](/tutorials/decision-models#re-ranking-retrieved-content) can also be used, with `DecisionScoringModel`.
+The calls of a scoring model can be observed with [listeners](/tutorials/observability#scoringmodel-listener).
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
@@ -1092,6 +1190,14 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+
+:::note
+The whole retrieval graph has asynchronous counterparts (`augmentAsync`, `retrieveAsync`, `routeAsync`,
+`aggregateAsync`), so RAG does not have to block a thread. A component that has not implemented its counterpart
+fails loudly by default rather than silently blocking; opt in to offloading it instead with
+`offloadBlocking(true)` on `DefaultRetrievalAugmentor` or `EmbeddingStoreContentRetriever`.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Examples
 

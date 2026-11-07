@@ -8,7 +8,8 @@ import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isEqualTo;
+import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypeIsSupported;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 public class IsNotEqualTo implements Filter {
@@ -16,9 +17,19 @@ public class IsNotEqualTo implements Filter {
     private final String key;
     private final Object comparisonValue;
 
+    /**
+     * Creates a filter that matches when the value of the {@code key} metadata entry is not equal to the given value,
+     * or when the key is missing.
+     *
+     * @param key             the metadata key
+     * @param comparisonValue the value to compare with, see {@link Filter} for the supported types
+     * @throws IllegalArgumentException if {@code key} is blank, or if {@code comparisonValue} is {@code null},
+     *                                  of an unsupported type or not a finite number
+     */
     public IsNotEqualTo(String key, Object comparisonValue) {
         this.key = ensureNotBlank(key, "key");
-        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
+        this.comparisonValue =
+                ensureTypeIsSupported(ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'"), key);
     }
 
     public String key() {
@@ -43,7 +54,7 @@ public class IsNotEqualTo implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) != 0;
+            return !isEqualTo(actualValue, comparisonValue);
         }
 
         if (comparisonValue instanceof UUID && actualValue instanceof String) {

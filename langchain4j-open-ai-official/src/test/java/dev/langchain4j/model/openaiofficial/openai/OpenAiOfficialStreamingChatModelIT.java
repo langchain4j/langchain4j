@@ -76,16 +76,6 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
-    }
-
-    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return null; // TODO implement
     }
@@ -125,7 +115,7 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("o4-mini")
+                .modelName("gpt-6.1-terra")
                 .build();
 
         // when

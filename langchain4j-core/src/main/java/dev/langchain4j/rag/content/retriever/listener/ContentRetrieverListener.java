@@ -1,10 +1,14 @@
 package dev.langchain4j.rag.content.retriever.listener;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.observability.api.listener.RetrievalAugmentedListener;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 
 /**
  * A {@link ContentRetriever} listener that listens for requests, responses and errors.
+ * <p>
+ * It is called for each retriever call. To receive the final contents that an AI Service adds to the user message,
+ * once per invocation, use a {@link RetrievalAugmentedListener}.
  *
  * @since 1.11.0
  */

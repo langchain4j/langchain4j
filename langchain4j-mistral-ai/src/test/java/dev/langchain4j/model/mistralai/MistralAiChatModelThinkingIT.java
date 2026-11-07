@@ -46,7 +46,7 @@ class MistralAiChatModelThinkingIT {
     void should_send_thinking_in_follow_up_request_when_sendThinking_is_true() {
         // given
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = MistralAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -77,7 +77,7 @@ class MistralAiChatModelThinkingIT {
     void should_NOT_send_thinking_when_sendThinking_is_false_or_not_set(Boolean sendThinking) {
         // given
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = MistralAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -106,7 +106,7 @@ class MistralAiChatModelThinkingIT {
     void should_send_thinking_with_tool_calls_when_sendThinking_is_true() {
         // given
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = MistralAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -145,7 +145,7 @@ class MistralAiChatModelThinkingIT {
     void should_send_thinking_in_multi_turn_conversation_when_sendThinking_is_true() {
         // given
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = MistralAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

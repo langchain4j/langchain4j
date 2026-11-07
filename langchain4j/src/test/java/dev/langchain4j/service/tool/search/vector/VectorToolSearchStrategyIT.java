@@ -79,7 +79,7 @@ class VectorToolSearchStrategyIT {
     void should_use_tool_search_tool(ChatModel chatModel) {
 
         // given
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
         EmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(System.getenv("OPENAI_API_KEY"))

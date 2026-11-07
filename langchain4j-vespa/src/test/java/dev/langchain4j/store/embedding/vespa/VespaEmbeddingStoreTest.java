@@ -97,7 +97,7 @@ class VespaEmbeddingStoreTest {
         // When + Then
         assertThatThrownBy(() -> store.addAll(List.of("id1"), List.of(embedding1, embedding2), null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("same size");
+                .hasMessageContaining("ids size (1) is not equal to embeddings size (2)");
     }
 
     @Test

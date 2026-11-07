@@ -1,0 +1,46 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
+          "justification": "HttpClientBuilder is intentionally exposed by the Workers AI integration for custom HTTP client configuration"
+        },
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.model.workersai.client.WorkersAiApi",
+          "justification": "Internal Retrofit API interface removed as part of the migration from Retrofit/OkHttp to the langchain4j HttpClient abstraction"
+        },
+        {
+          "code": "java.class.removed",
+          "old": "class dev.langchain4j.model.workersai.client.WorkersAiClient.AuthInterceptor",
+          "justification": "OkHttp-specific interceptor removed as part of the migration from Retrofit/OkHttp to the langchain4j HttpClient abstraction; authorization is now handled via a request header"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.workersai.client.WorkersAiApi dev.langchain4j.model.workersai.client.WorkersAiClient::createService(java.lang.String)",
+          "justification": "Retrofit service factory removed as part of the migration from Retrofit/OkHttp to the langchain4j HttpClient abstraction; the client is now created via WorkersAiClient.builder()"
+        },
+        {
+          "code": "java.method.visibilityReduced",
+          "old": "method void dev.langchain4j.model.workersai.client.WorkersAiClient::<init>()",
+          "new": "method void dev.langchain4j.model.workersai.client.WorkersAiClient::<init>(dev.langchain4j.model.workersai.client.WorkersAiClient.Builder)",
+          "justification": "The public no-arg constructor was replaced by a package-private builder-based constructor as part of the migration from Retrofit/OkHttp; WorkersAiClient is now instantiated via WorkersAiClient.builder()"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.model.workersai.client.AbstractWorkersAIModel::processErrors(dev.langchain4j.model.workersai.client.ApiResponse<?>, okhttp3.ResponseBody) throws java.io.IOException",
+          "justification": "Manual OkHttp error handling removed; non-2xx responses now throw dev.langchain4j.exception.HttpException automatically via the HttpClient abstraction"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.workersai.client.AbstractWorkersAIModel.workerAiClient",
+          "justification": "The Retrofit-based WorkersAiApi field was replaced by the HttpClient-based WorkersAiClient field as part of the migration"
+        }
+      ]
+    }
+  }
+]

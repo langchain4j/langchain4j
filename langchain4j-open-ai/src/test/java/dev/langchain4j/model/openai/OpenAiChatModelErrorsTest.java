@@ -14,6 +14,8 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.chat.ChatModel;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
 import org.junit.jupiter.api.Test;
@@ -145,6 +147,90 @@ class OpenAiChatModelErrorsTest {
         assertThatThrownBy(() -> model.chat(userMessage))
                 .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasMessage("I'm sorry, I cannot assist with that request.");
+    }
+
+    @Test
+    void should_expose_provider_error_returned_with_http_200() {
+
+        // given
+        final var userMessage = "Return error with HTTP 200";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // DeepSeek returns this after keeping the connection alive for 15 minutes
+            // language=json
+            res.setBody("""
+                    {"error":{"message":"We were unable to start processing your request within the 900-second timeout limit. Please try again later."}}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: We were unable to start processing your request "
+                        + "within the 900-second timeout limit. Please try again later.");
+    }
+
+    @Test
+    void should_expose_provider_error_returned_with_http_200_async() {
+
+        // given
+        final var userMessage = "Async provider error";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"error":{"message":"Service is too busy"}}
+                    """);
+        });
+
+        // when
+        CompletableFuture<String> future = model.chatAsync(userMessage);
+
+        // then
+        assertThat(future)
+                .failsWithin(TIMEOUT)
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isExactlyInstanceOf(InternalServerException.class)
+                .withMessage("Chat completion failed: Service is too busy");
+    }
+
+    @Test
+    void should_expose_provider_error_without_message_returned_with_http_200() {
+
+        // given
+        final var userMessage = "Return error without message with HTTP 200";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"error":{"code":"service_unavailable"}}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: {\"error\":{\"code\":\"service_unavailable\"}}");
+    }
+
+    @Test
+    void should_fail_when_no_choices_and_no_error_returned() {
+
+        // given
+        final var userMessage = "Return no choices";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {"id":"chatcmpl-123","object":"chat.completion","created":1721596428,"model":"gpt-4o-mini","choices":[]}
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: no choices returned in response");
     }
 
     @AfterEach

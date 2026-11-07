@@ -7,6 +7,8 @@ import dev.langchain4j.agentic.declarative.ChatMemorySupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ContentRetrieverSupplier;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
+import dev.langchain4j.agentic.declarative.McpClientSupplier;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
@@ -41,6 +43,7 @@ class SupplierParameterResolverTest {
         DeclarativeUtil.getSupplierParameterResolvers().clear();
         capturedRetriever = null;
         capturedMemory = null;
+        capturedMcpClientHolder = null;
         capturedParallelExecutorHolder = null;
         capturedParallelMapperExecutorHolder = null;
     }
@@ -90,6 +93,7 @@ class SupplierParameterResolverTest {
 
     static RetrieverService capturedRetriever;
     static MemoryService capturedMemory;
+    static McpClientHolder capturedMcpClientHolder;
     static ExecutorHolder capturedParallelExecutorHolder;
     static ExecutorHolder capturedParallelMapperExecutorHolder;
 
@@ -382,5 +386,63 @@ class SupplierParameterResolverTest {
                 return holder;
             }
         });
+    }
+
+    // -- MCP client supplier with parameterised resolver --
+
+    static class McpClientHolder {
+        private final Object client;
+
+        McpClientHolder(Object client) {
+            this.client = client;
+        }
+
+        Object client() {
+            return client;
+        }
+    }
+
+    public interface McpWeatherAgent {
+
+        @McpClientAgent(toolName = "getWeather", outputKey = "weather",
+                description = "Fetches weather from MCP server")
+        String fetchWeather(@V("city") String city);
+
+        @McpClientSupplier
+        static Object mcpClient(McpClientHolder holder) {
+            capturedMcpClientHolder = holder;
+            return holder.client();
+        }
+    }
+
+    public interface McpWrapper {
+        @SequenceAgent(outputKey = "result", subAgents = { McpWeatherAgent.class })
+        String run(@V("city") String city);
+    }
+
+    @Test
+    void mcpClientSupplier_parameter_resolved() {
+        Object fakeMcpClient = new Object();
+        McpClientHolder holder = new McpClientHolder(fakeMcpClient);
+
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(Context context) {
+                return context.parameter().getType() == McpClientHolder.class;
+            }
+
+            @Override
+            public Object resolve(Context context) {
+                return holder;
+            }
+        });
+
+        // The supplier parameter is resolved, then McpService.get().mcpBuilder() fails
+        // because langchain4j-agentic-mcp is not on the classpath.
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(McpWrapper.class, DUMMY_MODEL))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("No MCP service implementation found");
+
+        assertThat(capturedMcpClientHolder).isSameAs(holder);
     }
 }

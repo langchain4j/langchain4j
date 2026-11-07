@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -103,6 +104,11 @@ public class HuggingFaceChatModel implements ChatModel {
             public Duration timeout() {
                 return builder.timeout;
             }
+
+            @Override
+            public HttpClientBuilder httpClientBuilder() {
+                return builder.httpClientBuilder;
+            }
         });
         this.temperature = builder.temperature;
         this.maxNewTokens = builder.maxNewTokens;
@@ -168,6 +174,7 @@ public class HuggingFaceChatModel implements ChatModel {
 
     public static final class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String accessToken;
         private String modelId;
@@ -176,6 +183,17 @@ public class HuggingFaceChatModel implements ChatModel {
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+
+        /**
+         * Sets the HTTP client builder that will be used to create the HTTP client to communicate with HuggingFace.
+         *
+         * @param httpClientBuilder the HTTP client builder to use
+         * @return {@code this}
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;

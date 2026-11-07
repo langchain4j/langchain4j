@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client.logging;
 
+import java.util.Locale;
+
 /**
  * Log level of an MCP log message.
  */
@@ -18,7 +20,7 @@ public enum McpLogLevel {
             return null;
         }
         try {
-            return valueOf(val.toUpperCase());
+            return valueOf(val.toUpperCase(Locale.ROOT));
         } catch (Exception e) {
             return null;
         }

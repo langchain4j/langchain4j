@@ -4,6 +4,9 @@ import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 import static dev.langchain4j.service.tool.DefaultToolExecutor.getBoundedLongValue;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.Optional;
 
 @Internal
 class ByteOutputParser implements OutputParser<Byte> {
@@ -19,6 +22,18 @@ class ByteOutputParser implements OutputParser<Byte> {
         } catch (NumberFormatException nfe) {
             return (byte) getBoundedLongValue(text, "byte", Byte.class, Byte.MIN_VALUE, Byte.MAX_VALUE);
         }
+    }
+
+    @Override
+    public Optional<JsonSchema> jsonSchema() {
+        JsonSchema jsonSchema = JsonSchema.builder()
+                .name("integer")
+                .rootElement(JsonObjectSchema.builder()
+                        .addIntegerProperty("value")
+                        .required("value")
+                        .build())
+                .build();
+        return Optional.of(jsonSchema);
     }
 
     @Override

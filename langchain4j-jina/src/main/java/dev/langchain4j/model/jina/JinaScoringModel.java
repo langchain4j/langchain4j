@@ -1,19 +1,27 @@
 package dev.langchain4j.model.jina;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.time.Duration;
 import java.util.List;
 import org.slf4j.Logger;
@@ -28,7 +36,9 @@ public class JinaScoringModel implements ScoringModel {
 
     private final JinaClient client;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer maxRetries;
+    private final List<ScoringModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public JinaScoringModel(
@@ -47,11 +57,14 @@ public class JinaScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(maxRetries, 2);
+        this.listeners = List.of();
     }
 
     public JinaScoringModel(JinaScoringModelBuilder builder) {
         this.client = JinaClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -60,7 +73,9 @@ public class JinaScoringModel implements ScoringModel {
                 .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = copy(builder.listeners);
     }
 
     public static JinaScoringModelBuilder builder() {
@@ -68,12 +83,37 @@ public class JinaScoringModel implements ScoringModel {
     }
 
     @Override
+    public ScoringRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
+    }
+
+    @Override
+    public List<ScoringModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.JINA;
+    }
+
+    @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        ensureNotNull(segments, "segments");
+        ScoringResponse response = score(ScoringRequest.builder()
+                .documents(segments.stream().map(TextSegment::text).toList())
+                .query(query)
+                .build());
+        return Response.from(response.scores(), response.tokenUsage());
+    }
+
+    @Override
+    public ScoringResponse doScore(ScoringRequest scoringRequest) {
 
         JinaRerankingRequest request = JinaRerankingRequest.builder()
-                .model(modelName)
-                .query(query)
-                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .model(getOrDefault(scoringRequest.modelName(), modelName))
+                .query(scoringRequest.query())
+                .documents(scoringRequest.documents())
                 .returnDocuments(false) // decreasing response size, do not include text in response
                 .build();
 
@@ -85,7 +125,11 @@ public class JinaScoringModel implements ScoringModel {
                 .collect(toList());
 
         TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
-        return Response.from(scores, tokenUsage);
+        return ScoringResponse.builder()
+                .scores(scores)
+                .modelName(getOrDefault(response.model, getOrDefault(scoringRequest.modelName(), modelName)))
+                .tokenUsage(tokenUsage)
+                .build();
     }
 
     public static class JinaScoringModelBuilder {
@@ -97,6 +141,8 @@ public class JinaScoringModel implements ScoringModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
+        private List<ScoringModelListener> listeners;
 
         JinaScoringModelBuilder() {}
 
@@ -142,6 +188,41 @@ public class JinaScoringModel implements ScoringModel {
         public JinaScoringModelBuilder logger(Logger logger) {
             this.logger = logger;
             return this;
+        }
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public JinaScoringModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public JinaScoringModelBuilder listeners(List<ScoringModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public JinaScoringModelBuilder listeners(ScoringModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public JinaScoringModel build() {

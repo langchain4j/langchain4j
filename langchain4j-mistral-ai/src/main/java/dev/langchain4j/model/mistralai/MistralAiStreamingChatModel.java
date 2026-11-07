@@ -40,14 +40,10 @@ import org.slf4j.Logger;
 public class MistralAiStreamingChatModel implements StreamingChatModel {
 
     private final MistralAiClient client;
-    private final Boolean safePrompt;
-    private final Integer randomSeed;
-    private final boolean returnThinking;
-    private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
     private final boolean strictJsonSchema;
-    private final ChatRequestParameters defaultRequestParameters;
+    private final MistralAiChatRequestParameters defaultRequestParameters;
 
     @SuppressWarnings({"unchecked"})
     public MistralAiStreamingChatModel(MistralAiStreamingChatModelBuilder builder) {
@@ -61,17 +57,13 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .logger(builder.logger)
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
-        this.safePrompt = builder.safePrompt;
-        this.randomSeed = builder.randomSeed;
-        this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
-    private ChatRequestParameters initDefaultRequestParameters(MistralAiStreamingChatModelBuilder builder) {
+    private MistralAiChatRequestParameters initDefaultRequestParameters(MistralAiStreamingChatModelBuilder builder) {
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
@@ -80,7 +72,10 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        return DefaultChatRequestParameters.builder()
+        MistralAiChatRequestParameters mistralParameters =
+                commonParameters instanceof MistralAiChatRequestParameters m ? m : MistralAiChatRequestParameters.EMPTY;
+
+        return MistralAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -91,21 +86,31 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .safePrompt(getOrDefault(builder.safePrompt, mistralParameters.safePrompt()))
+                .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
+                .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
+                .returnThinking(getOrDefault(builder.returnThinking, mistralParameters.returnThinking()))
                 .build();
     }
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ensureNotNull(handler, "handler");
-        validate(chatRequest.parameters());
+        MistralAiChatRequestParameters parameters = (MistralAiChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
 
-        MistralAiChatCompletionRequest request =
-                createMistralAiRequest(chatRequest, safePrompt, randomSeed, true, sendThinking, strictJsonSchema);
-        client.streamingChatCompletion(request, handler, returnThinking);
+        MistralAiChatCompletionRequest request = createMistralAiRequest(
+                chatRequest,
+                parameters.safePrompt(),
+                parameters.randomSeed(),
+                true,
+                getOrDefault(parameters.sendThinking(), false),
+                strictJsonSchema);
+        client.streamingChatCompletion(request, handler, getOrDefault(parameters.returnThinking(), false));
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public MistralAiChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

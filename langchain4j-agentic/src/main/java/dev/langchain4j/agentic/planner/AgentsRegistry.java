@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.planner;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +88,7 @@ public interface AgentsRegistry {
 
         @Override
         public Map<String, AgentInstance> allAgents() {
-            return mergedAgents;
+            return Collections.unmodifiableMap(mergedAgents);
         }
 
         @Override

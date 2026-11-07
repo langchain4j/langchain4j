@@ -2,16 +2,22 @@ package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.NonNull;
@@ -41,6 +47,9 @@ import software.amazon.awssdk.services.bedrock.model.GuardrailTopicType;
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
 public class BedrockGuardrailIT {
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
+    private static final String NOVA_VISION_MODEL = "us.amazon.nova-lite-v1:0";
+    private static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
     private static final String GUARDRAIL_NAME_PREFIX = "Langchain_IT_";
     private static String guardrailId;
     private static String guardrailVersion;
@@ -315,5 +324,94 @@ public class BedrockGuardrailIT {
         } catch (Exception e) {
             Assertions.fail(e);
         }
+    }
+
+    @Test
+    void should_block_denied_topic_in_last_user_message_with_guard_content_placement() {
+        // Given
+        ChatModel model = modelWithGuardContentPlacement(NOVA_MODEL, BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+
+        // When
+        ChatResponse response = model.chat(ChatRequest.builder()
+                .messages(UserMessage.from("Provide you political opinion about the green party"))
+                .build());
+
+        // Then
+        assertThat(response.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        BedrockChatResponseMetadata metadata = (BedrockChatResponseMetadata) response.metadata();
+        assertThat(metadata.guardrailAssessmentSummary().inputAssessments())
+                .anyMatch(i -> i.action() == GuardrailAssessment.Action.BLOCKED
+                        && i.policy() == GuardrailAssessment.Policy.TOPIC
+                        && i.name().equals("Politics"));
+    }
+
+    @Test
+    void should_block_denied_topic_in_earlier_user_message_without_guard_content_placement() {
+        // Given
+        ChatModel model = modelWithGuardContentPlacement(NOVA_MODEL, null);
+
+        // When
+        ChatResponse response = model.chat(
+                ChatRequest.builder().messages(deniedTopicThenBenignMessages()).build());
+
+        // Then
+        assertThat(response.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+    }
+
+    @Test
+    void should_not_evaluate_earlier_user_message_with_last_user_message_guard_content_placement() {
+        // Given
+        ChatModel model = modelWithGuardContentPlacement(NOVA_MODEL, BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+
+        // When
+        ChatResponse response = model.chat(
+                ChatRequest.builder().messages(deniedTopicThenBenignMessages()).build());
+
+        // Then
+        assertThat(response.finishReason()).isNotEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(response.aiMessage().text()).isNotBlank().doesNotContain("Blocked input");
+    }
+
+    @Test
+    void should_pass_guarded_image_to_model_with_guard_content_placement() {
+        // Given
+        ChatModel model =
+                modelWithGuardContentPlacement(NOVA_VISION_MODEL, BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+
+        // When
+        ChatResponse response = model.chat(ChatRequest.builder()
+                .messages(UserMessage.from(
+                        TextContent.from("What animal is in the image? Answer with one word."),
+                        ImageContent.from(CAT_IMAGE_URL)))
+                .build());
+
+        // Then
+        assertThat(response.finishReason()).isNotEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+    }
+
+    private static ChatModel modelWithGuardContentPlacement(
+            String modelId, BedrockGuardContentPlacement guardContentPlacement) {
+        BedrockChatRequestParameters requestParams = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier(guardrailId)
+                        .guardrailVersion(guardrailVersion)
+                        .guardContentPlacement(guardContentPlacement)
+                        .build())
+                .maxOutputTokens(200)
+                .build();
+
+        return BedrockChatModel.builder()
+                .modelId(modelId)
+                .region(Region.US_EAST_1)
+                .defaultRequestParameters(requestParams)
+                .build();
+    }
+
+    private static List<ChatMessage> deniedTopicThenBenignMessages() {
+        return List.of(
+                UserMessage.from("Provide you political opinion about the green party"),
+                AiMessage.from("Blocked input"),
+                UserMessage.from("Tell me a short joke about cats."));
     }
 }

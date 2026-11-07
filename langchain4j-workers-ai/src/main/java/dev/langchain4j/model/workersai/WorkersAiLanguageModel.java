@@ -1,5 +1,6 @@
 package dev.langchain4j.model.workersai;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -8,8 +9,6 @@ import dev.langchain4j.model.workersai.client.WorkersAiTextCompletionRequest;
 import dev.langchain4j.model.workersai.client.WorkersAiTextCompletionResponse;
 import dev.langchain4j.model.workersai.spi.WorkersAiLanguageModelBuilderFactory;
 import org.slf4j.Logger;
-
-import java.io.IOException;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -27,7 +26,7 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
      * @param builder builder.
      */
     public WorkersAiLanguageModel(Builder builder) {
-        this(builder.accountId, builder.modelName, builder.apiToken);
+        super(builder.accountId, builder.modelName, builder.apiToken, builder.httpClientBuilder);
     }
 
     /**
@@ -70,6 +69,10 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
          * ModelName, preferred as enum for extensibility.
          */
         public String modelName;
+        /**
+         * The HTTP client builder used to create the underlying HTTP client.
+         */
+        public HttpClientBuilder httpClientBuilder;
 
         /**
          * Simple constructor.
@@ -111,6 +114,17 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
         }
 
         /**
+         * Sets the {@link HttpClientBuilder} used to create the underlying HTTP client.
+         *
+         * @param httpClientBuilder The HTTP client builder to set.
+         * @return The current instance of {@link Builder}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
          * Builds a new instance of Worker AI Chat Model.
          *
          * @return A new instance of {@link WorkersAiChatModel}.
@@ -125,18 +139,12 @@ public class WorkersAiLanguageModel extends AbstractWorkersAIModel implements La
      */
     @Override
     public Response<String> generate(String prompt) {
-        try {
-            retrofit2.Response<WorkersAiTextCompletionResponse> retrofitResponse = workerAiClient
-                    .generateText(new WorkersAiTextCompletionRequest(prompt), accountId, modelName)
-                    .execute();
-            processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
-            if (retrofitResponse.body() == null) {
-                throw new RuntimeException("Empty response");
-            }
-            return new Response<>(retrofitResponse.body().getResult().getResponse());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        WorkersAiTextCompletionResponse response =
+                client.generateText(new WorkersAiTextCompletionRequest(prompt), accountId, modelName);
+        if (response == null || response.getResult() == null) {
+            throw new RuntimeException("Empty response");
         }
+        return new Response<>(response.getResult().getResponse());
     }
 
     /**

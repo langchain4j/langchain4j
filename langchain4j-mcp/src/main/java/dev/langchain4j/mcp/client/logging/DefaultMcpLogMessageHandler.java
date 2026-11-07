@@ -14,14 +14,14 @@ public class DefaultMcpLogMessageHandler implements McpLogMessageHandler {
     @Override
     public void handleLogMessage(McpLogMessage message) {
         if (message.level() == null) {
-            log.warn("Received MCP log message with unknown level: {}", message.data());
+            log.warn("Received MCP log message with unknown level: {}", message.dataAsJson());
             return;
         }
         switch (message.level()) {
-            case DEBUG -> log.debug("MCP logger: {}: {}", message.logger(), message.data());
-            case INFO, NOTICE -> log.info("MCP logger: {}: {}", message.logger(), message.data());
-            case WARNING -> log.warn("MCP logger: {}: {}", message.logger(), message.data());
-            case ERROR, CRITICAL, ALERT, EMERGENCY -> log.error("MCP logger: {}: {}", message.logger(), message.data());
+            case DEBUG -> log.debug("MCP logger: {}: {}", message.logger(), message.dataAsJson());
+            case INFO, NOTICE -> log.info("MCP logger: {}: {}", message.logger(), message.dataAsJson());
+            case WARNING -> log.warn("MCP logger: {}: {}", message.logger(), message.dataAsJson());
+            case ERROR, CRITICAL, ALERT, EMERGENCY -> log.error("MCP logger: {}: {}", message.logger(), message.dataAsJson());
         }
     }
 }

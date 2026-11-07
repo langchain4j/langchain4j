@@ -1,16 +1,22 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -25,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,13 +51,23 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
+    private final boolean codeExecutionEnabled;
+    private final boolean includeCodeExecutionOutput;
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
+    private final Boolean automaticContinuation;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -59,13 +77,23 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
+        this.codeExecutionEnabled = getOrDefault(builder.codeExecution, false);
+        this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
+        this.automaticContinuation = builder.automaticContinuation;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -99,13 +127,44 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
+                .labels(getOrDefault(this.labels, genAiParameters.labels()))
+                .automaticContinuation(
+                        getOrDefault(builder.automaticContinuation, genAiParameters.automaticContinuation()))
                 .build();
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+
+        GenerateContentResponse response = withRetryMappingExceptions(
+                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
+
+        return toChatResponseAndLogResponse(response, chatRequest.modelName());
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+
+        CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
+
+        CompletableFuture<ChatResponse> result =
+                rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
+
+        propagateCancellation(result, rawFuture);
+        return result;
+    }
+
+    private GenerateContentConfig buildConfigAndLogRequest(ChatRequest chatRequest) {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
@@ -115,14 +174,21 @@ public class GoogleGenAiChatModel implements ChatModel {
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                codeExecutionEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                parameters.cachedContent());
+                parameters.cachedContent(),
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -132,16 +198,18 @@ public class GoogleGenAiChatModel implements ChatModel {
                     config);
         }
 
-        var result = withRetryMappingExceptions(
-                () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
+        return config;
+    }
 
-        ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+    private ChatResponse toChatResponseAndLogResponse(GenerateContentResponse response, String modelName) {
+        ChatResponse chatResponse = GoogleGenAiContentMapper.toChatResponse(
+                response, modelName, returnThinking, includeCodeExecutionOutput);
 
         if (logResponses) {
-            log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
+            log.info("Response:\n- model: {}\n- response: {}", modelName, chatResponse);
         }
 
-        return response;
+        return chatResponse;
     }
 
     @Override
@@ -184,6 +252,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Integer maxOutputTokens;
         private Integer thinkingBudget;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Integer seed;
         private Integer maxRetries;
         private List<String> stopSequences;
@@ -191,6 +262,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Boolean googleSearch;
         private Boolean googleMaps;
         private Boolean urlContext;
+        private Boolean codeExecution;
+        private Boolean includeCodeExecutionOutput;
         private List<SafetySetting> safetySettings;
         private ResponseFormat responseFormat;
         private List<String> allowedFunctionNames;
@@ -203,6 +276,11 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
+        private Boolean automaticContinuation;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -387,6 +465,58 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            return this;
+        }
+
+        /**
          * Sets the random seed for deterministic output.
          * Requests with the same seed and parameters should produce the same response.
          *
@@ -481,6 +611,34 @@ public class GoogleGenAiChatModel implements ChatModel {
          */
         public Builder enableUrlContext(boolean urlContext) {
             this.urlContext = urlContext;
+            return this;
+        }
+
+        /**
+         * Enables the code execution tool: the model can write Python code, run it in a sandbox hosted by Google, and use
+         * the result in its answer. Charts the code draws are returned as images, see {@link AiMessage#images()}.
+         * The current Gemini models reject a request that combines this tool with your own tools.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/code-execution">code execution docs</a>.
+         *
+         * @param codeExecution whether to enable code execution
+         * @return {@code this}
+         */
+        public Builder enableCodeExecution(boolean codeExecution) {
+            this.codeExecution = codeExecution;
+            return this;
+        }
+
+        /**
+         * Adds the code the model executed, and the output of that code, to the {@link AiMessage} text as Markdown code
+         * blocks. When the code fails, the outcome and the error output are added instead. Defaults to {@code false}:
+         * only the answer of the model is returned, and the code and its output can be read from
+         * {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         *
+         * @param includeCodeExecutionOutput whether to add the executed code and its output to the text
+         * @return {@code this}
+         */
+        public Builder includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
+            this.includeCodeExecutionOutput = includeCodeExecutionOutput;
             return this;
         }
 
@@ -613,6 +771,75 @@ public class GoogleGenAiChatModel implements ChatModel {
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AudioTranscriptionConfig} applied when the model transcribes audio input:
+         * the transcription mode ({@code VERBATIM} or {@code SMART}), the spoken languages, a custom vocabulary,
+         * word-level timestamps and speaker diarization.
+         * <p>
+         * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
+         * The transcript is returned as the text of the {@link AiMessage}. Segment offsets ({@code startOffset},
+         * {@code endOffset}), word-level timestamps and speaker labels are not part of that text; read them from
+         * the parts of {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         *
+         * @param audioTranscriptionConfig the audio transcription configuration
+         * @return {@code this}
+         */
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        /**
+         * Sets the {@link SpeechConfig} used when the model generates speech/audio output (e.g. voice selection,
+         * multi-speaker voice configuration, and spoken language).
+         *
+         * @param speechConfig the speech synthesis configuration
+         * @return {@code this}
+         */
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        /**
+         * Sets the requested response modalities (for example {@code List.of("TEXT", "AUDIO")} or {@code List.of("AUDIO")}
+         * for text-to-speech models).
+         *
+         * @param responseModalities the list of response modalities
+         * @return {@code this}
+         */
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        /**
+         * Controls whether the Google GenAI SDK automatically continues generation when a response stops
+         * with an intermediate {@code CONTINUATION} finish reason and continuation token.
+         * Enabled by default in the SDK when not set.
+         *
+         * @param automaticContinuation whether to enable automatic continuation
+         * @return {@code this}
+         */
+        public Builder automaticContinuation(Boolean automaticContinuation) {
+            this.automaticContinuation = automaticContinuation;
             return this;
         }
 

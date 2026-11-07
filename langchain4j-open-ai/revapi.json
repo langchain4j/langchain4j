@@ -5,6 +5,36 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingParameter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequestParameters",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.output.Response<java.util.List<dev.langchain4j.data.embedding.Embedding>> dev.langchain4j.model.openai.OpenAiEmbeddingModel::embedAll(java.util.List<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "embedAll now inherits its default implementation from EmbeddingModel (routing through embed(EmbeddingRequest)); the method is still present and callable via inheritance \u2014 non-breaking"
+        },
+        {
           "code": "java.method.removed",
           "old": "method dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder::style(java.lang.String)",
           "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
@@ -60,6 +90,101 @@
           "justification": "Deprecated OpenAI model removed"
         },
         {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_1106",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0125",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_16K",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0613",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_2024_04_09",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_2024_05_13",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O1",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O1_2024_12_17",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI_2025_01_31",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O4_MINI",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.O4_MINI_2025_04_16",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO_2025_04_14",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K",
+          "justification": "OpenAI shut down this model"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613",
+          "justification": "OpenAI shut down this model"
+        },
+        {
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.audio.TextToSpeechRequest",
           "justification": "TextToSpeechRequest is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
@@ -68,6 +193,49 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
           "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "method dev.langchain4j.model.openai.internal.chat.AssistantMessage.Builder dev.langchain4j.model.openai.internal.chat.AssistantMessage.Builder::reasoningContent(java.lang.String)",
+          "justification": "@JsonAlias only widens deserialization to also accept the \"reasoning\" field name returned by current vLLM, OpenRouter and Groq; serialization and the Java API are unchanged"
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "method dev.langchain4j.model.openai.internal.chat.Delta.Builder dev.langchain4j.model.openai.internal.chat.Delta.Builder::reasoningContent(java.lang.String)",
+          "justification": "@JsonAlias only widens deserialization to also accept the \"reasoning\" field name returned by current vLLM, OpenRouter and Groq; serialization and the Java API are unchanged"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
+          "justification": "Added so the internal wire DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged: the explicit @JsonDeserialize still takes precedence.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
+          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility. Affects internal wire DTOs only.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
+        },
+        {
+          "code": "java.annotation.removed",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the internal wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped. Wire format is unchanged and covered by WireFormatTest.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "method dev.langchain4j.model.openai.internal.embedding.Embedding.Builder dev.langchain4j.model.openai.internal.embedding.Embedding.Builder::embedding(java.util.List<java.lang.Float>)",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonDeserialize",
+          "justification": "The custom Jackson 2 deserializer was replaced by a JSON-library-agnostic overload on the same builder, so that OpenAI's Base64 embedding format is also read when another JSON library is on the classpath. Behaviour is unchanged; this is an internal wire type."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.decision.request.DecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.openai.OpenAiDecisionRequestParameters dev.langchain4j.model.openai.OpenAiDecisionModel::defaultRequestParameters()",
+          "justification": "defaultRequestParameters() now returns the provider-specific OpenAiDecisionRequestParameters (covariant return, the compiler keeps a bridge method), consistent with OpenAiChatModel and AnthropicChatModel"
         }
       ]
     }

@@ -674,13 +674,14 @@ class GeminiServiceTest {
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 null,
                 null,
+                null,
                 null);
-        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null);
+        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null, null);
     }
 
     private static GeminiGenerateContentResponse createMetadataOnlyResponse() {
         // No candidates -> no text/thinking/tool content -> not exposed via any typed callback.
-        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(), null, null);
+        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(), null, null, null);
     }
 
     private static GeminiEmbeddingRequest createEmbeddingRequest(GeminiContent content) {

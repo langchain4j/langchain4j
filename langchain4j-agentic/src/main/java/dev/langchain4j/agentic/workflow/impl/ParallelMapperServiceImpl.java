@@ -9,6 +9,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.workflow.ParallelMapperService;
@@ -24,8 +25,16 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
     private String itemsProvider;
 
     public ParallelMapperServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        this(agentServiceClass, agenticMethod, List.of());
+    }
+
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public ParallelMapperServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
         super(agentServiceClass, agenticMethod);
-        configureParallelMapper(agentServiceClass);
+        configureParallelMapper(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override
@@ -36,6 +45,11 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
 
     @Override
     public T build() {
+        if (subagents.size() != 1) {
+            throw new AgenticSystemConfigurationException(
+                    "A parallel mapper service requires exactly one subagent, but " + subagents.size()
+                            + " were provided.");
+        }
         boolean isArrayResult = isArrayResult();
         Class<? extends Object[]> arrayclass =
                 isArrayResult ? (Class<? extends Object[]>) agenticMethod.getReturnType() : null;
@@ -100,10 +114,10 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
         return SERVICE_TYPE;
     }
 
-    private void configureParallelMapper(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureParallelMapper(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
 
-        parallelExecutor(agentServiceClass).ifPresent(this::executor);
+        parallelExecutor(helpers).ifPresent(this::executor);
     }
 }

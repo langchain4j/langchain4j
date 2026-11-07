@@ -6,9 +6,11 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.TokenStream;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -37,7 +39,11 @@ class JsonSchemasTest {
         assertThat(jsonSchemaFrom(void.class)).isEmpty();
         assertThat(jsonSchemaFrom(String.class)).isEmpty();
         assertThat(jsonSchemaFrom(AiMessage.class)).isEmpty();
+        assertThat(jsonSchemaFrom(ChatResponse.class)).isEmpty();
         assertThat(jsonSchemaFrom(Response.class)).isEmpty();
+        assertThat(jsonSchemaFrom(new TypeReference<Response<AiMessage>>() {
+        }.getType())).isEmpty();
+        assertThat(jsonSchemaFrom(TokenStream.class)).isEmpty();
         assertThat(jsonSchemaFrom(Integer.class)).isEmpty();
         assertThat(jsonSchemaFrom(LocalDate.class)).isEmpty();
         assertThat(jsonSchemaFrom(new TypeReference<List<Pojo>>() {

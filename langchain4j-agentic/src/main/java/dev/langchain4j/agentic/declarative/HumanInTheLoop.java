@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.observability.AgentListener;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -11,6 +12,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a human-in-the-loop agent. The method can be invoked to get input or feedback from a human during the execution of a workflow.
  * The annotated method can have any number of parameters, which will be provided by the workflow context when the method is invoked.
+ * Parameters resolved through a {@link SupplierParameterResolver} are not read from the workflow context and are not inputs of the agent.
  * <p>
  * Example:
  * <pre>
@@ -71,6 +73,12 @@ public @interface HumanInTheLoop {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */

@@ -158,4 +158,72 @@ class OllamaChatRequestParametersTest {
         assertThat(ollamaResult.mainGPU()).isEqualTo(0);
         assertThat(ollamaResult.useMmap()).isTrue();
     }
+
+    @Test
+    void should_build_with_truncate() {
+        OllamaChatRequestParameters params =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+
+        assertThat(params.truncate()).isFalse();
+    }
+
+    @Test
+    void truncate_should_be_null_when_not_set() {
+        OllamaChatRequestParameters params =
+                OllamaChatRequestParameters.builder().build();
+
+        assertThat(params.truncate())
+                .as("unset must stay unset, so the server default of true applies")
+                .isNull();
+    }
+
+    @Test
+    void overrideWith_should_apply_truncate_from_override() {
+        OllamaChatRequestParameters original =
+                OllamaChatRequestParameters.builder().truncate(true).build();
+        OllamaChatRequestParameters override =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+
+        ChatRequestParameters result = original.overrideWith(override);
+
+        assertThat(result).isInstanceOf(OllamaChatRequestParameters.class);
+        assertThat(((OllamaChatRequestParameters) result).truncate()).isFalse();
+    }
+
+    @Test
+    void overrideWith_should_keep_original_truncate_when_override_is_null() {
+        OllamaChatRequestParameters original =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+        OllamaChatRequestParameters override =
+                OllamaChatRequestParameters.builder().build();
+
+        ChatRequestParameters result = original.overrideWith(override);
+
+        assertThat(result).isInstanceOf(OllamaChatRequestParameters.class);
+        assertThat(((OllamaChatRequestParameters) result).truncate())
+                .as("a per-request override that omits truncate must not re-enable the trim")
+                .isFalse();
+    }
+
+    @Test
+    void equals_and_hashCode_should_include_truncate() {
+        OllamaChatRequestParameters params1 =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+        OllamaChatRequestParameters params2 =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+        OllamaChatRequestParameters params3 =
+                OllamaChatRequestParameters.builder().truncate(true).build();
+
+        assertThat(params1).isEqualTo(params2);
+        assertThat(params1.hashCode()).isEqualTo(params2.hashCode());
+        assertThat(params1).isNotEqualTo(params3);
+    }
+
+    @Test
+    void toString_should_include_truncate() {
+        OllamaChatRequestParameters params =
+                OllamaChatRequestParameters.builder().truncate(false).build();
+
+        assertThat(params.toString()).contains("truncate=false");
+    }
 }

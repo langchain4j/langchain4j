@@ -186,6 +186,26 @@ public class ToolExecutionResult {
         return new Builder();
     }
 
+    /**
+     * Returns a {@link Builder} pre-populated with the values of this {@link ToolExecutionResult}.
+     * Useful for creating a modified copy, for example to add attributes.
+     *
+     * <p>When this result was built with {@link Builder#resultTextSupplier(Supplier)},
+     * the supplier is carried over as is, so the copy stays lazy and may invoke the supplier again.
+     *
+     * @return a builder pre-populated with the values of this result.
+     * @since 1.19.0
+     */
+    public Builder toBuilder() {
+        Builder builder = builder().isError(isError).result(result).attributes(attributes);
+        if (resultTextSupplier != null) {
+            builder.resultTextSupplier(resultTextSupplier);
+        } else {
+            builder.resultContents(resultContents.get());
+        }
+        return builder;
+    }
+
     public static class Builder {
 
         private boolean isError;
