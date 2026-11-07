@@ -154,8 +154,8 @@ public non-sealed class OutputGuardrailExecutor
 
             if (!result.isRetry()) {
                 return removeViolatingMessageIfRequestedAsync(result, request)
-                        .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                                new OutputGuardrailException(
+                        .thenCompose(ignored ->
+                                CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                         result.toString(), result.getFirstFailureException(), result)));
             }
 
@@ -188,8 +188,8 @@ public non-sealed class OutputGuardrailExecutor
                     .collect(Collectors.joining(System.lineSeparator()));
 
             return removeViolatingMessageIfRequestedAsync(result, request)
-                    .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                            new OutputGuardrailException(
+                    .thenCompose(ignored ->
+                            CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                     MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result)));
         });
     }
@@ -209,18 +209,19 @@ public non-sealed class OutputGuardrailExecutor
             return CompletableFuture.completedFuture(null);
         }
         var invocationContext = invocationContextOf(request);
-        return CurrentInvocation.callWith(invocationContext, memory::messagesAsync).thenCompose(current -> {
-            var messages = new ArrayList<>(current);
-            var it = messages.listIterator(messages.size());
-            while (it.hasPrevious()) {
-                ChatMessage msg = it.previous();
-                if (msg instanceof AiMessage) {
-                    it.remove();
-                    break;
-                }
-            }
-            return CurrentInvocation.callWith(invocationContext, () -> memory.setAsync(messages));
-        });
+        return CurrentInvocation.callWith(invocationContext, memory::messagesAsync)
+                .thenCompose(current -> {
+                    var messages = new ArrayList<>(current);
+                    var it = messages.listIterator(messages.size());
+                    while (it.hasPrevious()) {
+                        ChatMessage msg = it.previous();
+                        if (msg instanceof AiMessage) {
+                            it.remove();
+                            break;
+                        }
+                    }
+                    return CurrentInvocation.callWith(invocationContext, () -> memory.setAsync(messages));
+                });
     }
 
     private void removeViolatingMessageIfRequested(OutputGuardrailResult result, OutputGuardrailRequest request) {
