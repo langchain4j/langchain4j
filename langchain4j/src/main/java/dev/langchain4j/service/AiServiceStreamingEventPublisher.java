@@ -667,8 +667,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     context.toolService
                             .persistToolResultsAndResolveMessages(
                                     context, getMemory(), null, outcome.resultMessages(), invocationContext)
-                            .thenAccept(ignored ->
-                                    emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters))
+                            .thenAccept(ignored -> {
+                                if (tube.cancelled()) {
+                                    return;
+                                }
+                                emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
+                            })
                             .exceptionally(error -> {
                                 fail(error);
                                 return null;
