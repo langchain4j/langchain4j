@@ -1,9 +1,12 @@
 package dev.langchain4j.data.document;
 
 import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -93,6 +96,62 @@ class MetadataTest implements WithAssertions {
         assertThat(Metadata.from("foo", "bar")).isEqualTo(new Metadata().put("foo", "bar"));
 
         assertThat(Metadata.metadata("foo", "bar")).isEqualTo(new Metadata().put("foo", "bar"));
+    }
+
+    @Test
+    void should_accept_every_supported_value_type() {
+        assertThat(new Metadata(singletonMap("value", "string")).getString("value"))
+                .isEqualTo("string");
+
+        UUID uuid = UUID.randomUUID();
+        assertThat(new Metadata(singletonMap("value", uuid)).getUUID("value")).isEqualTo(uuid);
+
+        assertThat(new Metadata(singletonMap("value", 1)).getInteger("value")).isEqualTo(1);
+        assertThat(new Metadata(singletonMap("value", 1L)).getLong("value")).isEqualTo(1L);
+        assertThat(new Metadata(singletonMap("value", 1f)).getFloat("value")).isEqualTo(1f);
+        assertThat(new Metadata(singletonMap("value", 1d)).getDouble("value")).isEqualTo(1d);
+    }
+
+    @Test
+    void should_reject_unsupported_value_types() {
+        assertThatThrownBy(() -> new Metadata(singletonMap("value", true)))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("which is of the unsupported type 'java.lang.Boolean'");
+
+        assertThatThrownBy(() -> new Metadata(singletonMap("value", new Object())))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("which is of the unsupported type 'java.lang.Object'");
+    }
+
+    @Test
+    void supported_types_error_message_should_not_list_primitive_classes() {
+        // A value taken from a map is always boxed, so value.getClass() can never return a
+        // primitive Class such as int.class. Listing primitives alongside their wrappers is
+        // therefore both unreachable and misleading in the user-facing message.
+        Throwable thrown = catchThrowable(() -> new Metadata(singletonMap("value", true)));
+
+        assertThat(thrown)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageNotContaining("int,")
+                .hasMessageNotContaining("long,")
+                .hasMessageNotContaining("float,")
+                .hasMessageNotContaining("double,")
+                .hasMessageNotContaining("int]")
+                .hasMessageNotContaining("long]")
+                .hasMessageNotContaining("float]")
+                .hasMessageNotContaining("double]");
+    }
+
+    @Test
+    void supported_value_types_should_not_contain_primitive_classes() throws Exception {
+        // Guards against re-introducing dead entries: SUPPORTED_VALUE_TYPES is consulted only
+        // via value.getClass(), which can never return a primitive Class.
+        Field field = Metadata.class.getDeclaredField("SUPPORTED_VALUE_TYPES");
+        field.setAccessible(true);
+
+        Set<Class<?>> supportedValueTypes = (Set<Class<?>>) field.get(null);
+
+        assertThat(supportedValueTypes).isNotEmpty().allMatch(type -> !type.isPrimitive(), "not primitive");
     }
 
     @Test
@@ -253,15 +312,15 @@ class MetadataTest implements WithAssertions {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, class java.lang.Integer, "
+                        + "class java.lang.Long, class java.lang.Float, class java.lang.Double]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, class java.lang.Integer, "
+                        + "class java.lang.Long, class java.lang.Float, class java.lang.Double]");
     }
 
     @Test
@@ -376,7 +435,11 @@ class MetadataTest implements WithAssertions {
         assertThat(new Metadata().put("k1", "v1").putAll(Map.of("k1", "v2")).toMap())
                 .isEqualTo(Map.of("k1", "v2"));
 
-        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {{ put("k", null); }}))
+        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {
+                    {
+                        put("k", null);
+                    }
+                }))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))
