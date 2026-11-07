@@ -4,21 +4,48 @@ sidebar_position: 33
 
 # Customizable HTTP Client
 
-Some LangChain4j modules (currently OpenAI and Ollama) support customizing the HTTP clients used
-to call the LLM provider API.
+Some LangChain4j modules (including OpenAI, Ollama and the MCP Streamable HTTP transport) support
+customizing the HTTP clients used to call remote APIs.
 
 The `langchain4j-http-client` module implements an `HttpClient` SPI, which is used
-by those modules to call the LLM provider's REST API.
+by those modules to call remote APIs.
 This means the underlying HTTP client can be customized,
 and any other HTTP client can be integrated by implementing the `HttpClient` SPI.
 
 Currently, there are the following out-of-the-box implementations:
 - `JdkHttpClient` from the `langchain4j-http-client-jdk` module.
-It is used by default when a supported module (e.g., `langchain4j-open-ai`) is used.
+It is the fallback when a supported module (e.g., `langchain4j-open-ai`) is used without another implementation.
 - `SpringRestClient` from the `langchain4j-http-client-spring-boot4-restclient`/`langchain4j-http-client-spring-restclient` modules.
 It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter`) is used.
 - `ApacheHttpClient` from the `langchain4j-http-client-apache` module.
 - `OkHttpClient` from the `langchain4j-http-client-okhttp` module.
+
+## Selecting an HTTP client
+
+When no builder or client is supplied explicitly, the supported modules discover
+`HttpClientBuilderFactory` implementations on the classpath. The JDK client is a fallback:
+
+| Available implementations | Selected client |
+|---|---|
+| Only JDK | JDK |
+| Only one other client | That client |
+| JDK and one other client | The other client |
+| Multiple other clients with the same highest priority | Conflict error |
+
+Factories can override `priority()` to influence selection: higher values win. The default is
+`0`; the JDK factory uses `PrioritizedFactory.YIELDS_TO_OTHERS` (`-100`). A tie at the highest
+priority fails instead of depending on classpath order.
+
+The `langchain4j.http.clientBuilderFactory` system property overrides priority. Its value must be
+the fully qualified class name of an available factory. For example, to keep using JDK when another
+implementation is present:
+
+```text
+-Dlangchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory
+```
+
+Adding a single alternative implementation no longer requires excluding the JDK dependency.
+Passing a builder explicitly bypasses discovery and this system property.
 
 ## Customizing JDK's `HttpClient`
 
