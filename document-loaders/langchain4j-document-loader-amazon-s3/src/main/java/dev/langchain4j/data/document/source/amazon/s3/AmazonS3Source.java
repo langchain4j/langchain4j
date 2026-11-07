@@ -1,13 +1,12 @@
 package dev.langchain4j.data.document.source.amazon.s3;
 
-import dev.langchain4j.data.document.DocumentSource;
-import dev.langchain4j.data.document.Metadata;
-
-import java.io.InputStream;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.lang.String.format;
+
+import dev.langchain4j.data.document.DocumentSource;
+import dev.langchain4j.data.document.Metadata;
+import java.io.InputStream;
 
 public class AmazonS3Source implements DocumentSource {
 
@@ -28,6 +27,14 @@ public class AmazonS3Source implements DocumentSource {
         return inputStream;
     }
 
+    /**
+     * Returns the metadata of the Amazon S3 object.
+     * <ul>
+     *     <li>{@link #SOURCE} ({@link String}): the {@code s3://bucket/key} URI of the object</li>
+     * </ul>
+     *
+     * @return the metadata of the Amazon S3 object
+     */
     @Override
     public Metadata metadata() {
         return Metadata.from(SOURCE, format("s3://%s/%s", bucket, key));

@@ -1,13 +1,12 @@
 package dev.langchain4j.data.document.source.tencent.cos;
 
-import dev.langchain4j.data.document.DocumentSource;
-import dev.langchain4j.data.document.Metadata;
-
-import java.io.InputStream;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.lang.String.format;
+
+import dev.langchain4j.data.document.DocumentSource;
+import dev.langchain4j.data.document.Metadata;
+import java.io.InputStream;
 
 public class TencentCosSource implements DocumentSource {
 
@@ -28,6 +27,14 @@ public class TencentCosSource implements DocumentSource {
         return inputStream;
     }
 
+    /**
+     * Returns the metadata of the Tencent COS object.
+     * <ul>
+     *     <li>{@link #SOURCE} ({@link String}): the {@code cos://bucket/key} URI of the object</li>
+     * </ul>
+     *
+     * @return the metadata of the Tencent COS object
+     */
     @Override
     public Metadata metadata() {
         return Metadata.from(SOURCE, format("cos://%s/%s", bucket, key));
