@@ -25,6 +25,14 @@ It can also be persisted and restored to/from a JSON string or a file.
 
 - `InMemoryEmbeddingStore` 
 
+When adding embeddings with explicit IDs, the original contents are optional:
+
+```java
+embeddingStore.addAll(ids, embeddings, null);
+```
+
+The IDs and embeddings must have the same size. If contents are provided, they must also have the same size.
+An empty batch leaves the store unchanged. A `null` list of IDs or embeddings counts as an empty list.
 
 ## Persisting
 
