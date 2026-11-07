@@ -16,6 +16,7 @@ import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
@@ -259,7 +260,7 @@ public non-sealed class OutputGuardrailExecutor
             String originalText = originalRequest.responseFromLLM().aiMessage().text();
             String validatedText =
                     validatedRequest.responseFromLLM().aiMessage().text();
-            if (!originalText.equals(validatedText)) {
+            if (!Objects.equals(originalText, validatedText)) {
                 // The text validated by the output guardrail is different form the original one because of a
                 // successful reprompt, so we need to create a new success result with the new text
                 return successWith(
