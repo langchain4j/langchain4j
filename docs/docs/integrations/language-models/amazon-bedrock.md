@@ -31,6 +31,7 @@ ChatModel model = BedrockChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .returnThinking(...)
         .sendThinking(...)
+        .strictTools(...)
         .timeout(...)
         .maxRetries(...)
         .logRequests(...)
@@ -48,6 +49,7 @@ ChatModel model = BedrockChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .strictTools(...)
                 .requestMetadata(Map.of("team", "platform"))
                 .build())
         .build();
@@ -70,6 +72,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .returnThinking(...)
         .sendThinking(...)
+        .strictTools(...)
         .timeout(...)
         .logRequests(...)
         .logResponses(...)
@@ -86,6 +89,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .strictTools(...)
                 .requestMetadata(Map.of("team", "platform"))
                 .build())
         .build();
@@ -243,6 +247,36 @@ the state `SUCCEEDED`, so check each result. `model.cancel(batchId)` stops a job
 already processed are still returned (and billed). `model.list(...)` lists every batch inference job in the region,
 including jobs not submitted through LangChain4j.
 
+
+## Strict Tools
+
+For Bedrock Converse models that support [structured outputs](https://docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html),
+such as [Claude Haiku 4.5](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-4-5.html),
+set `.strictTools(true)` when building the model:
+
+```java
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        .strictTools(true)
+        .build();
+```
+
+When enabled, LangChain4j sends `strict: true` in Bedrock tool definitions and sets
+`additionalProperties=false` for object schemas. The default is disabled, so existing requests
+continue to omit `strict` and keep the current schema shape.
+
+You can also set `strictTools` in `BedrockChatRequestParameters` when configuring default
+or per-request parameters. Individual tools can override the model-level setting with
+`ToolSpecification.builder().strict(true)` or `ToolSpecification.builder().strict(false)`.
+
+Bedrock structured outputs support internal JSON Schema references, but do not support
+recursive schemas. If a strict Bedrock tool uses a recursive POJO schema, LangChain4j
+rejects it before sending the request. Disable strict mode for that tool with
+`ToolSpecification.builder().strict(false)`.
+
+Open map parameters also do not fit Bedrock strict schemas because strict object schemas
+are closed with `additionalProperties=false`. Use per-tool `strict(false)` for tools that
+need arbitrary map keys.
 
 ## Additional Model Request Fields
 
