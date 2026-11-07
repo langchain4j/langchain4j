@@ -548,8 +548,12 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private String contextAsConversation(Predicate<String> agentFilter) {
+        List<AgentMessage> snapshot;
+        synchronized (context) {
+            snapshot = new ArrayList<>(context);
+        }
         StringBuilder sb = new StringBuilder();
-        for (AgentMessage agentMessage : context) {
+        for (AgentMessage agentMessage : snapshot) {
             if (!agentFilter.test(agentMessage.agentName())) {
                 continue;
             }
@@ -591,16 +595,22 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public List<AgentInvocation> agentInvocations(String agentName) {
-        return agentInvocations.stream()
+        return agentInvocationsSnapshot().stream()
                 .filter(inv -> inv.agentName().equals(agentName))
                 .toList();
     }
 
     @Override
     public List<AgentInvocation> agentInvocations(Class<?> agentType) {
-        return agentInvocations.stream()
+        return agentInvocationsSnapshot().stream()
                 .filter(inv -> inv.agentType().equals(agentType))
                 .toList();
+    }
+
+    private List<AgentInvocation> agentInvocationsSnapshot() {
+        synchronized (agentInvocations) {
+            return new ArrayList<>(agentInvocations);
+        }
     }
 
     @Override

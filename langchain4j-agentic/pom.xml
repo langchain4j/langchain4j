@@ -21,6 +21,18 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <!-- Use Mockito's Byte Buddy version to preserve generic signatures when mocking records. -->
+                    <groupId>net.bytebuddy</groupId>
+                    <artifactId>byte-buddy</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>1.24.0-SNAPSHOT</version>
@@ -67,13 +79,6 @@
                     <groupId>org.revapi</groupId>
                     <artifactId>revapi-maven-plugin</artifactId>
                     <version>0.15.1</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.revapi</groupId>
-                            <artifactId>revapi-java</artifactId>
-                            <version>0.28.4</version>
-                        </dependency>
-                    </dependencies>
                     <configuration>
                         <oldVersion>RELEASE</oldVersion>
                         <analysisConfigurationFiles>
@@ -141,6 +146,13 @@
                             </revapi.differences>
                         </analysisConfiguration>
                     </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.revapi</groupId>
+                            <artifactId>revapi-java</artifactId>
+                            <version>0.28.4</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>
