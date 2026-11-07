@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
@@ -47,7 +48,7 @@ public class EmbeddingModelListenerUtils {
     public static Response<List<Embedding>> withListeners(
             EmbeddingModel model, List<TextSegment> textSegments, Supplier<Response<List<Embedding>>> operation) {
 
-        List<EmbeddingModelListener> listeners = model.listeners();
+        List<EmbeddingModelListener> listeners = ObservabilityListeners.embedding(model.listeners());
         if (isNullOrEmpty(listeners) || isNullOrEmpty(textSegments)) {
             return operation.get();
         }
