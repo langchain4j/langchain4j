@@ -3,6 +3,8 @@ package dev.langchain4j.internal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility class for URI operations.
@@ -13,6 +15,7 @@ public final class UriUtils {
 
     private static final BitSet ALLOWED = new BitSet(128);
     private static final char[] HEX = "0123456789ABCDEF".toCharArray();
+    private static final Pattern SCHEME_AND_AUTHORITY = Pattern.compile("^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*");
 
     static {
         // RFC 3986: unreserved characters
@@ -40,6 +43,11 @@ public final class UriUtils {
      * gen-delims, and sub-delims) are preserved. This includes URL structural characters
      * like {@code :}, {@code /}, {@code ?}, {@code #}, etc.
      * <p>
+     * Square brackets are preserved only in the authority, where they delimit an IPv6 literal host;
+     * elsewhere they are percent-encoded during this fallback.
+     * <p>
+     * Every {@code #} after the first is percent-encoded, as only the first one starts the fragment.
+     * <p>
      * Existing percent-encoded sequences ({@code %XX}) are preserved to avoid double-encoding.
      * <p>
      * Illegal characters (spaces, non-ASCII, pipe {@code |}, etc.) are percent-encoded using UTF-8.
@@ -51,6 +59,8 @@ public final class UriUtils {
         StringBuilder out = new StringBuilder(s.length() + 16);
         int n = s.length();
         int i = 0;
+        int authorityEnd = authorityEnd(s);
+        int fragmentStart = s.indexOf('#');
 
         while (i < n) {
             int nextI;
@@ -60,7 +70,10 @@ public final class UriUtils {
             if (ch == '%' && i + 2 < n && isHex(s.charAt(i + 1)) && isHex(s.charAt(i + 2))) {
                 out.append(s, i, i + 3);
                 nextI = i + 3;
-            } else if (ch < 128 && ALLOWED.get(ch)) {
+            } else if (ch < 128
+                    && ALLOWED.get(ch)
+                    && (i < authorityEnd || !isBracket(ch))
+                    && (ch != '#' || i == fragmentStart)) {
                 out.append(ch);
                 nextI = i + 1;
             } else {
@@ -78,10 +91,20 @@ public final class UriUtils {
         return out.toString();
     }
 
+    private static int authorityEnd(String s) {
+        Matcher matcher = SCHEME_AND_AUTHORITY.matcher(s);
+        return matcher.find() ? matcher.end() : 0;
+    }
+
+    private static boolean isBracket(char ch) {
+        return ch == '[' || ch == ']';
+    }
+
     /**
      * Creates a URI from the given string, handling illegal characters safely.
      * <p>
-     * This method first attempts to create a URI directly. If that fails due to illegal characters
+     * This method first attempts to create a URI directly, returning valid URIs unchanged.
+     * If that fails due to illegal characters
      * (such as spaces, non-ASCII characters, or characters like {@code |}), it will percent-encode
      * only the illegal characters while preserving URL structural characters ({@code :}, {@code /}, etc.).
      * <p>
