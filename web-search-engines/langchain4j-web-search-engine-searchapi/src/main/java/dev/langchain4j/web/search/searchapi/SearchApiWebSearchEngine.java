@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.UriUtils;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
@@ -47,12 +48,24 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      */
     public SearchApiWebSearchEngine(
             String apiKey, String baseUrl, Duration timeout, String engine, Map<String, Object> optionalParameters) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.engine = getOrDefault(engine, DEFAULT_ENGINE);
-        this.optionalParameters = getOrDefault(copyIfNotNull(optionalParameters), new HashMap<>());
+        this(builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .timeout(timeout)
+                .engine(engine)
+                .optionalParameters(optionalParameters));
+    }
+
+    public SearchApiWebSearchEngine(SearchApiWebSearchEngineBuilder builder) {
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.engine = getOrDefault(builder.engine, DEFAULT_ENGINE);
+        this.optionalParameters = getOrDefault(copyIfNotNull(builder.optionalParameters), new HashMap<>());
         this.client = SearchApiClient.builder()
-                .timeout(getOrDefault(timeout, ofSeconds(30)))
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
+                .httpClientBuilder(builder.httpClientBuilder)
+                .timeout(getOrDefault(builder.timeout, ofSeconds(30)))
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
     }
 
@@ -135,6 +148,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         private Duration timeout;
         private String engine;
         private Map<String, Object> optionalParameters;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         SearchApiWebSearchEngineBuilder() {}
 
@@ -163,13 +179,27 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
             return this;
         }
 
+        public SearchApiWebSearchEngineBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public SearchApiWebSearchEngineBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public SearchApiWebSearchEngine build() {
-            return new SearchApiWebSearchEngine(
-                    this.apiKey, this.baseUrl, this.timeout, this.engine, this.optionalParameters);
+            return new SearchApiWebSearchEngine(this);
         }
 
         public String toString() {
-            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + this.apiKey + ", baseUrl="
+            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", baseUrl="
                     + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters="
                     + this.optionalParameters + ")";
         }

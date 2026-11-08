@@ -8,16 +8,27 @@ import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onResp
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
@@ -43,6 +54,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<Embedding> embed(String text) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
         List<TextSegment> textSegmentsForContext;
         try {
             textSegmentsForContext = List.of(TextSegment.from(text));
@@ -51,10 +63,13 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
             textSegmentsForContext = List.of();
         }
 
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegmentsForContext);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         onRequest(requestContext, listeners);
         try {
@@ -65,10 +80,13 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(responseForListeners.content(), response.tokenUsage()))
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             return response;
@@ -77,8 +95,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegmentsForContext)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -88,12 +108,16 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
         List<TextSegment> textSegmentsForContext = (textSegment == null) ? List.of() : List.of(textSegment);
 
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegmentsForContext);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         onRequest(requestContext, listeners);
         try {
@@ -104,10 +128,13 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(responseForListeners.content(), response.tokenUsage()))
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             return response;
@@ -116,8 +143,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegmentsForContext)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -127,20 +156,27 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegments);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegments)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         onRequest(requestContext, listeners);
         try {
             Response<List<Embedding>> response = delegate.embedAll(textSegments);
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(response.content(), response.tokenUsage()))
                             .response(response)
                             .textSegments(textSegments)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             return response;
@@ -149,8 +185,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegments)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -158,7 +196,93 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
+    public EmbeddingResponse embed(EmbeddingRequest request) {
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
+        List<TextSegment> textSegmentsForContext =
+                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList();
+
+        EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
+                .textSegments(textSegmentsForContext)
+                .embeddingRequest(request)
+                .embeddingModel(this)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        onRequest(requestContext, listeners);
+        try {
+            EmbeddingResponse response = delegate.embed(request);
+
+            Response<List<Embedding>> responseForListeners = Response.from(
+                    response.embeddings(), response.metadata().tokenUsage());
+
+            onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(request)
+                            .embeddingResponse(response)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .invocationId(invocationId)
+                            .response(responseForListeners)
+                            .textSegments(textSegmentsForContext)
+                            .build(),
+                    listeners);
+            return response;
+        } catch (Exception error) {
+            onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingRequest(request)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .invocationId(invocationId)
+                            .build(),
+                    listeners);
+            throw error;
+        }
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return delegate.provider();
+    }
+
+    @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return delegate.supportedParameters();
+    }
+
+    @Override
+    public Set<ContentType> supportedContentTypes() {
+        return delegate.supportedContentTypes();
+    }
+
+    @Override
+    public EmbeddingRequestParameters defaultRequestParameters() {
+        return delegate.defaultRequestParameters();
+    }
+
+    @Override
     public String modelName() {
         return delegate.modelName();
+    }
+
+    @Override
+    public int dimension() {
+        return delegate.dimension();
+    }
+
+    private static EmbeddingRequest requestFrom(List<TextSegment> textSegments) {
+        return (textSegments == null || textSegments.isEmpty())
+                ? null
+                : EmbeddingRequest.builder().textSegments(textSegments).build();
+    }
+
+    private static EmbeddingResponse responseFrom(List<Embedding> embeddings, TokenUsage tokenUsage) {
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder().tokenUsage(tokenUsage).build())
+                .build();
     }
 }

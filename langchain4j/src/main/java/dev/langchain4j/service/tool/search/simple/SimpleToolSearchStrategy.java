@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool.search.simple;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -14,6 +15,7 @@ import dev.langchain4j.service.tool.search.ToolSearchResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -136,7 +138,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
                 .flatMap(term -> stream(term.split("\\s+")))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .map(String::toLowerCase)
+                .map(SimpleToolSearchStrategy::lower)
                 .distinct()
                 .toList();
     }
@@ -177,13 +179,13 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
             if (e == null) throw new ToolArgumentsException(message);
             throw new ToolArgumentsException(message, e);
         } else {
-            if (e == null) throw new ToolExecutionException(message);
-            throw new ToolExecutionException(message, e);
+            if (e == null) throw new LlmVisibleToolExecutionException(message);
+            throw new LlmVisibleToolExecutionException(message, e);
         }
     }
 
     private static String lower(String value) {
-        return value == null ? null : value.toLowerCase();
+        return value == null ? null : value.toLowerCase(Locale.ROOT);
     }
 
     private record ScoredTool(ToolSpecification tool, int score) {

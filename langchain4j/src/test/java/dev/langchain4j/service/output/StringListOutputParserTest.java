@@ -1,16 +1,15 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StringListOutputParserTest {
 
@@ -43,8 +42,20 @@ class StringListOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\"]}", List.of("CAT")),
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", List.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[]}", List.of()),
-                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of("CAT"))
-        );
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of("CAT")),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[\"CAT\"]", List.of("CAT")),
+                Arguments.of("[\"CAT\", \"DOG\"]", List.of("CAT", "DOG")),
+                Arguments.of("[]", List.of()),
+                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of("CAT", "DOG")),
+                Arguments.of("[\n  \"CAT\",\n  \"DOG\"\n]", List.of("CAT", "DOG")),
+
+                // Text that only looks like a bare JSON array: still parsed line by line
+                Arguments.of("[CAT]\n[DOG]", List.of("[CAT]", "[DOG]")),
+                Arguments.of("[1] CAT\n[2] DOG", List.of("[1] CAT", "[2] DOG")),
+                Arguments.of("[\"CAT\"] and more", List.of("[\"CAT\"] and more")),
+                Arguments.of("[CAT", List.of("[CAT")));
     }
 
     @ParameterizedTest
@@ -60,13 +71,19 @@ class StringListOutputParserTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {
-            "{\"values\": \"\"}",
-            "{\"values\": false}",
-            "{\"values\":\"banana\"}",
-            "{\"values\":{\"name\":\"Klaus\"}}",
-            "{\"banana\":[{\"name\":\"Klaus\"}]}",
-    })
+    @ValueSource(
+            strings = {
+                "{\"values\": \"\"}",
+                "{\"values\": false}",
+                "{\"values\":\"banana\"}",
+                "{\"values\":{\"name\":\"Klaus\"}}",
+                "{\"banana\":[{\"name\":\"Klaus\"}]}",
+
+                // Malformed JSON object
+                "{\"values\": [oops",
+                "{oops}",
+                "{",
+            })
     void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> new StringListOutputParser().parse(input))

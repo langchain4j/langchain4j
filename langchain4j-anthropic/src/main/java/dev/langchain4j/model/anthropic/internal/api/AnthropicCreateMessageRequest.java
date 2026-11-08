@@ -6,14 +6,11 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import java.util.Map;
 
 @JsonInclude(NON_EMPTY)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicCreateMessageRequest {
 
     public String model;
@@ -31,6 +28,8 @@ public class AnthropicCreateMessageRequest {
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
     public AnthropicContainer container;
+    public AnthropicDiagnosticsParameters diagnostics;
+    public AnthropicCacheControl cacheControl;
 
     @JsonIgnore
     public Map<String, Object> customParameters;
@@ -53,6 +52,8 @@ public class AnthropicCreateMessageRequest {
         this.thinking = builder.thinking;
         this.metadata = builder.metadata;
         this.container = builder.container;
+        this.diagnostics = builder.diagnostics;
+        this.cacheControl = builder.cacheControl;
         this.customParameters = builder.customParameters;
     }
 
@@ -206,6 +207,22 @@ public class AnthropicCreateMessageRequest {
         this.container = container;
     }
 
+    public AnthropicDiagnosticsParameters getDiagnostics() {
+        return diagnostics;
+    }
+
+    public void setDiagnostics(AnthropicDiagnosticsParameters diagnostics) {
+        this.diagnostics = diagnostics;
+    }
+
+    public AnthropicCacheControl getCacheControl() {
+        return cacheControl;
+    }
+
+    public void setCacheControl(AnthropicCacheControl cacheControl) {
+        this.cacheControl = cacheControl;
+    }
+
     @JsonAnyGetter
     public Map<String, Object> getCustomParameters() {
         return customParameters;
@@ -236,6 +253,8 @@ public class AnthropicCreateMessageRequest {
                         .thinking(this.thinking)
                         .metadata(this.metadata)
                         .container(this.container)
+                        .diagnostics(this.diagnostics)
+                        .cacheControl(this.cacheControl)
                         .customParameters(this.customParameters);
     }
 
@@ -256,6 +275,8 @@ public class AnthropicCreateMessageRequest {
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
         private AnthropicContainer container;
+        private AnthropicDiagnosticsParameters diagnostics;
+        private AnthropicCacheControl cacheControl;
         private Map<String, Object> customParameters;
 
         public Builder model(String model) {
@@ -330,6 +351,16 @@ public class AnthropicCreateMessageRequest {
 
         public Builder container(AnthropicContainer container) {
             this.container = container;
+            return this;
+        }
+
+        public Builder diagnostics(AnthropicDiagnosticsParameters diagnostics) {
+            this.diagnostics = diagnostics;
+            return this;
+        }
+
+        public Builder cacheControl(AnthropicCacheControl cacheControl) {
+            this.cacheControl = cacheControl;
             return this;
         }
 

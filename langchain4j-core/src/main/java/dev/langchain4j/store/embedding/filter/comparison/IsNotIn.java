@@ -11,8 +11,8 @@ import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.containsAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isIn;
+import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreSupported;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
 import static java.util.Collections.unmodifiableSet;
@@ -22,10 +22,20 @@ public class IsNotIn implements Filter {
     private final String key;
     private final Collection<?> comparisonValues;
 
+    /**
+     * Creates a filter that matches when the value of the {@code key} metadata entry is none of the given values, or
+     * when the key is missing.
+     *
+     * @param key              the metadata key
+     * @param comparisonValues the values to compare with, not empty, see {@link Filter} for the supported types
+     * @throws IllegalArgumentException if {@code key} is blank, if {@code comparisonValues} is {@code null} or
+     *                                  empty, or if a value in it is {@code null}, of an unsupported type
+     *                                  (for example a nested collection) or not a finite number
+     */
     public IsNotIn(String key, Collection<?> comparisonValues) {
         this.key = ensureNotBlank(key, "key");
         Set<?> copy = new HashSet<>(ensureNotEmpty(comparisonValues, "comparisonValues with key '" + key + "'"));
-        comparisonValues.forEach(value -> ensureNotNull(value, "comparisonValue with key '" + key + "'"));
+        ensureTypesAreSupported(copy, key);
         this.comparisonValues = unmodifiableSet(copy);
     }
 
@@ -51,7 +61,7 @@ public class IsNotIn implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValues.iterator().next(), key);
 
         if (comparisonValues.iterator().next() instanceof Number) {
-            return !containsAsBigDecimals(actualValue, comparisonValues);
+            return !isIn(actualValue, comparisonValues);
         }
         if (comparisonValues.iterator().next() instanceof UUID) {
             return !containsAsUUID(actualValue, comparisonValues);

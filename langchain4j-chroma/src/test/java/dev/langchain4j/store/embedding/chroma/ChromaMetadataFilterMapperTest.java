@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
+import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +26,14 @@ class ChromaMetadataFilterMapperTest {
     void should_map_equal() {
         IsEqualTo filter = new IsEqualTo("key", "value");
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
-        assertThat(result).isEqualTo(singletonMap("key", "value"));
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$eq", "value")));
+    }
+
+    @Test
+    void should_not_interpret_map_value_as_operator() {
+        IsEqualTo filter = unvalidatedIsEqualTo("key", singletonMap("$ne", "value"));
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$eq", singletonMap("$ne", "value"))));
     }
 
     @Test
@@ -83,7 +91,11 @@ class ChromaMetadataFilterMapperTest {
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
                 .isEqualTo(
-                        singletonMap("$and", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+                        singletonMap(
+                                "$and",
+                                asList(
+                                        singletonMap("key1", singletonMap("$eq", "value1")),
+                                        singletonMap("key2", singletonMap("$eq", "value2")))));
     }
 
     @Test
@@ -91,7 +103,11 @@ class ChromaMetadataFilterMapperTest {
         Or filter = new Or(new IsEqualTo("key1", "value1"), new IsEqualTo("key2", "value2"));
         Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
         assertThat(result)
-                .isEqualTo(singletonMap("$or", asList(singletonMap("key1", "value1"), singletonMap("key2", "value2"))));
+                .isEqualTo(singletonMap(
+                        "$or",
+                        asList(
+                                singletonMap("key1", singletonMap("$eq", "value1")),
+                                singletonMap("key2", singletonMap("$eq", "value2")))));
     }
 
     @Test
@@ -119,5 +135,57 @@ class ChromaMetadataFilterMapperTest {
         // then
         assertThat(result).containsKey("$and");
         assertThat((List<?>) result.get("$and")).hasSize(2);
+    }
+
+    @Test
+    void should_map_not() {
+        // given
+        Not filter = new Not(new IsEqualTo("key", "value"));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$ne", "value")));
+    }
+
+    @Test
+    void should_map_nested_not_by_removing_double_negation() {
+        // given
+        Not filter = new Not(new Not(new IsEqualTo("key", "value")));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$eq", "value")));
+    }
+
+    @Test
+    void should_map_not_of_and_containing_not() {
+        // given: not(key1 = value1 and not(key2 > 1)) — De Morgan produces a nested Not
+        Not filter = new Not(new And(new IsEqualTo("key1", "value1"), new Not(new IsGreaterThan("key2", 1))));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then: not(A) or B
+        assertThat(result)
+                .isEqualTo(singletonMap(
+                        "$or",
+                        asList(
+                                singletonMap("key1", singletonMap("$ne", "value1")),
+                                singletonMap("key2", singletonMap("$gt", 1)))));
+    }
+
+    // The filter classes reject values like these, so they are returned from the overridden accessor
+    // to check that the store handles them safely on its own.
+    private static IsEqualTo unvalidatedIsEqualTo(String key, Object value) {
+        return new IsEqualTo(key, "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
     }
 }

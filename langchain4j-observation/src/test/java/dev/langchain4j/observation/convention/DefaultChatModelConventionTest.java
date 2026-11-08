@@ -36,7 +36,11 @@ class DefaultChatModelConventionTest {
 
     private static ChatModelObservationContext observationContext(ChatRequest chatRequest) {
         ChatModelRequestContext requestContext =
-                new ChatModelRequestContext(chatRequest, ModelProvider.OPEN_AI, new HashMap<>());
+                ChatModelRequestContext.builder()
+                        .chatRequest(chatRequest)
+                        .modelProvider(ModelProvider.OPEN_AI)
+                        .attributes(new HashMap<>())
+                        .build();
         return new ChatModelObservationContext(requestContext, null, null);
     }
 }

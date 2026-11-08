@@ -22,7 +22,7 @@ public class StreamingResponse implements DelayedResponse<String> {
 
     @Override
     public String blockingGet() {
-        return futureResponse.join().aiMessage().text();
+        return DelayedResponse.join(futureResponse).aiMessage().text();
     }
 
     @Override

@@ -136,7 +136,7 @@ class InfinispanMetadataFilterMapperTest {
                 // Float IsIn
                 Arguments.of(
                         new IsIn("scores", Arrays.asList(1.1f, 2.2f, 3.3f)),
-                        "m0.name='scores' and m0.value_float IN (3.3, 1.1, 2.2)",
+                        "m0.name='scores' and m0.value_float IN (3.299999952316284, 1.100000023841858, 2.200000047683716)",
                         " join i.metadata m0"));
     }
 
@@ -369,15 +369,94 @@ class InfinispanMetadataFilterMapperTest {
 
     @Test
     void should_handle_mixed_numeric_types_in_in_filter() {
-        // given
+        // given — all values are Number (different subtypes), no mixing with strings
         Filter filter = new IsIn("mixed", Arrays.asList(1, 2L, 3.0f, 4.0));
 
         // when
         InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
 
+        // then — presence of a floating point value selects value_float for the whole list,
+        // and integral values are widened to match the column
+        assertThat(result.query).isEqualTo("m0.name='mixed' and m0.value_float IN (3.0, 4.0, 1.0, 2.0)");
+    }
+
+    @Test
+    void should_widen_float_to_double_in_in_filter() {
+        // given — 1.1f is not exactly representable, so Float.toString() and doubleValue() differ
+        Filter filter = new IsIn("score", Arrays.asList(1.1f));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then — same literal as IsEqualTo("score", 1.1f) produces for the same value_float column
+        assertThat(result.query).isEqualTo("m0.name='score' and m0.value_float IN (1.100000023841858)");
+    }
+
+    @Test
+    void should_widen_float_to_double_in_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("score", Arrays.asList(1.1f));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
         // then
-        // Should use the type of the first element (Integer in this case)
-        assertThat(result.query).isEqualTo("m0.name='mixed' and m0.value_float IN (3.0, 4.0, 1, 2)");
+        assertThat(result.query)
+                .isEqualTo(
+                        "(m0.value_float NOT IN (1.100000023841858) and m0.name='score') OR (m0.value_float IN (1.100000023841858) and m0.name!='score') OR (i.metadata is null) ");
+    }
+
+    @ParameterizedTest
+    @MethodSource("numericInColumnSelection")
+    void should_select_in_column_independently_of_iteration_order(List<?> values, String expectedColumn) {
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(new IsIn("n", values));
+
+        // then
+        assertThat(result.query).startsWith("m0.name='n' and m0." + expectedColumn + " IN (");
+    }
+
+    static List<Arguments> numericInColumnSelection() {
+        return Arrays.asList(
+                Arguments.of(Arrays.asList(1, 2, 3), "value_int"),
+                Arguments.of(Arrays.asList(1, 2L), "value_int"),
+                Arguments.of(Arrays.asList(1.5, 2.5), "value_float"),
+                // these two pairs hash into opposite iteration orders; both must pick value_float
+                Arguments.of(Arrays.asList(1, 2.5), "value_float"),
+                Arguments.of(Arrays.asList(3, 0.5), "value_float"),
+                Arguments.of(Arrays.asList("a", "b"), "value"));
+    }
+
+    @Test
+    void should_select_not_in_column_independently_of_iteration_order() {
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(new IsNotIn("n", Arrays.asList(1, 2.5)));
+
+        // then — both occurrences of the column must agree
+        assertThat(result.query).contains("m0.value_float NOT IN (").contains("m0.value_float IN (");
+        assertThat(result.query).doesNotContain("value_int");
+    }
+
+    @Test
+    void should_reject_mixed_numeric_and_string_in_filter() {
+        // given — mix of Number and String triggers rejection regardless of iteration order
+        Filter filter = new IsIn("key", Arrays.asList(1, "x' OR 1=1 --"));
+
+        // when & then
+        assertThatThrownBy(() -> mapper.map(filter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot mix numeric and non-numeric values");
+    }
+
+    @Test
+    void should_reject_mixed_numeric_and_string_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("key", Arrays.asList(42, "<ickle fragment>"));
+
+        // when & then
+        assertThatThrownBy(() -> mapper.map(filter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot mix numeric and non-numeric values");
     }
 
     @Test
@@ -439,6 +518,90 @@ class InfinispanMetadataFilterMapperTest {
 
         // then
         assertThat(result.query).contains("OR (i.metadata is null)");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_key() {
+        // given
+        Filter filter = new IsEqualTo("foo' OR 1=1 OR name='", "bar");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='foo'' OR 1=1 OR name=''' and m0.value = 'bar'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_value() {
+        // given
+        Filter filter = new IsEqualTo("name", "x' OR 1=1 --");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value = 'x'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_not_equal_key() {
+        // given
+        Filter filter = new IsNotEqualTo("a' OR 1=1 --", "val");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).contains("m0.name='a'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_in_key() {
+        // given
+        Filter filter = new IsIn("k' OR 1=1 --", Arrays.asList("a", "b"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).contains("m0.name='k'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_in_values() {
+        // given
+        Filter filter = new IsIn("key", Arrays.asList("x' OR 1=1 --", "normal"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).contains("'x'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_not_in_key() {
+        // given
+        Filter filter = new IsNotIn("k' OR 1=1 --", Arrays.asList("a"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).contains("m0.name='k'' OR 1=1 --'").contains("m0.name!='k'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_backslash_in_value() {
+        // given
+        Filter filter = new IsEqualTo("path", "C:\\Users\\test");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='path' and m0.value = 'C:\\\\Users\\\\test'");
     }
 
     @Test

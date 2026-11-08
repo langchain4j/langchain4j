@@ -4,6 +4,14 @@ sidebar_position: 14
 
 # Embedding (Vector) Stores
 
+:::note
+An `EmbeddingStore` can implement `searchAsync(...)` so that it does not block a thread when used from a
+non-blocking AI Service. A store that has not implemented it can still be used, but only if the retriever opts
+into offloading with `offloadBlocking(true)`; otherwise the call fails loudly rather than blocking silently.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
+
 Documentation on embedding stores can be found [here](/tutorials/rag#embedding-store).
 
 All supported embedding stores can be found [here](/integrations/embedding-stores/).

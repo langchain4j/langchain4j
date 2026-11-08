@@ -7,15 +7,20 @@ import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class GoogleGenAiToolMapperTest {
@@ -404,6 +409,87 @@ class GoogleGenAiToolMapperTest {
     }
 
     @Test
+    void should_convert_any_of_schema() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shape",
+                                JsonAnyOfSchema.builder()
+                                        .description("a shape")
+                                        .anyOf(
+                                                JsonObjectSchema.builder()
+                                                        .addNumberProperty("radius", "circle radius")
+                                                        .build(),
+                                                JsonStringSchema.builder().build())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema shapeSchema = fd.parameters().get().properties().get().get("shape");
+
+        assertThat(shapeSchema.description().get()).isEqualTo("a shape");
+        assertThat(shapeSchema.anyOf().get()).hasSize(2);
+        assertThat(shapeSchema.anyOf().get().get(0).type().get()).hasToString("OBJECT");
+        assertThat(shapeSchema.anyOf().get().get(0).properties().get()).containsKey("radius");
+        assertThat(shapeSchema.anyOf().get().get(1).type().get()).hasToString("STRING");
+    }
+
+    @Test
+    void should_convert_any_of_schema_with_null_description() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shape",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(
+                                                JsonStringSchema.builder().build(),
+                                                JsonIntegerSchema.builder().build())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema shapeSchema = fd.parameters().get().properties().get().get("shape");
+
+        assertThat(shapeSchema.description().get()).isEqualTo("");
+        assertThat(shapeSchema.anyOf().get()).hasSize(2);
+    }
+
+    @Test
+    void should_convert_any_of_schema_containing_null_schema() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "nickname",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(JsonStringSchema.builder().build(), new JsonNullSchema())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema nicknameSchema = fd.parameters().get().properties().get().get("nickname");
+
+        assertThat(nicknameSchema.anyOf().get()).hasSize(2);
+        assertThat(nicknameSchema.anyOf().get().get(0).type().get()).hasToString("STRING");
+        assertThat(nicknameSchema.anyOf().get().get(1).type().get()).hasToString("NULL");
+    }
+
+    @Test
+    void should_convert_null_schema() {
+        Schema schema = GoogleGenAiToolMapper.convertToGoogleSchema(new JsonNullSchema());
+
+        assertThat(schema.type().get()).hasToString("NULL");
+    }
+
+    @Test
     void should_throw_for_unknown_schema_type() {
         JsonSchemaElement unknownElement = new JsonSchemaElement() {
             @Override
@@ -423,6 +509,48 @@ class GoogleGenAiToolMapperTest {
         assertThatThrownBy(() -> GoogleGenAiToolMapper.convertToGoogleFunction(spec))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unknown schema type");
+    }
+
+    @Test
+    void should_preserve_declared_property_order_and_set_property_ordering() {
+        List<String> declaredOrder = List.of("gamma", "alpha", "zeta", "beta", "delta", "epsilon");
+        JsonObjectSchema.Builder objectBuilder = JsonObjectSchema.builder();
+        declaredOrder.forEach(name -> objectBuilder.addStringProperty(name));
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(objectBuilder.build())
+                .build();
+
+        Schema schema =
+                GoogleGenAiToolMapper.convertToGoogleFunction(spec).parameters().get();
+
+        assertThat(schema.properties().get().keySet()).containsExactlyElementsOf(declaredOrder);
+        assertThat(schema.propertyOrdering().get()).containsExactlyElementsOf(declaredOrder);
+    }
+
+    @Test
+    void should_set_property_ordering_on_nested_object() {
+        List<String> nestedOrder = List.of("street", "number", "city", "zip");
+        JsonObjectSchema.Builder addressBuilder = JsonObjectSchema.builder();
+        nestedOrder.forEach(name -> addressBuilder.addStringProperty(name));
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("address", addressBuilder.build())
+                        .addStringProperty("name")
+                        .build())
+                .build();
+
+        Schema schema =
+                GoogleGenAiToolMapper.convertToGoogleFunction(spec).parameters().get();
+        Schema addressSchema = schema.properties().get().get("address");
+
+        assertThat(schema.propertyOrdering().get()).containsExactly("address", "name");
+        assertThat(addressSchema.propertyOrdering().get()).containsExactlyElementsOf(nestedOrder);
     }
 
     @Test
@@ -446,5 +574,51 @@ class GoogleGenAiToolMapperTest {
 
         assertThat(addressSchema.type().get()).hasToString("OBJECT");
         assertThat(addressSchema.properties().get()).containsKeys("street", "city");
+    }
+
+    @Test
+    void should_use_parameters_json_schema_when_object_schema_has_definitions() {
+        JsonObjectSchema nodeSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addProperty(
+                        "children",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference("Node")
+                                        .build())
+                                .build())
+                .build();
+
+        JsonObjectSchema rootSchema = JsonObjectSchema.builder()
+                .addProperty("root", nodeSchema)
+                .definitions(Map.of("Node", nodeSchema))
+                .build();
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("processTree")
+                .description("Process a recursive tree")
+                .parameters(rootSchema)
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+
+        assertThat(fd.parameters()).isEmpty();
+        assertThat(fd.parametersJsonSchema()).isPresent();
+        assertThat(fd.parametersJsonSchema().get()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> rawSchemaMap =
+                (Map<String, Object>) fd.parametersJsonSchema().get();
+        assertThat(rawSchemaMap).containsKey("$defs");
+    }
+
+    @Test
+    void should_check_can_be_mapped_for_raw_and_reference_schemas() {
+        assertThat(GoogleGenAiToolMapper.canBeMapped(JsonStringSchema.builder().build()))
+                .isTrue();
+        assertThat(GoogleGenAiToolMapper.canBeMapped(JsonRawSchema.from("{\"type\":\"string\"}")))
+                .isFalse();
+        assertThat(GoogleGenAiToolMapper.canBeMapped(
+                        JsonReferenceSchema.builder().reference("Ref").build()))
+                .isFalse();
     }
 }

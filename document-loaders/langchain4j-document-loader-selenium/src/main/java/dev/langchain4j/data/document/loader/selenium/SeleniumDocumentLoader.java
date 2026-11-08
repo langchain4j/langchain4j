@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
 import org.openqa.selenium.JavascriptExecutor;
@@ -68,7 +69,8 @@ public class SeleniumDocumentLoader implements AutoCloseable {
         requireNonNull(documentParser, "documentParser must not be null");
         logger.info("Loading document from URL: {}", url);
         String pageContent = pageContent(url);
-        Document parsedDocument = documentParser.parse(new ByteArrayInputStream(pageContent.getBytes()));
+        Document parsedDocument =
+                documentParser.parse(new ByteArrayInputStream(pageContent.getBytes(StandardCharsets.UTF_8)));
         parsedDocument.metadata().put(Document.URL, url);
         return parsedDocument;
     }

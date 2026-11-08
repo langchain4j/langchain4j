@@ -49,7 +49,8 @@ class AnthropicMidConversationSystemMessagesTest {
 
     @Test
     void should_send_mid_conversation_system_message_inline_when_enabled() {
-        AnthropicChatModel model = modelBuilder().midConversationSystemMessages(true).build();
+        AnthropicChatModel model =
+                modelBuilder().midConversationSystemMessages(true).build();
 
         model.chat(ChatRequest.builder()
                 .messages(

@@ -69,16 +69,6 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return OpenAiOfficialTokenUsage.class;
     }
 
-    @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
-    }
-
     @Test
     void should_work_with_o_models() {
 
@@ -86,7 +76,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         ChatModel model = OpenAiOfficialChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("o4-mini")
+                .modelName("gpt-6.1-terra")
                 .build();
 
         // when

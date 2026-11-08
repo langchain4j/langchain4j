@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -15,8 +16,20 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     public static final AnthropicChatRequestParameters EMPTY =
             AnthropicChatRequestParameters.builder().build();
 
+    /**
+     * Cache TTL of 5 minutes. It is the default when no cache TTL is set.
+     */
+    public static final String CACHE_TTL_5M = "5m";
+
+    /**
+     * Cache TTL of 1 hour.
+     */
+    public static final String CACHE_TTL_1H = "1h";
+
     private final Boolean cacheSystemMessages;
     private final Boolean cacheTools;
+    private final Boolean cacheAutomatically;
+    private final String cacheTtl;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final Boolean sendThinking;
@@ -25,11 +38,15 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
+    private final Boolean returnCacheDiagnostics;
+    private final String previousMessageId;
 
     private AnthropicChatRequestParameters(Builder builder) {
         super(builder);
         this.cacheSystemMessages = builder.cacheSystemMessages;
         this.cacheTools = builder.cacheTools;
+        this.cacheAutomatically = builder.cacheAutomatically;
+        this.cacheTtl = builder.cacheTtl == null ? null : ensureNotBlank(builder.cacheTtl, "cacheTtl");
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.sendThinking = builder.sendThinking;
@@ -38,6 +55,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
+        this.returnCacheDiagnostics = builder.returnCacheDiagnostics;
+        this.previousMessageId = builder.previousMessageId;
     }
 
     public Boolean cacheSystemMessages() {
@@ -46,6 +65,14 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
     public Boolean cacheTools() {
         return cacheTools;
+    }
+
+    public Boolean cacheAutomatically() {
+        return cacheAutomatically;
+    }
+
+    public String cacheTtl() {
+        return cacheTtl;
     }
 
     public String thinkingType() {
@@ -80,6 +107,32 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         return userId;
     }
 
+    /**
+     * Whether to request a (beta) cache-diagnostics comparison for this request.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public Boolean returnCacheDiagnostics() {
+        return returnCacheDiagnostics;
+    }
+
+    /**
+     * The {@code id} of the previous response to compare against when {@link #returnCacheDiagnostics()}
+     * is enabled. Pass {@code null} on the first turn of a conversation to opt in without a prior
+     * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata} on
+     * every subsequent turn.
+     * <p>
+     * This is a per-request value: it changes on every turn and there is intentionally no model-level
+     * setter for it. It can therefore be varied per request on its own, while
+     * {@link #returnCacheDiagnostics()} is enabled once on the model builder — the per-request
+     * {@code previousMessageId} is not paired with, or gated on, {@code returnCacheDiagnostics}.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public String previousMessageId() {
+        return previousMessageId;
+    }
+
     @Override
     public AnthropicChatRequestParameters overrideWith(ChatRequestParameters that) {
         return AnthropicChatRequestParameters.builder()
@@ -104,6 +157,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         AnthropicChatRequestParameters that = (AnthropicChatRequestParameters) o;
         return Objects.equals(cacheSystemMessages, that.cacheSystemMessages)
                 && Objects.equals(cacheTools, that.cacheTools)
+                && Objects.equals(cacheAutomatically, that.cacheAutomatically)
+                && Objects.equals(cacheTtl, that.cacheTtl)
                 && Objects.equals(thinkingType, that.thinkingType)
                 && Objects.equals(thinkingBudgetTokens, that.thinkingBudgetTokens)
                 && Objects.equals(sendThinking, that.sendThinking)
@@ -111,7 +166,9 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 && Objects.equals(returnThinking, that.returnThinking)
                 && Objects.equals(toolChoiceName, that.toolChoiceName)
                 && Objects.equals(disableParallelToolUse, that.disableParallelToolUse)
-                && Objects.equals(userId, that.userId);
+                && Objects.equals(userId, that.userId)
+                && Objects.equals(returnCacheDiagnostics, that.returnCacheDiagnostics)
+                && Objects.equals(previousMessageId, that.previousMessageId);
     }
 
     @Override
@@ -120,6 +177,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 super.hashCode(),
                 cacheSystemMessages,
                 cacheTools,
+                cacheAutomatically,
+                cacheTtl,
                 thinkingType,
                 thinkingBudgetTokens,
                 sendThinking,
@@ -127,7 +186,9 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 returnThinking,
                 toolChoiceName,
                 disableParallelToolUse,
-                userId);
+                userId,
+                returnCacheDiagnostics,
+                previousMessageId);
     }
 
     @Override
@@ -146,6 +207,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", responseFormat=" + responseFormat()
                 + ", cacheSystemMessages=" + cacheSystemMessages
                 + ", cacheTools=" + cacheTools
+                + ", cacheAutomatically=" + cacheAutomatically
+                + ", cacheTtl=" + cacheTtl
                 + ", thinkingType=" + thinkingType
                 + ", thinkingBudgetTokens=" + thinkingBudgetTokens
                 + ", sendThinking=" + sendThinking
@@ -154,6 +217,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", toolChoiceName=" + toolChoiceName
                 + ", disableParallelToolUse=" + disableParallelToolUse
                 + ", userId=" + userId
+                + ", returnCacheDiagnostics=" + returnCacheDiagnostics
+                + ", previousMessageId=" + previousMessageId
                 + '}';
     }
 
@@ -169,6 +234,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
+        private Boolean cacheAutomatically;
+        private String cacheTtl;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean sendThinking;
@@ -177,6 +244,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private String userId;
+        private Boolean returnCacheDiagnostics;
+        private String previousMessageId;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -184,15 +253,21 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
             if (parameters instanceof AnthropicChatRequestParameters anthropicParameters) {
                 cacheSystemMessages(getOrDefault(anthropicParameters.cacheSystemMessages(), cacheSystemMessages));
                 cacheTools(getOrDefault(anthropicParameters.cacheTools(), cacheTools));
+                cacheAutomatically(getOrDefault(anthropicParameters.cacheAutomatically(), cacheAutomatically));
+                cacheTtl(getOrDefault(anthropicParameters.cacheTtl(), cacheTtl));
                 thinkingType(getOrDefault(anthropicParameters.thinkingType(), thinkingType));
                 thinkingBudgetTokens(getOrDefault(anthropicParameters.thinkingBudgetTokens(), thinkingBudgetTokens));
                 sendThinking(getOrDefault(anthropicParameters.sendThinking(), sendThinking));
-                midConversationSystemMessages(getOrDefault(anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
+                midConversationSystemMessages(getOrDefault(
+                        anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
                 returnThinking(getOrDefault(anthropicParameters.returnThinking(), returnThinking));
                 toolChoiceName(getOrDefault(anthropicParameters.toolChoiceName(), toolChoiceName));
                 disableParallelToolUse(
                         getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
                 userId(getOrDefault(anthropicParameters.userId(), userId));
+                returnCacheDiagnostics(
+                        getOrDefault(anthropicParameters.returnCacheDiagnostics(), returnCacheDiagnostics));
+                previousMessageId(getOrDefault(anthropicParameters.previousMessageId(), previousMessageId));
             }
             return this;
         }
@@ -208,6 +283,22 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
+            return this;
+        }
+
+        /**
+         * See {@link AnthropicChatModel.AnthropicChatModelBuilder#cacheAutomatically(Boolean)}.
+         */
+        public Builder cacheAutomatically(Boolean cacheAutomatically) {
+            this.cacheAutomatically = cacheAutomatically;
+            return this;
+        }
+
+        /**
+         * See {@link AnthropicChatModel.AnthropicChatModelBuilder#cacheTtl(String)}.
+         */
+        public Builder cacheTtl(String cacheTtl) {
+            this.cacheTtl = cacheTtl;
             return this;
         }
 
@@ -248,6 +339,34 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder userId(String userId) {
             this.userId = userId;
+            return this;
+        }
+
+        /**
+         * Enables Anthropic's (beta) cache diagnostics for this request, requesting a comparison
+         * against the request identified by {@link #previousMessageId(String)}.
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to be set on the model
+         * (see {@code beta(String)} on {@link AnthropicChatModel.AnthropicChatModelBuilder} /
+         * {@link AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder}).
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
+            return this;
+        }
+
+        /**
+         * The {@code id} of the previous response to compare against; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for the full contract. Pass
+         * {@code null} (the default) on the first turn of a conversation to opt in without a prior
+         * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata}
+         * on every subsequent turn.
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder previousMessageId(String previousMessageId) {
+            this.previousMessageId = previousMessageId;
             return this;
         }
 

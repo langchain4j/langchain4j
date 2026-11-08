@@ -4,11 +4,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.CustomChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -106,5 +109,38 @@ class StreamingChatModelTest implements WithAssertions {
         model.chat("search", handler);
 
         assertThat(handler.rawEvents()).containsExactly(rawEvent);
+    }
+
+    @Test
+    void should_not_lose_provider_specific_parameters_when_default_request_parameters_are_not_overridden() {
+
+        // given
+        AtomicReference<ChatRequest> receivedRequest = new AtomicReference<>();
+        StreamingChatModel model = new StreamingChatModel() {
+
+            @Override
+            public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+                receivedRequest.set(chatRequest);
+                handler.onCompleteResponse(
+                        ChatResponse.builder().aiMessage(new AiMessage("Hi")).build());
+            }
+        };
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(new UserMessage("Hello"))
+                .parameters(CustomChatRequestParameters.builder()
+                        .temperature(0.7)
+                        .customParameter("custom-value")
+                        .build())
+                .build();
+
+        // when
+        model.chat(chatRequest, new CollectorResponseHandler());
+
+        // then
+        ChatRequestParameters parameters = receivedRequest.get().parameters();
+        assertThat(parameters).isInstanceOf(CustomChatRequestParameters.class);
+        assertThat(((CustomChatRequestParameters) parameters).customParameter()).isEqualTo("custom-value");
+        assertThat(parameters.temperature()).isEqualTo(0.7);
     }
 }

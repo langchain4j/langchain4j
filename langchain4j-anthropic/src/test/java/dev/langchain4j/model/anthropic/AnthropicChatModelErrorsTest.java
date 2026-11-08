@@ -31,13 +31,15 @@ class AnthropicChatModelErrorsTest {
     private static final MockAnthropic MOCK = new MockAnthropic(0, true);
 
     public static final Duration TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration ERROR_MODEL_TIMEOUT = Duration.ofSeconds(30);
 
     private static final ChatModel model = AnthropicChatModel.builder()
             .apiKey("dummy-key")
             .baseUrl(MOCK.baseUrl() + "/v1")
             .modelName("does not matter")
             .maxTokens(20)
-            .timeout(TIMEOUT)
+            .timeout(ERROR_MODEL_TIMEOUT)
+            .maxRetries(0)
             .logRequests(true)
             .logResponses(true)
             .build();

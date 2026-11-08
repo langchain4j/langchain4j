@@ -14,13 +14,38 @@ import java.util.List;
 @Internal
 public class SpyingHttpClient implements HttpClient {
 
-    private final HttpClient delegate;
+    private final HttpClientBuilder delegateBuilder;
+    private HttpClient delegate;
     private final List<HttpRequest> requests = Collections.synchronizedList(new ArrayList<>());
     private final List<SuccessfulHttpResponse> responses = Collections.synchronizedList(new ArrayList<>());
     private final List<String> sseEvents = Collections.synchronizedList(new ArrayList<>());
 
+    /**
+     * Timeouts configured via {@link MockHttpClientBuilder} are not applied to an already built delegate,
+     * use {@link #SpyingHttpClient(HttpClientBuilder)} for that.
+     */
     public SpyingHttpClient(HttpClient delegate) {
+        this.delegateBuilder = null;
         this.delegate = ensureNotNull(delegate, "delegate");
+    }
+
+    /**
+     * The delegate is built from the given builder on the first request,
+     * so that timeouts configured via {@link MockHttpClientBuilder} are applied to it.
+     */
+    public SpyingHttpClient(HttpClientBuilder delegateBuilder) {
+        this.delegateBuilder = ensureNotNull(delegateBuilder, "delegateBuilder");
+    }
+
+    HttpClientBuilder delegateBuilder() {
+        return delegateBuilder;
+    }
+
+    private synchronized HttpClient delegate() {
+        if (delegate == null) {
+            delegate = delegateBuilder.build();
+        }
+        return delegate;
     }
 
     public List<HttpRequest> requests() {
@@ -52,7 +77,7 @@ public class SpyingHttpClient implements HttpClient {
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) {
         requests.add(request);
-        SuccessfulHttpResponse response = delegate.execute(request);
+        SuccessfulHttpResponse response = delegate().execute(request);
         responses.add(response);
         return response;
     }
@@ -60,7 +85,7 @@ public class SpyingHttpClient implements HttpClient {
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         requests.add(request);
-        delegate.execute(request, parser, new ServerSentEventListener() {
+        delegate().execute(request, parser, new ServerSentEventListener() {
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
                 responses.add(response);

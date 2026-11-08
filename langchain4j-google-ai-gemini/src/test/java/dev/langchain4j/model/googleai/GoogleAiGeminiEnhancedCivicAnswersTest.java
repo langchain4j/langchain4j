@@ -47,10 +47,11 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
     }
 
     @Test
-    void shouldDefaultEnableEnhancedCivicAnswersToFalse() {
+    void shouldForwardEnableEnhancedCivicAnswersWhenExplicitlyDisabled() {
         var model = GoogleAiGeminiChatModel.builder()
                 .apiKey("test-key")
                 .modelName(TEST_MODEL_NAME)
+                .enableEnhancedCivicAnswers(false)
                 .build(mockGeminiService);
 
         var chatRequest =
@@ -64,14 +65,33 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
                 .isFalse();
     }
 
+    @Test
+    void shouldDefaultEnableEnhancedCivicAnswersToNull() {
+        var model = GoogleAiGeminiChatModel.builder()
+                .apiKey("test-key")
+                .modelName(TEST_MODEL_NAME)
+                .build(mockGeminiService);
+
+        var chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+        when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+
+        model.chat(chatRequest);
+
+        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+        assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
+                .isNull();
+    }
+
     private GeminiGenerateContentResponse createSimpleResponse(String text) {
         var candidate = new GeminiGenerateContentResponse.GeminiCandidate(
                 new GeminiContent(
                         List.of(GeminiContent.GeminiPart.builder().text(text).build()), "model"),
                 GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason.STOP,
                 null,
+                null,
                 null);
         var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0, null, null);
-        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
+        return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null, null);
     }
 }

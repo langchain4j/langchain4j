@@ -429,6 +429,12 @@ public class SampleReportGenerator {
         public <T> void writeState(Class<? extends TypedKey<T>> key, T value) {}
 
         @Override
+        public void writeStateIfAbsent(String key, Object value) {}
+
+        @Override
+        public <T> void writeStateIfAbsent(Class<? extends TypedKey<T>> key, T value) {}
+
+        @Override
         public void writeStates(Map<String, Object> newState) {}
 
         @Override

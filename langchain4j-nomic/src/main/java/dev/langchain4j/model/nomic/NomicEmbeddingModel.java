@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -56,11 +57,13 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public NomicEmbeddingModel(NomicEmbeddingModelBuilder builder) {
         this.client = NomicClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.taskType = builder.taskType;
@@ -130,6 +133,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
 
         NomicEmbeddingModelBuilder() {}
 
@@ -184,6 +188,18 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public NomicEmbeddingModelBuilder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public NomicEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 

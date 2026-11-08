@@ -3,6 +3,17 @@ package dev.langchain4j.agentic.planner;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Decides which subagents an agentic system invokes, and in which order, through the {@link Action}s it returns.
+ * <p>
+ * The {@link AgentInstance#activationCondition() activation conditions} of the subagents are enforced when they are
+ * invoked, so a planner never needs to check them: an inactive agent is skipped, and the planner receives an
+ * invocation whose {@link dev.langchain4j.agentic.scope.AgentInvocation#skipped() skipped()} method returns
+ * {@code true}. A planner selecting its candidates from the state of the scope can also use
+ * {@link PlanningContext#isActive(AgentInstance)} to avoid selecting inactive agents, but it must handle skipped
+ * invocations anyway, because the condition is evaluated again when the agent is invoked and the state can change in
+ * between.
+ */
 public interface Planner {
 
     default void init(InitPlanningContext initPlanningContext) { }
@@ -32,38 +43,100 @@ public interface Planner {
      */
     default void restoreExecutionState(Map<String, Object> state) { }
 
+    /**
+     * Returns the first action to execute when the planner starts (or resumes).
+     * Defaults to delegating to {@link #nextAction(PlanningContext)}.
+     *
+     * @param planningContext the current planning context
+     * @return the first action to execute
+     */
     default Action firstAction(PlanningContext planningContext) {
         return nextAction(planningContext);
     }
 
+    /**
+     * Returns the topology of the agentic system managed by this planner.
+     *
+     * @return the topology (defaults to {@link AgenticSystemTopology#SEQUENCE})
+     */
     default AgenticSystemTopology topology() {
         return AgenticSystemTopology.SEQUENCE;
     }
 
+    /**
+     * Determines the next action to execute based on the result of the previous agent invocation.
+     *
+     * @param planningContext the current planning context, including the previous agent's result
+     * @return the next action to execute
+     */
     Action nextAction(PlanningContext planningContext);
 
+    /**
+     * Returns {@code true} if the planner has reached a terminal state and will not
+     * produce further actions.
+     *
+     * @return {@code true} if the planner is terminated
+     */
     default boolean terminated() {
         return false;
     }
 
+    /**
+     * Returns a no-op action that yields control without invoking any agent.
+     *
+     * @return a no-op action
+     */
     default Action noOp() {
         return Action.NoOpAction.INSTANCE;
     }
 
+    /**
+     * Returns an action that invokes the given agents. Multiple agents are dispatched in parallel.
+     *
+     * @param agents the agents to invoke
+     * @return an agent call action
+     */
     default Action call(AgentInstance... agents) {
         return new Action.AgentCallAction(agents);
     }
 
+    /**
+     * Returns an action that invokes the given agents. Multiple agents are dispatched in parallel.
+     *
+     * @param agents the agents to invoke
+     * @return an agent call action
+     */
     default Action call(List<AgentInstance> agents) {
         return call(agents.toArray(new AgentInstance[0]));
     }
 
+    /**
+     * Returns an action signaling that the planner has completed with no explicit result.
+     *
+     * @return a done action
+     */
     default Action done() {
         return Action.DoneAction.INSTANCE;
     }
 
+    /**
+     * Returns an action signaling that the planner has completed with the given result.
+     *
+     * @param result the result value
+     * @return a done action carrying the result
+     */
     default Action done(Object result) {
         return new Action.DoneWithResultAction(result);
+    }
+
+    /**
+     * Returns an action signaling that the agentic system should suspend.
+     * The execution loop will checkpoint the scope state and release the calling thread.
+     *
+     * @return a suspend action
+     */
+    default Action suspend() {
+        return Action.SuspendAction.INSTANCE;
     }
 
     default <T extends AgentInstance> T as(Class<T> agentInstanceClass, AgentInstance agentInstance) {

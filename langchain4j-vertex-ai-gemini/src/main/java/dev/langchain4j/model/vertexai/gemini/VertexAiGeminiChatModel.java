@@ -34,10 +34,7 @@ import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -54,7 +51,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +79,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
+    private final ChatRequestParameters defaultRequestParameters;
     private final Integer maxRetries;
     private final VertexAI vertexAI;
 
@@ -210,6 +207,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.vertexAI = vertexAiBuilder.build();
 
         this.generativeModel = new GenerativeModel(builder.modelName, vertexAI).withGenerationConfig(generationConfig);
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
 
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.logRequests = getOrDefault(builder.logRequests, false);
@@ -336,6 +335,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .build();
 
         this.generativeModel = new GenerativeModel(modelName, vertexAI).withGenerationConfig(generationConfig);
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
 
         this.maxRetries = getOrDefault(maxRetries, 2);
 
@@ -353,8 +354,23 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     public VertexAiGeminiChatModel(
             GenerativeModel generativeModel, GenerationConfig generationConfig, Integer maxRetries) {
+        this(generativeModel, generationConfig, maxRetries, Collections.emptyList());
+    }
+
+    VertexAiGeminiChatModel(
+            GenerativeModel generativeModel, GenerationConfig generationConfig, List<ChatModelListener> listeners) {
+        this(generativeModel, generationConfig, 2, listeners);
+    }
+
+    private VertexAiGeminiChatModel(
+            GenerativeModel generativeModel,
+            GenerationConfig generationConfig,
+            Integer maxRetries,
+            List<ChatModelListener> listeners) {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel").withGenerationConfig(generationConfig);
+        this.defaultRequestParameters =
+                VertexAiGeminiRequestParameters.defaultRequestParameters(generativeModel, this.generationConfig);
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.vertexAI = null;
         this.safetySettings = Collections.emptyMap();
@@ -368,15 +384,20 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.allowedFunctionNames = Collections.emptyList();
         this.logRequests = false;
         this.logResponses = false;
-        this.listeners = Collections.emptyList();
+        this.listeners = copy(listeners);
         this.supportedCapabilities = Set.of();
         this.labels = Collections.emptyMap();
     }
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+        return ChatModel.super.chat(chatRequest); // kept for binary compatibility, the logic is in doChat
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
+        VertexAiGeminiRequestParameters.validateParameters(parameters, defaultRequestParameters);
         ChatRequestValidationUtils.validate(parameters.toolChoice());
 
         Response<AiMessage> response;
@@ -390,6 +411,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         return ChatResponse.builder()
                 .aiMessage(response.content())
                 .metadata(ChatResponseMetadata.builder()
+                        .modelName(generativeModel.getModelName())
                         .tokenUsage(response.tokenUsage())
                         .finishReason(response.finishReason())
                         .build())
@@ -457,55 +479,19 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         GenerativeModel finalModel = model;
 
-        ChatRequest listenerRequest = ChatRequest.builder()
-                .messages(messages)
-                .parameters(ChatRequestParameters.builder()
-                        .modelName(modelName)
-                        .temperature((double) generationConfig.getTemperature())
-                        .topP((double) generationConfig.getTopP())
-                        .maxOutputTokens(generationConfig.getMaxOutputTokens())
-                        .toolSpecifications(toolSpecifications)
-                        .responseFormat(responseFormat)
-                        .build())
-                .build();
-        final ConcurrentHashMap<Object, Object> listenerAttributes = new ConcurrentHashMap<>();
-        ChatModelRequestContext chatModelRequestContext =
-                new ChatModelRequestContext(listenerRequest, provider(), listenerAttributes);
-        listeners.forEach((listener) -> {
-            try {
-                listener.onRequest(chatModelRequestContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener (onRequest)", e);
-            }
-        });
-
-        final GenerateContentResponse response;
-        try {
-            response = withRetryMappingExceptions(
-                    () -> {
-                        if (labels.isEmpty()) {
-                            return finalModel.generateContent(instructionAndContent.contents);
-                        }
-                        GenerateContentRequest request = buildGenerateContentRequest(
-                                finalModel, vertexAI, instructionAndContent.contents, labels);
-                        return vertexAI.getPredictionServiceClient()
-                                .generateContentCallable()
-                                .call(request);
-                    },
-                    maxRetries);
-        } catch (Exception e) {
-            listeners.forEach(listener -> {
-                try {
-                    ChatModelErrorContext chatModelErrorContext =
-                            new ChatModelErrorContext(e, listenerRequest, provider(), listenerAttributes);
-                    listener.onError(chatModelErrorContext);
-                } catch (Exception t) {
-                    logger.warn("Exception while calling model listener (onError)", t);
-                }
-            });
-
-            throw new RuntimeException(e);
-        }
+        GenerateContentResponse response = withRetryMappingExceptions(
+                () -> {
+                    if (labels.isEmpty()) {
+                        return finalModel.generateContent(instructionAndContent.contents);
+                    }
+                    GenerateContentRequest request =
+                            buildGenerateContentRequest(finalModel, vertexAI, instructionAndContent.contents, labels);
+                    return vertexAI.getPredictionServiceClient()
+                            .generateContentCallable()
+                            .call(request);
+                },
+                maxRetries,
+                VertexAiGeminiExceptionMapper.INSTANCE);
 
         if (this.logResponses && logger.isDebugEnabled()) {
             logger.debug("GEMINI ({}) response: {}", modelName, response);
@@ -518,7 +504,6 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .map(Part::getFunctionCall)
                 .toList();
 
-        final Response<AiMessage> finalResponse;
         final AiMessage aiMessage;
 
         if (!functionCalls.isEmpty()) {
@@ -528,30 +513,10 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         } else {
             aiMessage = AiMessage.from(ResponseHandler.getText(response));
         }
-        finalResponse = Response.from(
+        return Response.from(
                 aiMessage,
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response)));
-
-        ChatResponse listenerResponse = ChatResponse.builder()
-                .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder()
-                        .modelName(modelName)
-                        .tokenUsage(finalResponse.tokenUsage())
-                        .finishReason(finalResponse.finishReason())
-                        .build())
-                .build();
-        ChatModelResponseContext chatModelResponseContext =
-                new ChatModelResponseContext(listenerResponse, listenerRequest, provider(), listenerAttributes);
-        listeners.forEach((listener) -> {
-            try {
-                listener.onResponse(chatModelResponseContext);
-            } catch (Exception e) {
-                logger.warn("Exception while calling model listener (onResponse)", e);
-            }
-        });
-
-        return finalResponse;
     }
 
     @Override
@@ -611,6 +576,11 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     @Override
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override

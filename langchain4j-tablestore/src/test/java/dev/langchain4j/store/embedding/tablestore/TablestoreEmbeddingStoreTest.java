@@ -35,8 +35,8 @@ class TablestoreEmbeddingStoreTest {
         Set<Class<?>> supportedValueTypes = (Set<Class<?>>) field.get(new Metadata());
         assertThat(supportedValueTypes.size())
                 .as("when Metadata#SUPPORTED_VALUE_TYPES add new types, we should modify:\n"
-                        + "1. write logic: rowToMetadata.\n"
-                        + "2. read logic: innerAdd")
+                        + "1. write logic: innerAdd.\n"
+                        + "2. read logic: rowToMetadata")
                 .isEqualTo(10);
     }
 

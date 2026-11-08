@@ -87,7 +87,7 @@ class SearchApiWebSearchRequest {
         }
 
         public String toString() {
-            return "SearchApiWebSearchRequest.SearchApiWebSearchRequestBuilder(engine=" + this.engine + ", apiKey=" + this.apiKey + ", query=" + this.query + ", optionalParameters=" + this.optionalParameters + ", additionalRequestParameters=" + this.additionalRequestParameters + ")";
+            return "SearchApiWebSearchRequest.SearchApiWebSearchRequestBuilder(engine=" + this.engine + ", apiKey=" + (this.apiKey == null ? null : "********") + ", query=" + this.query + ", optionalParameters=" + this.optionalParameters + ", additionalRequestParameters=" + this.additionalRequestParameters + ")";
         }
     }
 }

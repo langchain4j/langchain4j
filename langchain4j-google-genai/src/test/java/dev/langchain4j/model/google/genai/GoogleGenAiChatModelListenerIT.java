@@ -2,7 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static java.util.Collections.singletonList;
 
-import com.google.genai.errors.ClientException;
+import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -19,13 +19,14 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
                 .temperature(temperature())
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
+                .thinkingBudget(0)
                 .listeners(singletonList(listener))
                 .build();
     }
 
     @Override
     protected String modelName() {
-        return "gemini-2.5-flash";
+        return "gemini-3.8-flash";
     }
 
     @Override
@@ -40,7 +41,7 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return ClientException.class;
+        return InvalidRequestException.class;
     }
 
     @Override

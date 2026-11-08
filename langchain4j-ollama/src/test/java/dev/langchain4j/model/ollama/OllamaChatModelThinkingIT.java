@@ -25,7 +25,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         boolean think = true;
         boolean returnThinking = true;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OllamaChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -77,7 +77,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         boolean think = true;
         boolean returnThinking = false;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OllamaChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -115,7 +115,7 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         // given
         boolean think = false;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OllamaChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

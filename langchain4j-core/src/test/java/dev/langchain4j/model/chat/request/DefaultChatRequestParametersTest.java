@@ -88,4 +88,54 @@ class DefaultChatRequestParametersTest {
         assertThat(result.toolSpecifications()).hasSize(2);
         assertThat(result.toolChoice()).isEqualTo(AUTO);
     }
+
+    @Test
+    void override_with_should_preserve_provider_specific_parameters() {
+
+        // given
+        ChatRequestParameters original = DefaultChatRequestParameters.builder()
+                .modelName("model-1")
+                .temperature(0.7)
+                .build();
+
+        ChatRequestParameters override = CustomChatRequestParameters.builder()
+                .temperature(0.9)
+                .customParameter("custom-value")
+                .build();
+
+        // when
+        ChatRequestParameters result = original.overrideWith(override);
+
+        // then
+        assertThat(result).isInstanceOf(CustomChatRequestParameters.class);
+        assertThat(((CustomChatRequestParameters) result).customParameter()).isEqualTo("custom-value");
+        assertThat(result.modelName()).isEqualTo("model-1");
+        assertThat(result.temperature()).isEqualTo(0.9);
+    }
+
+    @Test
+    void defaulted_by_should_preserve_provider_specific_parameters() {
+
+        // given
+        ChatRequestParameters original = DefaultChatRequestParameters.builder()
+                .modelName("model-1")
+                .temperature(0.7)
+                .build();
+
+        ChatRequestParameters defaultParams = CustomChatRequestParameters.builder()
+                .temperature(0.9)
+                .topP(0.8)
+                .customParameter("custom-value")
+                .build();
+
+        // when
+        ChatRequestParameters result = original.defaultedBy(defaultParams);
+
+        // then
+        assertThat(result).isInstanceOf(CustomChatRequestParameters.class);
+        assertThat(((CustomChatRequestParameters) result).customParameter()).isEqualTo("custom-value");
+        assertThat(result.modelName()).isEqualTo("model-1");
+        assertThat(result.temperature()).isEqualTo(0.7);
+        assertThat(result.topP()).isEqualTo(0.8);
+    }
 }

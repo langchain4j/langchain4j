@@ -1,15 +1,19 @@
 package dev.langchain4j.code.judge0;
 
+import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.code.CodeExecutionEngine;
-import java.io.IOException;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +27,6 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     private static final Logger log = LoggerFactory.getLogger(Judge0JavaScriptEngine.class);
 
     // HTTP Constants
-    private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json");
     private static final String RAPID_API_HOST = "judge0-ce.p.rapidapi.com";
     private static final String API_URL =
             "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*";
@@ -46,7 +49,7 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
 
     private final String apiKey;
     private final int languageId;
-    private final OkHttpClient client;
+    private final HttpClient httpClient;
 
     /**
      * Creates a new Judge0JavaScriptEngine with the specified API key, language ID, and timeout.
@@ -65,11 +68,9 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
 
         this.apiKey = apiKey;
         this.languageId = languageId;
-        this.client = new OkHttpClient.Builder()
+        this.httpClient = HttpClientBuilderLoader.loadHttpClientBuilder()
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .callTimeout(timeout)
                 .build();
     }
 
@@ -87,8 +88,7 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
 
         String base64EncodedCode = Base64.getEncoder().encodeToString(code.getBytes(StandardCharsets.UTF_8));
         Submission submission = new Submission(languageId, base64EncodedCode);
-        RequestBody requestBody = RequestBody.create(Json.toJson(submission), MEDIA_TYPE_JSON);
-        Request request = buildRequest(requestBody);
+        HttpRequest request = buildRequest(Json.toJson(submission));
 
         return executeWithRetry(request);
     }
@@ -96,15 +96,17 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     /**
      * Builds a request to the Judge0 API.
      *
-     * @param requestBody The request body
+     * @param body The request body
      * @return The built request
      */
-    private Request buildRequest(RequestBody requestBody) {
-        return new Request.Builder()
+    private HttpRequest buildRequest(String body) {
+        return HttpRequest.builder()
+                .method(POST)
                 .url(API_URL)
                 .addHeader("x-rapidapi-host", RAPID_API_HOST)
                 .addHeader("x-rapidapi-key", apiKey)
-                .post(requestBody)
+                .addHeader("Content-Type", "application/json")
+                .body(body)
                 .build();
     }
 
@@ -114,8 +116,8 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
      * @param request The request to execute
      * @return The result of the request or an error message
      */
-    private String executeWithRetry(Request request) {
-        Exception lastException = null;
+    private String executeWithRetry(HttpRequest request) {
+        RuntimeException lastException = null;
 
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
             if (attempt > 0) {
@@ -128,12 +130,23 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
                 }
             }
 
+            SuccessfulHttpResponse response;
             try {
-                return processRequest(request);
-            } catch (IOException e) {
+                response = httpClient.execute(request);
+            } catch (HttpException e) {
+                return handleErrorResponse(e);
+            } catch (RuntimeException e) {
                 lastException = e;
                 log.warn("Request failed (attempt {}/{}): {}", attempt + 1, MAX_RETRIES, e.getMessage());
+                continue;
             }
+
+            String responseBody = response.body();
+            if (isNullOrBlank(responseBody)) {
+                log.warn(ERROR_NULL_RESPONSE);
+                return ERROR_NULL_RESPONSE;
+            }
+            return processResponseBody(responseBody);
         }
 
         log.error("All retry attempts failed", lastException);
@@ -141,43 +154,20 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
     }
 
     /**
-     * Processes a single request to the Judge0 API.
-     *
-     * @param request The request to process
-     * @return The result of the request or an error message
-     * @throws IOException if an I/O error occurs
-     */
-    private String processRequest(Request request) throws IOException {
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                return handleErrorResponse(response);
-            }
-
-            if (response.body() == null) {
-                log.warn(ERROR_NULL_RESPONSE);
-                return ERROR_NULL_RESPONSE;
-            }
-
-            String responseBody = response.body().string();
-            return processResponseBody(responseBody);
-        }
-    }
-
-    /**
      * Handles error responses from the Judge0 API.
      *
-     * @param response The error response
+     * @param exception The HTTP error carrying the status code and response body
      * @return An appropriate error message
      */
-    private String handleErrorResponse(Response response) {
+    private String handleErrorResponse(HttpException exception) {
         String errorMessage =
-                switch (response.code()) {
+                switch (exception.statusCode()) {
                     case 429 -> ERROR_RATE_LIMIT;
                     case 403 -> ERROR_FORBIDDEN;
                     case 404 -> ERROR_NOT_FOUND;
                     case 500 -> ERROR_SERVER;
                     case 503 -> ERROR_UNAVAILABLE;
-                    default -> "Unexpected error code " + response.code() + ": " + response.message();
+                    default -> "Unexpected error code " + exception.statusCode() + ": " + exception.getMessage();
                 };
 
         log.warn(errorMessage);

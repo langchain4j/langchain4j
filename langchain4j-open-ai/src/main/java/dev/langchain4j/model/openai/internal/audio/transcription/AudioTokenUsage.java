@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.audio.transcription;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -15,7 +15,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 
 @JsonDeserialize(builder = AudioTokenUsage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AudioTokenUsage {
 
     @JsonProperty
@@ -33,6 +32,7 @@ public class AudioTokenUsage {
     @JsonProperty
     private final Integer outputTokens;
 
+    @JsonCreator
     public AudioTokenUsage(Builder builder) {
         this.type = builder.type;
         this.totalTokens = builder.totalTokens;
@@ -107,7 +107,7 @@ public class AudioTokenUsage {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
 
         private String type;

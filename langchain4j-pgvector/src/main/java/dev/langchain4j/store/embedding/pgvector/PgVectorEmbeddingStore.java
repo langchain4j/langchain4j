@@ -5,11 +5,10 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.lang.String.join;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
@@ -39,8 +38,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.postgresql.ds.PGSimpleDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * PGVector EmbeddingStore Implementation
@@ -57,8 +54,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         VECTOR,
         HYBRID
     }
-
-    private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
 
     private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
     /**
@@ -229,18 +224,20 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param builder The builder containing all configuration
      */
     protected PgVectorEmbeddingStore(PgVectorEmbeddingStoreBuilder builder) {
-        this(
-                createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database),
-                builder.table,
-                builder.dimension,
-                builder.useIndex,
-                builder.indexListSize,
-                builder.createTable,
-                builder.dropTableFirst,
-                builder.metadataStorageConfig,
-                builder.searchMode,
-                builder.textSearchConfig,
-                builder.rrfK);
+        this(new DatasourceBuilder()
+                .datasource(
+                        createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database))
+                .table(builder.table)
+                .dimension(builder.dimension)
+                .useIndex(builder.useIndex)
+                .indexListSize(builder.indexListSize)
+                .createTable(builder.createTable)
+                .dropTableFirst(builder.dropTableFirst)
+                .skipCreateVectorExtension(builder.skipCreateVectorExtension)
+                .metadataStorageConfig(builder.metadataStorageConfig)
+                .searchMode(builder.searchMode)
+                .textSearchConfig(builder.textSearchConfig)
+                .rrfK(builder.rrfK));
     }
 
     /**
@@ -411,7 +408,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         String sql = String.format("DELETE FROM %s WHERE embedding_id = ANY (?)", table);
         try (Connection connection = getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -427,10 +426,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        String whereClause = metadataHandler.whereClause(filter);
-        String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause);
+        WhereClause whereClause = metadataHandler.whereClause(filter);
+        String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause.sql());
         try (Connection connection = getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
+            whereClause.bindParameters(statement, 1);
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -476,8 +476,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
-            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
-            whereClause = (whereClause.isEmpty()) ? "" : "AND " + whereClause;
+            WhereClause whereClause = (filter == null) ? WhereClause.EMPTY : metadataHandler.whereClause(filter);
+            String filterCondition = whereClause.sql().isEmpty() ? "" : "AND " + whereClause.sql();
             String query = String.format(
                     "SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, %s FROM %s "
                             + "WHERE round(cast(float8 (embedding <=> '%s') as numeric), 8) <= round(2 - 2 * %s, 8) %s "
@@ -487,10 +487,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     table,
                     referenceVector,
                     minScore,
-                    whereClause,
+                    filterCondition,
                     referenceVector,
                     maxResults);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
+                whereClause.bindParameters(selectStmt, 1);
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {
                         double score = resultSet.getDouble("score");
@@ -533,7 +534,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
 
-            String filterCondition = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            WhereClause whereClause = (filter == null) ? WhereClause.EMPTY : metadataHandler.whereClause(filter);
+            String filterCondition = whereClause.sql();
             String vectorWhere = filterCondition.isEmpty() ? "" : "WHERE " + filterCondition;
             String keywordWhere = filterCondition.isEmpty() ? "" : " AND " + filterCondition;
 
@@ -594,10 +596,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     maxResults);
 
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, keywordQuery);
-                stmt.setString(2, keywordQuery);
-                stmt.setString(3, keywordQuery);
-                stmt.setDouble(4, minScore);
+                int index = whereClause.bindParameters(stmt, 1);
+                stmt.setString(index++, keywordQuery);
+                stmt.setString(index++, keywordQuery);
+                index = whereClause.bindParameters(stmt, index);
+                stmt.setString(index++, keywordQuery);
+                stmt.setDouble(index, minScore);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -630,14 +634,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try (Connection connection = getConnection()) {
             String query = String.format(
@@ -689,16 +689,25 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     protected Connection getConnection() throws SQLException {
         Connection connection = datasource.getConnection();
-        // Find a way to do the following code in connection initialization.
-        // Here we assume the datasource could handle a connection pool
-        // and we should add the vector type on each connection
-        if (!skipCreateVectorExtension) {
-            try (Statement statement = connection.createStatement()) {
-                statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        try {
+            // Find a way to do the following code in connection initialization.
+            // Here we assume the datasource could handle a connection pool
+            // and we should add the vector type on each connection
+            if (!skipCreateVectorExtension) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+                }
             }
+            PGvector.addVectorType(connection);
+            return connection;
+        } catch (Throwable t) {
+            try {
+                connection.close();
+            } catch (Throwable closeFailure) {
+                t.addSuppressed(closeFailure);
+            }
+            throw t;
         }
-        PGvector.addVectorType(connection);
-        return connection;
     }
 
     public static class DatasourceBuilder {
@@ -897,7 +906,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public String toString() {
             return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port
-                    + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
+                    + ", user=" + this.user + ", password=" + (this.password == null ? null : "********")
+                    + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension

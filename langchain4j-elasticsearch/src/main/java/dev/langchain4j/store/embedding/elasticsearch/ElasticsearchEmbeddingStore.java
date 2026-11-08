@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -81,7 +82,17 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             String userName,
             String password,
             String indexName) {
+        this(configuration, serverUrl, apiKey, userName, password, indexName, (Refresh) null);
+    }
 
+    private ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration,
+            String serverUrl,
+            String apiKey,
+            String userName,
+            String password,
+            String indexName,
+            Refresh refresh) {
         RestClientBuilder restClientBuilder =
                 RestClient.builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
 
@@ -96,7 +107,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             restClientBuilder.setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "Apikey " + apiKey)});
         }
 
-        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"));
+        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"), refresh);
     }
 
     /**
@@ -114,6 +125,11 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         this.initialize(configuration, restClient, indexName);
     }
 
+    private ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName, Refresh refresh) {
+        this.initialize(configuration, restClient, indexName, refresh);
+    }
+
     /**
      * Constructor using an Elasticsearch Client
      *
@@ -125,6 +141,11 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
     public ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
         this.initialize(configuration, client, indexName);
+    }
+
+    private ElasticsearchEmbeddingStore(
+            ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName, Refresh refresh) {
+        this.initialize(configuration, client, indexName, refresh);
     }
 
     public static Builder builder() {
@@ -140,6 +161,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         private ElasticsearchClient client;
         private RestClient restClient;
         private String indexName = "default";
+        private Refresh refresh;
         private ElasticsearchConfiguration configuration =
                 ElasticsearchConfigurationKnn.builder().build();
 
@@ -218,6 +240,20 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         }
 
         /**
+         * Controls when documents written or removed by ID become visible to search.
+         * Searches and filtered removal are not affected.
+         *
+         * @param refresh {@link Refresh#False} (default) leaves refreshing to Elasticsearch,
+         *                {@link Refresh#True} refreshes immediately after the request, and
+         *                {@link Refresh#WaitFor} waits for a refresh before the request returns.
+         * @return builder
+         */
+        public Builder refresh(Refresh refresh) {
+            this.refresh = refresh;
+            return this;
+        }
+
+        /**
          * @param dimension Embedding vector dimension.
          * @return builder
          * @deprecated dimension is not used anymore.
@@ -239,14 +275,15 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
 
         public ElasticsearchEmbeddingStore build() {
             if (client != null) {
-                return new ElasticsearchEmbeddingStore(configuration, client, indexName);
+                return new ElasticsearchEmbeddingStore(configuration, client, indexName, refresh);
             }
             log.warn(
                     "This is deprecated. You should provide an ElasticsearchClient instead and use client(ElasticsearchClient) instead.");
             if (restClient != null) {
-                return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
+                return new ElasticsearchEmbeddingStore(configuration, restClient, indexName, refresh);
             } else {
-                return new ElasticsearchEmbeddingStore(configuration, serverUrl, apiKey, userName, password, indexName);
+                return new ElasticsearchEmbeddingStore(
+                        configuration, serverUrl, apiKey, userName, password, indexName, refresh);
             }
         }
     }

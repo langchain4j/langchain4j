@@ -5,29 +5,86 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
- * The embedding model request context.
- * It contains the input, the {@link EmbeddingModel} and attributes.
- * The attributes can be used to pass data between methods of an {@link EmbeddingModelListener}
- * or between multiple {@link EmbeddingModelListener}s.
+ * The context passed to {@link EmbeddingModelListener#onRequest(EmbeddingModelRequestContext)} before an
+ * embedding call. It gives access to the {@link EmbeddingRequest} being embedded (its inputs and per-call
+ * parameters), the {@link EmbeddingModel}, the {@link ModelProvider}, and a mutable {@code attributes} map that
+ * can be used to pass data to the response/error callbacks of the same listener.
  *
  * @since 1.11.0
  */
 @Experimental
 public class EmbeddingModelRequestContext {
 
-    private final List<TextSegment> textSegments;
+    private final EmbeddingRequest embeddingRequest;
     private final EmbeddingModel embeddingModel;
     private final Map<Object, Object> attributes;
+    private final UUID invocationId;
+
+    private final List<TextSegment> textSegments;
 
     public EmbeddingModelRequestContext(Builder builder) {
-        this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
+        this.embeddingRequest = builder.embeddingRequest;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         this.attributes = ensureNotNull(builder.attributes, "attributes");
+        this.invocationId = builder.invocationId;
+        this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
+    }
+
+    /**
+     * @return the {@link EmbeddingRequest} being embedded, including its per-call parameters and multimodal
+     * inputs. For a convenience call ({@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)})
+     * it is reconstructed from the inputs, and is {@code null} only when there are no inputs.
+     */
+    public EmbeddingRequest embeddingRequest() {
+        return embeddingRequest;
+    }
+
+    public EmbeddingModel embeddingModel() {
+        return embeddingModel;
+    }
+
+    /**
+     * @return the {@link ModelProvider} of the embedding model (for example {@link ModelProvider#OPEN_AI}).
+     */
+    public ModelProvider modelProvider() {
+        return embeddingModel.provider();
+    }
+
+    /**
+     * @return The attributes map. It can be used to pass data between methods of an {@link EmbeddingModelListener}
+     * or between multiple {@link EmbeddingModelListener}s.
+     */
+    public Map<Object, Object> attributes() {
+        return attributes;
+    }
+
+    /**
+     * @return the text of each input being embedded. For the full request, including per-call parameters and
+     * multimodal inputs, use {@link #embeddingRequest()}.
+     */
+    public List<TextSegment> textSegments() {
+        return textSegments;
+    }
+
+    /**
+     * @return the id of the AI Service invocation in which this call is made (the calls made by its tools, guardrails,
+     * retrieval, moderation, chat memory, ...), otherwise {@code null}, for example when it is called outside of an AI
+     * Service.
+     * It is the {@link InvocationContext#invocationId()} of the AI Service invocation, not an id of this call.
+     * @since 1.24.0
+     */
+    @Experimental
+    public UUID invocationId() {
+        return invocationId;
     }
 
     public static Builder builder() {
@@ -42,14 +99,16 @@ public class EmbeddingModelRequestContext {
     @Experimental
     public static class Builder {
 
-        private List<TextSegment> textSegments;
+        private EmbeddingRequest embeddingRequest;
         private EmbeddingModel embeddingModel;
         private Map<Object, Object> attributes;
+        private UUID invocationId;
+        private List<TextSegment> textSegments;
 
         Builder() {}
 
-        public Builder textSegments(List<TextSegment> textSegments) {
-            this.textSegments = textSegments;
+        public Builder embeddingRequest(EmbeddingRequest embeddingRequest) {
+            this.embeddingRequest = embeddingRequest;
             return this;
         }
 
@@ -63,24 +122,25 @@ public class EmbeddingModelRequestContext {
             return this;
         }
 
+        public Builder textSegments(List<TextSegment> textSegments) {
+            this.textSegments = textSegments;
+            return this;
+        }
+
+        /**
+         * Sets the id of the AI Service invocation in which the call is made, see {@link #invocationId()} of the
+         * context. LangChain4j sets it for the listeners; set it yourself only when you create the context yourself.
+         *
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder invocationId(UUID invocationId) {
+            this.invocationId = invocationId;
+            return this;
+        }
+
         public EmbeddingModelRequestContext build() {
             return new EmbeddingModelRequestContext(this);
         }
-    }
-
-    public List<TextSegment> textSegments() {
-        return textSegments;
-    }
-
-    public EmbeddingModel embeddingModel() {
-        return embeddingModel;
-    }
-
-    /**
-     * @return The attributes map. It can be used to pass data between methods of an {@link EmbeddingModelListener}
-     * or between multiple {@link EmbeddingModelListener}s.
-     */
-    public Map<Object, Object> attributes() {
-        return attributes;
     }
 }

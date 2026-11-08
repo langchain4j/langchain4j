@@ -8,6 +8,8 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -15,6 +17,36 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 class SchemaMapper {
+
+    /**
+     * Whether {@link #fromJsonSchemaToGSchema} can convert this element and everything below it.
+     * Callers that have an alternative, such as sending plain JSON Schema, should ask this first
+     * instead of catching the exception the mapper throws.
+     *
+     * <p>The listed types are exactly the ones the mapper handles. Anything else, including
+     * {@link JsonRawSchema}, {@link JsonReferenceSchema} and any element type added later, is
+     * reported as not mappable, so a new element type takes the alternative instead of throwing.
+     */
+    static boolean canBeMapped(JsonSchemaElement jsonSchema) {
+        if (jsonSchema instanceof JsonObjectSchema jsonObjectSchema) {
+            // Definitions exist to be referenced, and a reference has no typed form.
+            return jsonObjectSchema.definitions().isEmpty()
+                    && jsonObjectSchema.properties().values().stream().allMatch(SchemaMapper::canBeMapped);
+        }
+        if (jsonSchema instanceof JsonArraySchema jsonArraySchema) {
+            return jsonArraySchema.items() == null || canBeMapped(jsonArraySchema.items());
+        }
+        if (jsonSchema instanceof JsonAnyOfSchema jsonAnyOfSchema) {
+            return jsonAnyOfSchema.anyOf().stream().allMatch(SchemaMapper::canBeMapped);
+        }
+        return jsonSchema instanceof JsonStringSchema
+                || jsonSchema instanceof JsonBooleanSchema
+                || jsonSchema instanceof JsonNumberSchema
+                || jsonSchema instanceof JsonIntegerSchema
+                || jsonSchema instanceof JsonEnumSchema
+                || jsonSchema instanceof JsonNullSchema;
+    }
+
     static GeminiSchema fromJsonSchemaToGSchema(JsonSchema jsonSchema) {
         return fromJsonSchemaToGSchema(jsonSchema.rootElement());
     }

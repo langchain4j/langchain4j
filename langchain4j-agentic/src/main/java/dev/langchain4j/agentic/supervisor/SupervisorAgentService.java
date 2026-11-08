@@ -7,7 +7,9 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import java.util.Collection;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public interface SupervisorAgentService<T> {
 
@@ -42,4 +44,12 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
     SupervisorAgentService<T> listener(AgentListener agentListener);
+
+    SupervisorAgentService<T> beforeCall(Consumer<AgenticScope> beforeCall);
+
+    SupervisorAgentService<T> compensateOnError(boolean compensateOnError);
+
+    SupervisorAgentService<T> activationCondition(Predicate<AgenticScope> activationCondition);
+
+    SupervisorAgentService<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
 }

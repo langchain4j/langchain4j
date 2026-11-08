@@ -1,8 +1,9 @@
 package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createCollection;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createIndex;
@@ -64,6 +65,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String DEFAULT_VECTOR_FIELD_NAME = "vector";
 
     private final MilvusServiceClient milvusClient;
+    private final MilvusServerVersion serverVersion;
     private final String collectionName;
     private final MetricType metricType;
     private final ConsistencyLevelEnum consistencyLevel;
@@ -122,6 +124,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String metadataFieldName,
             String vectorFieldName) {
         this.milvusClient = ensureNotNull(milvusClient, "milvusClient");
+        this.serverVersion = MilvusServerVersion.from(this.milvusClient);
         this.collectionName = getOrDefault(collectionName, "default");
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
@@ -162,6 +165,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                         builder.password,
                         builder.databaseName)
                 : builder.milvusClient;
+        this.serverVersion = MilvusServerVersion.from(this.milvusClient);
         this.collectionName = getOrDefault(builder.collectionName, "default");
         this.metricType = getOrDefault(builder.metricType, COSINE);
         this.consistencyLevel = getOrDefault(builder.consistencyLevel, EVENTUALLY);
@@ -213,8 +217,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withHost(getOrDefault(host, "localhost"))
                 .withPort(getOrDefault(port, 19530))
                 .withUri(uri)
-                .withToken(token)
-                .withAuthorization(getOrDefault(username, ""), getOrDefault(password, ""));
+                .withToken(token);
+
+        if (!isNullOrBlank(username)) {
+            connectBuilder.withAuthorization(username, getOrDefault(password, ""));
+        }
 
         if (databaseName != null) {
             connectBuilder.withDatabaseName(databaseName);
@@ -263,7 +270,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 embeddingSearchRequest.filter(),
                 embeddingSearchRequest.maxResults(),
                 metricType,
-                consistencyLevel);
+                consistencyLevel,
+                serverVersion);
 
         SearchResultsWrapper resultsWrapper = CollectionOperationsExecutor.search(milvusClient, searchParam);
 
@@ -289,7 +297,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
         List<InsertParam.Field> fields = new ArrayList<>();
@@ -322,7 +331,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeForVector(
                 this.milvusClient,
                 this.collectionName,
@@ -350,7 +361,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
         removeForVector(
-                this.milvusClient, this.collectionName, map(filter, this.fieldDefinition.getMetadataFieldName()));
+                this.milvusClient,
+                this.collectionName,
+                map(filter, this.fieldDefinition.getMetadataFieldName(), this.serverVersion));
     }
 
     /**

@@ -4,23 +4,27 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnosticsParameters;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
@@ -166,6 +170,99 @@ class DefaultAnthropicClientTest {
             // Then
             HttpRequest sentRequest = mockHttpClient.request();
             assertThat(sentRequest.headers().get("anthropic-beta")).containsExactly(beta);
+        }
+
+        @Test
+        void shouldOmitDiagnosticsFieldWhenNotSet() {
+            // Given
+            AnthropicCreateMessageResponse expectedResponse = createMessageResponse("Test");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest();
+
+            // When
+            subject.createMessage(request);
+
+            // Then
+            assertThat(mockHttpClient.request().body()).doesNotContain("\"diagnostics\"");
+        }
+
+        @Test
+        void shouldSendDiagnosticsWithNullPreviousMessageIdOnFirstTurn() {
+            // Given
+            AnthropicCreateMessageResponse expectedResponse = createMessageResponse("Test");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest().toBuilder()
+                    .diagnostics(new AnthropicDiagnosticsParameters(null))
+                    .build();
+
+            // When
+            subject.createMessage(request);
+
+            // Then
+            String body = mockHttpClient.request().body();
+            assertThat(body).contains("\"diagnostics\"");
+            assertThat(body).contains("\"previous_message_id\" : null");
+        }
+
+        @Test
+        void shouldSendDiagnosticsWithPreviousMessageIdOnSubsequentTurn() {
+            // Given
+            AnthropicCreateMessageResponse expectedResponse = createMessageResponse("Test");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest().toBuilder()
+                    .diagnostics(new AnthropicDiagnosticsParameters("msg_123"))
+                    .build();
+
+            // When
+            subject.createMessage(request);
+
+            // Then
+            assertThat(mockHttpClient.request().body()).contains("\"previous_message_id\" : \"msg_123\"");
+        }
+
+        @Test
+        void shouldParseCacheMissReasonFromResponse() {
+            // Given
+            AnthropicCacheMissReason reason = new AnthropicCacheMissReason();
+            reason.type = "system_changed";
+            reason.cacheMissedInputTokens = 41850;
+            AnthropicDiagnostics diagnostics = new AnthropicDiagnostics();
+            diagnostics.cacheMissReason = reason;
+            AnthropicCreateMessageResponse expectedResponse = createMessageResponse("Test");
+            expectedResponse.diagnostics = diagnostics;
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            // When
+            AnthropicCreateMessageResponse actualResponse = subject.createMessage(createMessageRequest());
+
+            // Then
+            assertThat(actualResponse.diagnostics).isNotNull();
+            assertThat(actualResponse.diagnostics.cacheMissReason.type).isEqualTo("system_changed");
+            assertThat(actualResponse.diagnostics.cacheMissReason.cacheMissedInputTokens)
+                    .isEqualTo(41850);
         }
 
         @Test
@@ -394,6 +491,45 @@ class DefaultAnthropicClientTest {
         }
 
         @Test
+        void shouldIncludeCacheDiagnosticsFromMessageStartEvent() throws Exception {
+            // Given
+            List<ServerSentEvent> events = List.of(createMessageStartEventWithDiagnostics(), createMessageStopEvent());
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest().toBuilder()
+                    .diagnostics(new AnthropicDiagnosticsParameters("msg_122"))
+                    .build();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+            // When
+            subject.createMessage(request, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {}
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then
+            var metadata = (AnthropicChatResponseMetadata) response.metadata();
+            assertThat(metadata.cacheDiagnostics()).isNotNull();
+            assertThat(metadata.cacheDiagnostics().cacheMissReasonType()).isEqualTo("system_changed");
+            assertThat(metadata.cacheDiagnostics().cacheMissedInputTokens()).isEqualTo(41850);
+        }
+
+        @Test
         void shouldSendCorrectStreamingHttpRequest() throws Exception {
             // Given
             List<ServerSentEvent> events = List.of(createMessageStartEvent(), createMessageStopEvent());
@@ -521,26 +657,30 @@ class DefaultAnthropicClientTest {
             List<ServerSentEvent> events = List.of(
                     createMessageStartEvent(),
                     // Tool call 1 starts (content block index=1)
-                    new ServerSentEvent("content_block_start",
+                    new ServerSentEvent(
+                            "content_block_start",
                             "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_1\",\"name\":\"get_weather\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"city\\\"\"}}"),
                     // Tool call 2 starts BEFORE tool call 1 stops (content block index=2)
-                    new ServerSentEvent("content_block_start",
+                    new ServerSentEvent(
+                            "content_block_start",
                             "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_2\",\"name\":\"get_time\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"zone\\\"\"}}"),
                     // More deltas for both
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Paris\\\"}\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"UTC\\\"}\"}}"),
                     // Tool call 1 stops
-                    new ServerSentEvent("content_block_stop",
-                            "{\"type\":\"content_block_stop\",\"index\":1}"),
+                    new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}"),
                     // Tool call 2 stops
-                    new ServerSentEvent("content_block_stop",
-                            "{\"type\":\"content_block_stop\",\"index\":2}"),
+                    new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}"),
                     createMessageDeltaWithToolUse(),
                     createMessageStopEvent());
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
@@ -592,8 +732,7 @@ class DefaultAnthropicClientTest {
             assertThat(secondComplete.toolExecutionRequest().arguments()).isEqualTo("{\"zone\": \"UTC\"}");
 
             // Verify the final response also contains both tool execution requests
-            List<ToolExecutionRequest> toolRequests =
-                    response.aiMessage().toolExecutionRequests();
+            List<ToolExecutionRequest> toolRequests = response.aiMessage().toolExecutionRequests();
             assertThat(toolRequests).hasSize(2);
             assertThat(toolRequests.get(0).name()).isEqualTo("get_weather");
             assertThat(toolRequests.get(1).name()).isEqualTo("get_time");
@@ -681,6 +820,14 @@ class DefaultAnthropicClientTest {
         return new ServerSentEvent("message_start", data);
     }
 
+    private static ServerSentEvent createMessageStartEventWithDiagnostics() {
+        String data = String.format(
+                "{\"type\":\"message_start\",\"message\":{\"id\":\"%s\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"%s\",\"usage\":{\"input_tokens\":10,\"output_tokens\":0},"
+                        + "\"diagnostics\":{\"cache_miss_reason\":{\"type\":\"system_changed\",\"cache_missed_input_tokens\":41850}}}}",
+                "msg_123", DefaultAnthropicClientTest.TEST_MODEL_NAME);
+        return new ServerSentEvent("message_start", data);
+    }
+
     private static ServerSentEvent createContentBlockStartEvent() {
         String data = String.format(
                 "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"%s\",\"text\":\"%s\"}}",
@@ -707,7 +854,8 @@ class DefaultAnthropicClientTest {
     }
 
     private static ServerSentEvent createMessageDeltaWithToolUse() {
-        return new ServerSentEvent("message_delta",
+        return new ServerSentEvent(
+                "message_delta",
                 "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":50}}");
     }
 

@@ -13,13 +13,19 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 
@@ -39,6 +45,11 @@ public class ChatModelMock implements ChatModel {
     private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY =
             retryPolicyBuilder().maxRetries(0).build();
     private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
+    private Set<Capability> supportedCapabilities = Set.of();
+    private List<ChatModelListener> listeners = List.of();
+    private Queue<String> modelNames = new ConcurrentLinkedQueue<>();
+    private List<TokenUsage> tokenUsages = List.of();
+    private FinishReason finishReason;
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
@@ -63,10 +74,83 @@ public class ChatModelMock implements ChatModel {
         return this;
     }
 
+    public ChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
+        this.supportedCapabilities = Set.of(supportedCapabilities);
+        return this;
+    }
+
+    /**
+     * Sets the model name reported in the response metadata, one name per call, in the given order.
+     * Once all names are used, the model name is {@code null}.
+     */
+    public ChatModelMock withModelNames(String... modelNames) {
+        this.modelNames = new ConcurrentLinkedQueue<>(asList(modelNames));
+        return this;
+    }
+
+    public ChatModelMock withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    /**
+     * Reports the given token usage in every response.
+     */
+    public ChatModelMock withTokenUsage(TokenUsage tokenUsage) {
+        return withTokenUsages(tokenUsage);
+    }
+
+    /**
+     * Reports the given token usages in successive responses, repeating the last one.
+     */
+    public ChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
+        this.tokenUsages = List.of(tokenUsages);
+        return this;
+    }
+
+    private TokenUsage recordRequest(ChatRequest chatRequest) {
+        synchronized (requests) {
+            requests.add(chatRequest);
+            return tokenUsages.isEmpty() ? null : tokenUsages.get(Math.min(requests.size(), tokenUsages.size()) - 1);
+        }
+    }
+
+    /**
+     * Reports the given finish reason in every response.
+     */
+    public ChatModelMock withFinishReason(FinishReason finishReason) {
+        this.finishReason = finishReason;
+        return this;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        requests.add(chatRequest);
+        TokenUsage tokenUsage = recordRequest(chatRequest);
+        return respond(chatRequest, tokenUsage);
+    }
 
+    /**
+     * Completes off the calling thread with the same configured response as {@link #doChat(ChatRequest)}.
+     * Does not delegate to {@link #doChat(ChatRequest)}, so a Mockito spy can verify
+     * that the blocking path is never invoked.
+     */
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        TokenUsage tokenUsage = recordRequest(chatRequest);
+        return CompletableFuture.supplyAsync(() -> respond(chatRequest, tokenUsage));
+    }
+
+    private ChatResponse respond(ChatRequest chatRequest, TokenUsage tokenUsage) {
         if (exception != null) {
             throw exception;
         }
@@ -75,7 +159,11 @@ public class ChatModelMock implements ChatModel {
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder().build())
+                .metadata(ChatResponseMetadata.builder()
+                        .modelName(modelNames.poll())
+                        .tokenUsage(tokenUsage)
+                        .finishReason(finishReason)
+                        .build())
                 .build();
     }
 
@@ -125,13 +213,22 @@ public class ChatModelMock implements ChatModel {
         return new ChatModelMock(response);
     }
 
+    /**
+     * Responds with the given message to every request. Fails on the second request if the message contains tool
+     * execution requests, because repeating it would make an AI Service call the tools again and again.
+     */
     public static ChatModelMock thatAlwaysResponds(AiMessage aiMessage) {
-        return new ChatModelMock(ignored -> aiMessage);
+        return thatAlwaysResponds(new AiMessage[] {aiMessage});
     }
 
+    /**
+     * Responds with the given messages in order, one per request. Once all of them were given, the last one is given
+     * again for every further request (like Mockito's {@code thenReturn(a, b)}), unless it contains tool execution
+     * requests: then the mock fails, because repeating it would make an AI Service call the tools again and again.
+     */
     public static ChatModelMock thatAlwaysResponds(AiMessage... aiMessages) {
-        Queue<AiMessage> queue = new ConcurrentLinkedQueue<>(asList(aiMessages));
-        return new ChatModelMock(ignored -> queue.poll());
+        ScriptedResponses responses = new ScriptedResponses("ChatModelMock", asList(aiMessages));
+        return new ChatModelMock(ignored -> responses.next());
     }
 
     public static ChatModelMock thatResponds(Function<ChatRequest, AiMessage> aiMessageGenerator) {

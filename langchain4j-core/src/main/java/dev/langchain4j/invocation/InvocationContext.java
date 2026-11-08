@@ -1,14 +1,17 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -22,9 +25,53 @@ import org.jspecify.annotations.NonNull;
 public interface InvocationContext {
 
     /**
-     * Unique identifier for an entire AI Service invocation
+     * Unique identifier for an entire AI Service invocation. AI Services created with
+     * {@code AiServices} treat each subscription to a publisher returned by an AI Service
+     * method as a separate invocation, with its own identifier.
      */
     UUID invocationId();
+
+    /**
+     * The {@link #invocationId()} of the parent invocation: the AI Service invocation whose own work started this
+     * invocation. This is the case when one of these parts of an AI Service calls another AI Service:
+     * <ul>
+     * <li>a tool, a tool error handler or the strategy for hallucinated tool names</li>
+     * <li>a tool provider</li>
+     * <li>an input or output guardrail</li>
+     * <li>a component of the retrieval augmentor (for example a query transformer or a content retriever)</li>
+     * <li>the system or user message provider, or the system message transformer</li>
+     * <li>the chat memory (including its {@code ChatMemoryStore}) or the chat memory provider</li>
+     * <li>the moderation model</li>
+     * <li>the {@code chatRequestTransformer}</li>
+     * <li>the chat model itself (for example your own {@code ChatModel} implementation)</li>
+     * </ul>
+     * <p>
+     * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
+     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), when there
+     * is no parent, or when this {@code InvocationContext} implementation does not track it.
+     * <p>
+     * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
+     * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands
+     * the call to another thread (for example with {@code CompletableFuture.supplyAsync(..., executor)}), it is
+     * {@code null}. In rare cases, when futures are shared between invocations, it can even name another
+     * invocation. So treat it as best effort.
+     * <p>
+     * It is filled by the AI Service implementation that LangChain4j provides. Frameworks that replace that
+     * implementation (for example through {@code AiServicesFactory}) return {@code null} until they add support for
+     * it, also for AI Services they create through {@code AiServices.builder(...)}.
+     * <p>
+     * It is set when the AI Service method is called: later runs of the same {@code TokenStream} keep it.
+     * <p>
+     * Agents run by an agentic workflow (sequence, parallel, loop, conditional) or by a supervisor currently have no
+     * parent. An agent called from a tool of another agent has one.
+     *
+     * @return the id of the parent invocation, or {@code null} if there is none or it is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    default UUID parentInvocationId() {
+        return null;
+    }
 
     /**
      * The fully-qualified name of the AI Service interface where the invocation was initiated from
@@ -51,6 +98,18 @@ public interface InvocationContext {
      * @since 1.13.0
      */
     default UserMessage userMessage() {
+        return null;
+    }
+
+    /**
+     * The {@link UserMessage} created from the AI Service method and its prompt template, before any transformation
+     * (RAG augmentation, content injection, input guardrails, output format instructions).
+     * It is what the user asked, without the retrieved content, for example to decide which tools or models are
+     * relevant to the question.
+     *
+     * @since 1.21.0
+     */
+    default UserMessage originalUserMessage() {
         return null;
     }
 
@@ -100,6 +159,9 @@ public interface InvocationContext {
     /**
      * Converts the current instance of {@link DefaultInvocationContext} into a {@link Builder},
      * pre-populated with the current values of the instance.
+     * <p>
+     * When this is a {@link DefaultInvocationContext}, a copy built with the same {@link #invocationId()} shares
+     * whether the invocation has already reported its end (see {@link InvocationEnd}).
      */
     default Builder toBuilder() {
         return new Builder(this);
@@ -119,31 +181,43 @@ public interface InvocationContext {
     class Builder {
 
         private UUID invocationId;
+        private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
+        private UserMessage originalUserMessage;
         private Object chatMemoryId;
         private ChatRequestParameters defaultRequestParameters;
         private ModelProvider modelProvider;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
+        CapturedContext capturedContext;
+        AtomicBoolean ended;
+        UUID endedInvocationId;
 
         protected Builder() {}
 
         protected Builder(InvocationContext invocationContext) {
             invocationId(invocationContext.invocationId());
+            parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
+            originalUserMessage(invocationContext.originalUserMessage());
             chatMemoryId(invocationContext.chatMemoryId());
             defaultRequestParameters(invocationContext.defaultRequestParameters());
             modelProvider(invocationContext.modelProvider());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
+            if (invocationContext instanceof DefaultInvocationContext defaultInvocationContext) {
+                this.capturedContext = defaultInvocationContext.capturedContext();
+                this.ended = defaultInvocationContext.ended();
+                this.endedInvocationId = defaultInvocationContext.invocationId();
+            }
         }
 
         /**
@@ -151,6 +225,17 @@ public interface InvocationContext {
          */
         public Builder invocationId(UUID invocationId) {
             this.invocationId = invocationId;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext#parentInvocationId()}.
+         *
+         * @since 1.23.0
+         */
+        @Experimental
+        public Builder parentInvocationId(UUID parentInvocationId) {
+            this.parentInvocationId = parentInvocationId;
             return this;
         }
 
@@ -199,6 +284,16 @@ public interface InvocationContext {
          */
         public Builder userMessage(UserMessage userMessage) {
             this.userMessage = userMessage;
+            return this;
+        }
+
+        /**
+         * Sets the user message before any transformation, see {@link InvocationContext#originalUserMessage()}.
+         *
+         * @since 1.21.0
+         */
+        public Builder originalUserMessage(UserMessage originalUserMessage) {
+            this.originalUserMessage = originalUserMessage;
             return this;
         }
 
@@ -270,6 +365,11 @@ public interface InvocationContext {
             return invocationId;
         }
 
+        @Experimental
+        public UUID parentInvocationId() {
+            return parentInvocationId;
+        }
+
         public String interfaceName() {
             return interfaceName;
         }
@@ -284,6 +384,10 @@ public interface InvocationContext {
 
         public UserMessage userMessage() {
             return userMessage;
+        }
+
+        public UserMessage originalUserMessage() {
+            return originalUserMessage;
         }
 
         public Object chatMemoryId() {

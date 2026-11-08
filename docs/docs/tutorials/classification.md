@@ -11,11 +11,14 @@ This example demonstrates **sentiment classification** using LangChain4j's AI-po
 
 ---
 
-LangChain4j supports two common approaches to text classification:
+LangChain4j supports three common approaches to text classification:
 
 - Use an LLM through **AI Services** when labels depend on nuanced natural language reasoning.
 - Use **embeddings** through `TextClassifier` and `EmbeddingModelTextClassifier` when you have labeled examples
   for each category and want to classify by semantic similarity.
+- Use a **decision model** through [Decision Services](/tutorials/decision-services) when you want answers with
+  probabilities for each label, without training data. Dedicated decision models are typically faster and cheaper
+  than chat models.
 
 ## **Sentiment Classification Service**
 The sentiment classification system categorizes input text into one of the following **sentiment categories**:

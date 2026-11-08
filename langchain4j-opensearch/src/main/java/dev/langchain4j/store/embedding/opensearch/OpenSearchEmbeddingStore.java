@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding.opensearch;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -305,15 +305,10 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
 
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to opensearch]");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try {
             createIndexIfNotExist(embeddings.get(0).dimension());
@@ -325,7 +320,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         try {
             bulkRemove(ids);
         } catch (IOException ex) {
