@@ -30,6 +30,7 @@ import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
 import com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset;
 import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageDetailLevel;
 import com.azure.ai.openai.models.ChatMessageImageUrl;
 import com.azure.ai.openai.models.ChatMessageTextContentItem;
 import com.azure.ai.openai.models.ChatRequestAssistantMessage;
@@ -283,6 +284,7 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent imageContent) {
                                 String imageUrlString = toImageUrl(imageContent.image());
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageUrlString);
+                                imageUrl.setDetail(toImageDetail(imageContent.detailLevel()));
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -314,6 +316,18 @@ class InternalAzureOpenAiHelper {
             return image.url().toString();
         }
         return String.format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
+    private static ChatMessageImageDetailLevel toImageDetail(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
+            return null;
+        }
+        return switch (detailLevel) {
+            case LOW -> ChatMessageImageDetailLevel.LOW;
+            case HIGH -> ChatMessageImageDetailLevel.HIGH;
+            case AUTO -> ChatMessageImageDetailLevel.AUTO;
+            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + detailLevel);
+        };
     }
 
     private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
