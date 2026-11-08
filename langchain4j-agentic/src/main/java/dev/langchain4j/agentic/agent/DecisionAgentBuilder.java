@@ -119,10 +119,6 @@ public class DecisionAgentBuilder<T> {
 
     private DecisionAgentBuilder(Class<T> agentServiceClass, boolean configureDeclarativeAgent) {
         this.agentServiceClass = ensureNotNull(agentServiceClass, "agentServiceClass");
-        if (!agentServiceClass.isInterface()) {
-            throw new IllegalArgumentException("A decision agent must be defined by an interface, but "
-                    + agentServiceClass.getName() + " is a class");
-        }
         this.agenticMethod = validateAgentClass(agentServiceClass);
         validateMethod(agentServiceClass, agenticMethod);
         this.decisionMethod = DecisionMethod.from(agenticMethod);
@@ -368,6 +364,10 @@ public class DecisionAgentBuilder<T> {
      * {@code boolean} answer
      */
     public T build() {
+        if (agentInstanceFactory == null && !agentServiceClass.isInterface()) {
+            throw new IllegalArgumentException("A decision agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         if ((decisionModel == null) == (decisionModelProvider == null)) {
             throw new IllegalArgumentException(
                     "One and only one of decisionModel and decisionModelProvider must be set for the decision agent '"

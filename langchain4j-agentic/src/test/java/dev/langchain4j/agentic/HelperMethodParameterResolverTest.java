@@ -313,7 +313,7 @@ class HelperMethodParameterResolverTest {
     }
 
     @Test
-    void parameters_of_a_non_ai_agent_passed_as_instance_are_read_from_the_scope() {
+    void parameters_of_a_non_ai_agent_passed_as_instance_are_resolved_like_the_static_ones() {
         register(Formatter.class, new Formatter());
         Formatter scopeFormatter = new Formatter() {
             @Override
@@ -327,12 +327,14 @@ class HelperMethodParameterResolverTest {
                 .outputKey("greeting")
                 .build();
 
+        // the resolved formatter is used, not the one in the scope, and it is not an argument of the agent
         assertThat(sequence.invoke(Map.of("name", "Mario", "formatter", scopeFormatter)))
-                .isEqualTo("Hello Mario!");
+                .isEqualTo("HELLO MARIO");
         assertThat(((AgentInstance) sequence).subagents().get(0).arguments())
                 .extracting(AgentArgument::name)
-                .containsExactly("name", "formatter");
-        assertThat(RESOLVED).isEmpty();
+                .containsExactly("name");
+        assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).containsExactly("greet");
+        assertThat(RESOLVED.get(0).declaringAgentClass()).isEqualTo(InstanceGreeter.class);
     }
 
     // ── @ActivationCondition with value ──
@@ -599,6 +601,36 @@ class HelperMethodParameterResolverTest {
                 .isEqualTo("Butler of mario | Answer as Butler: What time is it?");
         assertThat(store.memories).containsOnlyKeys("mario");
         assertThat(store.memories.get("mario").messages()).isNotEmpty();
+    }
+
+    public interface ResolvedModelTranslator {
+
+        @dev.langchain4j.service.UserMessage("Translate {{text}}")
+        @Agent(outputKey = "translation")
+        String translate(@V("text") String text);
+
+        @ChatModelSupplier
+        static ChatModel chatModel(@Injected ChatModelMock model) {
+            return model;
+        }
+    }
+
+    public interface ResolvedModelTranslation {
+
+        @SequenceAgent(outputKey = "translation", subAgents = ResolvedModelTranslator.class)
+        String run(@V("text") String text);
+    }
+
+    @Test
+    void chat_model_supplier_with_only_resolved_parameters_is_invoked_once_when_the_agent_is_built() {
+        ChatModelMock model = register(ChatModelMock.class, echoModel());
+
+        ResolvedModelTranslation translation = AgenticServices.createAgenticSystem(ResolvedModelTranslation.class);
+        translation.run("ciao");
+        translation.run("hello");
+
+        assertThat(model.requests()).hasSize(2);
+        assertThat(RESOLVED).extracting(c -> c.supplierMethod().getName()).containsExactly("chatModel");
     }
 
     // ── @A2AServerUrlSupplier ──
