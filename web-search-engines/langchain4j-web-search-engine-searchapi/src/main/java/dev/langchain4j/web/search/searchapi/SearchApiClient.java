@@ -53,7 +53,8 @@ class SearchApiClient {
         HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
                 .method(GET)
                 .url(baseUrl, "api/v1/search")
-                .addHeader("Authorization", "Bearer " + request.getApiKey());
+                .addHeader("Authorization", "Bearer " + request.getApiKey())
+                .addHeader("User-Agent", "LangChain4j");
 
         finalParameters.forEach((key, value) -> {
             if (value != null) {
@@ -73,8 +74,7 @@ class SearchApiClient {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        SearchApiClientBuilder() {
-        }
+        SearchApiClientBuilder() {}
 
         public SearchApiClientBuilder timeout(Duration timeout) {
             this.timeout = timeout;
