@@ -13,9 +13,9 @@ https://github.com/googleapis/java-genai
 ## Table of Contents
 
 - [Maven Dependency](#maven-dependency)
-- [API Key](#api-key)
+- [Authentication](#authentication)
 - [Models Available](#models-available)
-- [GoogleGenAiChatModel](#googlegenAichatmodel)
+- [GoogleGenAiChatModel](#googlegenaichatmodel)
     - [Configuring](#configuring)
 - [GoogleGenAiStreamingChatModel](#googlegenaistreamingchatmodel)
     - [Executor](#executor)

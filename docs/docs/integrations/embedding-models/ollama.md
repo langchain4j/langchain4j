@@ -42,7 +42,7 @@ embedding API is text-only, so a request that sets an input type or an image inp
 Ollama's optional output `dimensions` is model-dependent (only some models support reducing the output size),
 so it is configured on the builder via `.dimensions(...)` rather than as a per-call parameter.
 
-Attach [listeners](/tutorials/observability#embeddingmodel-observability) to observe requests, responses, and
+Attach [listeners](/tutorials/observability#embeddingmodel-listener) to observe requests, responses, and
 errors:
 
 ```java

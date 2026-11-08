@@ -371,7 +371,7 @@ JsonRawSchema schema = JsonRawSchema.from(rawSchema);
 
 :::note
 The `JsonRawSchema` is currently supported only by Amazon Bedrock, Azure OpenAI, Mistral, Ollama, OpenAI, OpenAI Official and Google AI Gemini.
-For Google AI Gemini specifically, see the example in the [Response JSON Schema](/integrations/language-models/google-ai-gemini/#response-json-schema).
+For Google AI Gemini specifically, see the example in the [Raw Response Schema](/integrations/language-models/google-ai-gemini/#raw-response-schema).
 :::
 
 
