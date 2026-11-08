@@ -16,6 +16,9 @@ class MistralAiChatRequestParametersTest {
                 .randomSeed(42)
                 .sendThinking(true)
                 .returnThinking(true)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
         assertThat(parameters.temperature()).isEqualTo(0.7);
@@ -23,6 +26,9 @@ class MistralAiChatRequestParametersTest {
         assertThat(parameters.randomSeed()).isEqualTo(42);
         assertThat(parameters.sendThinking()).isTrue();
         assertThat(parameters.returnThinking()).isTrue();
+        assertThat(parameters.promptCacheKey()).isEqualTo("cache-key");
+        assertThat(parameters.reasoningEffort()).isEqualTo("low");
+        assertThat(parameters.serviceTier()).isEqualTo("standard_only");
     }
 
     @Test
@@ -31,6 +37,9 @@ class MistralAiChatRequestParametersTest {
         assertThat(MistralAiChatRequestParameters.EMPTY.randomSeed()).isNull();
         assertThat(MistralAiChatRequestParameters.EMPTY.sendThinking()).isNull();
         assertThat(MistralAiChatRequestParameters.EMPTY.returnThinking()).isNull();
+        assertThat(MistralAiChatRequestParameters.EMPTY.promptCacheKey()).isNull();
+        assertThat(MistralAiChatRequestParameters.EMPTY.reasoningEffort()).isNull();
+        assertThat(MistralAiChatRequestParameters.EMPTY.serviceTier()).isNull();
     }
 
     @Test
@@ -45,6 +54,9 @@ class MistralAiChatRequestParametersTest {
         MistralAiChatRequestParameters override = MistralAiChatRequestParameters.builder()
                 .safePrompt(true)
                 .randomSeed(99)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
         MistralAiChatRequestParameters result = base.overrideWith(override);
@@ -53,6 +65,9 @@ class MistralAiChatRequestParametersTest {
         assertThat(result.randomSeed()).isEqualTo(99);
         assertThat(result.sendThinking()).isFalse();
         assertThat(result.temperature()).isEqualTo(0.2);
+        assertThat(result.promptCacheKey()).isEqualTo("cache-key");
+        assertThat(result.reasoningEffort()).isEqualTo("low");
+        assertThat(result.serviceTier()).isEqualTo("standard_only");
     }
 
     @Test
@@ -72,18 +87,26 @@ class MistralAiChatRequestParametersTest {
 
     @Test
     void defaultedBy_should_let_this_win() {
-        MistralAiChatRequestParameters primary =
-                MistralAiChatRequestParameters.builder().safePrompt(true).build();
+        MistralAiChatRequestParameters primary = MistralAiChatRequestParameters.builder()
+                .safePrompt(true)
+                .reasoningEffort("low")
+                .build();
 
         MistralAiChatRequestParameters fallback = MistralAiChatRequestParameters.builder()
                 .safePrompt(false)
                 .randomSeed(5)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("high")
+                .serviceTier("standard_only")
                 .build();
 
         MistralAiChatRequestParameters result = primary.defaultedBy(fallback);
 
         assertThat(result.safePrompt()).isTrue();
         assertThat(result.randomSeed()).isEqualTo(5);
+        assertThat(result.promptCacheKey()).isEqualTo("cache-key");
+        assertThat(result.reasoningEffort()).isEqualTo("low");
+        assertThat(result.serviceTier()).isEqualTo("standard_only");
     }
 
     @Test
@@ -92,6 +115,9 @@ class MistralAiChatRequestParametersTest {
                 .modelName("mistral-large-latest")
                 .safePrompt(true)
                 .randomSeed(42)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("high")
+                .serviceTier("standard_only")
                 .build();
 
         assertThat(parameters.toBuilder().build()).isEqualTo(parameters);
@@ -102,14 +128,23 @@ class MistralAiChatRequestParametersTest {
         MistralAiChatRequestParameters a = MistralAiChatRequestParameters.builder()
                 .safePrompt(true)
                 .randomSeed(42)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("high")
+                .serviceTier("standard_only")
                 .build();
         MistralAiChatRequestParameters b = MistralAiChatRequestParameters.builder()
                 .safePrompt(true)
                 .randomSeed(42)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("high")
+                .serviceTier("standard_only")
                 .build();
         MistralAiChatRequestParameters different = MistralAiChatRequestParameters.builder()
                 .safePrompt(true)
                 .randomSeed(43)
+                .promptCacheKey("cache-key2")
+                .reasoningEffort("low")
+                .serviceTier("auto")
                 .build();
 
         assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
