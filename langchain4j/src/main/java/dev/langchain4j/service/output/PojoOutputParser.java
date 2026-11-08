@@ -1,6 +1,7 @@
 package dev.langchain4j.service.output;
 
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.isIgnoredField;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
@@ -49,14 +50,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
         try {
             if (isPolymorphic(type)) {
                 return extractAndParseJson(text, json -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> map = Json.fromJson(json, Map.class);
-                    if (map != null && map.size() == 1 && map.containsKey("value")) {
-                        return Json.fromJson(Json.toJson(map.get("value")), type);
-                    } else {
-                        return Json.fromJson(json, type);
-                    }
-                }).value();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = Json.fromJson(json, Map.class);
+                            if (map != null && map.size() == 1 && map.containsKey("value")) {
+                                return Json.fromJson(Json.toJson(map.get("value")), type);
+                            } else {
+                                return Json.fromJson(json, type);
+                            }
+                        })
+                        .value();
             } else {
                 return extractAndParseJson(text, type).value();
             }
@@ -102,11 +104,10 @@ class PojoOutputParser<T> implements OutputParser<T> {
 
         jsonSchema.append("{\n");
         for (Field field : type.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                // Skip coverage instrumentation field.
+            if (isIgnoredField(field)) {
                 continue;
             }
+            String name = field.getName();
             jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
         }
 
