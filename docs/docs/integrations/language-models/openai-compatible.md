@@ -45,10 +45,11 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including Cheaper Inference, OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
+- [Cheaper Inference](#cheaper-inference)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
@@ -85,6 +86,25 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-open-ai-spring-boot-starter` instead.
 See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
 :::
+
+## Cheaper Inference
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Cheaper Inference](https://cheaperinference.com) is an OpenAI-compatible LLM gateway. One API key gives access to models from several labs.
+
+**Setup:**
+To use Cheaper Inference, you'll need an API key from [Cheaper Inference](https://cheaperinference.com/signup) (keys start with `ci_live_`).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.cheaperinference.com/v1")
+        .apiKey(System.getenv("CHEAPER_INFERENCE_API_KEY")) // Your actual key, e.g. "ci_live_..."
+        .modelName("gpt-5.4-mini") // Or any other model offered by Cheaper Inference
+        .build();
+```
+You can find available model names on the [Cheaper Inference models page](https://cheaperinference.com/#models).
 
 ## OrcaRouter
 
