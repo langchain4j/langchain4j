@@ -169,6 +169,53 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
                 .hasMessageContaining("100 characters long");
     }
 
+    @Test
+    void should_split_text_with_a_whitespace_only_buffer() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(1, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("a b"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("a", "b");
+    }
+
+    @Test
+    void should_split_text_with_leading_whitespace() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(1, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from(" a"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("a");
+    }
+
+    @Test
+    void should_split_text_with_multiple_spaces_between_chunks() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(2, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("ab  cd"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("ab", "cd");
+    }
+
+    @Test
+    void should_preserve_internal_whitespace_when_text_fits() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(20, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("hello  world"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("hello  world");
+    }
+
+    @Test
+    void should_skip_whitespace_between_and_after_segments() {
+        DocumentByCharacterSplitter splitter = new DocumentByCharacterSplitter(1, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from("a \t\nb \t\n"));
+
+        assertThat(segments).extracting(TextSegment::text).containsExactly("a", "b");
+        assertThat(segments.get(0).metadata().getInteger("index")).isEqualTo(0);
+        assertThat(segments.get(1).metadata().getInteger("index")).isEqualTo(1);
+    }
+
     static class EmptyResultSplitter extends HierarchicalDocumentSplitter {
 
         EmptyResultSplitter() {
