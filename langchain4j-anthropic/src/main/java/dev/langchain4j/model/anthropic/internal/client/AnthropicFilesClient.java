@@ -30,12 +30,6 @@ import org.slf4j.Logger;
  * <p>
  * All requests are sent with the {@code files-api-2025-04-14} beta header. Generated files are
  * only retrievable for 24 hours after creation.
- * <p>
- * Note: downloading the raw file content ({@code GET /v1/files/{file_id}/content}) is not yet
- * supported, since the shared {@link HttpClient} abstraction only exposes {@code String} request/
- * response bodies, which would corrupt binary content (e.g. {@code .xlsx}, {@code .pptx},
- * {@code .pdf}) on decode.
- *
  * @since 1.18.0
  */
 @Experimental
@@ -145,21 +139,18 @@ public class AnthropicFilesClient {
     }
 
     /**
-     * Downloads the raw content of a file.
-     *
-     * <p><b>Not yet supported:</b> the shared {@link HttpClient} abstraction only exposes
-     * {@code String} response bodies, which would corrupt binary file content (e.g. {@code .xlsx},
-     * {@code .pptx}, {@code .pdf}) on decode. Implementing this safely requires either a byte-array
-     * response variant on the core {@link HttpClient} API, or bypassing this abstraction entirely.
+     * Downloads the raw content of a file ({@code GET /v1/files/{file_id}/content}).
+     * <p>
+     * The content is returned as the raw bytes of the response, so binary files such as {@code .xlsx},
+     * {@code .pptx} or {@code .pdf} are not altered.
      *
      * @param fileId the file identifier
-     * @throws UnsupportedOperationException always, until binary-safe downloads are supported
+     * @return the content of the file
      */
     public byte[] download(String fileId) {
-        throw new UnsupportedOperationException(
-                "Downloading raw file content is not yet supported: the shared HttpClient abstraction "
-                        + "only exposes String response bodies, which would corrupt binary file content. "
-                        + "See AnthropicFilesClient#download javadoc.");
+        SuccessfulHttpResponse response = httpClient.execute(toGetRequest("files/" + fileId + "/content"));
+        byte[] content = response.bodyBytes();
+        return content != null ? content : new byte[0];
     }
 
     private HttpRequest toGetRequest(String path) {

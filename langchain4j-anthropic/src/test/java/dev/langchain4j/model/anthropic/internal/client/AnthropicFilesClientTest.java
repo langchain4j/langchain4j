@@ -1,7 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
@@ -127,11 +126,39 @@ class AnthropicFilesClientTest {
     class DownloadTest {
 
         @Test
-        void shouldThrowUnsupportedOperationException() {
-            AnthropicFilesClient subject = createClient(MockHttpClient.thatAlwaysResponds(
-                    SuccessfulHttpResponse.builder().statusCode(200).body("").build()));
+        void shouldSendDownloadRequest() {
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(
+                    SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1}).build());
+            AnthropicFilesClient subject = createClient(mockHttpClient);
 
-            assertThatThrownBy(() -> subject.download("file_abc123")).isInstanceOf(UnsupportedOperationException.class);
+            subject.download("file_abc123");
+
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.method()).isEqualTo(HttpMethod.GET);
+            assertThat(sentRequest.url()).isEqualTo(TEST_BASE_URL + "/files/file_abc123/content");
+            assertThat(sentRequest.headers().get("x-api-key")).containsExactly(TEST_API_KEY);
+            assertThat(sentRequest.headers().get("anthropic-version")).containsExactly(TEST_VERSION);
+            assertThat(sentRequest.headers().get("anthropic-beta")).containsExactly("files-api-2025-04-14");
+        }
+
+        @Test
+        void shouldReturnBinaryContentUnchanged() {
+            // starts like a zip archive (.xlsx, .pptx, .docx) and is not valid UTF-8
+            byte[] content = {0x50, 0x4B, 0x03, 0x04, (byte) 0xFF, (byte) 0xFE, 0x00, (byte) 0x80, 0x7F};
+            AnthropicFilesClient subject = createClient(MockHttpClient.thatAlwaysResponds(
+                    SuccessfulHttpResponse.builder().statusCode(200).body(content).build()));
+
+            byte[] downloaded = subject.download("file_abc123");
+
+            assertThat(downloaded).containsExactly(content);
+        }
+
+        @Test
+        void shouldReturnEmptyArrayWhenResponseHasNoBody() {
+            AnthropicFilesClient subject = createClient(MockHttpClient.thatAlwaysResponds(
+                    SuccessfulHttpResponse.builder().statusCode(200).build()));
+
+            assertThat(subject.download("file_abc123")).isEmpty();
         }
     }
 
