@@ -64,7 +64,9 @@ public suspend fun loadDocuments(
                 fileStream.use { stream ->
                     stream
                         .filter { file ->
-                            Files.isRegularFile(file) && matcher.matches(file)
+                            // matching is done on paths relative to the traversed directory,
+                            // so patterns like "glob:*.txt" behave like FileSystemDocumentLoader
+                            Files.isRegularFile(file) && matcher.matches(path.relativize(file))
                         }.forEach { file ->
                             files.add(file)
                         }
