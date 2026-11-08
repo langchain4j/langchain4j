@@ -28,6 +28,7 @@ abstract class OllamaBaseChatModel {
     protected OllamaClient client;
     protected OllamaChatRequestParameters defaultRequestParameters;
     protected boolean returnThinking;
+    protected boolean sendThinking;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
 
@@ -86,6 +87,7 @@ abstract class OllamaBaseChatModel {
                 .useMmap(ollamaParameters.useMmap())
                 .build();
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
@@ -119,6 +121,7 @@ abstract class OllamaBaseChatModel {
         protected Boolean think;
         protected Boolean truncate;
         protected Boolean returnThinking;
+        protected Boolean sendThinking;
         protected Duration timeout;
         protected Supplier<Map<String, String>> customHeadersSupplier;
         protected Boolean logRequests;
@@ -273,6 +276,22 @@ abstract class OllamaBaseChatModel {
          */
         public B returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return self();
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the {@code thinking} field
+         * of the corresponding assistant message in the API request.
+         * Some models use the thinking from previous turns when rendering the chat history.
+         *
+         * @see #think(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public B sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return self();
         }
 
