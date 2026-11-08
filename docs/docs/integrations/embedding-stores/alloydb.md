@@ -9,7 +9,7 @@ This module implements `EmbeddingStore` backed by an AlloyDB for PostgreSQL data
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artificatId>langchain4j-community-alloydb-pg</artificatId>
+    <artifactId>langchain4j-community-alloydb-pg</artificatId>
     <version>${latest version here}</version>
 </dependency>
 ```
@@ -40,10 +40,10 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.engine.EmbeddingStoreConfig;
-import dev.langchain4j.engine.AlloyDBEngine;
-import dev.langchain4j.engine.MetadataColumn;
-import dev.langchain4j.store.embedding.alloydb.AlloyDBEmbeddingStore;
+import dev.langchain4j.community.store.embedding.alloydb.EmbeddingStoreConfig;
+import dev.langchain4j.community.store.embedding.alloydb.AlloyDBEngine;
+import dev.langchain4j.community.store.embedding.alloydb.MetadataColumn;
+import dev.langchain4j.community.store.embedding.alloydb.AlloyDBEmbeddingStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +71,7 @@ for (String text : testTexts) {
     metaMap.put("my_metadata", "string");
     Metadata metadata = new Metadata(metaMap);
     textSegments.add(new TextSegment(text, metadata));
-    embeddings.add(MyEmbeddingModel.embed(text).content());
+    embeddings.add(embeddingModel.embed(text).content());
 }
 List<String> ids = store.addAll(embeddings, textSegments);
 // search for "cat"
