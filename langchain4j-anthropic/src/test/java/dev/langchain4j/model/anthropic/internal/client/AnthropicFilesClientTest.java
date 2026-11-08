@@ -127,8 +127,10 @@ class AnthropicFilesClientTest {
 
         @Test
         void shouldSendDownloadRequest() {
-            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(
-                    SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1}).build());
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(new byte[] {1})
+                    .build());
             AnthropicFilesClient subject = createClient(mockHttpClient);
 
             subject.download("file_abc123");
@@ -145,8 +147,11 @@ class AnthropicFilesClientTest {
         void shouldReturnBinaryContentUnchanged() {
             // starts like a zip archive (.xlsx, .pptx, .docx) and is not valid UTF-8
             byte[] content = {0x50, 0x4B, 0x03, 0x04, (byte) 0xFF, (byte) 0xFE, 0x00, (byte) 0x80, 0x7F};
-            AnthropicFilesClient subject = createClient(MockHttpClient.thatAlwaysResponds(
-                    SuccessfulHttpResponse.builder().statusCode(200).body(content).build()));
+            AnthropicFilesClient subject =
+                    createClient(MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                            .statusCode(200)
+                            .body(content)
+                            .build()));
 
             byte[] downloaded = subject.download("file_abc123");
 
