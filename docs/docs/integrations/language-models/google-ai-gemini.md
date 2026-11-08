@@ -28,7 +28,7 @@ https://ai.google.dev/gemini-api/docs
     - [File States](#file-states)
 - [Context Caching](#context-caching)
 - [Batch Processing](#batch-processing)
-    - [GoogleAiBatchChatModel](#googleaibatchchatmodel)
+    - [GoogleAiGeminiBatchChatModel](#googleaigeminibatchchatmodel)
     - [Creating Batch Jobs](#creating-batch-jobs)
     - [Handling Batch Responses](#handling-batch-responses)
     - [Polling for Results](#polling-for-results)
@@ -959,9 +959,11 @@ caches.deleteCache(cache.name());
 
 ## Batch Processing
 
-### GoogleAiBatchChatModel
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
 
-The `GoogleAiBatchChatModel` provides an interface for processing large volumes of chat requests asynchronously at a reduced cost [(50% of standard pricing)](https://ai.google.dev/gemini-api/docs/batch-api). It is ideal for non-urgent, large-scale tasks with a 24-hour turnaround SLO.
+### GoogleAiGeminiBatchChatModel
+
+The `GoogleAiGeminiBatchChatModel` provides an interface for processing large volumes of chat requests asynchronously at a reduced cost [(50% of standard pricing)](https://ai.google.dev/gemini-api/docs/batch-api). It is ideal for non-urgent, large-scale tasks with a 24-hour turnaround SLO.
 
 ### Creating Batch Jobs
 
@@ -1163,7 +1165,7 @@ For advanced use cases, you can write batch requests to a JSONL file and upload 
 // Create a JSONL file with batch requests
 Path batchFile = Files.createTempFile("batch", ".jsonl");
 
-try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+try (JsonLinesWriter writer = JsonLinesWriters.streaming(batchFile)) {
     List<BatchFileRequest<ChatRequest>> fileRequests = List.of(
         new BatchFileRequest<>("request-1", ChatRequest.builder()
             .messages(UserMessage.from("Question 1"))
