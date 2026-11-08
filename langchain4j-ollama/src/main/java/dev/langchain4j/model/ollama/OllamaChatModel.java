@@ -86,6 +86,14 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Sets the number of times to retry a request on transient errors (e.g. connection timeouts).
+         * <p>
+         * Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
+         */
         public OllamaChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
