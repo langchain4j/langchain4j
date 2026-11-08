@@ -113,7 +113,8 @@ class AiServicesContextPropagationTest {
                 .build();
 
         // when: two tool rounds, each submitted from the thread that delivered the model's answer
-        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE))
+                .get(10, SECONDS);
 
         // then
         assertThat(answer).isEqualTo("Berlin");
@@ -135,7 +136,8 @@ class AiServicesContextPropagationTest {
                 .build();
 
         // when
-        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE))
+                .get(10, SECONDS);
 
         // then
         assertThat(answer).isEqualTo("Berlin");
@@ -254,13 +256,15 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         Tools tools = new Tools();
         AiServiceContext context = AiServiceContext.create(Assistant.class);
-        context.streamingChatModel =
-                StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin"));
+        context.streamingChatModel = StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin"));
         context.toolService.tools(List.of(tools));
         UserMessage userMessage = UserMessage.from(USER_MESSAGE);
-        InvocationContext invocationContext = withRequestId("request-42", () -> CapturedContextSupport.captureInto(
-                        InvocationContext.builder().chatMemoryId("default").userMessage(userMessage))
-                .build());
+        InvocationContext invocationContext = withRequestId(
+                "request-42",
+                () -> CapturedContextSupport.captureInto(InvocationContext.builder()
+                                .chatMemoryId("default")
+                                .userMessage(userMessage))
+                        .build());
         TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
                 .messages(List.of(userMessage))
                 .toolServiceContext(
@@ -339,7 +343,8 @@ class AiServicesContextPropagationTest {
                 .build();
 
         // when
-        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE))
+                .get(10, SECONDS);
 
         // then
         assertThat(answer).isEqualTo("Berlin");
@@ -374,7 +379,8 @@ class AiServicesContextPropagationTest {
                 .build();
 
         // when
-        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        String answer = withRequestId("request-42", () -> assistant.chatAsync(USER_MESSAGE))
+                .get(10, SECONDS);
 
         // then
         assertThat(answer).isEqualTo("Berlin");
@@ -415,10 +421,11 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> request.messages().get(request.messages().size() - 1)
-                                instanceof dev.langchain4j.data.message.ToolExecutionResultMessage
-                        ? AiMessage.from("Berlin")
-                        : toolCall("1")))
+                .chatModel(ChatModelMock.thatResponds(
+                        request -> request.messages().get(request.messages().size() - 1)
+                                        instanceof dev.langchain4j.data.message.ToolExecutionResultMessage
+                                ? AiMessage.from("Berlin")
+                                : toolCall("1")))
                 .tools(tools)
                 .build();
 
@@ -463,7 +470,8 @@ class AiServicesContextPropagationTest {
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
-        Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when
         CompletableFuture<String> answer = assistant.chatAsync(USER_MESSAGE);
@@ -480,7 +488,8 @@ class AiServicesContextPropagationTest {
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
-        Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when-then
         assertThatThrownBy(() -> assistant.chat(USER_MESSAGE)).hasMessageContaining("cannot capture the context");
@@ -536,7 +545,8 @@ class AiServicesContextPropagationTest {
                 .build();
 
         // when
-        String answer = withRequestId("request-42", () -> outer.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+        String answer =
+                withRequestId("request-42", () -> outer.chatAsync(USER_MESSAGE)).get(10, SECONDS);
 
         // then
         assertThat(answer).isEqualTo("Berlin");

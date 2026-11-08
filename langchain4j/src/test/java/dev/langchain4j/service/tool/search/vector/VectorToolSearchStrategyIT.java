@@ -1,5 +1,16 @@
 package dev.langchain4j.service.tool.search.vector;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -14,23 +25,11 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
+import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
-
-import java.util.List;
-
-import static dev.langchain4j.MockitoUtils.ignoreInteractions;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class VectorToolSearchStrategyIT {
@@ -47,9 +46,7 @@ class VectorToolSearchStrategyIT {
 
     private static List<ChatModel> models() {
         return List.of(
-                baseModelBuilder().build(),
-                baseModelBuilder().strictTools(true).build()
-        );
+                baseModelBuilder().build(), baseModelBuilder().strictTools(true).build());
     }
 
     interface Assistant {
@@ -108,28 +105,27 @@ class VectorToolSearchStrategyIT {
 
         InOrder inOrder = inOrder(spyChatModel, spyToolSearchStrategy, spyTools);
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 1
-                        && containsTool(request, "tool_search_tool")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        request.toolSpecifications().size() == 1 && containsTool(request, "tool_search_tool")));
 
-        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolExecutionRequest().arguments().contains("weather")
-        ));
+        inOrder.verify(spyToolSearchStrategy)
+                .search(argThat(
+                        request -> request.toolExecutionRequest().arguments().contains("weather")));
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "getWeather")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat(
+                        (ChatRequest request) -> request.toolSpecifications().size() == 2
+                                && containsTool(request, "tool_search_tool")
+                                && containsTool(request, "getWeather")));
 
         inOrder.verify(spyTools).getWeather("London");
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "getWeather")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat(
+                        (ChatRequest request) -> request.toolSpecifications().size() == 2
+                                && containsTool(request, "tool_search_tool")
+                                && containsTool(request, "getWeather")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());
@@ -147,31 +143,31 @@ class VectorToolSearchStrategyIT {
         // then
         assertThat(answer2).contains("12", "34");
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 2
-                        && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "getWeather")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat(
+                        (ChatRequest request) -> request.toolSpecifications().size() == 2
+                                && containsTool(request, "tool_search_tool")
+                                && containsTool(request, "getWeather")));
 
-        inOrder.verify(spyToolSearchStrategy).search(argThat(request ->
-                request.toolExecutionRequest().arguments().contains("time")
-        ));
+        inOrder.verify(spyToolSearchStrategy)
+                .search(argThat(
+                        request -> request.toolExecutionRequest().arguments().contains("time")));
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 3
-                        && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat(
+                        (ChatRequest request) -> request.toolSpecifications().size() == 3
+                                && containsTool(request, "tool_search_tool")
+                                && containsTool(request, "getWeather")
+                                && containsTool(request, "getTime")));
 
         inOrder.verify(spyTools).getTime("Germany");
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().size() == 3
-                        && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat(
+                        (ChatRequest request) -> request.toolSpecifications().size() == 3
+                                && containsTool(request, "tool_search_tool")
+                                && containsTool(request, "getWeather")
+                                && containsTool(request, "getTime")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
         ignoreInteractions(spyToolSearchStrategy).getToolSearchTools(any());

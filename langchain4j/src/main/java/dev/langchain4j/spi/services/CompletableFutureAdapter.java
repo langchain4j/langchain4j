@@ -1,7 +1,6 @@
 package dev.langchain4j.spi.services;
 
 import dev.langchain4j.Internal;
-
 import java.lang.reflect.Type;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;

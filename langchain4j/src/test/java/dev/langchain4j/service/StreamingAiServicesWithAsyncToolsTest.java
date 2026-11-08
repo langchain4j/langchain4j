@@ -54,7 +54,8 @@ class StreamingAiServicesWithAsyncToolsTest {
                 .build();
 
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat("What is the temperature?")
+        assistant
+                .chat("What is the temperature?")
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)

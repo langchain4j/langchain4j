@@ -2,11 +2,11 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 
-import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.ChatExchange;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;

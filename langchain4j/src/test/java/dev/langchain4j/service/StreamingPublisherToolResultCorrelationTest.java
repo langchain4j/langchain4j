@@ -108,7 +108,8 @@ class StreamingPublisherToolResultCorrelationTest {
     void should_keep_tool_calls_apart_when_they_share_an_id() throws Exception {
 
         List<ToolExecutionRequest> announced = List.of(
-                request("same", "{\"city\": \"Paris\", \"days\": 1}"), request("same", "{\"city\": \"Rome\", \"days\": 2}"));
+                request("same", "{\"city\": \"Paris\", \"days\": 1}"),
+                request("same", "{\"city\": \"Rome\", \"days\": 2}"));
         List<ToolExecutionRequest> reported = List.of(
                 request("same", "{\"days\":1,\"city\":\"Paris\"}"), request("same", "{\"days\":2,\"city\":\"Rome\"}"));
 

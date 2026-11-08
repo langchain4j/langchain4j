@@ -1,7 +1,6 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;

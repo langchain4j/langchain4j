@@ -6,9 +6,8 @@ import dev.langchain4j.model.chat.StreamingChatModelAdapter;
 import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -16,12 +15,7 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                syncModel(true),
-                syncModel(false),
-                streamingModel(true),
-                streamingModel(false)
-        );
+        return List.of(syncModel(true), syncModel(false), streamingModel(true), streamingModel(false));
     }
 
     private static ChatModel syncModel(boolean strictTools) {

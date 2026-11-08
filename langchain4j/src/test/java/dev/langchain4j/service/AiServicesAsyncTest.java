@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Collections.synchronizedList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -18,14 +17,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.rag.AugmentationRequest;
-import dev.langchain4j.rag.AugmentationResult;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -45,6 +38,13 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -167,7 +167,8 @@ class AiServicesAsyncTest {
                 .contentRetriever(query -> List.of(Content.from("relevant document")))
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+        assertThatThrownBy(
+                        () -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -188,7 +189,8 @@ class AiServicesAsyncTest {
                         .build())
                 .build();
 
-        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isEqualTo("Berlin");
         // the blocking retriever ran (offloaded) and its content reached the model
         var sentMessages = chatModel.requests().get(0).messages();
         assertThat(((UserMessage) sentMessages.get(sentMessages.size() - 1)).singleText())
@@ -250,7 +252,8 @@ class AiServicesAsyncTest {
                 .retrievalAugmentor(blockingAugmentor)
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+        assertThatThrownBy(
+                        () -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
@@ -263,9 +266,8 @@ class AiServicesAsyncTest {
 
         ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
 
@@ -287,9 +289,8 @@ class AiServicesAsyncTest {
             }
         };
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
 
@@ -411,8 +412,7 @@ class AiServicesAsyncTest {
 
         assertThat(chatModel.requests()).hasSize(2);
         assertThat(chatModel.requests().get(1).messages()).hasSize(3);
-        assertThat(chatModel.requests().get(1).messages().get(1))
-                .isEqualTo(AiMessage.from("first answer"));
+        assertThat(chatModel.requests().get(1).messages().get(1)).isEqualTo(AiMessage.from("first answer"));
     }
 
     interface AssistantReturningResult {
@@ -429,7 +429,8 @@ class AiServicesAsyncTest {
                 .chatModel(chatModel)
                 .build();
 
-        Result<String> result = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+        Result<String> result =
+                assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(result.content()).isEqualTo("Berlin");
         assertThat(result.toolExecutions()).isEmpty();
@@ -449,7 +450,8 @@ class AiServicesAsyncTest {
                 .chatModel(chatModel)
                 .build();
 
-        ChatResponse chatResponse = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+        ChatResponse chatResponse =
+                assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Berlin");
         assertThat(chatModel.requests()).hasSize(1);
@@ -467,7 +469,8 @@ class AiServicesAsyncTest {
                 .chatModel(chatModel)
                 .build();
 
-        ChatResponse chatResponse = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+        ChatResponse chatResponse =
+                assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Berlin");
         assertThat(chatModel.requests()).hasSize(1);
@@ -558,8 +561,7 @@ class AiServicesAsyncTest {
 
         // CompletableFuture<List<Person>>: the async unwrap must preserve the nested generic (List<Person>,
         // not raw List) so the output parser can resolve the element type
-        ChatModel chatModel =
-                new JsonSchemaCapableModel("{\"values\":[{\"name\":\"Klaus\"},{\"name\":\"Franny\"}]}");
+        ChatModel chatModel = new JsonSchemaCapableModel("{\"values\":[{\"name\":\"Klaus\"},{\"name\":\"Franny\"}]}");
 
         AssistantReturningList assistant = AiServices.builder(AssistantReturningList.class)
                 .chatModel(chatModel)
@@ -634,8 +636,8 @@ class AiServicesAsyncTest {
         });
         assertThat(result.intermediateResponses())
                 .singleElement()
-                .satisfies(response ->
-                        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue());
+                .satisfies(response -> assertThat(response.aiMessage().hasToolExecutionRequests())
+                        .isTrue());
     }
 
     @Test
@@ -643,9 +645,8 @@ class AiServicesAsyncTest {
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
 
@@ -669,9 +670,8 @@ class AiServicesAsyncTest {
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
 
@@ -828,9 +828,8 @@ class AiServicesAsyncTest {
             }
         };
 
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(chatModel)
-                .build();
+        Assistant assistant =
+                AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
         assertThat(future).isNotDone();
@@ -957,9 +956,13 @@ class AiServicesAsyncTest {
 
         // the tool is NOT interrupted: it runs to completion even though the invocation was cancelled
         Thread.sleep(200);
-        assertThat(toolFinished).as("an already-started tool is not interrupted by cancellation").isTrue();
+        assertThat(toolFinished)
+                .as("an already-started tool is not interrupted by cancellation")
+                .isTrue();
         assertThat(future).isCancelled();
-        assertThat(modelCalls).as("the loop must not proceed to a second model round").hasValue(1);
+        assertThat(modelCalls)
+                .as("the loop must not proceed to a second model round")
+                .hasValue(1);
     }
 
     @Test
@@ -1531,9 +1534,8 @@ class AiServicesAsyncTest {
     @Test
     void should_use_tool_provider() throws Exception {
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("currentTemperature")
-                .build();
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("currentTemperature").build();
         ToolExecutor toolExecutor = new ToolExecutor() {
 
             @Override
@@ -1548,8 +1550,9 @@ class AiServicesAsyncTest {
                         ToolExecutionResult.builder().resultText("42").build());
             }
         };
-        ToolProvider toolProvider =
-                request -> ToolProviderResult.builder().add(toolSpecification, toolExecutor).build();
+        ToolProvider toolProvider = request -> ToolProviderResult.builder()
+                .add(toolSpecification, toolExecutor)
+                .build();
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
@@ -1575,9 +1578,8 @@ class AiServicesAsyncTest {
     @Test
     void should_execute_custom_tool_executor_overriding_executeAsync() throws Exception {
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("currentTemperature")
-                .build();
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("currentTemperature").build();
         ToolExecutor toolExecutor = new ToolExecutor() {
 
             @Override
@@ -1621,9 +1623,8 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_future_when_custom_tool_executor_does_not_support_async_execution() {
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("currentTemperature")
-                .build();
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("currentTemperature").build();
         ToolExecutor syncOnlyToolExecutor = (request, memoryId) -> "42";
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(

@@ -19,12 +19,6 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -34,6 +28,12 @@ import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -111,8 +111,8 @@ class AiServicesNonBlockingTest {
     @BeforeAll
     static void installBlockHound() {
         BlockHound.builder()
-                .nonBlockingThreadPredicate(prev -> prev.or(thread -> thread.getName()
-                        .startsWith("ai-service-delivery")))
+                .nonBlockingThreadPredicate(
+                        prev -> prev.or(thread -> thread.getName().startsWith("ai-service-delivery")))
                 // Pool bookkeeping, not application blocking: idle workers park on the work queue (getTask),
                 // exiting workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
@@ -244,9 +244,7 @@ class AiServicesNonBlockingTest {
     void streaming_with_blocking_chat_memory_store_does_not_block_the_delivery_thread() throws Exception {
 
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
-                deliveryExecutor,
-                AiMessage.from(toolRequest("1", "currentTemperature")),
-                AiMessage.from("42 degrees"));
+                deliveryExecutor, AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
         WeatherTools tools = new WeatherTools();
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
@@ -314,8 +312,8 @@ class AiServicesNonBlockingTest {
 
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
-            throw new AssertionError("Blocking chat() must not be called "
-                    + "when the AI Service method returns a CompletableFuture");
+            throw new AssertionError(
+                    "Blocking chat() must not be called " + "when the AI Service method returns a CompletableFuture");
         }
     }
 
@@ -679,7 +677,8 @@ class AiServicesNonBlockingTest {
     void streaming_blocking_output_guardrail_does_not_block_the_delivery_thread() throws Exception {
 
         BlockingGuardedStreamingAssistant assistant = AiServices.builder(BlockingGuardedStreamingAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .streamingChatModel(
+                        StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
                 .build();
 
         assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
@@ -784,8 +783,10 @@ class AiServicesNonBlockingTest {
     @Test
     void streaming_blocking_input_guardrail_does_not_block_the_delivery_thread() throws Exception {
 
-        BlockingInputGuardedStreamingAssistant assistant = AiServices.builder(BlockingInputGuardedStreamingAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+        BlockingInputGuardedStreamingAssistant assistant = AiServices.builder(
+                        BlockingInputGuardedStreamingAssistant.class)
+                .streamingChatModel(
+                        StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
                 .build();
 
         assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
@@ -1030,8 +1031,7 @@ class AiServicesNonBlockingTest {
                 .arguments("{ invalid json }")
                 .build();
         NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
-                AiMessage.from(bankToolRequest("1", "credit"), badArguments),
-                AiMessage.from("done"));
+                AiMessage.from(bankToolRequest("1", "credit"), badArguments), AiMessage.from("done"));
 
         CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
                 .chatModel(chatModel)
@@ -1176,7 +1176,8 @@ class AiServicesNonBlockingTest {
                             }
                             return response(AiMessage.from("done"));
                         },
-                        guardrailWorker); // non-policed worker: this test deliberately blocks it to simulate a slow call
+                        guardrailWorker); // non-policed worker: this test deliberately blocks it to simulate a slow
+                // call
             }
 
             @Override
@@ -1194,7 +1195,9 @@ class AiServicesNonBlockingTest {
 
         CompletableFuture<String> future = assistant.chat("transfer");
 
-        assertThat(round2Entered.await(5, SECONDS)).as("the second round should start").isTrue();
+        assertThat(round2Entered.await(5, SECONDS))
+                .as("the second round should start")
+                .isTrue();
         future.cancel(true);
         release.countDown();
 
@@ -1255,7 +1258,8 @@ class AiServicesNonBlockingTest {
     void streaming_plain_chat_does_not_block_the_delivery_thread() throws Exception {
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .streamingChatModel(
+                        StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
                 .build();
 
         assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
@@ -1267,9 +1271,7 @@ class AiServicesNonBlockingTest {
     void streaming_tool_loop_does_not_block_the_delivery_thread() throws Exception {
 
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
-                deliveryExecutor,
-                AiMessage.from(toolRequest("1", "currentTemperature")),
-                AiMessage.from("42 degrees"));
+                deliveryExecutor, AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
         WeatherTools tools = new WeatherTools();
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
@@ -1288,9 +1290,7 @@ class AiServicesNonBlockingTest {
     void streaming_async_tool_does_not_block_the_delivery_thread() throws Exception {
 
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
-                deliveryExecutor,
-                AiMessage.from(toolRequest("1", "currentTemperature")),
-                AiMessage.from("42 degrees"));
+                deliveryExecutor, AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
         AsyncWeatherTools tools = new AsyncWeatherTools();
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
@@ -1479,7 +1479,8 @@ class AiServicesNonBlockingTest {
                 .retrievalAugmentor(augmentorFor(new AsyncContentRetriever(Content.from("Germany is in Europe."))))
                 .build();
 
-        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isEqualTo("Berlin");
         assertNoBlockingCalls();
     }
 
@@ -1492,7 +1493,8 @@ class AiServicesNonBlockingTest {
                         new AsyncContentRetriever(Content.from("fact two"))))
                 .build();
 
-        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isEqualTo("Berlin");
         assertNoBlockingCalls();
     }
 
@@ -1524,7 +1526,8 @@ class AiServicesNonBlockingTest {
                 .build();
 
         String callerThreadName = Thread.currentThread().getName();
-        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isEqualTo("Berlin");
 
         assertThat(retriever.retrieveThread.get())
                 .as("the blocking retrieve() must be offloaded off the caller/pipeline thread")

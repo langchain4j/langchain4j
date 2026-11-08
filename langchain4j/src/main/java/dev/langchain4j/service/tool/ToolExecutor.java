@@ -1,9 +1,9 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
@@ -43,9 +43,7 @@ public interface ToolExecutor {
 
         String result = execute(request, memoryId);
 
-        return ToolExecutionResult.builder()
-                .resultText(result)
-                .build();
+        return ToolExecutionResult.builder().resultText(result).build();
     }
 
     /**

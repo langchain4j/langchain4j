@@ -10,8 +10,8 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.TextInput;
-import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
 import java.util.List;
@@ -27,11 +27,12 @@ class DecisionModelToolSearchStrategyTest {
             "create_invoice", 0.3);
 
     // answers each tool question with the relevance of the tool whose name is in the question
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
-            .filter(entry -> question.text().contains(entry.getKey()))
-            .mapToDouble(Map.Entry::getValue)
-            .findFirst()
-            .orElseThrow());
+    final DecisionModelMock decisionModel =
+            DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
+                    .filter(entry -> question.text().contains(entry.getKey()))
+                    .mapToDouble(Map.Entry::getValue)
+                    .findFirst()
+                    .orElseThrow());
 
     static final List<ToolSpecification> TOOLS = List.of(
             tool("send_email", "Sends an email"),
@@ -136,8 +137,8 @@ class DecisionModelToolSearchStrategyTest {
     @Test
     void should_propagate_decision_model_errors() {
 
-        DecisionModelToolSearchStrategy strategy = new DecisionModelToolSearchStrategy(
-                DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+        DecisionModelToolSearchStrategy strategy =
+                new DecisionModelToolSearchStrategy(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
 
         assertThatThrownBy(() -> strategy.search(searchRequest("{\"query\": \"weather\"}")))
                 .hasMessage("down");
@@ -164,8 +165,8 @@ class DecisionModelToolSearchStrategyTest {
     @Test
     void should_describe_search_tool() {
 
-        List<ToolSpecification> tools =
-                new DecisionModelToolSearchStrategy(decisionModel).getToolSearchTools(InvocationContext.builder().build());
+        List<ToolSpecification> tools = new DecisionModelToolSearchStrategy(decisionModel)
+                .getToolSearchTools(InvocationContext.builder().build());
 
         assertThat(tools).singleElement().satisfies(tool -> {
             assertThat(tool.name()).isEqualTo("tool_search_tool");

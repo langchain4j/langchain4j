@@ -132,12 +132,8 @@ class AiServiceInvocationEventsTest {
         assistant.chat("Hello");
 
         assertThat(events(ToolExecutedEvent.class))
-                .extracting(
-                        event -> event.request().name(),
-                        ToolExecutedEvent::isError)
-                .containsExactly(
-                        tuple("succeed", false),
-                        tuple("fail", true));
+                .extracting(event -> event.request().name(), ToolExecutedEvent::isError)
+                .containsExactly(tuple("succeed", false), tuple("fail", true));
     }
 
     @Test
@@ -372,8 +368,7 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
-    void should_fire_one_response_received_event_per_request_when_output_guardrail_reprompts_async()
-            throws Exception {
+    void should_fire_one_response_received_event_per_request_when_output_guardrail_reprompts_async() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
@@ -398,7 +393,8 @@ class AiServiceInvocationEventsTest {
 
         assistant
                 .chat("Hello")
-                .onCompleteResponse(response -> answer.complete(response.aiMessage().text()))
+                .onCompleteResponse(
+                        response -> answer.complete(response.aiMessage().text()))
                 .onError(answer::completeExceptionally)
                 .start();
 
@@ -528,9 +524,7 @@ class AiServiceInvocationEventsTest {
 
         assertThat(events(ToolExecutedEvent.class))
                 .extracting(event -> event.request().name(), ToolExecutedEvent::isError)
-                .containsExactlyInAnyOrder(
-                        tuple("succeed", false),
-                        tuple("fail", true));
+                .containsExactlyInAnyOrder(tuple("succeed", false), tuple("fail", true));
     }
 
     @Test
@@ -565,8 +559,8 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_the_tools_that_ran_before_a_sequential_tool_failed_a_token_stream() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed", "fail"), AiMessage.from("answer")))
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                        callingTools("succeed", "fail"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .registerListeners(listeners())
@@ -580,8 +574,8 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_the_tools_that_ran_when_a_concurrent_tool_failed_a_token_stream() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed", "fail"), AiMessage.from("answer")))
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                        callingTools("succeed", "fail"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .executeToolsConcurrently()
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
@@ -734,7 +728,8 @@ class AiServiceInvocationEventsTest {
                 .chat("Hello")
                 .onPartialResponseWithContext(
                         (partialResponse, context) -> firstRoundHandle.compareAndSet(null, context.streamingHandle()))
-                .beforeToolExecution(beforeToolExecution -> firstRoundHandle.get().cancel())
+                .beforeToolExecution(
+                        beforeToolExecution -> firstRoundHandle.get().cancel())
                 .onToolExecuted(toolExecution -> toolExecuted.countDown())
                 .onError(error -> {})
                 .start();
@@ -759,8 +754,8 @@ class AiServiceInvocationEventsTest {
 
     private void assertRequestsAndResponsesArePaired() {
         List<AiServiceEvent> modelEvents = events.stream()
-                .filter(event -> event instanceof AiServiceRequestIssuedEvent
-                        || event instanceof AiServiceResponseReceivedEvent)
+                .filter(event ->
+                        event instanceof AiServiceRequestIssuedEvent || event instanceof AiServiceResponseReceivedEvent)
                 .toList();
         assertThat(modelEvents)
                 .<Class<?>>extracting(AiServiceEvent::eventClass)
@@ -774,9 +769,15 @@ class AiServiceInvocationEventsTest {
             AiServiceResponseReceivedEvent received = (AiServiceResponseReceivedEvent) modelEvents.get(i + 1);
             assertThat(received.request()).isEqualTo(issued.request());
         }
-        assertThat(((AiServiceResponseReceivedEvent) modelEvents.get(1)).response().aiMessage().text())
+        assertThat(((AiServiceResponseReceivedEvent) modelEvents.get(1))
+                        .response()
+                        .aiMessage()
+                        .text())
                 .isEqualTo("bad");
-        assertThat(((AiServiceResponseReceivedEvent) modelEvents.get(3)).response().aiMessage().text())
+        assertThat(((AiServiceResponseReceivedEvent) modelEvents.get(3))
+                        .response()
+                        .aiMessage()
+                        .text())
                 .isEqualTo("good");
     }
 
@@ -944,7 +945,8 @@ class AiServiceInvocationEventsTest {
                 })
                 .registerListeners(listeners())
                 .build();
-        TokenStream tokenStream = assistant.chat("Hello").onPartialResponse(token -> {}).onError(error -> {});
+        TokenStream tokenStream =
+                assistant.chat("Hello").onPartialResponse(token -> {}).onError(error -> {});
 
         assertThatThrownBy(tokenStream::start).hasMessage("transformer failed");
 
@@ -961,7 +963,8 @@ class AiServiceInvocationEventsTest {
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .registerListeners(listeners())
                 .build();
-        TokenStream tokenStream = assistant.chat("Hello")
+        TokenStream tokenStream = assistant
+                .chat("Hello")
                 .onRetrieved(contents -> {
                     throw new IllegalStateException("handler failed");
                 })
@@ -977,8 +980,9 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
-    void should_end_token_stream_invocation_with_error_event_on_configuration_error_and_start_a_new_one_when_started_again()
-            throws Exception {
+    void
+            should_end_token_stream_invocation_with_error_event_on_configuration_error_and_start_a_new_one_when_started_again()
+                    throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
                 .registerListeners(listeners())
@@ -1004,14 +1008,18 @@ class AiServiceInvocationEventsTest {
 
         assertThat(events(AiServiceCompletedEvent.class))
                 .singleElement()
-                .satisfies(completedEvent -> assertThat(completedEvent.invocationContext().invocationId())
+                .satisfies(completedEvent -> assertThat(
+                                completedEvent.invocationContext().invocationId())
                         .isNotEqualTo(error.invocationContext().invocationId()));
         assertThat(events(AiServiceStartedEvent.class))
                 .hasSize(2)
                 .extracting(started -> started.invocationContext().invocationId())
                 .containsExactly(
                         error.invocationContext().invocationId(),
-                        events(AiServiceCompletedEvent.class).get(0).invocationContext().invocationId());
+                        events(AiServiceCompletedEvent.class)
+                                .get(0)
+                                .invocationContext()
+                                .invocationId());
         assertThat(events(AiServiceErrorEvent.class)).hasSize(1);
     }
 
@@ -1096,8 +1104,7 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
-    void should_give_each_concurrent_subscription_of_reactive_events_invocation_its_own_invocation()
-            throws Exception {
+    void should_give_each_concurrent_subscription_of_reactive_events_invocation_its_own_invocation() throws Exception {
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
                 .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
                 .registerListeners(listeners())
@@ -1106,8 +1113,7 @@ class AiServiceInvocationEventsTest {
         assertConcurrentSubscriptionsAreSeparateInvocations(assistant.chat("Hello"));
     }
 
-    private void assertConcurrentSubscriptionsAreSeparateInvocations(Flow.Publisher<?> publisher)
-            throws Exception {
+    private void assertConcurrentSubscriptionsAreSeparateInvocations(Flow.Publisher<?> publisher) throws Exception {
         int subscriptions = 8;
         CountDownLatch allEnded = new CountDownLatch(subscriptions);
         CountDownLatch oneMoreEnded = new CountDownLatch(subscriptions + 1);
@@ -1488,8 +1494,8 @@ class AiServiceInvocationEventsTest {
     void should_rethrow_virtual_machine_error_of_a_concurrent_tool_untouched() {
         StackOverflowError overflow = new StackOverflowError("too deep");
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
-                        callingTools("succeed", "overflow"), AiMessage.from("answer")))
+                .chatModel(
+                        ChatModelMock.thatAlwaysResponds(callingTools("succeed", "overflow"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("overflow", overflow))
                 .executeToolsConcurrently()
                 .registerListeners(listeners())
@@ -1523,8 +1529,8 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_every_tool_of_a_sequential_round_when_a_tool_throws_an_error() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
-                        callingTools("succeed", "explode"), AiMessage.from("answer")))
+                .chatModel(
+                        ChatModelMock.thatAlwaysResponds(callingTools("succeed", "explode"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("explode", new AssertionError("boom")))
                 .registerListeners(listeners())
                 .build();
@@ -1596,7 +1602,8 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_record_parent_invocation_of_ai_service_called_by_custom_tool_executor() {
         Assistant inner = innerAssistant();
-        ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+        ToolSpecification askInner =
+                ToolSpecification.builder().name("askInner").build();
         Assistant outer = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
                 .tools(Map.of(askInner, (ToolExecutor) (request, memoryId) -> inner.chat("inner question")))
@@ -1641,8 +1648,8 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_of_token_stream() throws Exception {
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
-                        callingTools("askInner"), AiMessage.from("answer")))
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("askInner"), AiMessage.from("answer")))
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
                 .build();
@@ -1656,8 +1663,8 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_of_reactive_invocation() throws Exception {
         Assistant inner = innerAssistant();
         ReactiveAssistant outer = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
-                        callingTools("askInner"), AiMessage.from("answer")))
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("askInner"), AiMessage.from("answer")))
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
                 .build();
@@ -1681,7 +1688,8 @@ class AiServiceInvocationEventsTest {
                 .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("inner answer"))
                 .registerListeners(listeners())
                 .build();
-        ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+        ToolSpecification askInner =
+                ToolSpecification.builder().name("askInner").build();
         ToolExecutor askingEveryInner = (request, memoryId) -> {
             asyncInner.chat("inner question").join();
             TokenStream tokenStream = streamingInner.chat("inner question");
@@ -1716,7 +1724,8 @@ class AiServiceInvocationEventsTest {
         Assistant inner = innerAssistant();
         ExecutorService ownExecutor = Executors.newSingleThreadExecutor();
         try {
-            ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+            ToolSpecification askInner =
+                    ToolSpecification.builder().name("askInner").build();
             ToolExecutor askingInnerOnOwnThread = (request, memoryId) -> CompletableFuture.supplyAsync(
                             () -> inner.chat("inner question"), ownExecutor)
                     .join();
@@ -2537,8 +2546,9 @@ class AiServiceInvocationEventsTest {
 
         assistant.chat("user-1", "Hello");
 
-        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
-                .isSameAs(chatMemory));
+        assertThat(seenByGuardrails)
+                .hasSize(2)
+                .allSatisfy(memory -> assertThat(memory).isSameAs(chatMemory));
     }
 
     @Test
@@ -2554,8 +2564,9 @@ class AiServiceInvocationEventsTest {
 
         assistant.chat("Hello");
 
-        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
-                .isSameAs(chatMemory));
+        assertThat(seenByGuardrails)
+                .hasSize(2)
+                .allSatisfy(memory -> assertThat(memory).isSameAs(chatMemory));
     }
 
     @Test
@@ -2571,8 +2582,9 @@ class AiServiceInvocationEventsTest {
 
         assistant.chat("Hello").get(5, SECONDS);
 
-        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
-                .isSameAs(chatMemory));
+        assertThat(seenByGuardrails)
+                .hasSize(2)
+                .allSatisfy(memory -> assertThat(memory).isSameAs(chatMemory));
     }
 
     @Test
@@ -2588,8 +2600,9 @@ class AiServiceInvocationEventsTest {
 
         start(assistant.chat("Hello")).get(5, SECONDS);
 
-        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
-                .isSameAs(chatMemory));
+        assertThat(seenByGuardrails)
+                .hasSize(2)
+                .allSatisfy(memory -> assertThat(memory).isSameAs(chatMemory));
     }
 
     @Test
@@ -2605,8 +2618,9 @@ class AiServiceInvocationEventsTest {
 
         consume(assistant.chat("Hello")).get(5, SECONDS);
 
-        assertThat(seenByGuardrails).hasSize(2).allSatisfy(memory -> assertThat(memory)
-                .isSameAs(chatMemory));
+        assertThat(seenByGuardrails)
+                .hasSize(2)
+                .allSatisfy(memory -> assertThat(memory).isSameAs(chatMemory));
     }
 
     private static InputGuardrail recordingChatMemory(List<ChatMemory> seenByGuardrails) {
@@ -2698,7 +2712,8 @@ class AiServiceInvocationEventsTest {
                 .registerListeners(listeners())
                 .registerListener(callingInner)
                 .build();
-        ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
+        ToolSpecification askInner =
+                ToolSpecification.builder().name("askInner").build();
         Assistant outer = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
                 .tools(Map.of(askInner, (ToolExecutor) (request, memoryId) -> {
@@ -2837,9 +2852,9 @@ class AiServiceInvocationEventsTest {
         // the model streams before chat(...) returns, so the handlers run on the thread of the model call
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
-                                callingTools("book"), AiMessage.from("booked"))
-                        .streamingOnCallingThread())
+                .streamingChatModel(
+                        StreamingChatModelMock.thatAlwaysStreams(callingTools("book"), AiMessage.from("booked"))
+                                .streamingOnCallingThread())
                 .tools(new NoOpBookingTool())
                 .registerListeners(listeners())
                 .build();
@@ -3073,7 +3088,8 @@ class AiServiceInvocationEventsTest {
     }
 
     private void assertChatMemoryAccessedOnlyInsideTheInvocation(InvocationRecordingChatMemoryStore store) {
-        UUID invocationId = events(AiServiceStartedEvent.class).get(0).invocationContext().invocationId();
+        UUID invocationId =
+                events(AiServiceStartedEvent.class).get(0).invocationContext().invocationId();
         assertThat(store.invocationIds).isNotEmpty().containsOnly(invocationId);
     }
 
@@ -3190,13 +3206,9 @@ class AiServiceInvocationEventsTest {
         var executions = assertThat(events(ToolExecutedEvent.class))
                 .extracting(event -> event.request().name(), ToolExecutedEvent::isError);
         if (inRequestOrder) {
-            executions.containsExactly(
-                    tuple("succeed", false),
-                    tuple("fail", true));
+            executions.containsExactly(tuple("succeed", false), tuple("fail", true));
         } else {
-            executions.containsExactlyInAnyOrder(
-                    tuple("succeed", false),
-                    tuple("fail", true));
+            executions.containsExactlyInAnyOrder(tuple("succeed", false), tuple("fail", true));
         }
     }
 
@@ -3399,7 +3411,10 @@ class AiServiceInvocationEventsTest {
     }
 
     private <T extends AiServiceEvent> List<T> events(Class<T> eventClass) {
-        return events.stream().filter(eventClass::isInstance).map(eventClass::cast).toList();
+        return events.stream()
+                .filter(eventClass::isInstance)
+                .map(eventClass::cast)
+                .toList();
     }
 
     private List<AiServiceListener<?>> listeners() {

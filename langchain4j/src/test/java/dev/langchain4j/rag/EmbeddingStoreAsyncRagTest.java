@@ -33,8 +33,9 @@ class EmbeddingStoreAsyncRagTest {
     private static final EmbeddingModel EMBEDDING_MODEL = new EmbeddingModel() {
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            return Response.from(
-                    textSegments.stream().map(s -> Embedding.from(new float[] {1f, 0f, 0f})).toList());
+            return Response.from(textSegments.stream()
+                    .map(s -> Embedding.from(new float[] {1f, 0f, 0f}))
+                    .toList());
         }
 
         @Override
@@ -81,8 +82,9 @@ class EmbeddingStoreAsyncRagTest {
         UserMessage userMessage = UserMessage.from("query");
         Metadata metadata = Metadata.from(userMessage, SystemMessage.from("Be polite"), null, null);
 
-        AugmentationResult result =
-                augmentor.augmentAsync(new AugmentationRequest(userMessage, metadata)).get(5, SECONDS);
+        AugmentationResult result = augmentor
+                .augmentAsync(new AugmentationRequest(userMessage, metadata))
+                .get(5, SECONDS);
 
         assertThat(result.contents()).extracting(c -> c.textSegment().text()).contains("relevant document");
         assertThat(((UserMessage) result.chatMessage()).singleText()).contains("relevant document");

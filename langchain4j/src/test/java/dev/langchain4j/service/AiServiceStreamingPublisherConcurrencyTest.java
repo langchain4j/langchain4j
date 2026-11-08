@@ -95,8 +95,8 @@ class AiServiceStreamingPublisherConcurrencyTest {
             }
 
             // Round 1: many concurrent tool calls. Round 2: the final textual answer.
-            StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
-                    AiMessage.from(toolRequests), AiMessage.from("done"));
+            StreamingEventChatModelMock model =
+                    StreamingEventChatModelMock.thatStreams(AiMessage.from(toolRequests), AiMessage.from("done"));
 
             BusyTools tools = new BusyTools();
             EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -119,7 +119,8 @@ class AiServiceStreamingPublisherConcurrencyTest {
 
             // The property under test: signals to the subscriber were never concurrent, despite concurrent sends.
             assertThat(subscriber.maxConcurrentSignals())
-                    .as("Reactive Streams rule 1.3: signals must be serialized (no concurrent onNext/onComplete/onError)")
+                    .as(
+                            "Reactive Streams rule 1.3: signals must be serialized (no concurrent onNext/onComplete/onError)")
                     .isEqualTo(1);
 
             // And the stream is intact — every event delivered exactly once, none lost or duplicated.
@@ -130,14 +131,13 @@ class AiServiceStreamingPublisherConcurrencyTest {
             assertThat(subscriber.countOf(AfterToolExecutionEvent.class)).isEqualTo(TOOL_CALLS);
             assertThat(subscriber.countOf(IntermediateResponseEvent.class)).isEqualTo(1);
             assertThat(subscriber.countOf(FinalResponseEvent.class)).isEqualTo(1);
-            assertThat(subscriber.events().get(subscriber.events().size() - 1))
-                    .isInstanceOf(FinalResponseEvent.class);
+            assertThat(subscriber.events().get(subscriber.events().size() - 1)).isInstanceOf(FinalResponseEvent.class);
 
             // Per tool, its BeforeToolExecutionEvent is delivered before its AfterToolExecutionEvent (the
             // serialized order never interleaves a single tool's own pair, even though tools overlap each other).
             assertThat(subscriber.beforeIndexByToolId())
-                    .allSatisfy((toolId, beforeIndex) ->
-                            assertThat(beforeIndex).isLessThan(subscriber.afterIndexByToolId().get(toolId)));
+                    .allSatisfy((toolId, beforeIndex) -> assertThat(beforeIndex)
+                            .isLessThan(subscriber.afterIndexByToolId().get(toolId)));
         } finally {
             toolExecutor.shutdownNow();
         }
@@ -234,7 +234,10 @@ class AiServiceStreamingPublisherConcurrencyTest {
             return indexByToolId(
                     snapshot,
                     BeforeToolExecutionEvent.class,
-                    e -> ((BeforeToolExecutionEvent) e).beforeToolExecution().request().id());
+                    e -> ((BeforeToolExecutionEvent) e)
+                            .beforeToolExecution()
+                            .request()
+                            .id());
         }
 
         java.util.Map<String, Integer> afterIndexByToolId() {

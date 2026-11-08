@@ -1,8 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import java.util.function.Predicate;
-import dev.langchain4j.model.decision.request.MessagesInput;
-import dev.langchain4j.model.decision.request.DecisionInput;
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -17,6 +14,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.request.DecisionInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSelector;
 import java.util.ArrayList;
@@ -24,6 +23,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +81,6 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
      */
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = DecisionModelToolSelector.DEFAULT_QUESTION_TEMPLATE;
 
-
     private static final Logger log = LoggerFactory.getLogger(DecisionModelFilteringToolProvider.class);
 
     private static final int DEFAULT_MAX_MESSAGES = 10;
@@ -130,7 +129,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
                 builder.minProbability,
                 builder.maxToolsPerDecisionRequest);
         this.alwaysIncludedTools = Set.copyOf(builder.alwaysIncludedTools);
-        this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
+        this.maxMessages =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
         this.maxMessageLength = ensureGreaterThanZero(
                 getOrDefault(builder.maxMessageLength, DEFAULT_MAX_MESSAGE_LENGTH), "maxMessageLength");
         this.messageFilter = getOrDefault(builder.messageFilter, message -> true);
@@ -217,7 +217,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         } else {
             messages.add(userMessage);
         }
-        List<ChatMessage> conversation = DecisionModelInputUtils.window(messages, messageFilter, maxMessages, maxMessageLength);
+        List<ChatMessage> conversation =
+                DecisionModelInputUtils.window(messages, messageFilter, maxMessages, maxMessageLength);
         return conversation.isEmpty() ? null : MessagesInput.from(conversation);
     }
 

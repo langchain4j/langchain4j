@@ -29,7 +29,8 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
     }
 
     @Override
-    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException e, AiServices<?> aiServiceBuilder) {
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(
+            RuntimeException e, AiServices<?> aiServiceBuilder) {
         class Tools {
             @Tool
             String getWeatherThrowingExceptionWithoutMessage(String ignored) {
@@ -89,9 +90,7 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
     void should_send_message_for_llm_when_tool_throws_error_visible_to_llm_with_fail_invocation_unless_visible_to_llm(
             boolean executeToolsConcurrently, InvocationMode invocationMode) {
         should_send_message_for_llm_when_tool_throws_error_visible_to_llm(
-                executeToolsConcurrently,
-                invocationMode,
-                ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
+                executeToolsConcurrently, invocationMode, ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
     }
 
     private void should_send_message_for_llm_when_tool_throws_error_visible_to_llm(
@@ -108,7 +107,8 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
         ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("There is no such order")));
 
-        AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class).chatModel(spyModel);
+        AiServices<Assistant> assistantBuilder =
+                AiServices.builder(Assistant.class).chatModel(spyModel);
         if (toolExecutionErrorHandler != null) {
             assistantBuilder.toolExecutionErrorHandler(toolExecutionErrorHandler);
         }
@@ -122,10 +122,14 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
         chat(assistant, "What is the status of order 42?", invocationMode);
 
         // then
-        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
-        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
-                && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals("There is no order with ID 42"));
+        verifyChatRequest(
+                spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(
+                spyModel,
+                invocationMode,
+                chatRequest -> chatRequest.messages().size() == 3
+                        && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
+                        && toolResult.text().equals("There is no order with ID 42"));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }

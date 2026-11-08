@@ -56,7 +56,8 @@ final class ToolErrors {
     }
 
     static void logErrorHiddenFromLlm(Throwable error, ToolErrorContext context) {
-        String toolName = context == null ? null : context.toolExecutionRequest().name();
+        String toolName =
+                context == null ? null : context.toolExecutionRequest().name();
         log.warn("Tool '{}' failed. A generic message was sent to the LLM instead of the error", toolName, error);
     }
 

@@ -228,7 +228,8 @@ class StreamingAiServicesWithToolsIT {
             String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
                 latch.countDown();
-                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
+                assertThat(latch.await(10, SECONDS))
+                        .isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
@@ -236,7 +237,8 @@ class StreamingAiServicesWithToolsIT {
             String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
                 latch.countDown();
-                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
+                assertThat(latch.await(10, SECONDS))
+                        .isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
@@ -1152,9 +1154,7 @@ class StreamingAiServicesWithToolsIT {
         // then
         Throwable error = futureError.get(60, SECONDS);
 
-        assertThat(error)
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Unexpected character");
+        assertThat(error).isInstanceOf(RuntimeException.class).hasMessageContaining("Unexpected character");
 
         verifyNoInteractions(spyTool);
 

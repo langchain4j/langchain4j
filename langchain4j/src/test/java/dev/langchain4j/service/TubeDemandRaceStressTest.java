@@ -45,7 +45,9 @@ class TubeDemandRaceStressTest {
                 .build();
         int stuck = hammer(() -> assistant.chat("hi"), ITEMS);
         System.out.println("[stress] Publisher<String>: iterations=" + ITERATIONS + " stuck=" + stuck);
-        assertThat(stuck).as("subscriptions that never delivered a requested item").isZero();
+        assertThat(stuck)
+                .as("subscriptions that never delivered a requested item")
+                .isZero();
     }
 
     @Test
@@ -55,7 +57,9 @@ class TubeDemandRaceStressTest {
                 .build();
         int stuck = hammer(() -> assistant.chat("hi"), ITEMS);
         System.out.println("[stress] Publisher<AiServiceStreamingEvent>: iterations=" + ITERATIONS + " stuck=" + stuck);
-        assertThat(stuck).as("subscriptions that never delivered a requested item").isZero();
+        assertThat(stuck)
+                .as("subscriptions that never delivered a requested item")
+                .isZero();
     }
 
     /** Requests one item at a time, so every request(n) races the emitting thread. */

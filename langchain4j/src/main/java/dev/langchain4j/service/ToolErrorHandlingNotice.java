@@ -49,8 +49,8 @@ class ToolErrorHandlingNotice {
      */
     static List<Default> unconfirmedDefaults(AiServiceContext context, BooleanSupplier hasBlockingMethod) {
         ToolService toolService = context.toolService;
-        boolean hasTools =
-                !toolService.toolSpecifications().isEmpty() || !toolService.toolProviders().isEmpty();
+        boolean hasTools = !toolService.toolSpecifications().isEmpty()
+                || !toolService.toolProviders().isEmpty();
         if (!hasTools || !hasBlockingMethod.getAsBoolean()) {
             return List.of();
         }

@@ -610,8 +610,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_work_even_if_the_first_message_exceeds_max_tokens() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
 
         chatMemory.add(userMessageWithTokens(25));
         chatMemory.add(aiMessageWithTokens(10));
@@ -622,8 +621,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_not_fail_even_with_just_system_message() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
         chatMemory.add(systemMessageWithTokens(10));
     }
 

@@ -328,8 +328,7 @@ class ReturnBehaviorCombinationsTest {
 
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("combinations")
-    void should_produce_expected_outcome__async_tools(List<ToolStep> steps, Outcome expectedOutcome)
-            throws Exception {
+    void should_produce_expected_outcome__async_tools(List<ToolStep> steps, Outcome expectedOutcome) throws Exception {
 
         List<ToolExecutionRequest> toolRequests = toolRequestsFor(steps);
 
