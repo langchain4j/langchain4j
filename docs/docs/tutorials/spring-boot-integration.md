@@ -339,14 +339,14 @@ for example `openAiChatModelHttpClientBuilder` or `ollamaEmbeddingModelHttpClien
 
 ```java
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.http.client.spring.restclient.SpringRestClient;
+import dev.langchain4j.http.client.spring.SpringHttpClient;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestClient;
 
 @Bean
 HttpClientBuilder openAiChatModelHttpClientBuilder() {
-    return SpringRestClient.builder()
+    return SpringHttpClient.builder()
             .restClientBuilder(RestClient.builder())
             // no SSL bundle, so the JVM's default trust store is used; the same as not setting it.
             // To use another SSL bundle: HttpClientSettings.ofSslBundle(sslBundles.getBundle("..."))
@@ -359,7 +359,7 @@ With Spring Boot 3, the settings of blocking and non-blocking requests are set s
 
 ```java
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.http.client.spring.restclient.SpringRestClient;
+import dev.langchain4j.http.client.spring.SpringHttpClient;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.boot.http.client.reactive.ClientHttpConnectorSettings;
 import org.springframework.context.annotation.Bean;
@@ -367,7 +367,7 @@ import org.springframework.web.client.RestClient;
 
 @Bean
 HttpClientBuilder openAiChatModelHttpClientBuilder() {
-    return SpringRestClient.builder()
+    return SpringHttpClient.builder()
             .restClientBuilder(RestClient.builder())
             .clientHttpRequestFactorySettings(ClientHttpRequestFactorySettings.defaults())
             .clientHttpConnectorSettings(ClientHttpConnectorSettings.defaults())
@@ -391,7 +391,7 @@ To keep the rest, pass it yourself:
 To give LangChain4j a dedicated `WebClient.Builder`, declare a `WebClientBuilderHolder` bean:
 
 ```java
-import dev.langchain4j.http.client.spring.restclient.WebClientBuilderHolder;
+import dev.langchain4j.http.client.spring.WebClientBuilderHolder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.function.client.WebClient;
 
