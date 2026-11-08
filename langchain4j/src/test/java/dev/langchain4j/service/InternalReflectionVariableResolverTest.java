@@ -75,6 +75,30 @@ class InternalReflectionVariableResolverTest {
     }
 
     @Test
+    void injectsItWhenTemplateHasItWithSpacesAndArgCountIsOne() throws Exception {
+        final var m = getClass().getMethod("singleItParameter", String.class);
+        final var result =
+                InternalReflectionVariableResolver.findTemplateVariables("Hi {{ it }}", m, new Object[] {"VALUE"});
+        assertThat(result).containsEntry("it", "VALUE");
+    }
+
+    @Test
+    void injectsItWhenTemplateHasItWithMultipleSpacesAndArgCountIsOne() throws Exception {
+        final var m = getClass().getMethod("singleItParameter", String.class);
+        final var result =
+                InternalReflectionVariableResolver.findTemplateVariables("Hi {{   it   }}", m, new Object[] {"VALUE"});
+        assertThat(result).containsEntry("it", "VALUE");
+    }
+
+    @Test
+    void doesNotInjectItWhenTemplateReferencesOtherVariableContainingIt() throws Exception {
+        final var m = getClass().getMethod("singleItParameter", String.class);
+        final var result = InternalReflectionVariableResolver.findTemplateVariables(
+                "Hi {{ item }}", m, new Object[] {"VALUE"});
+        assertThat(result).containsEntry("arg0", "VALUE").doesNotContainKey("it");
+    }
+
+    @Test
     void skipsAnnotationsThatAreMemoryIdUserMessageUserNameForIt() throws Exception {
         final var m = getClass().getMethod("withMemoryId", String.class, String.class);
         Throwable thrown = catchThrowable(() ->
@@ -85,10 +109,28 @@ class InternalReflectionVariableResolverTest {
     }
 
     @Test
+    void skipsAnnotationsThatAreMemoryIdUserMessageUserNameForItWithSpaces() throws Exception {
+        final var m = getClass().getMethod("withMemoryId", String.class, String.class);
+        Throwable thrown = catchThrowable(() ->
+                InternalReflectionVariableResolver.findTemplateVariables("Hi {{ it }}", m, new Object[] {"foo", "bar"}));
+        assertThat(thrown)
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("cannot find the value of the prompt template variable");
+    }
+
+    @Test
     void findsItWhenParameterHasVAnnotationWithItValue() throws Exception {
         final var m = getClass().getMethod("vItName", String.class);
         final var result =
                 InternalReflectionVariableResolver.findTemplateVariables("Hi {{it}}", m, new Object[] {"SOMETHING"});
+        assertThat(result).containsEntry("it", "SOMETHING");
+    }
+
+    @Test
+    void findsItWhenParameterHasVAnnotationWithItValueAndSpaces() throws Exception {
+        final var m = getClass().getMethod("vItName", String.class);
+        final var result =
+                InternalReflectionVariableResolver.findTemplateVariables("Hi {{ it }}", m, new Object[] {"SOMETHING"});
         assertThat(result).containsEntry("it", "SOMETHING");
     }
 
