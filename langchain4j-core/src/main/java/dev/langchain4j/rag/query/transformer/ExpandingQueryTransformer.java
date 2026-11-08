@@ -1,24 +1,23 @@
 package dev.langchain4j.rag.query.transformer;
 
-import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.rag.query.Query;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.query.Query;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A {@link QueryTransformer} that utilizes a {@link ChatModel} to expand a given {@link Query}.
@@ -37,16 +36,14 @@ import static java.util.stream.Collectors.toList;
  */
 public class ExpandingQueryTransformer implements QueryTransformer {
 
-    public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            """
+    public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("""
                     Generate {{n}} different versions of a provided user query. \
                     Each version should be worded differently, using synonyms or alternative sentence structures, \
                     but they should all retain the original meaning. \
                     These versions will be used to retrieve relevant documents. \
                     It is very important to provide each query version on a separate line, \
                     without enumerations, hyphens, or any additional formatting!
-                    User query: {{query}}"""
-    );
+                    User query: {{query}}""");
     public static final int DEFAULT_N = 3;
 
     protected final ChatModel chatModel;
@@ -85,9 +82,10 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
         Prompt prompt = createPrompt(query);
-        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
-        CompletableFuture<Collection<Query>> result =
-                chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
+        var chatFuture = chatModel.chatAsync(
+                ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<Query>> result = chatFuture.thenApply(
+                response -> toQueries(query, response.aiMessage().text()));
         // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
         propagateCancellation(result, chatFuture);
         return result;
@@ -95,9 +93,11 @@ public class ExpandingQueryTransformer implements QueryTransformer {
 
     private Collection<Query> toQueries(Query query, String response) {
         return parse(response).stream()
-                .map(queryText -> query.metadata() == null
-                        ? Query.from(queryText)
-                        : Query.from(queryText, query.metadata()))
+                // LLMs sometimes return more queries than requested (introductory lines, extra results);
+                // keep at most n queries so downstream retrieval cost stays predictable
+                .limit(n)
+                .map(queryText ->
+                        query.metadata() == null ? Query.from(queryText) : Query.from(queryText, query.metadata()))
                 .collect(toList());
     }
 
@@ -109,9 +109,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     }
 
     protected List<String> parse(String queries) {
-        return stream(queries.split("\n"))
-                .filter(Utils::isNotNullOrBlank)
-                .collect(toList());
+        return stream(queries.split("\n")).filter(Utils::isNotNullOrBlank).collect(toList());
     }
 
     public static class ExpandingQueryTransformerBuilder {
@@ -119,8 +117,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         private PromptTemplate promptTemplate;
         private Integer n;
 
-        ExpandingQueryTransformerBuilder() {
-        }
+        ExpandingQueryTransformerBuilder() {}
 
         public ExpandingQueryTransformerBuilder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
