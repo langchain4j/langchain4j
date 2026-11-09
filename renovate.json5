@@ -38,6 +38,17 @@
             "groupName": "docker-java"
         },
         {
+            // the a2a SDK raises the versions this module pins for it; updated separately, they fail dependency convergence
+            "matchFileNames": ["langchain4j-agentic-a2a/pom.xml"],
+            "matchPackageNames": [
+                "org.a2aproject.sdk:*",
+                "com.google.protobuf:protobuf-java",
+                "com.google.code.gson:gson",
+                "com.google.errorprone:error_prone_annotations"
+            ],
+            "groupName": "a2a-java SDK"
+        },
+        {
             // "_special_" versions are IBM hotfix builds, not regular releases
             "matchPackageNames": ["com.ibm.db2:jcc"],
             "allowedVersions": "!/_special_/"

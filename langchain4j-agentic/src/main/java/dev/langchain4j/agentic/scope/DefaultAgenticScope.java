@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -65,8 +66,10 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
-    private final List<AgentInvocation> agentInvocations = Collections.synchronizedList(new ArrayList<>());
-    private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
+    // Iterators are snapshots, so a reader can walk either list while another thread registers an
+    // invocation or appends messages, without ConcurrentModificationException.
+    private final List<AgentInvocation> agentInvocations = new CopyOnWriteArrayList<>();
+    private final List<AgentMessage> context = new CopyOnWriteArrayList<>();
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
