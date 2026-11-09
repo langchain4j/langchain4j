@@ -55,7 +55,7 @@ public class LangChain4jAssertions extends Assertions {
      *                        {@code assertThat(capture.invocations().get(i))} then
      */
     public static AiServiceInvocationAssert assertThat(AiServiceCapture actual) {
-        return new AiServiceInvocationAssert(actual);
+        return new AiServiceInvocationAssert(actual == null ? null : actual.invocation());
     }
 
     /**

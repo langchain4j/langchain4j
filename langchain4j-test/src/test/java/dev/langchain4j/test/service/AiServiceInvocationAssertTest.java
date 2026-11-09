@@ -27,9 +27,12 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.test.LangChain4jAssertions;
+import dev.langchain4j.test.judge.Judge;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -112,6 +115,110 @@ class AiServiceInvocationAssertTest {
                 .hasToolExecutedWith("getBookingDetails", Map.of("bookingNumber", "MS-777"))
                 .hasToolExecutedWith("getWeather", Map.of("days", 3, "units", Map.of("temperature", "C")))
                 .hasToolExecutedWith("getWeather", Map.of());
+    }
+
+    @Test
+    void should_check_tool_arguments_with_requirements() {
+        AiServiceInvocation invocation = invocation(execution("getWeather", "{\"city\":\"München\",\"days\":3}"));
+
+        LangChain4jAssertions.assertThat(invocation)
+                .hasToolExecutedWith("getWeather", arguments -> assertThat(arguments.get("city"))
+                        .isIn("Munich", "München"))
+                .hasToolExecutedWith("getWeather", arguments -> assertThat(arguments.get("days"))
+                        .isEqualTo(3));
+    }
+
+    @Test
+    void should_fail_with_what_the_requirements_rejected() {
+        AiServiceInvocation invocation = invocation(execution("getWeather", "{\"city\":\"Berlin\"}"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation)
+                        .hasToolExecutedWith("getWeather", arguments -> assertThat(arguments.get("city"))
+                                .isIn("Munich", "München")))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining(
+                        "Expected tool <getWeather> to be executed successfully with arguments that pass the requirements")
+                .hasMessageContaining("its executions did not pass them")
+                .hasMessageContaining("[\"Munich\", \"München\"]")
+                .hasMessageContaining("1. getWeather({\"city\":\"Berlin\"}) -> ok");
+    }
+
+    @Test
+    void should_not_run_the_requirements_when_the_tool_was_not_executed() {
+        List<Map<String, Object>> checked = new ArrayList<>();
+        AiServiceInvocation invocation = invocation(execution("getBookingDetails", "{}"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasToolExecutedWith("getWeather", checked::add))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("but it was not.")
+                .hasMessageContaining("getBookingDetails");
+        assertThat(checked).isEmpty();
+    }
+
+    @Test
+    void should_not_run_the_requirements_for_failed_tool_executions() {
+        List<Map<String, Object>> checked = new ArrayList<>();
+        AiServiceInvocation invocation = invocation(failedExecution("getWeather", "{\"city\":\"Munich\"}"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasToolExecutedWith("getWeather", checked::add))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("but it was not.")
+                .hasMessageContaining("(FAILED)");
+        assertThat(checked).isEmpty();
+    }
+
+    @Test
+    void should_mark_only_the_executions_that_pass_the_requirements_as_checked() {
+        AiServiceInvocation invocation = invocation(
+                execution("getWeather", "{\"city\":\"Munich\"}"), execution("getWeather", "{\"city\":\"Berlin\"}"));
+
+        LangChain4jAssertions.assertThat(invocation).hasToolExecutedWith("getWeather", arguments -> assertThat(
+                        arguments.get("city"))
+                .isEqualTo("Munich"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasNoMoreToolExecutions())
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("not checked by a tool assertion")
+                .hasMessageContaining("1. getWeather({\"city\":\"Berlin\"})");
+
+        LangChain4jAssertions.assertThat(invocation)
+                .hasToolExecutedWith("getWeather", arguments -> assertThat(arguments.get("city"))
+                        .isEqualTo("Berlin"))
+                .hasNoMoreToolExecutions();
+    }
+
+    @Test
+    void should_rethrow_exceptions_of_the_requirements_that_are_not_assertion_failures() {
+        IllegalStateException problem = new IllegalStateException("the judge could not give a verdict");
+        AiServiceInvocation invocation = invocation(execution("getWeather", "{}"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasToolExecutedWith("getWeather", arguments -> {
+                    throw problem;
+                }))
+                .isSameAs(problem);
+    }
+
+    @Test
+    void should_check_tool_arguments_with_a_judge() {
+        ChatModelMock satisfied = ChatModelMock.thatAlwaysResponds(
+                """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "DE is Germany.", "result": "SATISFIED"}]}""");
+        ChatModelMock notSatisfied = ChatModelMock.thatAlwaysResponds(
+                """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "DE is not France.", "result": "NOT_SATISFIED"}]}""");
+        AiServiceInvocation invocation = invocation(execution("getWeather", "{\"country\":\"DE\"}"));
+
+        LangChain4jAssertions.assertThat(invocation).hasToolExecutedWith("getWeather", arguments -> Judge.from(satisfied)
+                .assertThat(arguments.get("country").toString())
+                .satisfies("refers to Germany"));
+
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation)
+                        .hasToolExecutedWith("getWeather", arguments -> Judge.from(notSatisfied)
+                                .assertThat(arguments.get("country").toString())
+                                .satisfies("refers to France")))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("its executions did not pass them")
+                .hasMessageContaining("DE is not France.");
     }
 
     @Test
@@ -296,13 +403,21 @@ class AiServiceInvocationAssertTest {
                 .hasMessageContaining("toolName");
         assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation()).hasToolExecutedTimes("x", -1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("times must be at least 0");
+                .hasMessageContaining("times must not be negative");
         assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation()).hasOwnChatModelCallCount(-1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("expectedCount must be at least 0");
+                .hasMessageContaining("expectedCount must not be negative");
         assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation()).hasOwnChatModelCallCountAtMost(-1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("maxCount must be at least 0");
+                .hasMessageContaining("maxCount must not be negative");
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation())
+                        .hasToolExecutedWith(" ", arguments -> {}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toolName");
+        assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation())
+                        .hasToolExecutedWith("x", (Consumer<Map<String, Object>>) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("argumentsRequirements");
         assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation()).hasToolsExecutedInOrder((String[]) null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("toolNames");

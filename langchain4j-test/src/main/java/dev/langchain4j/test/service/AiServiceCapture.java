@@ -436,8 +436,7 @@ public final class AiServiceCapture {
     public List<AiServiceInvocation> invocations(Class<?> aiService) {
         ensureNotNull(aiService, "aiService");
         return invocations.stream()
-                .filter(invocation -> invocation.invocationContext() != null
-                        && aiService.getName().equals(invocation.invocationContext().interfaceName()))
+                .filter(invocation -> aiService.getName().equals(invocation.invocationContext().interfaceName()))
                 .toList();
     }
 

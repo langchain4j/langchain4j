@@ -302,7 +302,7 @@ class CaptureApiTest {
                         "Expected these tools to be executed successfully in this order: [calculateRefund, cancelBooking], but they were not.");
         assertThatThrownBy(() -> assertThat(capture).hasToolExecutedTimes("cancelBooking", -1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("times must be at least 0, but is: -1");
+                .hasMessage("times must not be negative, but is: -1");
     }
 
     // hasSucceeded

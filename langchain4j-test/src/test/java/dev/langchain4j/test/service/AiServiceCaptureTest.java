@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
@@ -1897,6 +1898,34 @@ class AiServiceCaptureTest {
 
             assertThatThrownBy(() ->
                             withSystemProperty(Capturer.TIMEOUT_PROPERTY, "300", () -> capture(() -> neverCompleted)))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageStartingWith(
+                            "capture(...) timed out after 300 ms. The value returned by the lambda has not ended.");
+            assertThat(neverCompleted).isCancelled();
+        }
+
+        @Test
+        void should_time_out_when_an_invocation_was_cancelled_and_the_value_returned_by_the_lambda_never_ends() {
+            CompletableFuture<String> neverCompleted = new CompletableFuture<>();
+            AiServiceListenerRegistrar registrar = AiServiceListenerRegistrar.newInstance();
+            InvocationContext context = InvocationContext.builder()
+                    .invocationId(UUID.randomUUID())
+                    .interfaceName(AsyncAssistant.class.getName())
+                    .methodName("chat")
+                    .methodArguments(List.of("Hi"))
+                    .timestampNow()
+                    .build();
+
+            assertThatThrownBy(() -> withSystemProperty(Capturer.TIMEOUT_PROPERTY, "300", () -> capture(() -> {
+                        registrar.fireEvent(AiServiceStartedEvent.builder()
+                                .invocationContext(context)
+                                .userMessage(UserMessage.from("Hi"))
+                                .build());
+                        registrar.fireEvent(AiServiceCancelledEvent.builder()
+                                .invocationContext(context)
+                                .build());
+                        return neverCompleted;
+                    })))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageStartingWith(
                             "capture(...) timed out after 300 ms. The value returned by the lambda has not ended.");

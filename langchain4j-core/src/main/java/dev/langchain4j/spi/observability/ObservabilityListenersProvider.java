@@ -12,8 +12,8 @@ import java.util.ServiceLoader;
 
 /**
  * Provides listeners that are added to every AI Service and to every model call, in addition to the listeners
- * configured by the user. Implementations are found with {@link ServiceLoader}, once per class loader, in the
- * context class loader of the current thread and in the class loader of LangChain4j. Only implementations in {@code dev.langchain4j} packages are used; others are logged and skipped.
+ * configured by the user. Implementations are found with {@link ServiceLoader}, once, in the class loader of
+ * LangChain4j. Only implementations in {@code dev.langchain4j} packages are used; others are logged and skipped.
  * <p>
  * This is meant for LangChain4j's own modules (for example {@code langchain4j-test}), which need to observe every
  * AI Service and model without being configured on each one. It is internal and may change at any time. Listeners

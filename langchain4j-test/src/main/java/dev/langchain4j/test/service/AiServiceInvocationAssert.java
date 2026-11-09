@@ -2,6 +2,7 @@ package dev.langchain4j.test.service;
 
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.assertj.core.api.AbstractObjectAssert;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ListAssert;
@@ -48,7 +51,7 @@ import org.assertj.core.api.ListAssert;
  * <p>
  * {@link #hasToolExecuted(String)}, {@link #hasToolExecutedTimes(String, int)},
  * {@link #hasToolsExecutedInOrder(String...)}, {@link #hasToolsExecutedExactlyInAnyOrder(String...)} and
- * {@link #hasToolExecutedWith(String, Map)} count only the tool executions that succeeded. A tool that threw an
+ * both {@code hasToolExecutedWith(...)} count only the tool executions that succeeded. A tool that threw an
  * exception counts as a failed execution, also when the AI Service sent the error to the model and then succeeded:
  * check it with
  * {@link #hasToolExecutionFailed(String)} or {@link #hasNoFailedToolExecutions()}. They fail if the AI Service did not
@@ -103,21 +106,9 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert(AiServiceInvocation actual) {
         super(actual, AiServiceInvocationAssert.class);
-        if (actual != null && actual.invocationContext() != null) {
+        if (actual != null) {
             describedAs(methodName(actual.invocationContext()));
         }
-    }
-
-    /**
-     * Creates assertions on the only top-level AI Service invocation of the given capture (see
-     * {@link AiServiceCapture#invocation()}). Prefer
-     * {@link LangChain4jAssertions#assertThat(AiServiceCapture)}.
-     *
-     * @throws AssertionError if the capture has no top-level invocation or more than one: use
-     *                        {@code assertThat(capture.invocations().get(i))} then
-     */
-    public AiServiceInvocationAssert(AiServiceCapture actual) {
-        this(onlyInvocationOf(actual));
     }
 
     /**
@@ -204,9 +195,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert hasToolExecutedTimes(String toolName, int times) {
         ensureNotBlank(toolName, "toolName");
-        if (times < 0) {
-            throw new IllegalArgumentException("times must be at least 0, but is: " + times);
-        }
+        ensureNotNegative(times, "times");
         ensureSucceeded();
         String expectation = "Expected tool <%s> to be executed successfully %d time(s)".formatted(toolName, times);
         List<ScopedExecution> matching = succeeded(expectation).stream()
@@ -304,7 +293,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      * matches an argument {@code "count": 3} as well as {@code "count": 3.0}. Nested objects and arrays must match
      * exactly. A number or a boolean sent as a string matches too, as the tool receives it converted to the type of its
      * parameter: {@code Map.of("count", 3)} matches {@code "count": "3"}, and {@code Map.of("urgent", true)} matches
-     * {@code "urgent": "true"}.
+     * {@code "urgent": "true"}. Text must match exactly: when a real model can write a value in several ways, use
+     * {@link #hasToolExecutedWith(String, Consumer)}.
      * <p>
      * The argument names are the names of the tool method's parameters. Compile with {@code -parameters} or name
      * the parameters with {@code @P(name = ...)}, otherwise they are {@code arg0}, {@code arg1} and so on.
@@ -336,6 +326,59 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
                     describeToolExecutions());
         }
         succeeded.forEach(ScopedExecution::markVerified);
+        return this;
+    }
+
+    /**
+     * Asserts that the tool with the given name was executed successfully at least once with arguments that pass the
+     * given requirements. Use it when a real model can write an argument in several ways, for example {@code "Munich"}
+     * or {@code "München"}, so that {@link #hasToolExecutedWith(String, Map)} would fail for a correct call. Accept only
+     * what your tool can really handle: a looser check can hide a call that the tool cannot process.
+     * <pre>{@code
+     * assertThat(capture).hasToolExecutedWith("getWeather", arguments -> {
+     *     assertThat(arguments.get("city")).isIn("Munich", "München");
+     *     Judge.from(judgeModel).assertThat(arguments.get("country").toString()).satisfies("refers to Germany");
+     * });
+     * }</pre>
+     * The requirements receive the arguments as the model sent them, parsed from JSON: a number is a {@link Number}, a
+     * nested object a {@link Map} and an array a {@link List}. They run once for every successful execution of the
+     * tool, and an execution passes unless they throw an {@link AssertionError}. Any other exception is rethrown, for
+     * example when a judge cannot give a verdict.
+     * <p>
+     * Marks the executions that passed as checked (see {@link #hasNoMoreToolExecutions()}).
+     */
+    public AiServiceInvocationAssert hasToolExecutedWith(
+            String toolName, Consumer<Map<String, Object>> argumentsRequirements) {
+        ensureNotBlank(toolName, "toolName");
+        ensureNotNull(argumentsRequirements, "argumentsRequirements");
+        ensureSucceeded();
+        String expectation = "Expected tool <%s> to be executed successfully with arguments that pass the requirements"
+                .formatted(toolName);
+        List<ScopedExecution> passed = new ArrayList<>();
+        List<String> rejections = new ArrayList<>();
+        for (ScopedExecution execution : succeeded(expectation)) {
+            Map<String, Object> arguments = parseArguments(execution.toolExecution());
+            if (!execution.isOf(toolName) || arguments == null) {
+                continue;
+            }
+            try {
+                argumentsRequirements.accept(arguments);
+                passed.add(execution);
+            } catch (AssertionError rejection) {
+                rejections.add(rejection.getMessage());
+            }
+        }
+        if (passed.isEmpty()) {
+            throw failure(
+                    "%s, but %s. %s",
+                    expectation,
+                    rejections.isEmpty()
+                            ? "it was not"
+                            : "its executions did not pass them:%n%s"
+                                    .formatted(String.join(System.lineSeparator(), rejections)),
+                    describeToolExecutions());
+        }
+        passed.forEach(ScopedExecution::markVerified);
         return this;
     }
 
@@ -381,13 +424,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
     public AiServiceInvocationAssert hasRetrievedSourceContaining(String text) {
         ensureNotBlank(text, "text");
         ensureSucceeded();
-        List<Content> sources = scopedSources();
-        if (sources == null) {
-            throw failure(
-                    "Expected a retrieved source containing <%s>, but no sources were captured: the AI Service has no "
-                            + "retrieval augmentor, or it does not report what it retrieves",
-                    text);
-        }
+        List<Content> sources = scopedSources("Expected a retrieved source containing <%s>".formatted(text));
         boolean found = sources.stream()
                 .map(Content::textSegment)
                 .filter(Objects::nonNull)
@@ -408,11 +445,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert hasNoRetrievedSources() {
         ensureSucceeded();
-        List<Content> sources = scopedSources();
-        if (sources == null) {
-            throw failure("Expected no retrieved sources, but no sources were captured: the AI Service has no "
-                    + "retrieval augmentor, or it does not report what it retrieves");
-        }
+        List<Content> sources = scopedSources("Expected no retrieved sources");
         if (!sources.isEmpty()) {
             throw failure("Expected no retrieved sources, but these were retrieved:%n%s", describeSources(sources));
         }
@@ -427,9 +460,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      * {@link #hasModelCallCount(int)}.
      */
     public AiServiceInvocationAssert hasOwnChatModelCallCount(int expectedCount) {
-        if (expectedCount < 0) {
-            throw new IllegalArgumentException("expectedCount must be at least 0, but is: " + expectedCount);
-        }
+        ensureNotNegative(expectedCount, "expectedCount");
         ensureSucceeded();
         int actualCount = scopedOwnChatModelCalls().size();
         if (actualCount != expectedCount) {
@@ -446,9 +477,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      * Service does not call tools in a loop.
      */
     public AiServiceInvocationAssert hasOwnChatModelCallCountAtMost(int maxCount) {
-        if (maxCount < 0) {
-            throw new IllegalArgumentException("maxCount must be at least 0, but is: " + maxCount);
-        }
+        ensureNotNegative(maxCount, "maxCount");
         ensureSucceeded();
         int actualCount = scopedOwnChatModelCalls().size();
         if (actualCount > maxCount) {
@@ -487,7 +516,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      * {@link #hasOwnChatModelCallCount(int)}.
      */
     public AiServiceInvocationAssert hasModelCallCount(int expectedCount) {
-        return assertModelCallCount(null, expectedCount);
+        return hasModelCallCount(ModelCall.class, expectedCount);
     }
 
     /**
@@ -499,17 +528,11 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert hasModelCallCount(Class<? extends ModelCall> type, int expectedCount) {
         ensureNotNull(type, "type");
-        return assertModelCallCount(type, expectedCount);
-    }
-
-    private AiServiceInvocationAssert assertModelCallCount(Class<? extends ModelCall> type, int expectedCount) {
-        if (expectedCount < 0) {
-            throw new IllegalArgumentException("expectedCount must be at least 0, but is: " + expectedCount);
-        }
+        ensureNotNegative(expectedCount, "expectedCount");
         ensureSucceeded();
         List<ModelCall> calls = scopedInvocations().stream()
                 .flatMap(invocation -> invocation.modelCalls().stream())
-                .filter(call -> type == null || type.isInstance(call))
+                .filter(type::isInstance)
                 .toList();
         if (calls.size() != expectedCount) {
             throw failure(
@@ -543,20 +566,9 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert hasFailedWithMessageContaining(String text) {
         ensureNotBlank(text, "text");
-        isNotNull();
-        if (actual.error() == null) {
-            throw failure(
-                    "Expected the invocation to fail with a message containing <%s>, but it did not fail%s",
-                    text, actual.isCancelled() ? " (it was cancelled)" : "");
-        }
-        if (Throwables.causalChain(actual.error()).stream()
-                .anyMatch(error -> error.getMessage() != null && error.getMessage().contains(text))) {
-            failureChecked = true;
-            return this;
-        }
-        throw failure(
-                "Expected the invocation to fail with a message containing <%s>, but it failed with:%n%s",
-                text, describeError(actual.error()));
+        return assertFailed(
+                "a message containing <%s>".formatted(text),
+                error -> error.getMessage() != null && error.getMessage().contains(text));
     }
 
     /**
@@ -565,19 +577,23 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
      */
     public AiServiceInvocationAssert hasFailedWith(Class<? extends Throwable> type) {
         ensureNotNull(type, "type");
+        return assertFailed("<%s>".formatted(type.getName()), type::isInstance);
+    }
+
+    private AiServiceInvocationAssert assertFailed(String expected, Predicate<Throwable> matches) {
         isNotNull();
         if (actual.error() == null) {
             throw failure(
-                    "Expected the invocation to fail with <%s>, but it did not fail%s",
-                    type.getName(), actual.isCancelled() ? " (it was cancelled)" : "");
+                    "Expected the invocation to fail with %s, but it did not fail%s",
+                    expected, actual.isCancelled() ? " (it was cancelled)" : "");
         }
-        if (Throwables.causalChain(actual.error()).stream().anyMatch(type::isInstance)) {
-            failureChecked = true;
-            return this;
+        if (Throwables.causalChain(actual.error()).stream().noneMatch(matches)) {
+            throw failure(
+                    "Expected the invocation to fail with %s, but it failed with:%n%s",
+                    expected, describeError(actual.error()));
         }
-        throw failure(
-                "Expected the invocation to fail with <%s>, but it failed with:%n%s",
-                type.getName(), describeError(actual.error()));
+        failureChecked = true;
+        return this;
     }
 
     /**
@@ -626,28 +642,17 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
         if (scope == null) {
             throw failure(
                     "This invocation has %d nested invocations. Use includingNested() or topLevelOnly() to say which ones to check.",
-                    countNested(actual.nestedInvocations()));
+                    withNested(actual).size() - 1);
         }
-        List<AiServiceInvocation> invocations = new ArrayList<>();
-        collect(List.of(actual), invocations);
-        return invocations;
+        return withNested(actual);
     }
 
-    private static int countNested(List<AiServiceInvocation> invocations) {
-        int count = invocations.size();
-        for (AiServiceInvocation invocation : invocations) {
-            count += countNested(invocation.nestedInvocations());
+    private static List<AiServiceInvocation> withNested(AiServiceInvocation root) {
+        List<AiServiceInvocation> all = new ArrayList<>(List.of(root));
+        for (int i = 0; i < all.size(); i++) {
+            all.addAll(all.get(i).nestedInvocations());
         }
-        return count;
-    }
-
-    private static void collect(List<AiServiceInvocation> invocations, List<AiServiceInvocation> collected) {
-        for (AiServiceInvocation invocation : invocations) {
-            collected.add(invocation);
-        }
-        for (AiServiceInvocation invocation : invocations) {
-            collect(invocation.nestedInvocations(), collected);
-        }
+        return all;
     }
 
     private List<ScopedExecution> scopedExecutions() {
@@ -659,21 +664,21 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
         return executions;
     }
 
-    private List<Content> scopedSources() {
-        List<Content> sources = null;
-        for (AiServiceInvocation invocation : scopedInvocations()) {
-            if (invocation.sourcesReported()) {
-                sources = sources == null ? new ArrayList<>() : sources;
-                sources.addAll(invocation.sources());
-            }
+    private List<Content> scopedSources(String expectation) {
+        List<AiServiceInvocation> reporting = scopedInvocations().stream()
+                .filter(AiServiceInvocation::sourcesReported)
+                .toList();
+        if (reporting.isEmpty()) {
+            throw failure(
+                    "%s, but no sources were captured: the AI Service has no retrieval augmentor, or it does not report what it retrieves",
+                    expectation);
         }
-        return sources;
+        return reporting.stream()
+                .flatMap(invocation -> invocation.sources().stream())
+                .toList();
     }
 
     private static String describe(Class<? extends ModelCall> type) {
-        if (type == null) {
-            return "model call(s)";
-        }
         // for example "chat model call(s)" for ChatModelCall
         return type.getSimpleName().replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(Locale.ROOT) + "(s)";
     }
@@ -709,9 +714,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
 
     private long failedTimes(String toolName) {
         return scopedExecutions().stream()
-                .filter(execution -> execution.isOf(toolName)
-                        && execution.invocation().toolFailuresReported()
-                        && execution.toolExecution().hasFailed())
+                .filter(execution -> execution.isOf(toolName) && execution.toolExecution().hasFailed())
                 .count();
     }
 
@@ -738,13 +741,6 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
         }
     }
 
-    private static AiServiceInvocation onlyInvocationOf(AiServiceCapture capture) {
-        if (capture == null) {
-            return null;
-        }
-        return capture.invocation();
-    }
-
     private static String methodName(InvocationContext invocationContext) {
         String interfaceName = invocationContext.interfaceName();
         String simpleName = interfaceName == null
@@ -756,7 +752,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
     /**
      * Returns {@code null} if the arguments are not a JSON object.
      */
-    private static Map<?, ?> parseArguments(ToolExecution toolExecution) {
+    private static Map<String, Object> parseArguments(ToolExecution toolExecution) {
         try {
             return argumentsAsMap(toolExecution.request().arguments());
         } catch (RuntimeException e) {
@@ -879,20 +875,16 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
     }
 
     private String describeNestedToolExecutions() {
-        List<String> nestedToolNames = new ArrayList<>();
-        collectToolNames(actual.nestedInvocations(), nestedToolNames);
+        List<String> nestedToolNames = withNested(actual).stream()
+                .skip(1)
+                .flatMap(invocation -> invocation.allToolExecutions().stream())
+                .map(toolExecution -> toolExecution.request().name())
+                .toList();
         if (nestedToolNames.isEmpty()) {
             return "";
         }
         return "%nNested invocations (see nestedInvocations()) executed these tools, which are not included: %s"
                 .formatted(nestedToolNames);
-    }
-
-    private static void collectToolNames(List<AiServiceInvocation> invocations, List<String> toolNames) {
-        for (AiServiceInvocation invocation : invocations) {
-            invocation.allToolExecutions().forEach(toolExecution -> toolNames.add(toolExecution.request().name()));
-            collectToolNames(invocation.nestedInvocations(), toolNames);
-        }
     }
 
     private static String truncate(String text) {

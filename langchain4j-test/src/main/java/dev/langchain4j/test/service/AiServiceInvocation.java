@@ -68,23 +68,13 @@ public final class AiServiceInvocation {
     private final Set<ToolExecution> verifiedToolExecutions =
             Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
 
-    private AiServiceInvocation(Builder builder) {
-        this.invocationContext = builder.invocationContext;
-        this.output = builder.output;
-        this.requestsIssued = builder.requestsIssued;
-        this.toolExecutions = List.copyOf(builder.toolExecutions);
-        this.toolFailuresReported = builder.toolFailuresReported;
-        this.sources = builder.sources == null ? null : List.copyOf(builder.sources);
-        this.error = builder.error;
-        this.cancelled = builder.cancelled;
-        this.nestedInvocations = List.copyOf(builder.nestedInvocations);
-        this.modelCalls = List.copyOf(builder.modelCalls);
-    }
-
-    static AiServiceInvocation from(InvocationRecord record) {
-        Builder builder = new Builder();
-        builder.invocationContext = record.invocationContext();
+    private AiServiceInvocation(InvocationRecord record) {
         Object completedResult = null;
+        boolean allToolFailuresReported = true;
+        List<ToolExecution> executions = new ArrayList<>();
+        List<Content> retrieved = null;
+        Throwable failure = null;
+        boolean wasCancelled = false;
         List<List<ChatMessage>> ownRequests = new ArrayList<>();
         Set<ChatResponse> ownResponses = Collections.newSetFromMap(new IdentityHashMap<>());
         for (AiServiceEvent event : record.events()) {
@@ -95,8 +85,8 @@ public final class AiServiceInvocation {
             }
             if (event instanceof ToolExecutedEvent toolExecuted) {
                 Boolean failed = reportedFailure(toolExecuted);
-                builder.toolFailuresReported &= failed != null;
-                builder.toolExecutions.add(ToolExecution.builder()
+                allToolFailuresReported &= failed != null;
+                executions.add(ToolExecution.builder()
                         .request(toolExecuted.request())
                         .result(ToolExecutionResult.builder()
                                 .resultContents(toolExecuted.resultContents())
@@ -105,14 +95,14 @@ public final class AiServiceInvocation {
                         .invocationContext(toolExecuted.invocationContext())
                         .build());
             } else if (event instanceof RetrievalAugmentedEvent retrievalAugmented) {
-                builder.sources = builder.sources == null ? new ArrayList<>() : builder.sources;
-                builder.sources.addAll(retrievalAugmented.contents());
+                retrieved = retrieved == null ? new ArrayList<>() : retrieved;
+                retrieved.addAll(retrievalAugmented.contents());
             } else if (event instanceof AiServiceCompletedEvent completed) {
                 completedResult = completed.result().orElse(null);
             } else if (event instanceof AiServiceErrorEvent failed) {
-                builder.error = failed.error();
+                failure = failed.error();
             } else if (event instanceof AiServiceCancelledEvent) {
-                builder.cancelled = true;
+                wasCancelled = true;
             }
         }
         if (completedResult instanceof Result<?> result) {
@@ -121,17 +111,28 @@ public final class AiServiceInvocation {
                 && !AiServiceMethods.returns(record.invocationContext(), ChatResponse.class)) {
             // a streaming method reports its final ChatResponse, with the token usage of all its calls: what it
             // produced is the text
-            completedResult = chatResponse.aiMessage() == null ? null : chatResponse.aiMessage().text();
+            completedResult = chatResponse.aiMessage().text();
         }
-        builder.output = completedResult;
+        List<ModelCall> calls = new ArrayList<>();
         for (ModelCallRecord call : record.modelCalls()) {
             // a call is the AI Service's own when it returned a response the AI Service received, or, for a failed
             // call, when the AI Service issued a request with the same messages
-            builder.modelCalls.add(modelCall(call, ownRequests, ownResponses));
+            calls.add(modelCall(call, ownRequests, ownResponses));
         }
-        builder.requestsIssued = ownRequests.size();
-        record.children().forEach(child -> builder.nestedInvocations.add(from(child)));
-        return new AiServiceInvocation(builder);
+        this.invocationContext = record.invocationContext();
+        this.output = completedResult;
+        this.requestsIssued = ownRequests.size();
+        this.toolExecutions = List.copyOf(executions);
+        this.toolFailuresReported = allToolFailuresReported;
+        this.sources = retrieved == null ? null : List.copyOf(retrieved);
+        this.error = failure;
+        this.cancelled = wasCancelled;
+        this.nestedInvocations = record.children().stream().map(AiServiceInvocation::new).toList();
+        this.modelCalls = List.copyOf(calls);
+    }
+
+    static AiServiceInvocation from(InvocationRecord record) {
+        return new AiServiceInvocation(record);
     }
 
     private static ModelCall modelCall(
@@ -206,11 +207,11 @@ public final class AiServiceInvocation {
     }
 
     boolean returnsNothing() {
-        if (output != null || invocationContext == null) {
+        if (output != null) {
             return false;
         }
         Type returnType = AiServiceMethods.returnType(invocationContext);
-        return returnType != null && TextTypes.isNothing(returnType);
+        return returnType != null && AiServiceMethods.isNothing(returnType);
     }
 
     /**
@@ -243,7 +244,7 @@ public final class AiServiceInvocation {
                     .formatted(output.getClass().getSimpleName()));
         }
         Type returnType = AiServiceMethods.returnType(invocationContext);
-        if (returnType != null && !TextTypes.isText(returnType)) {
+        if (returnType != null && !AiServiceMethods.isText(returnType)) {
             throw new AssertionError("The AI Service method returns %s, not text: use output() instead"
                     .formatted(returnType.getTypeName()));
         }
@@ -499,27 +500,11 @@ public final class AiServiceInvocation {
     @Override
     public String toString() {
         return "AiServiceInvocation{" + "method="
-                + (invocationContext == null
-                        ? null
-                        : invocationContext.interfaceName() + "." + invocationContext.methodName())
+                + invocationContext.interfaceName() + "." + invocationContext.methodName()
                 + ", toolExecutions="
                 + toolExecutions.size() + ", modelCalls="
                 + modelCalls.size() + ", error="
                 + error + ", cancelled="
                 + cancelled + '}';
-    }
-
-    private static final class Builder {
-
-        private InvocationContext invocationContext;
-        private Object output;
-        private int requestsIssued;
-        private final List<ToolExecution> toolExecutions = new ArrayList<>();
-        private boolean toolFailuresReported = true;
-        private List<Content> sources;
-        private Throwable error;
-        private boolean cancelled;
-        private final List<AiServiceInvocation> nestedInvocations = new ArrayList<>();
-        private final List<ModelCall> modelCalls = new ArrayList<>();
     }
 }
