@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.http;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,8 +28,11 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSources;
+import okio.BufferedSource;
+import okio.Okio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +44,11 @@ import org.slf4j.LoggerFactory;
 public class HttpMcpTransport implements McpTransport {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpTransport.class);
+    private static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
     private final String sseUrl;
     private final McpHeadersSupplier customHeadersSupplier;
     private final OkHttpClient client;
+    private final OkHttpClient sseClient;
     private final boolean logResponses;
     private final boolean logRequests;
     private EventSource mcpSseEventListener;
@@ -70,6 +76,19 @@ public class HttpMcpTransport implements McpTransport {
         sseUrl = ensureNotNull(builder.sseUrl, "Missing SSE endpoint URL");
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         client = httpClientBuilder.build();
+        int maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
+        sseClient = client.newBuilder()
+                .addInterceptor(chain -> limitEventSize(chain.proceed(chain.request()), maxMessageSize))
+                .build();
+    }
+
+    private static Response limitEventSize(Response response, int maxMessageSize) {
+        ResponseBody body = response.body();
+        BufferedSource limited = Okio.buffer(new MaxSseEventSizeSource(body.source(), maxMessageSize));
+        return response.newBuilder()
+                .body(ResponseBody.create(limited, body.contentType(), body.contentLength()))
+                .build();
     }
 
     @Override
@@ -174,7 +193,7 @@ public class HttpMcpTransport implements McpTransport {
         CompletableFuture<String> initializationFinished = new CompletableFuture<>();
         SseEventListener listener =
                 new SseEventListener(messageHandler, logResponses, initializationFinished, onFailure);
-        EventSource eventSource = EventSources.createFactory(client).newEventSource(request, listener);
+        EventSource eventSource = EventSources.createFactory(sseClient).newEventSource(request, listener);
         // wait for the SSE channel to be created, receive the POST url from the server, throw an exception if that
         // failed
         try {
@@ -241,6 +260,7 @@ public class HttpMcpTransport implements McpTransport {
         private boolean logRequests = false;
         private boolean logResponses = false;
         private Logger logger;
+        private Integer maxMessageSize;
 
         /**
          * The initial URL where to connect to the server and request a SSE
@@ -287,6 +307,28 @@ public class HttpMcpTransport implements McpTransport {
          */
         public Builder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        /**
+         * The maximum size, in bytes, of a single message received from the server: the data of one event
+         * on the SSE channel.
+         * When a server sends a larger message, the transport drops it, closes the SSE channel and reports
+         * the failure to the {@link HttpMcpTransport#onFailure(Runnable)} callback.
+         * Requests that are still waiting for a response end when their timeout expires.
+         * This protects the client against servers that send
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
+         * Defaults to 20 MiB.
+         *
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
+         * @return this builder
+         * @since 1.11.13
+         */
+        public Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
             return this;
         }
 
