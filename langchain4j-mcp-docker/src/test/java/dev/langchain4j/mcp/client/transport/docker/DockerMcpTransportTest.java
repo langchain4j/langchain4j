@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
 import com.github.dockerjava.core.DefaultDockerClientConfig;
@@ -46,6 +47,16 @@ class DockerMcpTransportTest {
         DockerHttpClient client = DockerMcpTransport.buildHttpClient(config);
 
         assertThat(extractHost(client).getSchemeName()).isEqualTo("http");
+    }
+
+    @Test
+    void closeShouldDoNothingWhenTheContainerWasNeverCreated() {
+        DockerMcpTransport transport = DockerMcpTransport.builder()
+                .dockerHost("tcp://localhost:2375")
+                .image("alpine")
+                .build();
+
+        assertThatCode(transport::close).doesNotThrowAnyException();
     }
 
     @Test

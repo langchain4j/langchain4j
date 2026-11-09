@@ -28,6 +28,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.protocol.McpCancellationParams;
@@ -36,6 +37,8 @@ import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +56,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -265,6 +271,76 @@ public class DefaultMcpClientTest {
         InOrder inOrder = inOrder(transport);
         inOrder.verify(transport).start(any(McpOperationHandler.class));
         inOrder.verify(transport).close();
+    }
+
+    @Test
+    public void should_close_the_transport_when_starting_it_fails() throws Exception {
+        // given: a transport that cannot start, like a stdio command that does not exist
+        final McpTransport transport = getMinimalMcpTransportMock();
+        doThrow(new RuntimeException("apples")).when(transport).start(any(McpOperationHandler.class));
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder().transport(transport);
+
+        // when
+        assertThatThrownBy(() -> clientBuilder.build()).hasMessageContaining("apples");
+
+        // then
+        verify(transport).close();
+    }
+
+    @Test
+    public void should_close_the_transport_when_the_failure_comes_after_the_initialization() throws Exception {
+        // given: an initialization that succeeds, followed by a health check that cannot be scheduled
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion(DefaultMcpClient.PROTOCOL_VERSION_LEGACY)
+                .autoHealthCheckInterval(Duration.ZERO);
+
+        // when
+        assertThatThrownBy(() -> clientBuilder.build()).isInstanceOf(IllegalArgumentException.class);
+
+        // then
+        verify(transport).close();
+    }
+
+    @Test
+    public void should_report_the_initialization_failure_when_closing_the_transport_also_fails() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        doThrow(new RuntimeException("apples")).when(transport).sendInitializeRequest(any());
+        doThrow(new RuntimeException("oranges")).when(transport).close();
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder().transport(transport);
+
+        // when
+        assertThatThrownBy(() -> clientBuilder.build())
+                // then: the failure of the close does not replace the failure that matters to the caller
+                .hasMessageContaining("apples");
+        verify(transport).close();
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    public void should_terminate_the_stdio_subprocess_when_the_initialization_times_out(@TempDir Path tempDir)
+            throws Exception {
+        // given: a real subprocess that records its PID and never answers, like a server that hangs while booting
+        final Path pidFile = tempDir.resolve("pid");
+        final McpTransport transport = StdioMcpTransport.builder()
+                .command(List.of("sh", "-c", "echo $$ > \"$0.tmp\"; mv \"$0.tmp\" \"$0\"; exec sleep 60", pidFile.toString()))
+                .build();
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion(DefaultMcpClient.PROTOCOL_VERSION_LEGACY)
+                .initializationTimeout(Duration.ofSeconds(2));
+
+        // when
+        assertThatThrownBy(() -> clientBuilder.build()).hasCauseInstanceOf(TimeoutException.class);
+
+        // then: the subprocess started for the failed attempt is gone
+        final long pid = Long.parseLong(Files.readString(pidFile).trim());
+        final var subprocess = ProcessHandle.of(pid);
+        if (subprocess.isPresent()) {
+            assertThat(subprocess.get().onExit()).succeedsWithin(Duration.ofSeconds(10));
+        }
     }
 
     @Test

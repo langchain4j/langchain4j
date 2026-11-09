@@ -59,8 +59,9 @@ public class McpAgent {
      * <p>
      * The supplier is invoked on the thread that first needs the client, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
-     * the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes
-     * the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+     * the current user. When it fails, it is invoked again the next time the client is needed, so create the transport
+     * inside the supplier: a {@code DefaultMcpClient} that fails to connect closes its transport. The agent never
+     * closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
      *
      * @param mcpClientSupplier the supplier of the MCP client used to discover and execute the tool, invoked when the
      *                          client is first needed, which is normally the first invocation of the agent, so that
@@ -79,8 +80,9 @@ public class McpAgent {
      * <p>
      * The supplier is invoked on the thread that first needs the client, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
-     * the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes
-     * the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+     * the current user. When it fails, it is invoked again the next time the client is needed, so create the transport
+     * inside the supplier: a {@code DefaultMcpClient} that fails to connect closes its transport. The agent never
+     * closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
      *
      * @param mcpClientSupplier the supplier of the MCP client used to discover and execute the tool, invoked when the
      *                          client is first needed, which is normally the first invocation of the agent, so that

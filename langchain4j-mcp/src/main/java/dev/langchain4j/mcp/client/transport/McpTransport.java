@@ -18,6 +18,10 @@ import java.util.concurrent.CompletableFuture;
  * {@link #sendInitializeRequest(McpInitializeRequest)}, {@link #sendRequest(McpCallContext)} and
  * {@link #sendMessage(McpCallContext)}. The overloads that take a bare {@link McpClientMessage}
  * wrap it in a {@link McpCallContext} without per-call headers or {@code _meta}.
+ *
+ * <p>{@link #close()} must release whatever the transport has acquired so far, and must also work
+ * when {@link #start(McpOperationHandler)} failed or was never called, because a client that fails
+ * to initialize closes its transport. It may be called more than once.
  */
 public interface McpTransport extends Closeable {
 

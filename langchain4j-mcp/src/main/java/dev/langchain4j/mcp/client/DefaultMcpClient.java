@@ -248,11 +248,8 @@ public class DefaultMcpClient implements McpClient {
             initialize();
             startAutoHealthCheck();
         } catch (RuntimeException e) {
-            // The caller gets no client to close when the initialization fails, so close it here. This marks the
-            // client as closed, so that the transport callback won't try to reinitialize it (indefinitely), and
-            // closes the transport, so that a subprocess or a connection started for it does not outlive the
-            // failed attempt, which a Supplier<McpClient> may repeat.
-            close();
+            // The caller gets no client to close. This also stops the transport callback from reconnecting.
+            releaseResources();
             throw e;
         }
     }
@@ -1632,6 +1629,10 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void close() {
+        releaseResources();
+    }
+
+    private void releaseResources() {
         closed = true;
         // Cancel list-change subscription
         CompletableFuture<String> listChangeFuture = listChangeSubscriptionFuture;
@@ -1835,9 +1836,12 @@ public class DefaultMcpClient implements McpClient {
 
         /**
          * Sets the transport protocol to use for communicating with the
-         * MCP server. This is a mandatory parameter. A successfully
-         * constructed DefaultMcpClient takes over the resource ownership
-         * of this transport and will close it when it itself is closed.
+         * MCP server. This is a mandatory parameter. The DefaultMcpClient
+         * takes over the resource ownership of this transport: it closes
+         * the transport when it is itself closed, and also when building
+         * the client fails. Use a new transport for each attempt to build
+         * a client, because the Streamable HTTP and WebSocket transports
+         * cannot be used again once they are closed.
          */
         public Builder transport(McpTransport transport) {
             this.transport = transport;
