@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
@@ -396,8 +397,10 @@ class A2ALazyAgentCardTest {
                 .outputKey("fix")
                 .build();
 
+        // an A2AAgentCardException is an AgentUnavailableException, the type common to every integration
         assertThatThrownBy(() -> fixer.fix("a broken build"))
                 .isInstanceOf(A2AAgentCardException.class)
+                .isInstanceOf(AgentUnavailableException.class)
                 .hasMessageContaining("'fix'")
                 .hasMessageContaining("http://remote-host:8080")
                 .hasCauseInstanceOf(A2AClientError.class);
