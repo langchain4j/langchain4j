@@ -33,9 +33,12 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.web.search.WebSearchTool;
-import dev.langchain4j.web.search.searchapi.SearchApiEngine;
 import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class SearchApiTool {
 
@@ -66,7 +69,7 @@ public class SearchApiTool {
                 .build();
         ChatModel chatModel = OpenAiChatModel.builder()
                 .apiKey(OPENAI_API_KEY)
-                .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
+                .modelName(OpenAiChatModelName.GPT_6_1_TERRA)
                 .logRequests(true)
                 .build();
 

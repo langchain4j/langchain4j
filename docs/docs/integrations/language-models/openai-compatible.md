@@ -16,7 +16,7 @@ Many services and tools expose OpenAI-compatible APIs. The general approach to u
     ChatModel model = OpenAiChatModel.builder()
             .baseUrl("YOUR_API_BASE_URL") // e.g., "http://localhost:8000/v1"
             .apiKey("YOUR_API_KEY_OR_PLACEHOLDER") // e.g., "sk-yourkey" or "none"
-            .modelName("MODEL_NAME_AS_PER_PROVIDER_DOCS") // e.g., "gpt-3.5-turbo" or custom name
+            .modelName("MODEL_NAME_AS_PER_PROVIDER_DOCS") // e.g., "gpt-6.1-terra" or custom name
             // Add other configurations like temperature, timeout, etc. as needed
             .logRequests(true)
             .logResponses(true)

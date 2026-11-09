@@ -11,6 +11,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.HandlerWithoutInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -28,6 +30,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -468,7 +471,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            context.streamingChatModel.chat(next.chatRequest(), handler);
+            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -477,7 +480,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 if (hasOutputGuardrails) {
                     if (commonGuardrailParams != null) {
                         var newCommonParams = commonGuardrailParams.toBuilder()
-                                .chatMemory(getMemory())
+                                .chatMemory(ChatMemoryService.unwrap(getMemory()))
                                 .build();
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()
@@ -578,7 +581,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ChatMemory getMemory(Object memId) {
         return context.hasChatMemory()
-                ? context.chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId())
+                ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
                 : temporaryMemory;
     }
 

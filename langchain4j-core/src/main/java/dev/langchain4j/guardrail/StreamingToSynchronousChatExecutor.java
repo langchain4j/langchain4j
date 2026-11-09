@@ -3,6 +3,8 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.HandlerWithoutInvocation;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -42,14 +44,20 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
         var responseHandler = new StreamingToSyncResponseHandler(this.errorHandler);
-        this.streamingChatModel.chat(chatRequest, responseHandler);
+        CurrentInvocation.runWith(invocationContext, () -> this.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(responseHandler)));
 
         return Optional.ofNullable(responseHandler.getResponse()).orElseGet(ChatResponse.builder()::build);
     }
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        return StreamingChatModelHelper.chatAsync(this.streamingChatModel, chatRequest, errorHandler);
+        Consumer<Throwable> errorHandlerWithoutInvocation = errorHandler == null
+                ? null
+                : error -> CurrentInvocation.runWithout(() -> errorHandler.accept(error));
+        return CurrentInvocation.callWith(
+                invocationContext,
+                () -> StreamingChatModelHelper.chatAsync(
+                        this.streamingChatModel, chatRequest, errorHandlerWithoutInvocation));
     }
 
     private static class StreamingToSyncResponseHandler implements StreamingChatResponseHandler {

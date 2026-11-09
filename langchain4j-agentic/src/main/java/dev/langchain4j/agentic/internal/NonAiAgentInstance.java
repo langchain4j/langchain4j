@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -12,8 +14,6 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
-
 public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Class<?> type;
     private final String name;
@@ -21,6 +21,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Type outputType;
     private final String outputKey;
     private final boolean async;
+    private final boolean optional;
     private final List<AgentArgument> arguments;
     private final AgentCondition activationCondition;
 
@@ -29,15 +30,42 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private InternalAgent parent;
     private String agentId;
 
-    public NonAiAgentInstance(Class<?> type, String name, String description,
-            Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            List<AgentArgument> arguments,
             AgentListener listener) {
-        this(type, name, description, outputType, outputKey, async, arguments, listener, null);
+        this(type, name, description, outputType, outputKey, async, false, arguments, listener, null);
     }
 
-    public NonAiAgentInstance(Class<?> type, String name, String description,
-            Type outputType, String outputKey, boolean async, List<AgentArgument> arguments,
-            AgentListener listener, AgentCondition activationCondition) {
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            List<AgentArgument> arguments,
+            AgentListener listener,
+            AgentCondition activationCondition) {
+        this(type, name, description, outputType, outputKey, async, false, arguments, listener, activationCondition);
+    }
+
+    public NonAiAgentInstance(
+            Class<?> type,
+            String name,
+            String description,
+            Type outputType,
+            String outputKey,
+            boolean async,
+            boolean optional,
+            List<AgentArgument> arguments,
+            AgentListener listener,
+            AgentCondition activationCondition) {
         this.type = type;
         this.name = name;
         this.agentId = name;
@@ -45,6 +73,7 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         this.outputType = outputType;
         this.outputKey = outputKey;
         this.async = async;
+        this.optional = optional;
         this.arguments = arguments;
         this.listener = listener;
         this.activationCondition = activationCondition;
@@ -67,7 +96,9 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public AgenticSystemTopology topology() {
-        return type == HumanInTheLoop.class ? AgenticSystemTopology.HUMAN_IN_THE_LOOP : AgenticSystemTopology.NON_AI_AGENT;
+        return type == HumanInTheLoop.class
+                ? AgenticSystemTopology.HUMAN_IN_THE_LOOP
+                : AgenticSystemTopology.NON_AI_AGENT;
     }
 
     @Override
@@ -106,6 +137,11 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     }
 
     @Override
+    public boolean optional() {
+        return optional;
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
         return arguments;
     }
@@ -122,7 +158,9 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
-        if (parentListener != null && parentListener.inheritedBySubagents() && isNewListener(listener, parentListener)) {
+        if (parentListener != null
+                && parentListener.inheritedBySubagents()
+                && isNewListener(listener, parentListener)) {
             listener = composeWithInherited(listener(), parentListener);
         }
     }
@@ -142,34 +180,46 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (NonAiAgentInstance) obj;
-        return Objects.equals(this.type, that.type) &&
-                Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.outputType, that.outputType) &&
-                Objects.equals(this.outputKey, that.outputKey) &&
-                this.async == that.async &&
-                Objects.equals(this.arguments, that.arguments) &&
-                Objects.equals(this.listener, that.listener) &&
-                Objects.equals(this.activationCondition, that.activationCondition);
+        return Objects.equals(this.type, that.type)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.outputType, that.outputType)
+                && Objects.equals(this.outputKey, that.outputKey)
+                && this.async == that.async
+                && this.optional == that.optional
+                && Objects.equals(this.arguments, that.arguments)
+                && Objects.equals(this.listener, that.listener)
+                && Objects.equals(this.activationCondition, that.activationCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, name, description, outputType, outputKey, async, arguments, listener, activationCondition);
+        return Objects.hash(
+                type,
+                name,
+                description,
+                outputType,
+                outputKey,
+                async,
+                optional,
+                arguments,
+                listener,
+                activationCondition);
     }
 
     @Override
     public String toString() {
-        return "NonAiAgentInstance[" +
-                "type=" + type + ", " +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "outputType=" + outputType + ", " +
-                "outputKey=" + outputKey + ", " +
-                "async=" + async + ", " +
-                "arguments=" + arguments + ", " +
-                "listener=" + listener + ", " +
-                "activationCondition=" + activationCondition + ']';
+        return "NonAiAgentInstance[" + "type="
+                + type + ", " + "name="
+                + name + ", " + "description="
+                + description + ", " + "outputType="
+                + outputType + ", " + "outputKey="
+                + outputKey + ", " + "async="
+                + async + ", " + "optional="
+                + optional + ", " + "arguments="
+                + arguments + ", " + "listener="
+                + listener + ", " + "activationCondition="
+                + activationCondition + ']';
     }
 
     @Override

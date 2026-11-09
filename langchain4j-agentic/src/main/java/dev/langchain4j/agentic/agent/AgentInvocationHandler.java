@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeA
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgentAiServiceEvent;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.internal.AgentModelResponse;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
@@ -34,6 +35,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -73,6 +75,16 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.chatModelProvider = builder.chatModelProvider;
         this.streamingChatModelProvider = builder.streamingChatModelProvider;
         context.eventListenerRegistrar = new ForwardingRegistrar(context.eventListenerRegistrar);
+    }
+
+    /**
+     * @return the AI service implementing this agent, built by {@link AiServices} from the
+     *         agent type: an integration that builds its own AI service implementation reaches it here, for instance
+     *         to manage the chat memories it created
+     */
+    @Internal
+    public Object aiService() {
+        return agent;
     }
 
     @Override

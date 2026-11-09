@@ -182,7 +182,7 @@ class StreamableHttpMcpTransportSpiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {401, 503})
+    @ValueSource(ints = {400, 401, 503})
     void should_fail_with_the_status_code_of_an_http_error(int status) throws Exception {
         start(builder());
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
@@ -194,6 +194,18 @@ class StreamableHttpMcpTransportSpiTest {
                 .isInstanceOf(HttpException.class)
                 .hasMessage("Unexpected status code: " + status);
         assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(status);
+    }
+
+    @Test
+    void should_complete_with_the_json_rpc_error_of_a_client_that_only_reports_the_failure() throws Exception {
+        start(builder());
+        transport.setModernProtocol(true);
+        CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+        String error = "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}";
+
+        httpClient.nextExchange().fail(new HttpException(400, error));
+
+        assertThat(result.get(5, TimeUnit.SECONDS)).isEqualTo(error);
     }
 
     @ParameterizedTest
@@ -602,6 +614,52 @@ class StreamableHttpMcpTransportSpiTest {
         assertThat(reconnect.request().headers()).containsEntry("Mcp-Session-Id", List.of("session-from-spi"));
         transport.close();
         assertThat(reconnect.isCancelled()).isTrue();
+    }
+
+    @Test
+    void should_reconnect_subsidiary_channel_when_a_message_exceeds_the_maximum_size() throws Exception {
+        start(builder().subsidiaryChannel(true).maxMessageSize(1024));
+        CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
+        StreamExchange initialization = httpClient.nextExchange();
+        initialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        initialization.body(INITIALIZE_RESULT);
+        initialization.complete();
+        StreamExchange notification = httpClient.nextExchange();
+        notification.open(202, Map.of());
+        notification.complete();
+
+        StreamExchange channel = httpClient.nextExchange();
+        channel.open(200, Map.of("Content-Type", List.of("text/event-stream")));
+        assertThat(initialized.get(5, TimeUnit.SECONDS)).isEqualTo(INITIALIZE_RESULT);
+        channel.body("retry: 0\n\ndata: " + "x".repeat(600) + "\n");
+        channel.body("data: " + "x".repeat(600) + "\n");
+
+        assertThat(channel.isCancelled()).isTrue();
+        StreamExchange reconnect = httpClient.nextExchange();
+        assertThat(reconnect.request().method()).isEqualTo(HttpMethod.GET);
+        transport.close();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/event-stream", "application/json"})
+    void should_limit_the_response_to_a_notification(String contentType) throws Exception {
+        start(builder().maxMessageSize(1024));
+        CompletableFuture<String> initialized = transport.sendInitializeRequest(new McpInitializeRequest(0L));
+        StreamExchange initialization = httpClient.nextExchange();
+        initialization.open(200, Map.of("Content-Type", List.of("application/json")));
+        initialization.body(INITIALIZE_RESULT);
+        initialization.complete();
+        StreamExchange notification = httpClient.nextExchange();
+        notification.open(200, Map.of("Content-Type", List.of(contentType)));
+
+        notification.body(("data: " + "x".repeat(600) + "\n").repeat(2));
+
+        assertThat(notification.isCancelled()).isTrue();
+        assertThatThrownBy(() -> initialized.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeds the maximum size of 1024 bytes");
     }
 
     @Test

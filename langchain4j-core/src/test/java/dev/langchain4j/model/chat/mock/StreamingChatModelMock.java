@@ -15,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -52,6 +53,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private List<TokenUsage> tokenUsages = List.of();
     private FinishReason finishReason;
     private boolean throwFromChat;
+    private boolean streamingOnCallingThread;
+    private List<ChatModelListener> listeners = List.of();
 
     public StreamingChatModelMock(List<String> tokens) {
         this(List.of(toAiMessage(tokens)), List.copyOf(tokens));
@@ -90,6 +93,28 @@ public class StreamingChatModelMock implements StreamingChatModel {
      */
     public StreamingChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
         this.tokenUsages = List.of(tokenUsages);
+        return this;
+    }
+
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
+    public StreamingChatModelMock withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    /**
+     * Streams on the thread that calls {@code chat(ChatRequest, StreamingChatResponseHandler)}, before that call
+     * returns, as some in-process models do, instead of on a separate thread.
+     */
+    public StreamingChatModelMock streamingOnCallingThread() {
+        this.streamingOnCallingThread = true;
         return this;
     }
 
@@ -218,10 +243,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
         } else {
             AiMessage aiMessage = nextAiMessage();
 
-            var executor = Executors.newSingleThreadExecutor();
-
-            try {
-                executor.execute(() -> {
+            var executor = streamingOnCallingThread ? null : Executors.newSingleThreadExecutor();
+            Runnable streaming = () -> {
 
                     StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
@@ -243,7 +266,13 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     ChatResponse chatResponse = chatResponse(aiMessage, tokenUsage);
 
                     onCompleteResponse(handler, chatResponse);
-                });
+            };
+            if (executor == null) {
+                streaming.run();
+                return;
+            }
+            try {
+                executor.execute(streaming);
             } finally {
                 executor.shutdown();
             }

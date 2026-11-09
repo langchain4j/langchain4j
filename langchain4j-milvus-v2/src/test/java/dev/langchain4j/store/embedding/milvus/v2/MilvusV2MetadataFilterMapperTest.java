@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.filter.Filter.not;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,15 +14,22 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class MilvusV2MetadataFilterMapperTest {
+
+    private static final MilvusServerVersion MILVUS_2 = MilvusServerVersion.from("2.6.26");
+    private static final MilvusServerVersion MILVUS_3 = MilvusServerVersion.from("3.0.4");
 
     @Test
     void should_escape_backslash_in_string_value() {
         Filter filter = metadataKey("key").isEqualTo("a\\b");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] == \"a\\\\b\"");
     }
@@ -30,7 +38,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_escape_both_backslash_and_double_quote_in_string_value() {
         Filter filter = metadataKey("key").isEqualTo("a\\b\"c");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] == \"a\\\\b\\\"c\"");
     }
@@ -39,7 +47,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_escape_backslash_in_collection_values() {
         Filter filter = metadataKey("key").isIn("a\\b");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] in [\"a\\\\b\"]");
     }
@@ -48,7 +56,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_not_change_value_without_special_characters() {
         Filter filter = metadataKey("key").isEqualTo("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] == \"foo\"");
     }
@@ -59,7 +67,7 @@ class MilvusV2MetadataFilterMapperTest {
         // arbitrary Milvus filter expression syntax (here: an "or" term the caller never wrote).
         Filter filter = metadataKey("tenant\"] != \"\" or metadata[\"x").isEqualTo("acme");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"tenant\\\"] != \\\"\\\" or metadata[\\\"x\"] == \"acme\"");
     }
@@ -68,7 +76,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_escape_backslash_in_key() {
         Filter filter = metadataKey("a\\b").isEqualTo("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"a\\\\b\"] == \"foo\"");
     }
@@ -77,7 +85,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_escape_key_in_collection_filter() {
         Filter filter = metadataKey("a\"b").isIn("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"a\\\"b\"] in [\"foo\"]");
     }
@@ -86,7 +94,7 @@ class MilvusV2MetadataFilterMapperTest {
     void should_escape_key_in_contains_filter() {
         Filter filter = metadataKey("a\"b").containsString("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"a\\\"b\"] LIKE \"%foo%\"");
     }
@@ -97,7 +105,7 @@ class MilvusV2MetadataFilterMapperTest {
         // non-ASCII characters must keep working exactly as before.
         Filter filter = metadataKey("user.email 1").isEqualTo("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"user.email 1\"] == \"foo\"");
     }
@@ -106,7 +114,7 @@ class MilvusV2MetadataFilterMapperTest {
     void contains_should_wrap_plain_value_in_like_wildcards() {
         Filter filter = metadataKey("key").containsString("foo");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%foo%\"");
     }
@@ -117,7 +125,7 @@ class MilvusV2MetadataFilterMapperTest {
         // Two backslashes reach Milvus so that one survives into the LIKE pattern.
         Filter filter = metadataKey("key").containsString("50%");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%50\\\\%%\"");
     }
@@ -127,7 +135,7 @@ class MilvusV2MetadataFilterMapperTest {
         // "a_b" must be matched literally; the user's '_' must NOT act as a single-character wildcard.
         Filter filter = metadataKey("key").containsString("a_b");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\_b%\"");
     }
@@ -136,7 +144,7 @@ class MilvusV2MetadataFilterMapperTest {
     void contains_should_escape_backslash_percent_and_underscore_together() {
         Filter filter = metadataKey("key").containsString("a\\b100%_done");
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\b100\\\\%\\\\_done%\"");
     }
@@ -154,7 +162,7 @@ class MilvusV2MetadataFilterMapperTest {
                 .and(new IsEqualTo("h", (byte) 3))
                 .and(new IsLessThan("i", (short) 4));
 
-        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
 
         assertThat(expr)
                 .isEqualTo("metadata[\"a\"] == 1 and metadata[\"b\"] > 2 and metadata[\"c\"] < 1.5"
@@ -174,7 +182,7 @@ class MilvusV2MetadataFilterMapperTest {
             }
         };
 
-        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata"))
+        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2))
                 .isExactlyInstanceOf(UnsupportedOperationException.class)
                 .hasMessage("Unsupported value type: java.lang.StringBuilder");
     }
@@ -188,7 +196,7 @@ class MilvusV2MetadataFilterMapperTest {
             }
         };
 
-        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata"))
+        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2))
                 .isExactlyInstanceOf(UnsupportedOperationException.class)
                 .hasMessageStartingWith("Unsupported value type: ");
     }
@@ -210,8 +218,149 @@ class MilvusV2MetadataFilterMapperTest {
             }
         };
 
-        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata"))
+        assertThatThrownBy(() -> MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2))
                 .isExactlyInstanceOf(UnsupportedOperationException.class)
                 .hasMessageStartingWith("Unsupported value type: ");
+    }
+
+    @Test
+    void comparisons_outside_not_should_not_check_the_key() {
+        Filter filter = metadataKey("a").isEqualTo("x").and(metadataKey("b").isGreaterThan(1));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("metadata[\"a\"] == \"x\" and metadata[\"b\"] > 1");
+    }
+
+    @Test
+    void not_equal_should_also_match_entries_without_the_key() {
+        Filter filter = metadataKey("key").isNotEqualTo("a");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("((not exists metadata[\"key\"]) or metadata[\"key\"] != \"a\")");
+    }
+
+    @Test
+    void not_in_should_also_match_entries_without_the_key() {
+        Filter filter = metadataKey("key").isNotIn("a");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("((not exists metadata[\"key\"]) or metadata[\"key\"] not in [\"a\"])");
+    }
+
+    @Test
+    void not_should_require_the_key_for_the_negated_comparison() {
+        Filter filter = not(metadataKey("key").isEqualTo("a"));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("not(((exists metadata[\"key\"]) and metadata[\"key\"] == \"a\"))");
+    }
+
+    @Test
+    void not_should_require_the_key_for_contains() {
+        Filter filter = not(metadataKey("key").containsString("foo"));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("not(((exists metadata[\"key\"]) and metadata[\"key\"] LIKE \"%foo%\"))");
+    }
+
+    @Test
+    void not_should_require_the_key_in_nested_and_and_or() {
+        Filter filter = not(metadataKey("a")
+                .isEqualTo("x")
+                .and(metadataKey("b").isGreaterThan(1).or(metadataKey("c").isNotEqualTo("y"))));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr)
+                .isEqualTo("not(((exists metadata[\"a\"]) and metadata[\"a\"] == \"x\")"
+                        + " and (((exists metadata[\"b\"]) and metadata[\"b\"] > 1)"
+                        + " or ((not exists metadata[\"c\"]) or metadata[\"c\"] != \"y\")))");
+    }
+
+    @Test
+    void double_not_should_keep_the_key_check() {
+        Filter filter = not(not(metadataKey("key").isIn("a")));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr).isEqualTo("not(not(((exists metadata[\"key\"]) and metadata[\"key\"] in [\"a\"])))");
+    }
+
+    @Test
+    void not_equal_inside_and_outside_not_should_match_entries_without_the_key() {
+        Filter filter = metadataKey("a").isEqualTo("x").and(not(metadataKey("b").isNotEqualTo("y")));
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2);
+
+        assertThat(expr)
+                .isEqualTo("metadata[\"a\"] == \"x\""
+                        + " and not(((not exists metadata[\"b\"]) or metadata[\"b\"] != \"y\"))");
+    }
+
+    @Test
+    void contains_should_escape_backslash_once_more_for_milvus_3() {
+        Filter filter = metadataKey("key").containsString("back\\slash");
+
+        assertThat(MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2)).isEqualTo("metadata[\"key\"] LIKE \"%back\\\\slash%\"");
+        assertThat(MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_3)).isEqualTo("metadata[\"key\"] LIKE \"%back\\\\\\\\slash%\"");
+    }
+
+    @Test
+    void contains_should_escape_wildcards_the_same_way_for_milvus_3() {
+        Filter filter = metadataKey("key").containsString("50%");
+
+        assertThat(MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_3)).isEqualTo("metadata[\"key\"] LIKE \"%50\\\\%%\"");
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_check_the_key_only_where_it_changes_the_result(Filter filter, String plain, String insideNot) {
+        assertThat(MilvusV2MetadataFilterMapper.map(filter, "metadata", MILVUS_2)).isEqualTo(plain);
+        assertThat(MilvusV2MetadataFilterMapper.map(not(filter), "metadata", MILVUS_2)).isEqualTo(insideNot);
+    }
+
+    static Stream<Arguments> should_check_the_key_only_where_it_changes_the_result() {
+        return Stream.of(
+                Arguments.of(
+                        metadataKey("k").containsString("v"),
+                        "metadata[\"k\"] LIKE \"%v%\"",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] LIKE \"%v%\"))"),
+                Arguments.of(
+                        metadataKey("k").isEqualTo("v"),
+                        "metadata[\"k\"] == \"v\"",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] == \"v\"))"),
+                Arguments.of(
+                        metadataKey("k").isNotEqualTo("v"),
+                        "((not exists metadata[\"k\"]) or metadata[\"k\"] != \"v\")",
+                        "not(((not exists metadata[\"k\"]) or metadata[\"k\"] != \"v\"))"),
+                Arguments.of(
+                        metadataKey("k").isGreaterThan(1),
+                        "metadata[\"k\"] > 1",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] > 1))"),
+                Arguments.of(
+                        metadataKey("k").isGreaterThanOrEqualTo(1),
+                        "metadata[\"k\"] >= 1",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] >= 1))"),
+                Arguments.of(
+                        metadataKey("k").isLessThan(1),
+                        "metadata[\"k\"] < 1",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] < 1))"),
+                Arguments.of(
+                        metadataKey("k").isLessThanOrEqualTo(1),
+                        "metadata[\"k\"] <= 1",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] <= 1))"),
+                Arguments.of(
+                        metadataKey("k").isIn("v"),
+                        "metadata[\"k\"] in [\"v\"]",
+                        "not(((exists metadata[\"k\"]) and metadata[\"k\"] in [\"v\"]))"),
+                Arguments.of(
+                        metadataKey("k").isNotIn("v"),
+                        "((not exists metadata[\"k\"]) or metadata[\"k\"] not in [\"v\"])",
+                        "not(((not exists metadata[\"k\"]) or metadata[\"k\"] not in [\"v\"]))"));
     }
 }

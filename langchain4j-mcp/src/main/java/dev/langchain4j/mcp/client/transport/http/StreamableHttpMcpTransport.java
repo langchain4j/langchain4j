@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.http;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -49,6 +50,8 @@ import org.slf4j.LoggerFactory;
 public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
+    private static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
+    private static final int SSE_DATA_FIELD_NAME_LENGTH = "data:".length();
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
@@ -67,6 +70,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     // Subsidiary SSE channel fields
     private final boolean subsidiaryChannelEnabled;
+    private final int maxMessageSize;
     private volatile Runnable onFailureCallback;
     private volatile boolean subsidiaryChannelEstablished;
     private final AtomicReference<String> subsidiaryLastEventId = new AtomicReference<>();
@@ -85,6 +89,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, (i) -> Map.of());
         sslContext = builder.sslContext;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
+        maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         responseExecutor = builder.executor;
         if (builder.httpClientBuilder != null && builder.httpClient != null) {
@@ -432,8 +438,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return;
         }
         try {
-            Flow.Subscriber<HttpStreamingEvent> subscriber =
-                    responseExecutor == null ? exchange : new McpResponseSubscriber(exchange, responseExecutor);
+            Flow.Subscriber<HttpStreamingEvent> subscriber = responseExecutor == null
+                    ? exchange
+                    : new McpResponseSubscriber(exchange, responseExecutor, exchange::readsErrorBody);
             httpClient.stream(request, new McpResponseParser()).subscribe(subscriber);
         } catch (RuntimeException e) {
             exchange.onError(e);
@@ -542,8 +549,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final boolean firstAttempt;
         private final CompletableFuture<Void> opened;
         private final CapturedContext requestContext;
+        private final boolean modern = modernProtocol;
         private final AtomicBoolean finished = new AtomicBoolean();
         private final StringBuilder body = new StringBuilder();
+        private long bodyBytes;
+        private final StringBuilder sseData = new StringBuilder();
+        private boolean sseDataPresent;
+        private long sseDataBytes;
+        private final StringBuilder sseLine = new StringBuilder();
+        private long sseLineBytes;
         private volatile Flow.Subscription subscription;
         private boolean sseResponse;
         private boolean responseReceived;
@@ -605,18 +619,86 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     responseReceived = true;
                     onResponse(received.response());
                 } else if (event instanceof HttpErrorResponseReceived errorResponse) {
-                    handleError(new HttpException(
-                            errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    if (!readsErrorBody(errorResponse)) {
+                        handleError(new HttpException(
+                                errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    }
+                    // otherwise the stream fails with an HttpException carrying the body, see handleError
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
-                        handleSseLine(line.data());
+                        handleSseFragment(line);
                     } else {
-                        body.append(line.data()).append(line.ending());
+                        handleBodyFragment(line);
                     }
                 }
             } catch (RuntimeException e) {
                 onError(e);
             }
+        }
+
+        /**
+         * Whether the body of this error response is read, because it may carry a JSON-RPC error that tells the
+         * caller more than the status code, such as the rejection of a request whose headers do not match its
+         * body. Other error responses fail the request as soon as their status arrives.
+         */
+        private boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
+            return readsErrorBody(errorResponse.statusCode())
+                    && errorResponse.headers().getOrDefault("Content-Type", List.of()).stream()
+                            .anyMatch(contentType -> contentType.contains("json"));
+        }
+
+        /**
+         * In the 2026-07-28 protocol, a server rejects a request with a client error status and a JSON-RPC error,
+         * for example 404 with -32601 for a method it does not know, and that error is the answer to the request.
+         * A rejected credential (401), a refused request (403) and a rate limit (429) still fail the request with
+         * their status code, which callers act on. So does every error status of a legacy server: its health
+         * check and initialization rely on that failure.
+         */
+        private boolean readsErrorBody(int statusCode) {
+            return modern
+                    && expectResponse
+                    && context.message().getId() != null
+                    && statusCode >= 400
+                    && statusCode < 500
+                    && statusCode != 401
+                    && statusCode != 403
+                    && statusCode != 429;
+        }
+
+        private boolean expiresSession(int statusCode) {
+            return statusCode == 404 && !modern && !(context.message() instanceof McpInitializeRequest);
+        }
+
+        /**
+         * Completes the request with a JSON-RPC error carried by an error response, as if it had arrived with a
+         * successful status.
+         *
+         * @return whether the response carried a JSON-RPC error for this request
+         */
+        private boolean completeWithJsonRpcError(HttpException error) {
+            if (!readsErrorBody(error.statusCode()) || error.getMessage() == null) {
+                return false;
+            }
+            Map<String, Object> message;
+            try {
+                message = McpJson.toMap(error.getMessage());
+            } catch (RuntimeException e) {
+                // the body is not JSON-RPC (e.g. a proxy's error page), so the status code is the failure
+                return false;
+            }
+            if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
+                return false;
+            }
+            // a server that could not read the request answers without an id, but the error is still its answer
+            Object id = message.get("id");
+            if (id != null && !(id instanceof Number number && number.longValue() == context.message().getId())) {
+                return false;
+            }
+            if (logResponses) {
+                trafficLog.info("Response: {}", error.getMessage());
+            }
+            future.complete(error.getMessage());
+            return true;
         }
 
         private void onResponse(SuccessfulHttpResponse response) {
@@ -642,19 +724,68 @@ public class StreamableHttpMcpTransport implements McpTransport {
             }
         }
 
-        private void handleSseLine(String line) {
+        /**
+         * Buffers the body of a response that is not an SSE stream, failing the exchange once it exceeds
+         * {@code maxMessageSize}, so that a server cannot make the client buffer an unbounded amount of data.
+         */
+        private void handleBodyFragment(McpResponseParser.Line fragment) {
+            bodyBytes += fragment.byteLength() + fragment.ending().length();
+            if (bodyBytes > maxMessageSize) {
+                failMessageTooLarge();
+                return;
+            }
+            body.append(fragment.data()).append(fragment.ending());
+        }
+
+        /**
+         * Reassembles lines that the parser split into fragments, failing the exchange once the data of the
+         * current event and the line being read exceed {@code maxMessageSize}, so that a server cannot
+         * make the client buffer an unbounded amount of data. The line being read still contains its field name,
+         * so a {@code data:} line that carries exactly {@code maxMessageSize} bytes is accepted.
+         */
+        private void handleSseFragment(McpResponseParser.Line fragment) {
+            sseLineBytes += fragment.byteLength();
+            if (sseDataBytes + sseLineBytes > maxMessageSize + SSE_DATA_FIELD_NAME_LENGTH) {
+                failMessageTooLarge();
+                return;
+            }
+            sseLine.append(fragment.data());
+            if (fragment.partial()) {
+                return;
+            }
+            String line = sseLine.toString();
+            long lineBytes = sseLineBytes;
+            sseLine.setLength(0);
+            sseLineBytes = 0;
+            handleSseLine(line, lineBytes);
+        }
+
+        private void failMessageTooLarge() {
+            String message = "Message from the MCP server exceeds the maximum size of " + maxMessageSize
+                    + " bytes; use StreamableHttpMcpTransport.Builder.maxMessageSize to raise the limit";
+            LOG.warn("Closing the stream: {}", message);
+            handleError(new IllegalStateException(message));
+        }
+
+        private void handleSseLine(String line, long lineBytes) {
             if (future != null && future.isCancelled()) {
                 return;
             }
             if (logResponses && !line.trim().isEmpty()) {
                 trafficLog.info("SSE event received: " + line);
             }
-            if (line.startsWith("data:")) {
-                try {
-                    operationHandler.onMessage(line.substring(5));
-                } catch (RuntimeException e) {
-                    trafficLog.warn("Failed to handle SSE event: " + line, e);
+            if (line.isEmpty()) {
+                dispatchSseEvent();
+            } else if (line.startsWith("data:")) {
+                // an event's data may span several data lines, joined with a line feed
+                // (https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation)
+                if (sseDataPresent) {
+                    sseData.append('\n');
+                    sseDataBytes++;
                 }
+                sseData.append(line, SSE_DATA_FIELD_NAME_LENGTH, line.length());
+                sseDataBytes += lineBytes - SSE_DATA_FIELD_NAME_LENGTH;
+                sseDataPresent = true;
             } else if (opened != null && line.startsWith("id:")) {
                 subsidiaryLastEventId.set(line.substring(3).trim());
             } else if (opened != null && line.startsWith("retry:")) {
@@ -663,6 +794,21 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 } catch (NumberFormatException e) {
                     trafficLog.warn("Failed to parse SSE retry value: " + line, e);
                 }
+            }
+        }
+
+        private void dispatchSseEvent() {
+            if (!sseDataPresent) {
+                return;
+            }
+            String data = sseData.toString();
+            sseData.setLength(0);
+            sseDataPresent = false;
+            sseDataBytes = 0;
+            try {
+                operationHandler.onMessage(data);
+            } catch (RuntimeException e) {
+                trafficLog.warn("Failed to handle SSE event: " + data, e);
             }
         }
 
@@ -675,6 +821,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private void handleError(Throwable error) {
             if (!finish()) {
+                return;
+            }
+            if (!closed.get() && error instanceof HttpException httpError && completeWithJsonRpcError(httpError)) {
                 return;
             }
             if (error instanceof HttpException httpError) {
@@ -697,10 +846,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     scheduleSubsidiaryReconnect(requestContext);
                 }
                 opened.complete(null);
-            } else if (error instanceof HttpException httpError
-                    && httpError.statusCode() == 404
-                    && !(context.message() instanceof McpInitializeRequest)
-                    && !modernProtocol) {
+            } else if (error instanceof HttpException httpError && expiresSession(httpError.statusCode())) {
                 if (retry) {
                     future.completeExceptionally(new HttpException(
                             404, "Session expired again after reinitialization: server returned status code 404"));
@@ -738,6 +884,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         private void handleComplete() {
+            if (sseResponse && !closed.get() && (future == null || !future.isCancelled())) {
+                // a stream that ends without the blank line terminating its last event
+                dispatchSseEvent();
+            }
             if (!finish()) {
                 return;
             }
@@ -840,6 +990,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
         private boolean followRedirects = false;
+        private Integer maxMessageSize;
 
         /**
          * Supplies the HTTP backend used for all requests, including the subsidiary SSE channel.
@@ -1025,6 +1176,27 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder subsidiaryChannel(boolean subsidiaryChannelEnabled) {
             this.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
+            return this;
+        }
+
+        /**
+         * The maximum size, in bytes, of a single message received from the server: the data of one event
+         * on an SSE stream, or the whole body of any other response, such as a JSON response.
+         * This applies to every response, including the subsidiary SSE channel.
+         * When a server sends a larger message, the transport closes the stream: a pending request fails
+         * and the subsidiary channel reconnects. This protects the client against servers that send
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
+         * Defaults to 20 MiB.
+         *
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
+         * @return this builder
+         * @since 1.24.0
+         */
+        public StreamableHttpMcpTransport.Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
             return this;
         }
 
