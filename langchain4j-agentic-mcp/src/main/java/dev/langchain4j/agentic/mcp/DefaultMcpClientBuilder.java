@@ -73,7 +73,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private String description;
     private InternalAgent parent;
 
-    private volatile String[] inputKeys;
+    private String[] inputKeys;
     private volatile Map<String, String> inputDescriptions = Map.of();
     private volatile List<AgentArgument> arguments = List.of();
     private String outputKey;
@@ -142,6 +142,12 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public T build() {
+        // An untyped agent would report no argument until its tool is resolved, while some planners read the
+        // arguments at invocation without resolving it, so its input keys are mandatory, as for an untyped A2A agent
+        if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
+            throw new IllegalArgumentException("Input keys must be provided for an untyped MCP client agent: "
+                    + "set McpClientBuilder.inputKeys(...) with the names of the input parameters of its tool");
+        }
         if (description == null) {
             description = agentMethod.map(DefaultMcpClientBuilder::annotatedDescription).orElse(null);
         }
@@ -167,16 +173,14 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     /**
-     * The arguments known without the tool: those of the agent method of a typed agent, the explicit input keys of
-     * an untyped one, without type information, or none when they are not configured.
+     * The arguments known without the tool: those of the agent method of a typed agent, or the mandatory input keys
+     * of an untyped one, without type information.
      */
     private List<AgentArgument> localArguments() {
         if (agentServiceClass != UntypedAgent.class) {
             return typedArguments();
         }
-        return inputKeys == null
-                ? List.of()
-                : Stream.of(inputKeys).map(key -> new AgentArgument(Object.class, key)).toList();
+        return Stream.of(inputKeys).map(key -> new AgentArgument(Object.class, key)).toList();
     }
 
     private List<AgentArgument> typedArguments() {
@@ -316,7 +320,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                         + tools.stream().map(ToolSpecification::name).toList()));
     }
 
-    /** Fills in what is known only from the tool: the input keys of an untyped agent, argument types and descriptions. */
+    /** Fills in what is known only from the tool: the argument descriptions and, for an untyped agent, the types. */
     private void applyTool(ToolSpecification resolvedTool) {
         JsonObjectSchema params = resolvedTool.parameters();
         Map<String, String> descriptions = new HashMap<>();
@@ -328,12 +332,6 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                     descriptions.put(key, schema.description());
                 }
             });
-        }
-
-        if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
-            inputKeys = params != null && params.properties() != null
-                    ? params.properties().keySet().toArray(new String[0])
-                    : new String[0];
         }
 
         inputDescriptions = Map.copyOf(descriptions);
@@ -365,7 +363,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 case "toolSpecification" -> resolveTool();
                 case "toolName" -> toolName();
                 case "toolDescription" -> resolveTool().description();
-                case "inputKeys" -> inputKeys();
+                case "inputKeys" -> inputKeys;
                 case "inputDescriptions" -> inputDescriptions();
                 default ->
                     throw new UnsupportedOperationException(
@@ -380,14 +378,6 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private String toolName() {
         String configuredToolName = configuredToolName();
         return configuredToolName != null ? configuredToolName : resolveTool().name();
-    }
-
-    /** The configured input keys, else, for an untyped agent, the properties of the input schema of the tool. */
-    private String[] inputKeys() {
-        if (inputKeys == null && agentServiceClass == UntypedAgent.class) {
-            resolveTool();
-        }
-        return inputKeys;
     }
 
     private Map<String, String> inputDescriptions() {

@@ -41,6 +41,15 @@ public interface McpClientBuilder<T> {
      */
     McpClientBuilder<T> description(String description);
 
+    /**
+     * Sets the names of the input parameters of the MCP tool, read from the agentic scope when the agent is invoked.
+     * They are mandatory for an untyped agent, which could not report any argument without them until its tool is
+     * resolved, so {@link #build()} fails with an {@code IllegalArgumentException} when they are not set, while a
+     * typed agent takes them from the parameters of its agent method when they are not set.
+     *
+     * @param inputKeys the names of the input keys
+     * @return this builder for method chaining
+     */
     McpClientBuilder<T> inputKeys(String... inputKeys);
 
     McpClientBuilder<T> outputKey(String outputKey);

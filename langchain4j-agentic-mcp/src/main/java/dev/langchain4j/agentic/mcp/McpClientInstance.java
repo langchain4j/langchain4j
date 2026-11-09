@@ -13,8 +13,8 @@ import java.util.Map;
 public interface McpClientInstance extends InternalAgent {
 
     /**
-     * The input keys of the agent: the configured ones or, for an untyped agent without explicit input keys, the
-     * properties of the input schema of its tool, which is resolved at this point if not yet done.
+     * The configured input keys of the agent, mandatory for an untyped agent, or null for a typed agent without
+     * explicit input keys, whose inputs are the parameters of its agent method. Never resolves the tool.
      */
     String[] inputKeys();
 

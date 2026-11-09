@@ -494,12 +494,12 @@ class McpLazyToolTest {
         assertThat(untypedInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(untypedInstance.arguments().get(0).description()).isEqualTo("The topic");
 
-        // an untyped agent without input keys only knows them from the schema
-        UntypedAgent keyless = McpAgent.builder(server).toolName("writer").build();
-        McpClientInstance keylessInstance = (McpClientInstance) keyless;
-        assertThat(keylessInstance.arguments()).isEmpty();
-        assertThat(keylessInstance.inputKeys()).containsExactly("topic");
-        assertThat(keylessInstance.arguments()).extracting(AgentArgument::name).containsExactly("topic");
+        // an untyped agent without input keys could not report any argument until the tool is resolved, so it is
+        // rejected when built, since some planners read the arguments at invocation without resolving the tool
+        assertThatThrownBy(() -> McpAgent.builder(server).toolName("writer").build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("untyped MCP client agent")
+                .hasMessageContaining("inputKeys");
 
         // a typed agent reports the arguments of its method, with the schema descriptions once resolved
         Writer writer = McpAgent.builder(server, Writer.class).toolName("writer").build();
@@ -507,10 +507,10 @@ class McpLazyToolTest {
         assertThat(writerInstance.arguments()).extracting(AgentArgument::name).containsExactly("topic");
         assertThat(writerInstance.arguments().get(0).type()).isEqualTo(String.class);
         assertThat(writerInstance.arguments().get(0).description()).isNullOrEmpty();
-        assertThat(server.clients).hasValue(2);
+        assertThat(server.clients).hasValue(1);
         writerInstance.toolSpecification();
         assertThat(writerInstance.arguments().get(0).description()).isEqualTo("The topic");
-        assertThat(server.clients).hasValue(3);
+        assertThat(server.clients).hasValue(2);
     }
 
     @Test
