@@ -22,6 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>A visual tree chart of the agent hierarchy showing topology types, names, and properties</li>
  *   <li>A waterfall timeline of execution traces grouped by memory/session ID</li>
  * </ul>
+ *
+ * <p>An execution suspended by a human-in-the-loop step stays among the ongoing ones, with the invocations of the
+ * root agent and of the workflows containing that step in progress and marked as suspended: when the agentic
+ * system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of
+ * starting new ones. A monitor created after the suspension, for instance after a restart, has no record of the
+ * suspended execution and records the resumed invocation as a new execution.
  */
 public class AgentMonitor implements AgentListener {
 
@@ -157,6 +163,14 @@ public class AgentMonitor implements AgentListener {
         if (execution != null) {
             execution.asyncAgentCompleted(agentId, failed);
             finalizeExecution(memoryId, execution);
+        }
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+        MonitoredExecution execution = ongoingExecutions.get(agenticScope.memoryId());
+        if (execution != null) {
+            execution.agenticSystemSuspended();
         }
     }
 

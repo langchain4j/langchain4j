@@ -28,6 +28,15 @@ public class AgentInvocation {
     private int iterationIndex = -1;
     private String skipReason;
 
+    private final List<Suspension> suspensions = Collections.synchronizedList(new ArrayList<>());
+    private volatile LocalDateTime suspendedAt;
+
+    /**
+     * An interval during which the agentic system was suspended, for instance waiting for a human, while this
+     * invocation was in progress: {@code end} is {@code null} while the suspension is ongoing.
+     */
+    public record Suspension(LocalDateTime start, LocalDateTime end) {}
+
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
         this.startTime = LocalDateTime.now();
@@ -46,8 +55,32 @@ public class AgentInvocation {
     }
 
     void finished(AgentResponse agentResponse) {
+        // an agent still running when the agentic system was suspended, like a parallel sibling of the suspended
+        // step, completes without re-entering: its suspension ends with it
+        markResumed();
         this.agentResponse = agentResponse;
         this.finishTime = LocalDateTime.now();
+    }
+
+    /**
+     * Marks the agentic system as suspended while this invocation is in progress. No-op if it is already suspended,
+     * since the suspension is notified once per level of the agents containing the suspended step.
+     */
+    void markSuspended() {
+        if (suspendedAt == null) {
+            suspendedAt = LocalDateTime.now();
+        }
+    }
+
+    /**
+     * Ends the current suspension, if any, when the agent is invoked again to resume the agentic system.
+     */
+    void markResumed() {
+        LocalDateTime start = suspendedAt;
+        if (start != null) {
+            suspensions.add(new Suspension(start, LocalDateTime.now()));
+            suspendedAt = null;
+        }
     }
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
@@ -60,6 +93,42 @@ public class AgentInvocation {
 
     public boolean done() {
         return finishTime != null;
+    }
+
+    /**
+     * Returns {@code true} while the agentic system is suspended, for instance waiting for a human, with this
+     * invocation in progress: the root agent and the workflows containing the suspended step stay in progress until
+     * the system is resumed by invoking the root agent again, when they continue this same invocation.
+     */
+    public boolean suspended() {
+        return suspendedAt != null;
+    }
+
+    /**
+     * Returns the intervals during which the agentic system was suspended while this invocation was in progress,
+     * the ongoing one last, with a {@code null} end, if the system is suspended now. A loop containing a step
+     * waiting for a human is suspended once per iteration.
+     */
+    public List<Suspension> suspensions() {
+        List<Suspension> all = new ArrayList<>(suspensions);
+        LocalDateTime start = suspendedAt;
+        if (start != null) {
+            all.add(new Suspension(start, null));
+        }
+        return Collections.unmodifiableList(all);
+    }
+
+    /**
+     * Returns the total time the agentic system spent suspended during this invocation, counting an ongoing
+     * suspension until now. The {@link #duration()} of the invocation includes it.
+     */
+    public Duration suspendedDuration() {
+        Duration total = Duration.ZERO;
+        for (Suspension suspension : suspensions()) {
+            LocalDateTime end = suspension.end() != null ? suspension.end() : LocalDateTime.now();
+            total = total.plus(Duration.between(suspension.start(), end));
+        }
+        return total;
     }
 
     /**
@@ -190,6 +259,7 @@ public class AgentInvocation {
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
+                (suspensions.isEmpty() && !suspended() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
                 ", tokens=" + (done() ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +

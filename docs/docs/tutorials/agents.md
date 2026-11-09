@@ -1174,6 +1174,8 @@ This last method also supports filtering by memory id, for instance `HtmlReportG
 
 An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
 
+When the agentic system is [suspended](#agenticscope-and-agentic-systems-recoverability), for instance by a human-in-the-loop step waiting for a human, its execution stays among the ongoing ones of the `AgentMonitor`, and the invocations of the root agent and of the workflows containing the suspended step stay in progress, marked as suspended: their `suspended()` method returns `true`, like the `suspended()` method of the `MonitoredExecution`. Since the system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of starting new ones, so their `duration()` spans the wait, which `suspensions()` and `suspendedDuration()` tell apart from the time spent running; a loop containing the step waiting for a human is suspended once per iteration. The HTML report labels a suspended execution as "suspended" instead of "running". A monitor created after the suspension, for instance after a crash and a restart, has no record of it and records the resumed call as a new execution.
+
 By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
 
 The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
@@ -3614,6 +3616,8 @@ result = result.completePendingResponse("Legal OK");      // resumes, completes
 ```
 
 `ResultWithAgenticScope` is the recommended approach for handling suspension, as it avoids using exceptions for control flow.
+
+Whichever way the system is resumed, an `AgentMonitor` listening to it keeps the suspended execution among the ongoing ones and continues the invocations of the root agent and of the workflows containing the human-in-the-loop step, as explained in the [monitoring](#monitoring) section.
 
 Conversely, If the method returns a plain type (e.g. `String`) instead of `ResultWithAgenticScope`, the system throws `AgenticSystemSuspendedException` on suspension. In that case, or when you need to resume through the scope directly (e.g. after a crash/restart), you can complete the response on the `AgenticScope` and re-invoke the agent method:
 

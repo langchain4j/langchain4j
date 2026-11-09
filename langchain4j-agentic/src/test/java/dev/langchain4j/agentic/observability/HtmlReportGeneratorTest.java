@@ -171,6 +171,33 @@ class HtmlReportGeneratorTest {
         }
     }
 
+    @Test
+    void reports_a_suspended_execution_as_suspended_until_its_root_agent_is_invoked_again() {
+        SampleReportGenerator.MockAgent root = new SampleReportGenerator.MockAgent(
+                "ask",
+                MedicalExpert.class,
+                AgenticSystemTopology.SEQUENCE,
+                "Asks the human for the question",
+                List.of(),
+                "response",
+                String.class);
+        root.subagents = List.of();
+        AgentMonitor monitor = new AgentMonitor();
+        monitor.setRootAgent(root);
+        SampleReportGenerator.MockScope scope = new SampleReportGenerator.MockScope("user-alice");
+
+        monitor.beforeAgentInvocation(new AgentRequest(scope, root, Map.of()));
+        monitor.onAgenticSystemSuspended(scope);
+
+        String html = HtmlReportGenerator.generateReport(monitor);
+        assertThat(html).contains("<span class=\"dur-badge\">suspended</span>").doesNotContain("running...");
+
+        monitor.beforeAgentInvocation(new AgentRequest(scope, root, Map.of()));
+
+        html = HtmlReportGenerator.generateReport(monitor);
+        assertThat(html).contains("<span class=\"dur-badge\">running...</span>").doesNotContain(">suspended<");
+    }
+
     public interface Assistant {
 
         @UserMessage("Answer {{question}}")

@@ -12,6 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Represents a monitored execution of an agentic system, tracking the top-level agent invocation
  * and any other nested invocations, along with all the invocation currently in progress and
  * any errors that occur during execution.
+ * <p>
+ * The execution stays ongoing while the agentic system is suspended, for instance waiting for a human: the
+ * invocations in progress at that moment, the root agent and the workflows containing the suspended step, are
+ * marked as {@link AgentInvocation#suspended() suspended} and continue when their agents are invoked again to
+ * resume the system, so their duration spans the suspension.
  */
 public class MonitoredExecution {
 
@@ -56,9 +61,29 @@ public class MonitoredExecution {
         return !runningAsyncAgents.isEmpty();
     }
 
+    /**
+     * Records the suspension of the agentic system: the invocations in progress stay ongoing, marked as suspended,
+     * and continue when their agents are invoked again to resume the system. The asynchronous agents still running
+     * are not waiting, so their invocations are left alone. Notified once per level of the agents containing the
+     * suspended step, and marking an invocation already suspended is a no-op.
+     */
+    void agenticSystemSuspended() {
+        ongoingInvocations.forEach((agentId, invocation) -> {
+            if (!runningAsyncAgents.containsKey(agentId)) {
+                invocation.markSuspended();
+            }
+        });
+    }
+
     void beforeAgentInvocation(AgentRequest agentRequest) {
         if (submittedAgentIds.remove(agentRequest.agentId())) {
             // the invocation was recorded at the submission of this asynchronous agent
+            return;
+        }
+        AgentInvocation suspendedInvocation = ongoingInvocations.get(agentRequest.agentId());
+        if (suspendedInvocation != null && suspendedInvocation.suspended()) {
+            // the agent is invoked again to resume the suspended agentic system: its invocation continues
+            suspendedInvocation.markResumed();
             return;
         }
         AgentInvocation newInvocation = new AgentInvocation(agentRequest);
@@ -145,6 +170,14 @@ public class MonitoredExecution {
 
     public boolean done() {
         return topLevelInvocations.done();
+    }
+
+    /**
+     * Returns {@code true} while the agentic system is suspended, for instance waiting for a human, and this
+     * execution waits to be resumed by a new invocation of its root agent.
+     */
+    public boolean suspended() {
+        return topLevelInvocations.suspended();
     }
 
     public boolean hasError() {
