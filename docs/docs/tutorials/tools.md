@@ -1490,6 +1490,11 @@ while the actual response of `124` will have to be retrieved from the `result.to
 Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request,
 thus returning a response like: `The result of adding 37 and 87 is 124.`
 
+If the AI Service has a `ChatMemory`, the tool execution request and its result are stored in it, as for any other
+tool, whatever the return type of the AI Service method. No final `AiMessage` is stored, because the LLM is not called
+again. The stored result is sent to the LLM on later calls that use the same memory, so it counts towards the tokens
+of those calls, and an immediate return does not keep sensitive data away from the LLM.
+
 #### Non-`Result` AI Service method Return Types
 
 If your AI Service method signatures do not return a `Result` type, then your

@@ -253,6 +253,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final AtomicReference<Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>>>
                 startedRoundTools = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
+        private final AtomicReference<CompletableFuture<?>> toolResultsPersistence = new AtomicReference<>();
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
@@ -298,7 +299,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             .whenComplete((combined, error) -> doCancellationCompensation(
                                     requests, combined != null ? combined.results() : null));
                 } else {
-                    doCancellationCompensation(null, null);
+                    CompletableFuture<?> persistence = toolResultsPersistence.get();
+                    if (persistence != null) {
+                        persistence.whenComplete((ignored, error) -> doCancellationCompensation(null, null));
+                    } else {
+                        doCancellationCompensation(null, null);
+                    }
                 }
             });
 
@@ -434,6 +440,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
+            if (aiMessage.hasToolExecutionRequests() && roundTripsLeft-- == 0) {
+                throw runtime(
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        context.toolService.maxToolCallingRoundTrips());
+            }
+
             getMemory().addAsync(List.of(aiMessage)).whenComplete((ignored, error) -> {
                 if (error != null) {
                     fail(error);
@@ -460,12 +472,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             if (!aiMessage.hasToolExecutionRequests()) {
                 emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
                 return;
-            }
-
-            if (roundTripsLeft-- == 0) {
-                throw runtime(
-                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
-                        context.toolService.maxToolCallingRoundTrips());
             }
 
             tube.send(new IntermediateResponseEvent(chatResponse, invocationContext));
@@ -661,34 +667,36 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     fail(compensationError);
                     return;
                 }
-                if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                    // persist the tool results first, so that the memory is not left with an AI message
-                    // whose tool execution requests have no result
-                    context.toolService
-                            .persistToolResultsAndResolveMessages(
-                                    context, getMemory(), null, outcome.resultMessages(), invocationContext)
-                            .thenAccept(ignored -> {
-                                if (tube.cancelled()) {
-                                    return;
-                                }
-                                emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
-                            })
-                            .exceptionally(error -> {
-                                fail(error);
-                                return null;
-                            });
+
+                // published before the persist starts, so that a cancel arriving from now on rolls back only after it
+                CompletableFuture<Void> persisted = new CompletableFuture<>();
+                boolean alreadyCancelled = underAccumulatorLock(() -> {
+                    if (tube.cancelled()) {
+                        return true;
+                    }
+                    toolResultsPersistence.set(persisted);
+                    return false;
+                });
+                if (alreadyCancelled) {
+                    doCancellationCompensation(null, null);
                     return;
                 }
-
-                tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
 
                 context.toolService
                         .persistToolResultsAndResolveMessages(
                                 context, getMemory(), null, outcome.resultMessages(), invocationContext)
+                        .whenComplete((ignoredMessages, ignoredError) -> persisted.complete(null))
                         .thenAccept(nextMessages -> {
                             if (tube.cancelled()) {
                                 return;
                             }
+                            if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                                emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
+                                return;
+                            }
+
+                            tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
+
                             ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
                                     context,
                                     invocationContext.chatMemoryId(),

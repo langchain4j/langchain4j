@@ -931,8 +931,8 @@ public class ToolService {
         }
 
         /**
-         * After the round's tools have executed: records their results, compensates if a tool errored, and either
-         * returns immediately (per {@link ReturnBehavior}) or persists the results and continues via
+         * After the round's tools have executed: records their results, compensates if a tool errored, persists the
+         * results, and then either returns immediately (per {@link ReturnBehavior}) or continues via
          * {@link #callModelAndContinue}.
          */
         private CompletableFuture<ToolServiceResult> afterToolsExecuted(
@@ -985,19 +985,18 @@ public class ToolService {
                                     unwrapCompletionException(compensationError));
                         }
 
-                        boolean returnImmediately =
-                                shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors());
-
-                        if (!returnImmediately && isCancelled(cancellation)) {
+                        if (isCancelled(cancellation)) {
                             return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
                         }
 
-                        // the tool results are persisted before returning immediately too, so that the memory
-                        // is not left with an AI message whose tool execution requests have no result
                         return persistToolResultsAndResolveMessages(
                                         context, chatMemory, accumulator, outcome.resultMessages(), invocationContext)
                                 .thenCompose(nextMessages -> {
-                                    if (returnImmediately) {
+                                    if (isCancelled(cancellation)) {
+                                        return CompletableFuture.<ToolServiceResult>failedFuture(
+                                                new CancellationException());
+                                    }
+                                    if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                                         return CompletableFuture.completedFuture(immediateToolServiceResult(
                                                 intermediateResponses,
                                                 toolExecutions,
@@ -1171,11 +1170,16 @@ public class ToolService {
         }
 
         List<ChatMessage> messagesToAdd = new ArrayList<>(resultMessages);
-        return chatMemory
-                .addAsync(messagesToAdd)
-                .thenCompose(ignored -> chatMemory.messagesAsync())
-                .thenApply(memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
-                .exceptionallyCompose(ToolService::translateBlockingChatMemory);
+        try {
+            return chatMemory
+                    .addAsync(messagesToAdd)
+                    .thenCompose(ignored -> chatMemory.messagesAsync())
+                    .thenApply(
+                            memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
+                    .exceptionallyCompose(ToolService::translateBlockingChatMemory);
+        } catch (Throwable t) {
+            return translateBlockingChatMemory(t);
+        }
     }
 
     private static CompletionStage<List<ChatMessage>> translateBlockingChatMemory(Throwable error) {
