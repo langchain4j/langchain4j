@@ -55,6 +55,14 @@ public class McpToolMetadataKeys {
     public static final String OPEN_WORLD_HINT = "openWorldHint";
 
     /**
+     * The original JSON schema describing the tool's input, as declared in the Tool definition.
+     * Unlike {@link dev.langchain4j.agent.tool.ToolSpecification#parameters()}, this retains schema keywords that cannot
+     * be represented by the model-specific schema types, for applications forwarding MCP tools.
+     * Value type: {@code Map<String, Object>}
+     */
+    public static final String INPUT_SCHEMA = "inputSchema";
+
+    /**
      * The JSON schema describing the structured output of the tool, as declared in the Tool definition.
      * Paired with {@code structuredContent} in tool responses.
      * See <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/blob/2025-06-18/schema/2025-06-18/schema.json">schema.json</a>
