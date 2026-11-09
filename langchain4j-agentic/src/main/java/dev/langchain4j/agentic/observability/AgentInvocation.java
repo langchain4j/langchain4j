@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 public class AgentInvocation {
@@ -28,14 +29,51 @@ public class AgentInvocation {
     private int iterationIndex = -1;
     private String skipReason;
 
-    private final List<Suspension> suspensions = Collections.synchronizedList(new ArrayList<>());
+    private final List<Suspension> suspensions = new ArrayList<>();
     private volatile LocalDateTime suspendedAt;
 
     /**
-     * An interval during which the agentic system was suspended, for instance waiting for a human, while this
-     * invocation was in progress: {@code end} is {@code null} while the suspension is ongoing.
+     * An interval during which the agentic system was suspended, for instance waiting for a human, while an
+     * invocation was in progress.
      */
-    public record Suspension(LocalDateTime start, LocalDateTime end) {}
+    public static final class Suspension {
+
+        private final LocalDateTime startTime;
+        private final LocalDateTime finishTime;
+
+        Suspension(LocalDateTime startTime, LocalDateTime finishTime) {
+            this.startTime = startTime;
+            this.finishTime = finishTime;
+        }
+
+        public LocalDateTime startTime() {
+            return startTime;
+        }
+
+        /**
+         * Returns when the suspension ended, or {@code null} while it is ongoing.
+         */
+        public LocalDateTime finishTime() {
+            return finishTime;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Suspension that
+                    && Objects.equals(startTime, that.startTime)
+                    && Objects.equals(finishTime, that.finishTime);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(startTime, finishTime);
+        }
+
+        @Override
+        public String toString() {
+            return "Suspension{startTime=" + startTime + ", finishTime=" + finishTime + '}';
+        }
+    }
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -54,33 +92,42 @@ public class AgentInvocation {
         return invocation;
     }
 
-    void finished(AgentResponse agentResponse) {
-        // an agent still running when the agentic system was suspended, like a parallel sibling of the suspended
-        // step, completes without re-entering: its suspension ends with it
-        markResumed();
+    synchronized void finished(AgentResponse agentResponse) {
+        cancelSuspension();
         this.agentResponse = agentResponse;
         this.finishTime = LocalDateTime.now();
     }
 
     /**
      * Marks the agentic system as suspended while this invocation is in progress. No-op if it is already suspended,
-     * since the suspension is notified once per level of the agents containing the suspended step.
+     * since the suspension is notified once per level of the agents containing the suspended step, or if it is
+     * already finished.
      */
-    void markSuspended() {
-        if (suspendedAt == null) {
+    synchronized void markSuspended() {
+        if (suspendedAt == null && finishTime == null) {
             suspendedAt = LocalDateTime.now();
         }
     }
 
     /**
-     * Ends the current suspension, if any, when the agent is invoked again to resume the agentic system.
+     * Ends the current suspension, if any, recording it: the agent is invoked again to resume the agentic system, or
+     * the execution ended without invoking it again.
      */
-    void markResumed() {
+    synchronized void markResumed() {
         LocalDateTime start = suspendedAt;
         if (start != null) {
             suspensions.add(new Suspension(start, LocalDateTime.now()));
             suspendedAt = null;
         }
+    }
+
+    /**
+     * Forgets the current suspension, if any, of an invocation ending without its agent being invoked again: the
+     * agent was still running when the agentic system was suspended, like a parallel sibling of the suspended step,
+     * so it was never waiting.
+     */
+    synchronized void cancelSuspension() {
+        suspendedAt = null;
     }
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
@@ -98,18 +145,20 @@ public class AgentInvocation {
     /**
      * Returns {@code true} while the agentic system is suspended, for instance waiting for a human, with this
      * invocation in progress: the root agent and the workflows containing the suspended step stay in progress until
-     * the system is resumed by invoking the root agent again, when they continue this same invocation.
+     * the system is resumed by invoking the root agent again, when they continue this same invocation. An agent still
+     * running in another branch of a parallel workflow also returns {@code true}, until it completes.
      */
     public boolean suspended() {
         return suspendedAt != null;
     }
 
     /**
-     * Returns the intervals during which the agentic system was suspended while this invocation was in progress,
-     * the ongoing one last, with a {@code null} end, if the system is suspended now. A loop containing a step
-     * waiting for a human is suspended once per iteration.
+     * Returns an unmodifiable snapshot of the intervals during which the agentic system was suspended while this
+     * invocation was in progress, empty if it never was: the ongoing one comes last, with a {@code null}
+     * {@link Suspension#finishTime() finish time}, if the system is suspended now. A loop whose step waits for a human
+     * has one interval per iteration.
      */
-    public List<Suspension> suspensions() {
+    public synchronized List<Suspension> suspensions() {
         List<Suspension> all = new ArrayList<>(suspensions);
         LocalDateTime start = suspendedAt;
         if (start != null) {
@@ -120,13 +169,13 @@ public class AgentInvocation {
 
     /**
      * Returns the total time the agentic system spent suspended during this invocation, counting an ongoing
-     * suspension until now. The {@link #duration()} of the invocation includes it.
+     * suspension until now. Once the invocation is finished, its {@link #duration()} includes this time.
      */
     public Duration suspendedDuration() {
         Duration total = Duration.ZERO;
         for (Suspension suspension : suspensions()) {
-            LocalDateTime end = suspension.end() != null ? suspension.end() : LocalDateTime.now();
-            total = total.plus(Duration.between(suspension.start(), end));
+            LocalDateTime end = suspension.finishTime() != null ? suspension.finishTime() : LocalDateTime.now();
+            total = total.plus(Duration.between(suspension.startTime(), end));
         }
         return total;
     }
@@ -259,7 +308,7 @@ public class AgentInvocation {
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
-                (suspensions.isEmpty() && !suspended() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
+                (suspensions().isEmpty() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
                 ", tokens=" + (done() ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +

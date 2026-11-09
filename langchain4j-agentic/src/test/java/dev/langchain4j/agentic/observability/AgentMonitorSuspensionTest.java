@@ -3,19 +3,24 @@ package dev.langchain4j.agentic.observability;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
+import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -51,15 +56,33 @@ class AgentMonitorSuspensionTest {
                 throw e;
             }
         }
+
+        @Override
+        public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+            try {
+                super.onAgenticSystemSuspended(agenticScope);
+            } catch (RuntimeException e) {
+                failures.add(e);
+                throw e;
+            } finally {
+                SUSPENSION_NOTIFIED.countDown();
+            }
+        }
     }
 
     static RecordingMonitor MONITOR;
     static CountDownLatch SLOW_AGENT_LATCH;
+    static CountDownLatch SIBLING_STARTED;
+    static CountDownLatch SUSPENSION_NOTIFIED;
+    static CountDownLatch DETACHED_AGENT_LATCH;
 
     @BeforeEach
     void reset() {
         MONITOR = new RecordingMonitor();
         SLOW_AGENT_LATCH = new CountDownLatch(1);
+        SIBLING_STARTED = new CountDownLatch(1);
+        SUSPENSION_NOTIFIED = new CountDownLatch(1);
+        DETACHED_AGENT_LATCH = new CountDownLatch(1);
     }
 
     public interface AskName {
@@ -128,8 +151,10 @@ class AgentMonitorSuspensionTest {
         assertThat(root.suspended()).isTrue();
         assertThat(root.done()).isFalse();
         assertThat(root.suspensions()).hasSize(1);
-        assertThat(root.suspensions().get(0).end()).isNull();
+        assertThat(root.suspensions().get(0).finishTime()).isNull();
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName");
+        assertThat(execution.agenticScope().pendingResponseIds()).containsExactly("name");
+        assertThat(execution.topLevelInvocations().suspendedDuration()).isGreaterThanOrEqualTo(Duration.ZERO);
 
         result = result.completePendingResponse("Mario");
 
@@ -141,7 +166,10 @@ class AgentMonitorSuspensionTest {
         assertThat(root.done()).isTrue();
         assertThat(root.suspended()).isFalse();
         assertThat(root.suspensions()).hasSize(1);
-        assertThat(root.suspensions().get(0).end()).isNotNull();
+        AgentInvocation.Suspension suspension = root.suspensions().get(0);
+        assertThat(suspension.startTime()).isAfterOrEqualTo(root.startTime());
+        assertThat(suspension.finishTime()).isAfterOrEqualTo(suspension.startTime()).isBeforeOrEqualTo(root.finishTime());
+        assertThat(root.suspendedDuration()).isEqualTo(Duration.between(suspension.startTime(), suspension.finishTime()));
         assertThat(root.suspendedDuration()).isLessThanOrEqualTo(root.duration());
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName", "greet");
         assertThat(root.nestedInvocations()).allMatch(AgentInvocation::done);
@@ -239,7 +267,7 @@ class AgentMonitorSuspensionTest {
         assertThat(loop.nestedInvocations()).allMatch(AgentInvocation::done);
     }
 
-    // ---- parallel scenario: a sibling of the suspended branch completes before the suspension ----
+    // ---- parallel scenario: a sibling of the suspended branch does not wait for the human ----
 
     public interface ParallelBlock {
         @ParallelAgent(outputKey = "c", subAgents = {Inner.class, StepC.class})
@@ -415,5 +443,268 @@ class AgentMonitorSuspensionTest {
         assertThat(root.nestedInvocations())
                 .extracting(i -> i.agent().name())
                 .containsExactly("slow", "askName", "read");
+    }
+
+    // ---- a parallel sibling really running when the other branch suspends the system ----
+
+    public static class WaitsForSibling {
+        @Agent(outputKey = "gate")
+        public static String gate() throws InterruptedException {
+            SIBLING_STARTED.await(5, SECONDS);
+            return "open";
+        }
+    }
+
+    public static class SlowSibling {
+        @Agent(outputKey = "c")
+        public static String c() throws InterruptedException {
+            SIBLING_STARTED.countDown();
+            SUSPENSION_NOTIFIED.await(5, SECONDS);
+            return "C";
+        }
+    }
+
+    public interface GatedInner {
+        @SequenceAgent(outputKey = "greeting", subAgents = {WaitsForSibling.class, AskName.class, Greet.class})
+        String gatedInner();
+    }
+
+    public interface SlowParallelBlock {
+        @ParallelAgent(outputKey = "c", subAgents = {GatedInner.class, SlowSibling.class})
+        String slowPar();
+    }
+
+    public interface SlowParallelGreeter {
+        @SequenceAgent(outputKey = "greeting", subAgents = {SlowParallelBlock.class})
+        ResultWithAgenticScope<String> greet(@MemoryId String id);
+
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return MONITOR;
+        }
+    }
+
+    @Test
+    void parallel_sibling_running_during_the_suspension_is_not_recorded_as_suspended() {
+        var result = AgenticServices.createAgenticSystem(SlowParallelGreeter.class).greet("session-8");
+        assertThat(result.suspended()).isTrue();
+        MonitoredExecution execution = MONITOR.ongoingExecutionFor("session-8");
+        AgentInvocation par = execution.topLevelInvocations().nestedInvocations().get(0);
+        AgentInvocation c = par.nestedInvocations().stream()
+                .filter(i -> i.agent().name().equals("c"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(c.done()).isTrue();
+        assertThat(c.suspended()).isFalse();
+        assertThat(c.suspensions()).isEmpty();
+        assertThat(par.suspended()).isTrue();
+
+        result = result.completePendingResponse("Mario");
+
+        assertThat(result.result()).isEqualTo("Hello Mario");
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-8")).containsExactly(execution);
+        assertThat(c.suspensions()).isEmpty();
+        assertThat(par.suspensions()).hasSize(1);
+    }
+
+    // ---- a parallel sibling fails after the other branch suspended the system ----
+
+    public static class FailingSibling {
+        @Agent(outputKey = "c")
+        public static String failingSibling() throws InterruptedException {
+            SIBLING_STARTED.countDown();
+            SUSPENSION_NOTIFIED.await(5, SECONDS);
+            throw new IllegalStateException("boom");
+        }
+    }
+
+    public interface FailingParallelBlock {
+        @ParallelAgent(outputKey = "c", subAgents = {GatedInner.class, FailingSibling.class})
+        String failingPar();
+    }
+
+    public interface FailingParallelGreeter {
+        @SequenceAgent(outputKey = "greeting", subAgents = {FailingParallelBlock.class})
+        ResultWithAgenticScope<String> greet(@MemoryId String id);
+
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return MONITOR;
+        }
+    }
+
+    @Test
+    void sibling_failing_after_the_suspension_records_the_execution_as_failed() {
+        FailingParallelGreeter greeter = AgenticServices.createAgenticSystem(FailingParallelGreeter.class);
+
+        assertThatThrownBy(() -> greeter.greet("session-9")).hasRootCauseMessage("boom");
+
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.failedExecutionsFor("session-9")).hasSize(1);
+        MonitoredExecution execution = MONITOR.failedExecutionsFor("session-9").get(0);
+        assertThat(execution.hasError()).isTrue();
+        assertThat(execution.suspended()).isFalse();
+        assertThat(execution.ongoingInvocations()).isEmpty();
+    }
+
+    // ---- the resumed run does not invoke the suspended workflow again ----
+
+    public static class Fallback {
+        @Agent(outputKey = "greeting")
+        public static String fallback(@V("name") String name) {
+            return "Fallback " + name;
+        }
+    }
+
+    public interface Router {
+        @ConditionalAgent(outputKey = "greeting", subAgents = {Inner.class, Fallback.class})
+        String route(@V("a") String a);
+
+        @ActivationCondition(value = Inner.class, description = "the name is not known yet")
+        static boolean nameUnknown(AgenticScope scope) {
+            return !(scope.readState("name") instanceof String);
+        }
+
+        @ActivationCondition(value = Fallback.class, description = "the name is known")
+        static boolean nameKnown(AgenticScope scope) {
+            return scope.readState("name") instanceof String;
+        }
+    }
+
+    public interface RoutedGreeter {
+        @SequenceAgent(outputKey = "greeting", subAgents = {StepA.class, Router.class})
+        ResultWithAgenticScope<String> greet(@MemoryId String id);
+
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return MONITOR;
+        }
+    }
+
+    @Test
+    void suspended_workflow_not_invoked_again_by_the_resumed_run_does_not_keep_the_execution_ongoing() {
+        RoutedGreeter greeter = AgenticServices.createAgenticSystem(RoutedGreeter.class);
+        var result = greeter.greet("session-10");
+        assertThat(result.suspended()).isTrue();
+        MonitoredExecution execution = MONITOR.ongoingExecutionFor("session-10");
+
+        result = result.completePendingResponse("Mario");
+
+        assertThat(result.result()).isEqualTo("Fallback Mario");
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-10")).containsExactly(execution);
+        assertThat(execution.ongoingInvocations()).isEmpty();
+
+        AgentInvocation router = execution.topLevelInvocations().nestedInvocations().get(1);
+        AgentInvocation inner = router.nestedInvocations().stream()
+                .filter(i -> i.agent().name().equals("inner"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(inner.done()).isFalse();
+        assertThat(inner.suspended()).isFalse();
+        assertThat(inner.suspensions()).hasSize(1);
+        assertThat(inner.suspensions().get(0).finishTime()).isNotNull();
+
+        // the next root call on this memory id is a new execution, instead of a failure of the monitor
+        greeter.greet("session-10");
+
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-10")).hasSize(2);
+    }
+
+    // ---- an agent suspends the system by throwing, instead of finishing with a pending response ----
+
+    public static class ApprovalGate {
+        static final String RESPONSE_KEY = "a2a.response.gate";
+
+        @Agent(outputKey = "approval")
+        public static String approve(AgenticScope scope) {
+            if (scope.state().get(RESPONSE_KEY) instanceof String answer) {
+                return "approved by " + answer;
+            }
+            scope.writeState(RESPONSE_KEY, new SuspendedResponse<>("gate"));
+            throw new AgenticSystemSuspendedException(scope);
+        }
+    }
+
+    public interface GatedGreeter {
+        @SequenceAgent(outputKey = "approval", subAgents = {ApprovalGate.class})
+        ResultWithAgenticScope<String> greet(@MemoryId String id);
+
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return MONITOR;
+        }
+    }
+
+    @Test
+    void agent_suspending_the_system_itself_continues_its_recorded_invocation() {
+        var result = AgenticServices.createAgenticSystem(GatedGreeter.class).greet("session-11");
+        assertThat(result.suspended()).isTrue();
+        MonitoredExecution execution = MONITOR.ongoingExecutionFor("session-11");
+        AgentInvocation root = execution.topLevelInvocations();
+        AgentInvocation gate = root.nestedInvocations().get(0);
+        assertThat(gate.done()).isFalse();
+        assertThat(gate.suspended()).isTrue();
+
+        result = result.completePendingResponse("Mario");
+
+        assertThat(result.result()).isEqualTo("approved by Mario");
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-11")).containsExactly(execution);
+        assertThat(root.nestedInvocations()).containsExactly(gate);
+        assertThat(gate.done()).isTrue();
+        assertThat(gate.suspensions()).hasSize(1);
+    }
+
+    // ---- an asynchronous agent suspends the system after the root call returned ----
+
+    public static class DetachedApproval {
+        static final String RESPONSE_KEY = "a2a.response.approve";
+
+        @Agent(async = true, outputKey = "approval")
+        public static String approve(AgenticScope scope) throws InterruptedException {
+            DETACHED_AGENT_LATCH.await(5, SECONDS);
+            if (scope.state().get(RESPONSE_KEY) instanceof String answer) {
+                return "approved by " + answer;
+            }
+            scope.writeState(RESPONSE_KEY, new SuspendedResponse<>("approval"));
+            throw new AgenticSystemSuspendedException(scope);
+        }
+    }
+
+    public interface DetachedGreeter {
+        @SequenceAgent(outputKey = "a", subAgents = {StepA.class, DetachedApproval.class})
+        ResultWithAgenticScope<String> greet(@MemoryId String id);
+
+        @AgentListenerSupplier
+        static AgentListener listener() {
+            return MONITOR;
+        }
+    }
+
+    @Test
+    void asynchronous_agent_suspending_after_the_root_call_returned_ends_the_execution() {
+        DetachedGreeter greeter = AgenticServices.createAgenticSystem(DetachedGreeter.class);
+        var result = greeter.greet("session-12");
+        assertThat(result.result()).isEqualTo("A");
+
+        DETACHED_AGENT_LATCH.countDown();
+        await().atMost(10, SECONDS).until(() -> MONITOR.ongoingExecutionFor("session-12") == null);
+
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-12")).hasSize(1);
+        assertThat(MONITOR.successfulExecutionsFor("session-12").get(0).suspended()).isFalse();
+        assertThat(result.agenticScope().pendingResponseIds()).containsExactly("approval");
+
+        result.agenticScope().completePendingResponse("approval", "Mario");
+        greeter.greet("session-12");
+
+        await().atMost(10, SECONDS).until(() -> MONITOR.successfulExecutionsFor("session-12").size() == 2);
+        assertThat(MONITOR.failures).isEmpty();
     }
 }

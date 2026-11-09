@@ -181,16 +181,30 @@ class HtmlReportGeneratorTest {
                 List.of(),
                 "response",
                 String.class);
-        root.subagents = List.of();
+        SampleReportGenerator.MockAgent step = new SampleReportGenerator.MockAgent(
+                "step",
+                MedicalExpert.class,
+                AgenticSystemTopology.AI_AGENT,
+                "A step before the human one",
+                List.of(),
+                "step",
+                String.class);
+        step.parent = root;
+        root.subagents = List.of(step);
         AgentMonitor monitor = new AgentMonitor();
         monitor.setRootAgent(root);
         SampleReportGenerator.MockScope scope = new SampleReportGenerator.MockScope("user-alice");
 
         monitor.beforeAgentInvocation(new AgentRequest(scope, root, Map.of()));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, step, Map.of()));
+        monitor.afterAgentInvocation(new AgentResponse(scope, step, Map.of()));
         monitor.onAgenticSystemSuspended(scope);
 
         String html = HtmlReportGenerator.generateReport(monitor);
-        assertThat(html).contains("<span class=\"dur-badge\">suspended</span>").doesNotContain("running...");
+        assertThat(html)
+                .contains("<span class=\"dur-badge\">suspended</span>")
+                .contains("title=\"ask: suspended\"")
+                .doesNotContain("running...");
 
         monitor.beforeAgentInvocation(new AgentRequest(scope, root, Map.of()));
 

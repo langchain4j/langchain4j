@@ -168,9 +168,11 @@ public class AgentMonitor implements AgentListener {
 
     @Override
     public void onAgenticSystemSuspended(AgenticScope agenticScope) {
-        MonitoredExecution execution = ongoingExecutions.get(agenticScope.memoryId());
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.agenticSystemSuspended();
+            finalizeExecution(memoryId, execution);
         }
     }
 
@@ -184,6 +186,7 @@ public class AgentMonitor implements AgentListener {
     }
 
     private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+        execution.endSuspendedInvocationsIfRootEnded();
         if (!execution.ongoingInvocations().isEmpty()
                 || execution.hasRunningAsyncAgents()
                 || (!execution.done() && !execution.hasError())) {

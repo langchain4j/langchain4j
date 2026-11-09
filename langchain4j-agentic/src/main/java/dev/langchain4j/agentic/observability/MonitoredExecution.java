@@ -75,6 +75,24 @@ public class MonitoredExecution {
         });
     }
 
+    /**
+     * Ends the invocations still suspended once the root agent ended: nothing will continue them, because the resumed
+     * run did not invoke their agents again, like a branch of a router whose condition changed, or because they
+     * suspended after the root call returned, like an asynchronous agent whose result nobody read.
+     */
+    void endSuspendedInvocationsIfRootEnded() {
+        if (ongoingInvocations.containsKey(topLevelInvocations.agent().agentId())) {
+            return;
+        }
+        ongoingInvocations.values().removeIf(invocation -> {
+            if (!invocation.suspended()) {
+                return false;
+            }
+            invocation.markResumed();
+            return true;
+        });
+    }
+
     void beforeAgentInvocation(AgentRequest agentRequest) {
         if (submittedAgentIds.remove(agentRequest.agentId())) {
             // the invocation was recorded at the submission of this asynchronous agent
@@ -153,7 +171,10 @@ public class MonitoredExecution {
         if (this.agentInvocationError == null) {
             this.agentInvocationError = agentInvocationError;
         }
-        ongoingInvocations.remove(agentInvocationError.agentId());
+        AgentInvocation failedInvocation = ongoingInvocations.remove(agentInvocationError.agentId());
+        if (failedInvocation != null) {
+            failedInvocation.cancelSuspension();
+        }
     }
 
     void afterToolExecution(AfterAgentToolExecution afterToolExecution) {
