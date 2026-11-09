@@ -456,10 +456,9 @@ class AiServiceToolCallMemoryTest {
     }
 
     @Test
-    void reactive_service_should_not_run_output_guardrails_when_cancelled_while_the_tool_result_is_persisted()
-            throws Exception {
+    void reactive_service_should_not_run_output_guardrails_on_an_immediate_return() throws Exception {
 
-        SlowToolResultMemory memory = new SlowToolResultMemory();
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         AtomicInteger guardrailCalls = new AtomicInteger();
         OutputGuardrail guardrail = new OutputGuardrail() {
 
@@ -484,15 +483,11 @@ class AiServiceToolCallMemoryTest {
 
         EventCollector collector = new EventCollector();
         assistant.chat("Book a hotel").subscribe(collector);
-
-        assertThat(memory.toolResultPersistRequested.await(10, SECONDS)).isTrue();
-        collector.subscription.cancel();
-        memory.toolResultPersisted.complete(null);
-
-        // give a (wrongly) continued invocation the chance to run the guardrails
-        Thread.sleep(200);
+        collector.terminated.get(10, SECONDS);
 
         assertThat(guardrailCalls).hasValue(0);
+        assertThat(collector.events).last().isInstanceOf(FinalResponseEvent.class);
+        assertToolResultIsInMemory(memory);
     }
 
     @Test

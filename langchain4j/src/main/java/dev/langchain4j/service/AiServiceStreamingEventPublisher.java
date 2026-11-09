@@ -691,7 +691,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                                 return;
                             }
                             if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                                emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
+                                completeWithFinalResponse(buildFinalResponse(chatResponse, aiMessage));
                                 return;
                             }
 
@@ -720,12 +720,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 AiMessage aiMessage,
                 ToolServiceContext currentToolContext,
                 ChatRequestParameters parameters) {
-            ChatResponse finalChatResponse = ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(chatResponse.metadata().toBuilder()
-                            .tokenUsage(tokenUsage.add(chatResponse.metadata().tokenUsage()))
-                            .build())
-                    .build();
+            ChatResponse finalChatResponse = buildFinalResponse(chatResponse, aiMessage);
 
             if (!hasOutputGuardrails || commonGuardrailParams == null) {
                 completeWithFinalResponse(finalChatResponse);
@@ -767,6 +762,15 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     fail(t);
                 }
             });
+        }
+
+        private ChatResponse buildFinalResponse(ChatResponse chatResponse, AiMessage aiMessage) {
+            return ChatResponse.builder()
+                    .aiMessage(aiMessage)
+                    .metadata(chatResponse.metadata().toBuilder()
+                            .tokenUsage(tokenUsage.add(chatResponse.metadata().tokenUsage()))
+                            .build())
+                    .build();
         }
 
         private void completeWithFinalResponse(ChatResponse finalChatResponse) {

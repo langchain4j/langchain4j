@@ -1495,6 +1495,8 @@ tool, whatever the return type of the AI Service method. No final `AiMessage` is
 again. The stored result is sent to the LLM on later calls that use the same memory, so it counts towards the tokens
 of those calls, and an immediate return does not keep sensitive data away from the LLM.
 
+Output guardrails do not run on an immediate return, because the LLM has not produced a final answer to check.
+
 #### Non-`Result` AI Service method Return Types
 
 If your AI Service method signatures do not return a `Result` type, then your
