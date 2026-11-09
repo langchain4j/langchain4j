@@ -16,6 +16,7 @@ import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -164,6 +165,14 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     protected boolean supportsStreamingCancellation() {
         return true;
+    }
+
+    /**
+     * Whether the model reports a request it cannot handle (e.g. an unsupported parameter) to the handler's
+     * {@code onError()} instead of throwing it from {@code chat(request, handler)}.
+     */
+    protected boolean reportsUnsupportedParametersThroughOnError() {
+        return false;
     }
 
     @Override
@@ -399,6 +408,16 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     .hasMessageContaining("not support");
             assertThat(onNextCalled).isFalse();
             assertThat(onCompleteCalled).isFalse();
+        } else if (reportsUnsupportedParametersThroughOnError()) {
+            StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
+            assertThatCode(() -> model.chat(chatRequest, handler)).doesNotThrowAnyException();
+            ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+            verify(handler, timeout(30_000)).onError(error.capture());
+            assertThat(error.getValue())
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("stopSequences")
+                    .hasMessageContaining("not support");
+            verify(handler, never()).onCompleteResponse(any());
         } else {
             StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
             assertThatThrownBy(() -> model.chat(chatRequest, handler))

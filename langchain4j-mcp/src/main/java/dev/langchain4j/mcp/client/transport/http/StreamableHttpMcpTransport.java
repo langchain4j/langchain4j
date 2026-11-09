@@ -438,8 +438,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return;
         }
         try {
-            Flow.Subscriber<HttpStreamingEvent> subscriber =
-                    responseExecutor == null ? exchange : new McpResponseSubscriber(exchange, responseExecutor);
+            Flow.Subscriber<HttpStreamingEvent> subscriber = responseExecutor == null
+                    ? exchange
+                    : new McpResponseSubscriber(exchange, responseExecutor, exchange::readsErrorBody);
             httpClient.stream(request, new McpResponseParser()).subscribe(subscriber);
         } catch (RuntimeException e) {
             exchange.onError(e);
@@ -548,6 +549,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private final boolean firstAttempt;
         private final CompletableFuture<Void> opened;
         private final CapturedContext requestContext;
+        private final boolean modern = modernProtocol;
         private final AtomicBoolean finished = new AtomicBoolean();
         private final StringBuilder body = new StringBuilder();
         private long bodyBytes;
@@ -617,8 +619,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     responseReceived = true;
                     onResponse(received.response());
                 } else if (event instanceof HttpErrorResponseReceived errorResponse) {
-                    handleError(new HttpException(
-                            errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    if (!readsErrorBody(errorResponse)) {
+                        handleError(new HttpException(
+                                errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
+                    }
+                    // otherwise the stream fails with an HttpException carrying the body, see handleError
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
                         handleSseFragment(line);
@@ -629,6 +634,71 @@ public class StreamableHttpMcpTransport implements McpTransport {
             } catch (RuntimeException e) {
                 onError(e);
             }
+        }
+
+        /**
+         * Whether the body of this error response is read, because it may carry a JSON-RPC error that tells the
+         * caller more than the status code, such as the rejection of a request whose headers do not match its
+         * body. Other error responses fail the request as soon as their status arrives.
+         */
+        private boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
+            return readsErrorBody(errorResponse.statusCode())
+                    && errorResponse.headers().getOrDefault("Content-Type", List.of()).stream()
+                            .anyMatch(contentType -> contentType.contains("json"));
+        }
+
+        /**
+         * In the 2026-07-28 protocol, a server rejects a request with a client error status and a JSON-RPC error,
+         * for example 404 with -32601 for a method it does not know, and that error is the answer to the request.
+         * A rejected credential (401), a refused request (403) and a rate limit (429) still fail the request with
+         * their status code, which callers act on. So does every error status of a legacy server: its health
+         * check and initialization rely on that failure.
+         */
+        private boolean readsErrorBody(int statusCode) {
+            return modern
+                    && expectResponse
+                    && context.message().getId() != null
+                    && statusCode >= 400
+                    && statusCode < 500
+                    && statusCode != 401
+                    && statusCode != 403
+                    && statusCode != 429;
+        }
+
+        private boolean expiresSession(int statusCode) {
+            return statusCode == 404 && !modern && !(context.message() instanceof McpInitializeRequest);
+        }
+
+        /**
+         * Completes the request with a JSON-RPC error carried by an error response, as if it had arrived with a
+         * successful status.
+         *
+         * @return whether the response carried a JSON-RPC error for this request
+         */
+        private boolean completeWithJsonRpcError(HttpException error) {
+            if (!readsErrorBody(error.statusCode()) || error.getMessage() == null) {
+                return false;
+            }
+            Map<String, Object> message;
+            try {
+                message = McpJson.toMap(error.getMessage());
+            } catch (RuntimeException e) {
+                // the body is not JSON-RPC (e.g. a proxy's error page), so the status code is the failure
+                return false;
+            }
+            if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
+                return false;
+            }
+            // a server that could not read the request answers without an id, but the error is still its answer
+            Object id = message.get("id");
+            if (id != null && !(id instanceof Number number && number.longValue() == context.message().getId())) {
+                return false;
+            }
+            if (logResponses) {
+                trafficLog.info("Response: {}", error.getMessage());
+            }
+            future.complete(error.getMessage());
+            return true;
         }
 
         private void onResponse(SuccessfulHttpResponse response) {
@@ -753,6 +823,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if (!finish()) {
                 return;
             }
+            if (!closed.get() && error instanceof HttpException httpError && completeWithJsonRpcError(httpError)) {
+                return;
+            }
             if (error instanceof HttpException httpError) {
                 error = new HttpException(httpError.statusCode(), "Unexpected status code: " + httpError.statusCode());
             }
@@ -773,10 +846,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     scheduleSubsidiaryReconnect(requestContext);
                 }
                 opened.complete(null);
-            } else if (error instanceof HttpException httpError
-                    && httpError.statusCode() == 404
-                    && !(context.message() instanceof McpInitializeRequest)
-                    && !modernProtocol) {
+            } else if (error instanceof HttpException httpError && expiresSession(httpError.statusCode())) {
                 if (retry) {
                     future.completeExceptionally(new HttpException(
                             404, "Session expired again after reinitialization: server returned status code 404"));

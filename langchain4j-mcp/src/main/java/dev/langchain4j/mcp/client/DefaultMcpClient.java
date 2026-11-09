@@ -548,8 +548,13 @@ public class DefaultMcpClient implements McpClient {
         listChangeSubscriptionFuture = future;
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
-            if (error != null && !closed) {
+            if (closed) {
+                return;
+            }
+            if (error != null) {
                 log.warn("List-change subscription failed", error);
+            } else if (result != null && result.contains("\"error\"")) {
+                log.warn("List-change subscription rejected by server: {}", errorMessageOf(result));
             }
         });
     }
@@ -1065,8 +1070,12 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(request, context);
         try {
             CompletableFuture<String> resultFuture = executeViaTransport(context);
-            resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            String response = resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            McpErrorHelper.checkForErrors(response);
             notifyListeners(l -> l.afterPing(context));
+        } catch (McpException e) {
+            notifyListeners(l -> l.onPingError(context, e));
+            throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             RuntimeException re = new RuntimeException(e);

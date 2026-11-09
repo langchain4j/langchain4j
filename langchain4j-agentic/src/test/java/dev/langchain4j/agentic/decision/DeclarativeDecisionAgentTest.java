@@ -391,7 +391,8 @@ class DeclarativeDecisionAgentTest {
         assertThatThrownBy(() -> AgenticServices.createAgenticSystem(UnsuppliedRouter.class))
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessage("DecisionModel not provided for the decision agent " + UnsuppliedRouter.class.getName()
-                        + ". Please provide one with a static method annotated with @DecisionModelSupplier.");
+                        + ". Please provide one with a method annotated with @DecisionModelSupplier, static on the "
+                        + "agent type or declared by a helper object.");
     }
 
     public interface ConflictingRouter {

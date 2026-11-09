@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.declarative;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.observability.AgentListener;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -25,7 +26,9 @@ public @interface A2AClientAgent {
     String a2aServerUrl() default "";
 
     /**
-     * Name of the agent. If not provided, method name will be used.
+     * Name of the agent. If not provided, method name will be used. The name is also the id of the agent in the
+     * reports and in the agents list sent to a supervisor, and it never comes from the agent card, which is fetched
+     * only when the agent is first invoked.
      *
      * @return name of the agent.
      */
@@ -34,6 +37,8 @@ public @interface A2AClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code description} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description is read from the agent card, which is then fetched the first time it is needed,
+     * for instance when a supervisor having this agent among its subagents is first invoked.
      *
      * @return description of the agent.
      */
@@ -42,6 +47,8 @@ public @interface A2AClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code value} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description is read from the agent card, which is then fetched the first time it is needed,
+     * for instance when a supervisor having this agent among its subagents is first invoked.
      *
      * @return description of the agent.
      */
@@ -65,6 +72,12 @@ public @interface A2AClientAgent {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */

@@ -707,6 +707,78 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+The root call of the agentic system does not wait either for an asynchronous agent whose result nobody reads: it returns as soon as the other agents are done, while that agent is still running, and the `AgenticScope` is ended at that point as for any other root call, without waiting for it. This makes it possible to delegate a long side task to the last agent of a workflow, like a fix delegated to a remote coding agent that takes minutes, while the workflow returns its own result in seconds:
+
+```java
+RemediationAgent remediation = AgenticServices
+        .a2aBuilder(REMEDIATION_SERVER_URL, RemediationAgent.class)
+        .async(true)
+        .outputKey("fix")
+        .listener(new AgentListener() {
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                // called when the remediation completes, after analyze(...) returned
+                notifyTeam(response.output());
+            }
+        })
+        .build();
+
+RolloutAnalysis analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysis.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+String decision = analysis.analyze(rollout); // returns while the remediation is still running
+```
+
+The result of such an agent reaches you in two ways:
+
+- the `afterAgentInvocation` of its `AgentListener` is called when the agent completes. This is the way to consume it, which is why the listener is registered on the agent itself in the example above.
+- the result is written to the `AgenticScope` under the output key of the agent, where a later root call on the same memory id can read it.
+
+To wait for such an agent anyway, for example in a test, call the agentic system through a method returning a `ResultWithAgenticScope` and read the output key of the agent: `readState` waits until the agent completes.
+
+```java
+public interface RolloutAnalysisWithScope {
+
+    @Agent
+    ResultWithAgenticScope<String> analyze(@V("rollout") String rollout);
+}
+
+RolloutAnalysisWithScope analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysisWithScope.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+ResultWithAgenticScope<String> result = analysis.analyze(rollout); // returns while the remediation is still running
+String fix = result.agenticScope().readState("fix", ""); // waits for the remediation to complete
+```
+
+When such an agent fails:
+
+- the error handler of the agentic system handles the failure, on the thread of the agent, and the `onAgentInvocationError` of its listener is notified. The root call has already returned its result, so no compensation runs for it.
+- an `AgentMonitor` records the execution as failed, unless the error handler recovered the failure.
+- reading the result of the failed agent throws its failure, until the next root call on the same memory id starts and drops it. A saved copy of the `AgenticScope` never contains it.
+
+When such an agent suspends the agentic system, like an A2A client agent whose remote task needs more input:
+
+- its pending response is left in the `AgenticScope`, as for a synchronous agent, and an agent reading its result suspends the agentic system as usual.
+- when the root call returns without noticing the suspension, it cannot throw the `AgenticSystemSuspendedException` to its caller, so the `onAgenticSystemSuspended` of the listener of the agentic system is notified instead. The next root call on the same memory id resumes from the pending response once it is completed, or suspends again otherwise.
+
+The `AgenticScope` and the later root calls behave as follows:
+
+- an ephemeral `AgenticScope` is destroyed at the end of the root call as usual, so `beforeAgenticScopeDestroyed` is notified before the events of the asynchronous agents of that scope still running. These agents keep writing their results to it, where the caller can read them through a `ResultWithAgenticScope`.
+- a persistent `AgenticScope` is saved at the end of the root call without the pending results, and again when each of them completes.
+- a later root call on the same memory id waits for the asynchronous agents of the previous call still running before it starts, so that only one root call at a time runs on an `AgenticScope`. A caller invoking the same memory id again right after the previous call returned may therefore block until they complete.
+
+Also note that:
+
+- asynchronous agents run on the default executor of LangChain4j, so their pending work is lost when the JVM exits.
+- when the root call ends while some asynchronous agents are still running, the `AgenticScope` logs their output keys at debug level. This tells whether the root call was blocked by an asynchronous agent or returned without waiting for it.
+- the `output` function or the output key of the root agent reads the `AgenticScope` like any other agent does: an asynchronous agent whose result they read is awaited before the root call returns, as in the evening planner example above.
+
 ## Streaming agents
 
 In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 
@@ -975,7 +1047,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .build();
 ```
 
-These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates the events they already receive.
+These events are notified between the `beforeAgentInvocation` and the `afterAgentInvocation` or `onAgentInvocationError` of the agent, on the thread that produces them, which for a streaming or asynchronous agent can be different from the thread invoking the agent. The `AiServiceInvocationSummaryEvent` is not notified to `AgentListener`s, since it only aggregates other events.
 
 Listeners already written for AI Services can be reused for agents through `AgentListener.forAiServiceListeners`, which creates an `AgentListener` notifying each of them of the events of its own event class, as an AI Service does. Its first argument tells whether the listener is also inherited by the subagents:
 
@@ -1227,9 +1299,9 @@ In a very similar way, annotating other `static` methods in the agent interface,
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
-| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
-| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`. |
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope`.         |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope` |
+| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope`. |
 | `@DecisionThresholdSupplier`  | Returns the threshold of the `boolean` answers of a [decision agent](#decision-agents), as a `double`. It takes the `ThresholdContext` describing the question and is invoked at every invocation. |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
@@ -1323,6 +1395,42 @@ Map<String, Object> input = Map.of(
 
 String story = (String) novelCreator.invoke(input);
 ```
+
+### Helper objects
+
+The methods annotated with `@Output`, `@ExitCondition`, `@ActivationCondition`, `@ChatModelSupplier` and the other annotations of the two tables above are the *helper methods* of an agent. In an agent interface they are static. They can also be instance methods of the *helper objects* of the agent: plain objects that an integration provides for each agent type through the `helperObjectsResolver` of an `AgentConfigurator`, built with `AgentConfigurator.builder()`. This is how a dependency injection container, like the Quarkus extension, keeps the helpers of an agent on a bean, with its injected fields and its interceptors: there the agent class itself is its own helper object. For instance the `EveningPlannerAgent` above can get its listener from a helper object holding it, instead of a static method creating it:
+
+```java
+public class PlannerHelpers {
+
+    private final AgentListener listener; // in a container, an injected bean
+
+    public PlannerHelpers(AgentListener listener) {
+        this.listener = listener;
+    }
+
+    @AgentListenerSupplier
+    AgentListener listener() {
+        return listener;
+    }
+}
+
+AgentConfigurator configurator = AgentConfigurator.builder()
+        .helperObjectsResolver(agentType -> agentType == EveningPlannerAgent.class
+                ? List.of(new PlannerHelpers(new AgentMonitor()))
+                : List.of())
+        .build();
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
+        .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL, configurator);
+```
+
+The resolver is called once for each agent of the system when it is built, and the objects it returns are shared by all the invocations of the agent. An instance helper takes the same parameters as the static form: values read from the `AgenticScope`, the parameters provided by the framework, like `@LoopCounter` or the `ErrorContext`, and the ones resolved through a `SupplierParameterResolver`. The rules are the following:
+
+- for one annotation an agent has one helper: a static method of the agent type together with an instance method of a helper object, or two helper objects with the same annotation, is a configuration error, except for the annotations allowed several times on an agent, like `@ActivationCondition` with a value on a conditional agent;
+- a non-static helper declared by the agent type itself, like a `default` method of the interface, needs a helper object that is an instance of its declaring type, otherwise creating the agentic system fails instead of ignoring the method;
+- an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields; a final method of a final class, as in a Kotlin class by default, is fine, since no proxy can subclass such a class;
+- an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
+- in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
 
 ## Strongly typed inputs and outputs
 
@@ -1544,6 +1652,8 @@ SupervisorAgent bankSupervisor = AgenticServices
 ```
 
 Note that the subagents can also be complex agents implementing a workflow, that will be seen as a single agent by the supervisor.
+
+The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server is down, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again.
 
 The resulting `SupervisorAgent` typically takes a user request as input and produces a response, so its signature is simply as follows:
 
@@ -2949,7 +3059,7 @@ public class ExchangeOperator {
 }
 ```
 
-so that it can be used in the same way as the other subagents made available to the supervisor. 
+so that it can be used in the same way as the other subagents made available to the supervisor. An agent passed as an instance like this is also its own [helper object](#helper-objects): its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`. 
 
 ```java
 WithdrawAgent withdrawAgent = AgenticServices
@@ -3014,7 +3124,7 @@ public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 }
 ```
 
-This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
+This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user. Like every agent passed as an instance, such an object is also its own [helper object](#helper-objects).
 
 The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows you to define this function together with the agent description, and the output variable where the user's response will be written.
 
@@ -3358,11 +3468,13 @@ By doing so it internally sends a summarization prompt, similar to the one of th
 
 The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
 
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry together with the chat memory objects of its agents, or `deleteAgenticScope` to delete also the messages they stored.
 
 ```java
 agent.evictAgenticScope(memoryId);
 ```
+
+`evictAgenticScope` removes the `AgenticScope` from the registry and forgets the chat memory objects that the agents of the system hold for that ID, with the meaning of `ChatMemoryAccess.evictChatMemory` for an AI service: the messages they stored stay in their `ChatMemoryStore`. A chat memory without a store of its own, like `MessageWindowChatMemory.withMaxMessages(10)`, keeps its messages in the object, so they are lost with it. When the conversation has to be deleted too, call `deleteAgenticScope(memoryId)` instead: it clears each of those chat memories, which deletes their messages from the store, before evicting them. Both methods reach only the chat memories created in this JVM for that ID; the messages stored by another node, or before a restart, have to be deleted through the store.
 
 Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
 
@@ -3666,7 +3778,7 @@ UntypedAgent creativeWriter = AgenticServices
         .build();
 ```
 
-The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
+The description of the agent capabilities is automatically retrieved from the agent card provided by the A2A server, which is fetched the first time it is needed and not when the agent is built, as explained in the [agent card resolution](#agent-card-resolution) section. This card however doesn't provide a name for the input arguments, so it is necessary to specify them explicitly using the `inputKeys` method.
 
 Alternatively, it is possible to define a local interface for the A2A agent like:
 
@@ -3690,6 +3802,39 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+### Agent card resolution
+
+Building an A2A client agent, or an agentic system containing one, never contacts the A2A server: the agent card is fetched lazily, the first time it is needed, which is normally the first invocation of the agent. In this way a remote agent that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an A2A agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The only checks done at build time are on the server URL, which must be an absolute `http` or `https` URL, and on the tenant, so a malformed one fails with an `AgenticSystemConfigurationException` when the agent is built.
+
+This has a few consequences for what is known about the agent before its first invocation.
+
+- **Name**: the name of an A2A agent is always known locally, without the card. It is the one set through the `name` attribute of the `@A2AClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `a2aBuilder(A2A_SERVER_URL)` gets a placeholder derived from the host, port and path of the server URL, like `a2a-remote-host-8080` for `http://remote-host:8080`. Setting a meaningful name is recommended for untyped agents, especially when they are used by a supervisor, whose model sees the name of every subagent. The agent id is derived from the name: it is used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and it never changes, not even after the card has been fetched.
+- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@A2AClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is read from the agent card, which is fetched the first time it is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor fetches the card. When the card cannot be fetched, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. Setting the description explicitly avoids all this, and also keeps text controlled by the remote server out of the prompt of the supervisor.
+- **Tenant**: an explicitly configured tenant is sent with every message, while the [auto-detection from the agent card](#auto-detection-from-the-agent-card-url) is performed when the first message is sent.
+- **Client customization**: the a2a-java `Client` is created from the card, so the [client customizer](#customizing-the-a2a-client) runs on the first invocation and not when the agent is built. The parameters of the `@A2AClientCustomizer` method provided by a `SupplierParameterResolver` are however resolved when the agent is built, like those of the other supplier methods, so a value resolved per request, like a token, is the one of the thread building the agent and not the one of the first caller.
+
+The first invocation of the agent pays the latency of the card fetch. Calling the `agentCard()` method of the `A2AClientInstance` interface, implemented by every A2A client agent, fetches the card immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the card cannot be fetched:
+
+```java
+AgentCard agentCard = ((A2AClientInstance) creativeWriter).agentCard();
+```
+ When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent:
+
+```java
+UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+        .subAgents(analyzer, remoteFixer)
+        .outputKey("fix")
+        .errorHandler(errorContext -> {
+            for (Throwable cause = errorContext.exception(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof A2AAgentCardException) {
+                    return ErrorRecoveryResult.result("no fix available, the remote fixer is unreachable");
+                }
+            }
+            return ErrorRecoveryResult.throwException();
+        })
+        .build();
+```
 
 ### Multi-turn conversations with A2A servers
 
@@ -3775,7 +3920,7 @@ In a multi-tenant A2A deployment, messages must be scoped to a specific tenant s
 
 #### Auto-detection from the agent card URL
 
-When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed.
+When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed. Since the card is fetched lazily, the detection happens when the first message is sent.
 
 #### Static tenant via the `@A2AClientAgent` annotation
 
@@ -3882,7 +4027,7 @@ If an A2A client is invoked outside an agentic system, there is no scope to susp
 
 ### Customizing the A2A client
 
-By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
+By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting. The customizer is applied when the `Client` is created, which happens on the first invocation of the agent, once its agent card is available, and not when the agent is built.
 
 When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
 
@@ -3898,7 +4043,7 @@ UntypedAgent creativeWriter = AgenticServices
 
 When a customizer is provided, it replaces the default transport setup entirely, giving full control over how the `Client` is constructed.
 
-For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a single `ClientBuilder` parameter and return `void`:
+For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a `ClientBuilder` parameter and return `void`. Any other parameter must be provided by a `SupplierParameterResolver`: it is resolved when the agent is built, while the method itself runs when the client is created, on the first invocation of the agent.
 
 ```java
 public interface DeclarativeA2AWithCustomizer {

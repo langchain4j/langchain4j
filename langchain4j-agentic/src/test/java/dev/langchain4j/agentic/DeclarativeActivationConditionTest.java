@@ -9,6 +9,7 @@ import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.HumanInTheLoop;
 import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -299,7 +300,7 @@ class DeclarativeActivationConditionTest {
 
     @Test
     void condition_reads_its_arguments_without_writing_converted_values_to_the_scope() {
-        AgentCondition condition = DeclarativeUtil.activationCondition(Counter.class);
+        AgentCondition condition = DeclarativeUtil.activationCondition(AgentHelpers.staticOnly(Counter.class));
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         scope.writeState("count", "3");
 

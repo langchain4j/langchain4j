@@ -5,6 +5,7 @@ import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.chat.response.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -69,6 +71,7 @@ public interface StreamingChatModel {
 
         List<ChatModelListener> listeners = listeners();
         Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
@@ -114,18 +117,18 @@ public interface StreamingChatModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
+                onResponse(completeResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
                 handler.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, listeners);
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
                 handler.onError(error);
             }
         };
 
-        onRequest(finalChatRequest, provider(), attributes, listeners);
+        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
         doChat(finalChatRequest, observingHandler);
     }
 
@@ -195,6 +198,7 @@ public interface StreamingChatModel {
         List<ChatModelListener> listeners = listeners();
 
         ModelProvider provider = provider();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         return new Publisher<ChatModelStreamingEvent>() {
 
@@ -205,10 +209,10 @@ public interface StreamingChatModel {
 
                 Publisher<ChatModelStreamingEvent> innerPublisher;
                 try {
-                    onRequest(finalChatRequest, provider, attributes, listeners);
+                    onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
                     innerPublisher = doChat(finalChatRequest);
                 } catch (Throwable error) {
-                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, listeners);
+                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
                     downstream.onSubscribe(EMPTY_SUBSCRIPTION);
                     downstream.onError(error);
                     return;
@@ -233,14 +237,14 @@ public interface StreamingChatModel {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, listeners);
+                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, invocationId, listeners);
                         downstream.onError(throwable);
                     }
 
                     @Override
                     public void onComplete() {
                         if (completeResponse != null) {
-                            onResponse(completeResponse, finalChatRequest, provider, attributes, listeners);
+                            onResponse(completeResponse, finalChatRequest, provider, attributes, invocationId, listeners);
                         }
                         downstream.onComplete();
                     }

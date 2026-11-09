@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -53,6 +55,7 @@ public class EmbeddingModelListenerUtils {
         EmbeddingRequest request =
                 EmbeddingRequest.builder().textSegments(textSegments).build();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         onRequest(
                 EmbeddingModelRequestContext.builder()
@@ -60,6 +63,7 @@ public class EmbeddingModelListenerUtils {
                         .embeddingRequest(request)
                         .embeddingModel(model)
                         .attributes(attributes)
+                        .invocationId(invocationId)
                         .build(),
                 listeners);
         try {
@@ -77,6 +81,7 @@ public class EmbeddingModelListenerUtils {
                             .embeddingResponse(embeddingResponse)
                             .embeddingModel(model)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .response(response)
                             .textSegments(textSegments)
                             .build(),
@@ -90,6 +95,7 @@ public class EmbeddingModelListenerUtils {
                             .embeddingRequest(request)
                             .embeddingModel(model)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -119,7 +125,7 @@ public class EmbeddingModelListenerUtils {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
@@ -128,14 +134,14 @@ public class EmbeddingModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onResponse(EmbeddingModelResponseContext responseContext, List<EmbeddingModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
@@ -144,14 +150,14 @@ public class EmbeddingModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onError(EmbeddingModelErrorContext errorContext, List<EmbeddingModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
@@ -160,6 +166,6 @@ public class EmbeddingModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 }
