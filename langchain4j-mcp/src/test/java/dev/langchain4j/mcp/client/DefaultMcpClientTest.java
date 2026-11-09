@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,6 +36,7 @@ import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,12 +47,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 public class DefaultMcpClientTest {
     @Test
@@ -210,8 +214,8 @@ public class DefaultMcpClientTest {
 
         // and: transport should be started
         verify(transport).start(any(McpOperationHandler.class));
-        // and: transport should *not* be closed
-        verify(transport, never()).close();
+        // and: the transport is closed, since the caller gets no client to close it through
+        verify(transport).close();
     }
 
     @Test
@@ -239,8 +243,28 @@ public class DefaultMcpClientTest {
         // then: no further actions should be taken
         verify(transport, times(1)).start(any(McpOperationHandler.class));
         verify(transport, times(1)).sendInitializeRequest(any());
-        // and: transport should *not* be closed
-        verify(transport, never()).close();
+        // and: the transport was closed once, by the failed build, and not again by the callback
+        verify(transport, times(1)).close();
+    }
+
+    @Test
+    public void should_close_the_transport_when_the_initialization_times_out() throws Exception {
+        // given: a server that never answers the initialize request, like a stdio subprocess that fails to boot
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendInitializeRequest(any())).thenReturn(new CompletableFuture<>());
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion(DefaultMcpClient.PROTOCOL_VERSION_LEGACY)
+                .initializationTimeout(Duration.ofMillis(100));
+
+        // when
+        assertThatThrownBy(() -> clientBuilder.build()).hasCauseInstanceOf(TimeoutException.class);
+
+        // then: the transport started for the failed build is closed after it was started, so that a subprocess
+        // or a connection started for it does not outlive the attempt, which a Supplier<McpClient> may repeat
+        InOrder inOrder = inOrder(transport);
+        inOrder.verify(transport).start(any(McpOperationHandler.class));
+        inOrder.verify(transport).close();
     }
 
     @Test

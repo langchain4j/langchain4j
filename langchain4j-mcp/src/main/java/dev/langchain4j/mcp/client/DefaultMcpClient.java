@@ -147,8 +147,8 @@ public class DefaultMcpClient implements McpClient {
     private volatile CompletableFuture<String> listChangeSubscriptionFuture;
 
     public DefaultMcpClient(Builder builder) {
+        transport = ensureNotNull(builder.transport, "transport");
         try {
-            transport = ensureNotNull(builder.transport, "transport");
             key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
             clientName = getOrDefault(builder.clientName, "langchain4j");
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
@@ -248,10 +248,11 @@ public class DefaultMcpClient implements McpClient {
             initialize();
             startAutoHealthCheck();
         } catch (RuntimeException e) {
-            // Mark the client as closed if initialization fails,
-            // so that the transport callback won't try to
-            // reinitialize it (indefinitely).
-            closed = true;
+            // The caller gets no client to close when the initialization fails, so close it here. This marks the
+            // client as closed, so that the transport callback won't try to reinitialize it (indefinitely), and
+            // closes the transport, so that a subprocess or a connection started for it does not outlive the
+            // failed attempt, which a Supplier<McpClient> may repeat.
+            close();
             throw e;
         }
     }

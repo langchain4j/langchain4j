@@ -216,6 +216,14 @@ McpClient mcpClient = DefaultMcpClient.builder()
 Note that the client key is optional, but it is recommended to set it, especially
 if there are multiple MCP clients, and it is necessary to disambiguate among them.
 
+Building the client starts the transport and initializes the connection, so `build()` fails when
+the server cannot be reached or does not answer within `initializationTimeout`. The caller gets no
+client to close in that case, so the client closes the transport itself before reporting the
+failure: a stdio subprocess started for the attempt is destroyed and a connection opened for it is
+closed, and repeated attempts, for example from a `Supplier<McpClient>` invoked again after a
+failure, leave nothing open. The HTTP and WebSocket transports cannot be started again once closed,
+so give each attempt its own transport instead of reusing one.
+
 ### Protocol Version
 
 The MCP client supports both the legacy protocol (2025-11-25) and the modern

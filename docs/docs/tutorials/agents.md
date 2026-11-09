@@ -4141,7 +4141,7 @@ UntypedAgent storyGenerator = McpAgent.builder(() -> new DefaultMcpClient.Builde
         .build();
 ```
 
-The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed, and a `DefaultMcpClient` whose initialization failed has already closed its transport, so a failed attempt leaves nothing open, like a stdio subprocess. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
 
 As with other agents, MCP tool agents can also be created with a typed interface:
 
