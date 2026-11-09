@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.a2a;
 
-import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -8,20 +8,20 @@ import java.net.URISyntaxException;
  * Thrown when the agent card of a remote A2A agent cannot be fetched. The card is fetched lazily, the first time
  * it is needed, which is normally the first invocation of the agent, so this exception reaches the caller of that
  * invocation and the error handler of the agentic system, where it can be recognized to skip or retry an
- * unavailable remote agent. A failed fetch is not cached: the next invocation retries it.
+ * unavailable remote agent, by this type or by its supertype {@link AgentUnavailableException}, common to every
+ * integration. A failed fetch is not cached: the next invocation retries it.
  *
  * @since 1.24.0
  */
-public class A2AAgentCardException extends LangChain4jException {
+public class A2AAgentCardException extends AgentUnavailableException {
 
-    private final String agentName;
     private final String a2aServerUrl;
 
     public A2AAgentCardException(String agentName, String a2aServerUrl, Throwable cause) {
         super(
+                agentName,
                 "Failed to fetch the agent card of A2A agent '" + agentName + "' from " + withoutCredentials(a2aServerUrl),
                 cause);
-        this.agentName = agentName;
         this.a2aServerUrl = a2aServerUrl;
     }
 
@@ -38,14 +38,6 @@ public class A2AAgentCardException extends LangChain4jException {
         } catch (URISyntaxException e) {
             return "a malformed URL";
         }
-    }
-
-    /**
-     * @return the name of the A2A agent whose card could not be fetched
-     * @since 1.24.0
-     */
-    public String agentName() {
-        return agentName;
     }
 
     /**

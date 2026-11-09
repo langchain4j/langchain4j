@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
@@ -872,13 +873,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
 
     /**
-     * The description of a remote agent, like an A2A one whose card is fetched from a server that is down, may be
-     * unavailable: the report says so for that agent instead of failing as a whole.
+     * The description of a remote agent, like an A2A or MCP one read from a server that is down, may be unavailable:
+     * the report says so for that agent instead of failing as a whole. Any other failure, like a configuration error
+     * of an MCP agent whose tool does not exist on its server, fails the report, so that it does not go unnoticed.
      */
     private static String description(AgentInstance agent) {
         try {
             return agent.description();
-        } catch (RuntimeException e) {
+        } catch (AgentUnavailableException e) {
             return "unavailable: " + e.getMessage();
         }
     }
