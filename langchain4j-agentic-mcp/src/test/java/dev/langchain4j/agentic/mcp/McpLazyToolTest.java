@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
@@ -370,8 +371,10 @@ class McpLazyToolTest {
                 .outputKey("story")
                 .build();
 
+        // an McpToolResolutionException is an AgentUnavailableException, the type common to every integration
         assertThatThrownBy(() -> writer.write("dragons"))
                 .isInstanceOf(McpToolResolutionException.class)
+                .isInstanceOf(AgentUnavailableException.class)
                 .hasMessageContaining("'write'")
                 .hasMessageContaining("'writer'")
                 .hasCauseInstanceOf(IllegalStateException.class);
@@ -645,6 +648,34 @@ class McpLazyToolTest {
         assertThat(plannerModel.requests()).hasSize(2);
         assertThat(systemMessage(plannerModel, 1)).contains("'write$1', 'Writes a story about a topic'");
         assertThat(server.clients).hasValue(2);
+    }
+
+    @Test
+    void a_supervisor_does_not_hide_a_configuration_error_of_a_subagent_behind_a_warning() {
+        // the tool name has a typo: a configuration error, not an unavailable server, found when the supervisor
+        // reads the description of the agent
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writr")
+                .outputKey("story")
+                .build();
+        AgenticScopeFunction<String> analyzer = AgenticServices.nonAiAgentBuilder(scope -> "analyzed")
+                .name("analyzer")
+                .description("Analyzes the request")
+                .outputKey("topic")
+                .build();
+        ChatModelMock plannerModel = donePlannerModel();
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel)
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(analyzer, writer)
+                .build();
+
+        Throwable failure = catchThrowable(() -> supervisor.invoke("write a story"));
+        assertThat(causeOfType(failure, AgenticSystemConfigurationException.class))
+                .hasMessageContaining("'writr' not found")
+                .hasMessageContaining("writer");
+        assertThat(hasCauseOfType(failure, AgentUnavailableException.class)).isFalse();
+        assertThat(plannerModel.requests()).isEmpty();
     }
 
     /** An agent instance type the MCP client agent does not implement. */

@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import static dev.langchain4j.agentic.supervisor.SupervisorPlanner.MISSING_DESCRIPTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -25,8 +27,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The supervisor sends the description of each subagent to its model to choose the next one. A subagent without a
  * description does not stop it: the model is explicitly told that the description is missing, and a warning naming
- * such subagents is logged once per supervisor. A subagent whose description cannot be read is left out of the
- * invocation, with a warning.
+ * such subagents is logged once per supervisor. A subagent whose description cannot be read because the agent is
+ * unavailable is left out of the invocation, with a warning, while any other failure of a description propagates.
  */
 class SupervisorSubagentsDescriptionTest {
 
@@ -102,12 +104,31 @@ class SupervisorSubagentsDescriptionTest {
         AgentInstance unreachable = mock(AgentInstance.class);
         when(unreachable.name()).thenReturn("remote");
         when(unreachable.agentId()).thenReturn("remote$0");
-        when(unreachable.description()).thenThrow(new IllegalStateException("Failed to fetch the agent card"));
+        when(unreachable.description())
+                .thenThrow(new AgentUnavailableException(
+                        "remote", "Failed to fetch the agent card", new IllegalStateException("connection refused")));
         InitPlanningContext context =
                 new InitPlanningContext(mock(AgenticScope.class), supervisorAgent, List.of(unreachable));
 
         // the subagent is left out of the invocation with a warning, instead of failing the whole supervisor
         assertThatCode(() -> planner(new AtomicBoolean()).init(context)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void any_other_failure_of_the_description_of_a_subagent_fails_the_initialization() {
+        AgentInstance supervisorAgent = mock(AgentInstance.class);
+        when(supervisorAgent.name()).thenReturn("supervisor");
+        AgentInstance misconfigured = mock(AgentInstance.class);
+        when(misconfigured.name()).thenReturn("remote");
+        when(misconfigured.agentId()).thenReturn("remote$0");
+        when(misconfigured.description()).thenThrow(new IllegalStateException("Tool 'writr' not found"));
+        InitPlanningContext context =
+                new InitPlanningContext(mock(AgenticScope.class), supervisorAgent, List.of(misconfigured));
+
+        // a configuration error is not an unavailable agent: hiding it behind a warning would leave it unnoticed
+        assertThatThrownBy(() -> planner(new AtomicBoolean()).init(context))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'writr' not found");
     }
 
     private static SupervisorPlanner planner(AtomicBoolean subagentsDescriptionsChecked) {

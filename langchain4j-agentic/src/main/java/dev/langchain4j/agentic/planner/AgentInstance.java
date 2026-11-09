@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.planner;
 
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -15,8 +16,8 @@ public interface AgentInstance {
 
     /**
      * The description of this agent. For a remote agent without an explicit description, like an A2A or an MCP one,
-     * it is read from the remote server the first time it is requested, so this call can block, and it fails when
-     * the server is unavailable.
+     * it is read from the remote server the first time it is requested, so this call can block, and it fails with
+     * an {@link AgentUnavailableException} when the server is unavailable.
      */
     String description();
 
