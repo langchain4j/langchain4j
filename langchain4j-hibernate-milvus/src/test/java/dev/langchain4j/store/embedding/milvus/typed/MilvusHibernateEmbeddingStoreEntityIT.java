@@ -40,7 +40,7 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusHibernateEmbeddingStoreEntityIT extends EmbeddingStoreWithFilteringIT {
 
-    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.27");
 
     @Container
     static MilvusContainer databaseContainer =
