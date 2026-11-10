@@ -192,7 +192,7 @@ class AiServiceToolCallMemoryTest {
     }
 
     private static ChatModelMock bookingModel() {
-        return ChatModelMock.thatAlwaysResponds(AiMessage.from(BOOK_HOTEL));
+        return ChatModelMock.thatResponds(AiMessage.from(BOOK_HOTEL));
     }
 
     private static StreamingEventChatModelMock streamingBookingModel() {
@@ -231,7 +231,7 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(BOOK_HOTEL)))
+                .streamingChatModel(StreamingChatModelMock.thatStreams(AiMessage.from(BOOK_HOTEL)))
                 .chatMemory(memory)
                 .tools(new Booking())
                 .build();

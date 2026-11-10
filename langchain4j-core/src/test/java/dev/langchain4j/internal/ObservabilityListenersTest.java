@@ -155,7 +155,7 @@ class ObservabilityListenersTest {
         withProviders(
                 () -> {
                     AiServiceListenerRegistrar.newInstance().fireEvent(startedEvent());
-                    assertThat(ChatModelMock.thatAlwaysResponds("Hi")
+                    assertThat(ChatModelMock.thatResponds("Hi")
                                     .chat(CHAT_REQUEST)
                                     .aiMessage()
                                     .text())
@@ -167,7 +167,7 @@ class ObservabilityListenersTest {
     @Test
     void should_notify_provided_chat_model_listeners_in_addition_to_the_model_listeners() throws Exception {
         List<ChatModelRequestContext> ownRequests = new ArrayList<>();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi").withListeners(new ChatModelListener() {
+        ChatModelMock model = ChatModelMock.thatResponds("Hi").withListeners(new ChatModelListener() {
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
                 ownRequests.add(requestContext);
@@ -197,7 +197,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_an_async_chat() throws Exception {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi");
+        ChatModelMock model = ChatModelMock.thatResponds("Hi");
 
         withProviders(() -> assertThat(model.chatAsync(CHAT_REQUEST)).succeedsWithin(5, SECONDS), recording());
 
@@ -206,7 +206,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_a_streaming_chat() throws Exception {
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
 
         withProviders(() -> model.chat(CHAT_REQUEST, handler), recording());
@@ -217,7 +217,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_a_streaming_chat_publisher() throws Exception {
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
         List<Flow.Publisher<ChatModelStreamingEvent>> publishers = new ArrayList<>();
 
         withProviders(() -> publishers.add(model.chat(CHAT_REQUEST)), recording());
@@ -228,7 +228,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners() throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
 
         withProviders(() -> model.embed("hello"), recording());
 
@@ -237,7 +237,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners_of_an_async_embedding() throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
 
         withProviders(
                 () -> assertThat(model.embedAsync(EmbeddingRequest.builder().input("hello").build()))
@@ -250,7 +250,7 @@ class ObservabilityListenersTest {
     @Test
     void should_notify_provided_embedding_model_listeners_of_a_model_that_notifies_its_listeners_itself()
             throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
         List<TextSegment> segments = List.of(TextSegment.from("hello"));
 
         withProviders(
@@ -362,7 +362,7 @@ class ObservabilityListenersTest {
             thread.setContextClassLoader(classLoader);
 
             AiServiceListenerRegistrar.newInstance().fireEvent(event);
-            ChatModelMock.thatAlwaysResponds("Hi").chat(CHAT_REQUEST);
+            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             thread.setContextClassLoader(original);
         }
@@ -377,7 +377,7 @@ class ObservabilityListenersTest {
             ObservabilityListeners.useFrameworkProviders(loadedBy(classLoader));
 
             AiServiceListenerRegistrar.newInstance().fireEvent(event);
-            ChatModelMock.thatAlwaysResponds("Hi").chat(CHAT_REQUEST);
+            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             ObservabilityListeners.useFrameworkProviders(List.of());
         }
@@ -394,7 +394,7 @@ class ObservabilityListenersTest {
             ObservabilityListeners.useFrameworkProviders(List.of());
 
             AiServiceListenerRegistrar.newInstance().fireEvent(startedEvent());
-            ChatModelMock.thatAlwaysResponds("Hi").chat(CHAT_REQUEST);
+            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
         }
 
         assertThat(RECEIVED).isEmpty();
@@ -407,7 +407,7 @@ class ObservabilityListenersTest {
         try {
             ObservabilityListeners.useFrameworkProviders(own);
 
-            ChatModelMock.thatAlwaysResponds("Hi").chat(CHAT_REQUEST);
+            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             ObservabilityListeners.useFrameworkProviders(List.of());
             TestObservabilityListenersProviders.active = List.of();

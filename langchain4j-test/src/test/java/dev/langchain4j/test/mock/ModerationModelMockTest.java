@@ -55,7 +55,7 @@ class ModerationModelMockTest {
 
         RuntimeException failure = new IllegalStateException("down");
 
-        assertThatThrownBy(() -> ModerationModelMock.thatAlwaysThrows(failure).moderate("hello"))
+        assertThatThrownBy(() -> ModerationModelMock.thatThrows(failure).moderate("hello"))
                 .isSameAs(failure);
     }
 
@@ -70,7 +70,7 @@ class ModerationModelMockTest {
     void should_not_accept_null_arguments() {
 
         assertThatThrownBy(() -> ModerationModelMock.thatModerates(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ModerationModelMock.thatAlwaysThrows(null))
+        assertThatThrownBy(() -> ModerationModelMock.thatThrows(null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ModerationModelMock.thatNeverFlags().withProvider(null))
                 .isInstanceOf(IllegalArgumentException.class);

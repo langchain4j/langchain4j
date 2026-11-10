@@ -22,7 +22,7 @@ class LangChain4jAssertionsTest {
     @Test
     void should_offer_langchain4j_and_assertj_assertions_with_one_import() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Booking cancelled"))
+                .chatModel(ChatModelMock.thatResponds("Booking cancelled"))
                 .build();
 
         AiServiceInvocation invocation =

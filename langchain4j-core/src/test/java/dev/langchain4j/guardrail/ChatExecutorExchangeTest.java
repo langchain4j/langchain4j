@@ -77,7 +77,7 @@ class ChatExecutorExchangeTest {
     @Test
     void built_in_exchange_should_return_the_request_with_the_parameters_of_the_original_request() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Hello");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Hello");
         ChatRequest original = ChatRequest.builder()
                 .messages(UserMessage.from("Hi"))
                 .temperature(0.3)
@@ -95,7 +95,7 @@ class ChatExecutorExchangeTest {
     void exchangeAsync_should_return_failed_future_instead_of_throwing() {
 
         ChatExecutor builtIn = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatModelMock.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
         ChatExecutor throwing = new FixedResponseExecutor() {
@@ -140,7 +140,7 @@ class ChatExecutorExchangeTest {
             registrar.register((AiServiceResponseReceivedListener) events::add);
             ChatRequest original =
                     ChatRequest.builder().messages(UserMessage.from("Hi")).build();
-            ChatExecutor executor = builtInExecutor(ChatModelMock.thatAlwaysResponds("Hello"), original, registrar);
+            ChatExecutor executor = builtInExecutor(ChatModelMock.thatResponds("Hello"), original, registrar);
             List<ChatMessage> messages = List.of(UserMessage.from("Hi"), UserMessage.from("Again"));
 
             ChatResponse response = method.apply(executor, messages);
@@ -161,7 +161,7 @@ class ChatExecutorExchangeTest {
         registrar.register((AiServiceRequestIssuedListener) requests::add);
         registrar.register((AiServiceResponseReceivedListener) responses::add);
         ChatExecutor executor = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatModelMock.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
                 registrar);
 
@@ -180,11 +180,11 @@ class ChatExecutorExchangeTest {
             throw new IllegalStateException("listener failed");
         });
         ChatExecutor executor = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatModelMock.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
                 throwingRegistrar);
         ChatExecutor builtIn = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                ChatModelMock.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
         assertThat(executor.executeAsync()).failsWithin(Duration.ofSeconds(1));

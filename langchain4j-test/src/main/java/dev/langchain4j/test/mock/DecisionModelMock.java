@@ -141,9 +141,9 @@ public class DecisionModelMock implements DecisionModel {
     }
 
     /**
-     * Always answers with the given answers, keyed by question name.
+     * Answers every request with the given answers, keyed by question name.
      */
-    public static DecisionModelMock thatAlwaysAnswers(Map<String, ? extends DecisionAnswer> answers) {
+    public static DecisionModelMock thatAnswers(Map<String, ? extends DecisionAnswer> answers) {
         ensureNotNull(answers, "answers");
         return new DecisionModelMock(request -> answers);
     }
@@ -186,7 +186,7 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * A model whose requests all fail with the given exception.
      */
-    public static DecisionModelMock thatAlwaysThrows(RuntimeException exception) {
+    public static DecisionModelMock thatThrows(RuntimeException exception) {
         ensureNotNull(exception, "exception");
         return new DecisionModelMock(request -> {
             throw exception;

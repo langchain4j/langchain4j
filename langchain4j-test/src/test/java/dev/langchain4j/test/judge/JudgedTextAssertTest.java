@@ -56,7 +56,7 @@ class JudgedTextAssertTest {
                         .text("Booking MS-777 not found")
                         .isError(true)
                         .build());
-        ChatModelMock chatJudge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatJudge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
         DecisionModelMock decisionJudge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
@@ -91,7 +91,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_show_conversation_in_failure() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "No.", "result": "NOT_SATISFIED"}]}""");
 
@@ -106,7 +106,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_cut_long_conversation_messages_and_sources_in_failure() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "No.", "result": "NOT_SATISFIED"}]}""");
         String longSystemMessage = "a".repeat(1000) + "b".repeat(250);
@@ -131,7 +131,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_cut_a_long_user_message_but_keep_the_judged_text_in_failure() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "No.", "result": "NOT_SATISFIED"}]}""");
         String longUserMessage = "u".repeat(1000) + "v".repeat(40);
@@ -162,7 +162,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_reject_empty_conversation() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{}");
+        ChatModelMock judge = ChatModelMock.thatResponds("{}");
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).given(List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -171,7 +171,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_reject_context_given_after_satisfies() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
         JudgedTextAssert assertion = Judge.from(judge).assertThat(TEXT).satisfies("is polite");
@@ -189,7 +189,7 @@ class JudgedTextAssertTest {
 
     @Test
     void basedOn_should_accept_a_list_of_strings() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -292,7 +292,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_reject_based_on_contents_after_satisfies() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judge = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
         JudgedTextAssert assertion = Judge.from(judge).assertThat(TEXT).satisfies("is polite");
@@ -304,7 +304,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_reject_null_elements_in_context() {
-        JudgedTextAssert assertion = Judge.from(ChatModelMock.thatAlwaysResponds("{}")).assertThat(TEXT);
+        JudgedTextAssert assertion = Judge.from(ChatModelMock.thatResponds("{}")).assertThat(TEXT);
         List<ChatMessage> conversationWithNull = new ArrayList<>();
         conversationWithNull.add(null);
         List<String> sourcesWithNull = new ArrayList<>();
@@ -334,7 +334,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_not_wrap_exceptions_thrown_by_the_judge_model() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysThrows(new RuntimeException("model is down"));
+        ChatModelMock judge = ChatModelMock.thatThrows(new RuntimeException("model is down"));
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isNotInstanceOf(JudgeException.class)

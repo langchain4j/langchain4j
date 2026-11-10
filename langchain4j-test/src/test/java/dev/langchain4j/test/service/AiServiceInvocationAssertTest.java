@@ -200,10 +200,10 @@ class AiServiceInvocationAssertTest {
 
     @Test
     void should_check_tool_arguments_with_a_judge() {
-        ChatModelMock satisfied = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock satisfied = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "DE is Germany.", "result": "SATISFIED"}]}""");
-        ChatModelMock notSatisfied = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock notSatisfied = ChatModelMock.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "DE is not France.", "result": "NOT_SATISFIED"}]}""");
         AiServiceInvocation invocation = invocation(execution("getWeather", "{\"country\":\"DE\"}"));

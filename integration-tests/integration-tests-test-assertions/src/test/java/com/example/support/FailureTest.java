@@ -25,11 +25,11 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class FailureTest {
 
-    ChatModelMock overloadedModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("Model overloaded"));
+    ChatModelMock overloadedModel = ChatModelMock.thatThrows(new RuntimeException("Model overloaded"));
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
     }
 
     @Test
@@ -124,7 +124,7 @@ class FailureTest {
 
     @Test
     void should_match_failure_by_cause() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysThrows(new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatThrows(new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
 
         AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chat("klaus", "Hi")).invocation();
 
@@ -135,7 +135,7 @@ class FailureTest {
 
     @Test
     void should_fail_failure_assertions_on_a_successful_invocation() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello"));
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Hi")).invocation();
 
         assertThatThrownBy(() -> assertThat(invocation).hasFailedWith(RuntimeException.class))
@@ -148,7 +148,7 @@ class FailureTest {
 
     @Test
     void capture_expecting_failure_should_fail_when_nothing_failed() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello"));
 
         assertThatThrownBy(() -> captureExpectingFailure(() -> agent.chat("klaus", "Hi")))
                 .isInstanceOf(AssertionError.class)
@@ -181,7 +181,7 @@ class FailureTest {
 
     @Test
     void should_rethrow_exception_thrown_by_the_captured_code_itself() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello"));
 
         assertThatThrownBy(() -> capture(() -> {
                     String answer = agent.chat("klaus", "Hi");
@@ -237,7 +237,7 @@ class FailureTest {
     @Test
     void should_rethrow_failure_of_returned_future_that_is_not_an_ai_service_failure() {
         AsyncCustomerSupportAgent agent =
-                CustomerSupport.asyncCustomerSupportAgent(ChatModelMock.thatAlwaysResponds("Hello"), bookings());
+                CustomerSupport.asyncCustomerSupportAgent(ChatModelMock.thatResponds("Hello"), bookings());
 
         assertThatThrownBy(() -> capture(() -> agent.chat("Hi").thenCompose(answer ->
                         CompletableFuture.<String>failedFuture(new IllegalStateException("post-processing failed")))))
@@ -248,7 +248,7 @@ class FailureTest {
     @Test
     void should_capture_failed_structured_output() {
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(AiMessage.from("I am not JSON")));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(AiMessage.from("I am not JSON")));
 
         AiServiceInvocation invocation =
                 captureExpectingFailure(() -> extractor.extract("Cancel MS-777")).invocation();

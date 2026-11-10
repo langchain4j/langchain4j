@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.observability;
 
-import static dev.langchain4j.test.mock.ChatModelMock.thatAlwaysResponds;
+import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
 import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,7 +92,7 @@ class AgentAiServiceEventTest {
         List<AgentAiServiceEvent> events = new CopyOnWriteArrayList<>();
         List<AgenticScope> scopes = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(thatAlwaysResponds("hello"))
+                .chatModel(thatResponds("hello"))
                 .listener(new AgentListener() {
                     @Override
                     public void beforeAgentInvocation(AgentRequest agentRequest) {
@@ -136,7 +136,7 @@ class AgentAiServiceEventTest {
         List<String> calls = new CopyOnWriteArrayList<>();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .name("sequence")
-                .subAgents(writer(thatAlwaysResponds("draft")), reviewer(thatAlwaysResponds("approved")))
+                .subAgents(writer(thatResponds("draft")), reviewer(thatResponds("approved")))
                 .outputKey("review")
                 .listener(recorder(calls, true))
                 .build();
@@ -166,7 +166,7 @@ class AgentAiServiceEventTest {
         List<AgentAiServiceEvent> events = new CopyOnWriteArrayList<>();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .name("sequence")
-                .subAgents(writer(thatAlwaysResponds("first")), writer(thatAlwaysResponds("second")))
+                .subAgents(writer(thatResponds("first")), writer(thatResponds("second")))
                 .outputKey("draft")
                 .listener(eventRecorder(events, true))
                 .build();
@@ -191,12 +191,12 @@ class AgentAiServiceEventTest {
             Thread.currentThread().setContextClassLoader(sharedRegistrarLoader);
             UntypedAgent sequence = AgenticServices.sequenceBuilder()
                     .name("sequence")
-                    .subAgents(writer(thatAlwaysResponds("draft")), reviewer(thatAlwaysResponds("approved")))
+                    .subAgents(writer(thatResponds("draft")), reviewer(thatResponds("approved")))
                     .outputKey("review")
                     .listener(recorder(calls, true))
                     .build();
             Chat chat = AiServices.builder(Chat.class)
-                    .chatModel(thatAlwaysResponds("hello"))
+                    .chatModel(thatResponds("hello"))
                     .build();
 
             sequence.invoke(Map.of("topic", "dragons"));
@@ -232,7 +232,7 @@ class AgentAiServiceEventTest {
         try (URLClassLoader sharedRegistrarLoader = sharedRegistrarClassLoader(original)) {
             Thread.currentThread().setContextClassLoader(sharedRegistrarLoader);
             Assistant expert = AgenticServices.agentBuilder(Assistant.class)
-                    .chatModel(thatAlwaysResponds("expert answer"))
+                    .chatModel(thatResponds("expert answer"))
                     .build();
             Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
                     .chatModel(thatResponds(AiMessage.from(toolCall("1", "askExpert")), AiMessage.from("answer")))
@@ -258,7 +258,7 @@ class AgentAiServiceEventTest {
         List<Object> started = new CopyOnWriteArrayList<>();
         List<Object> responses = new CopyOnWriteArrayList<>();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
-                .subAgents(writer(thatAlwaysResponds("draft")), reviewer(thatAlwaysResponds("approved")))
+                .subAgents(writer(thatResponds("draft")), reviewer(thatResponds("approved")))
                 .outputKey("review")
                 .listener(AgentListener.forAiServiceListeners(
                         true,
@@ -283,7 +283,7 @@ class AgentAiServiceEventTest {
         List<AiServiceCompletedEvent> sequenceEvents = new CopyOnWriteArrayList<>();
         List<AiServiceCompletedEvent> writerEvents = new CopyOnWriteArrayList<>();
         Writer writer = AgenticServices.agentBuilder(Writer.class)
-                .chatModel(thatAlwaysResponds("draft"))
+                .chatModel(thatResponds("draft"))
                 .listener(AgentListener.forAiServiceListeners(false, (AiServiceCompletedListener) writerEvents::add))
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
@@ -304,7 +304,7 @@ class AgentAiServiceEventTest {
     void failing_ai_service_listener_does_not_prevent_the_others_from_being_notified() {
         List<AiServiceCompletedEvent> events = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(thatAlwaysResponds("hello"))
+                .chatModel(thatResponds("hello"))
                 .listener(AgentListener.forAiServiceListeners(
                         false,
                         (AiServiceCompletedListener) event -> {
@@ -331,7 +331,7 @@ class AgentAiServiceEventTest {
         List<String> calls = new CopyOnWriteArrayList<>();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .name("sequence")
-                .subAgents(writer(thatAlwaysResponds("draft")))
+                .subAgents(writer(thatResponds("draft")))
                 .outputKey("draft")
                 .listener(recorder(calls, false))
                 .build();
@@ -346,7 +346,7 @@ class AgentAiServiceEventTest {
         List<String> localCalls = new CopyOnWriteArrayList<>();
         List<String> inheritedCalls = new CopyOnWriteArrayList<>();
         Writer writer = AgenticServices.agentBuilder(Writer.class)
-                .chatModel(thatAlwaysResponds("draft"))
+                .chatModel(thatResponds("draft"))
                 .listener(recorder(localCalls, false))
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
@@ -374,7 +374,7 @@ class AgentAiServiceEventTest {
         List<AgentAiServiceEvent> localEvents = new CopyOnWriteArrayList<>();
         List<AgentAiServiceEvent> inheritedEvents = new CopyOnWriteArrayList<>();
         Writer writer = AgenticServices.agentBuilder(Writer.class)
-                .chatModel(thatAlwaysResponds("draft"))
+                .chatModel(thatResponds("draft"))
                 .context(agenticScope -> "Be brief.")
                 .listener(eventRecorder(localEvents, false))
                 .build();
@@ -398,7 +398,7 @@ class AgentAiServiceEventTest {
     void ai_service_events_of_an_async_subagent_are_notified() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Writer writer = AgenticServices.agentBuilder(Writer.class)
-                .chatModel(thatAlwaysResponds("draft"))
+                .chatModel(thatResponds("draft"))
                 .async(true)
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
@@ -451,7 +451,7 @@ class AgentAiServiceEventTest {
     void cancellation_of_a_streaming_agent_is_notified() throws Exception {
         CompletableFuture<AgentAiServiceEvent> cancellation = new CompletableFuture<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"))
                 .listener(new AgentListener() {
                     @Override
                     public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
@@ -476,7 +476,7 @@ class AgentAiServiceEventTest {
     void ai_service_error_is_notified_before_the_agent_invocation_error() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model failure")))
+                .chatModel(ChatModelMock.thatThrows(new RuntimeException("model failure")))
                 .listener(recorder(calls, false))
                 .build();
 
@@ -497,7 +497,7 @@ class AgentAiServiceEventTest {
     void retrieval_and_guardrail_events_are_notified() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(thatAlwaysResponds("hello"))
+                .chatModel(thatResponds("hello"))
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .inputGuardrails(new InputGuardrail() {
                     @Override
@@ -584,7 +584,7 @@ class AgentAiServiceEventTest {
                 });
             }
         };
-        Assistant assistant = builder.chatModel(thatAlwaysResponds("hello"))
+        Assistant assistant = builder.chatModel(thatResponds("hello"))
                 .listener(recorder(calls, false))
                 .build();
 
@@ -624,7 +624,7 @@ class AgentAiServiceEventTest {
     void failing_listener_does_not_interrupt_the_agent_invocation() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(thatAlwaysResponds("hello"))
+                .chatModel(thatResponds("hello"))
                 .listener(new AgentListener() {
                     @Override
                     public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
@@ -657,7 +657,7 @@ class AgentAiServiceEventTest {
     void ai_service_events_are_notified_to_a_declarative_agent_listener() {
         DeclarativeAssistant.CALLS.clear();
         DeclarativeAssistant assistant =
-                AgenticServices.createAgenticSystem(DeclarativeAssistant.class, thatAlwaysResponds("hello"));
+                AgenticServices.createAgenticSystem(DeclarativeAssistant.class, thatResponds("hello"));
 
         assertThat(assistant.answer("hi")).isEqualTo("hello");
 
@@ -723,7 +723,7 @@ class AgentAiServiceEventTest {
                 context.set(aiServiceContext);
             }
         };
-        return builder.chatModel(thatAlwaysResponds("hello")).listener(listener).build();
+        return builder.chatModel(thatResponds("hello")).listener(listener).build();
     }
 
     private static AgentListener eventRecorder(List<AgentAiServiceEvent> events, boolean inheritedBySubagents) {

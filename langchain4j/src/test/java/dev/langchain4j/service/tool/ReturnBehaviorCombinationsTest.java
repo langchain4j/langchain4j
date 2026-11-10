@@ -483,7 +483,7 @@ class ReturnBehaviorCombinationsTest {
 
     private void testImmediateWithoutResultReturnType(List<ToolStep> toolSteps, Consumer<Assistant> chat) {
         List<ToolExecutionRequest> toolRequests = toolRequestsFor(toolSteps);
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequests));
+        ChatModelMock model = ChatModelMock.thatResponds(AiMessage.from(toolRequests));
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new Tools())
@@ -496,7 +496,7 @@ class ReturnBehaviorCombinationsTest {
 
     private static ChatModelMock createChatModelMock(List<ToolExecutionRequest> toolRequests) {
         ChatModelMock model =
-                ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])));
+                ChatModelMock.thatResponds(AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])));
         return model;
     }
 

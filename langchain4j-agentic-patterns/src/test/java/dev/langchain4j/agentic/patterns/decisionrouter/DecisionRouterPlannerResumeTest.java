@@ -138,7 +138,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock model = DecisionModelMock.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -158,7 +158,7 @@ class DecisionRouterPlannerResumeTest {
 
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock model = DecisionModelMock.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -191,7 +191,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeDeciding() {
         DecisionRouterPlanner planner =
-                new DecisionRouterPlanner(DecisionModelMock.thatAlwaysThrows(new RuntimeException("unused")));
+                new DecisionRouterPlanner(DecisionModelMock.thatThrows(new RuntimeException("unused")));
 
         assertThat(planner.executionState()).isEmpty();
     }

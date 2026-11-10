@@ -81,7 +81,7 @@ class AiServicesTest {
     void should_not_call_chatModel_when_ChatMemoryAccess_methods_are_called() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("Hi"));
         AssistantWithMemoryAccess assistant = AiServices.builder(AssistantWithMemoryAccess.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -111,7 +111,7 @@ class AiServicesTest {
         // given
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         AssistantWithSingleMemoryAccess assistant = AiServices.builder(AssistantWithSingleMemoryAccess.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Hi"))
+                .chatModel(ChatModelMock.thatResponds("Hi"))
                 .chatMemory(chatMemory)
                 .build();
         assistant.chat("Hello");
@@ -199,7 +199,7 @@ class AiServicesTest {
     void should_transform_system_message() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("Grill for 30 minutes."));
 
         ChefAssistant chef = AiServices.builder(ChefAssistant.class)
                 .chatModel(chatModel)
@@ -221,7 +221,7 @@ class AiServicesTest {
     void should_transform_system_message_with_invocation_context() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("Grill for 30 minutes."));
 
         ChefAssistant chef = AiServices.builder(ChefAssistant.class)
                 .chatModel(chatModel)
@@ -243,7 +243,7 @@ class AiServicesTest {
     void should_add_system_message_via_transformer_when_none_is_configured() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("4"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -265,7 +265,7 @@ class AiServicesTest {
     void should_transform_system_message_from_system_message_provider() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("4"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -293,7 +293,7 @@ class AiServicesTest {
     void should_not_append_output_format_instructions_when_return_type_is_ChatResponse() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+        ChatModel chatModel = spy(ChatModelMock.thatResponds("Hi"));
 
         ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
                 .chatModel(chatModel)
@@ -312,7 +312,7 @@ class AiServicesTest {
 
         // given
         ChatModel chatModel =
-                spy(ChatModelMock.thatAlwaysResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
+                spy(ChatModelMock.thatResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
 
         ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
                 .chatModel(chatModel)

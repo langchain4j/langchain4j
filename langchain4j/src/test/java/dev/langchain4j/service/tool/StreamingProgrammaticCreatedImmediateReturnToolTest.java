@@ -53,7 +53,7 @@ class StreamingProgrammaticCreatedImmediateReturnToolTest {
                 .name("calculate")
                 .arguments("{\"expression\": \"2+2\"}")
                 .build());
-        StreamingChatModelMock mockModel = StreamingChatModelMock.thatAlwaysStreams(toolCallMessage);
+        StreamingChatModelMock mockModel = StreamingChatModelMock.thatStreams(toolCallMessage);
 
         ToolProvider provider = request -> ToolProviderResult.builder()
                 .add(tool, executor, ReturnBehavior.IMMEDIATE)

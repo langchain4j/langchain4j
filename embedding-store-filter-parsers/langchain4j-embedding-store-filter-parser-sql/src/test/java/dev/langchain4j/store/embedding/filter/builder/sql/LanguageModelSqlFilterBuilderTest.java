@@ -31,7 +31,7 @@ class LanguageModelSqlFilterBuilderTest {
     void should_parse_valid_SQL(String validSql) {
 
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(validSql);
+        ChatModel chatModel = ChatModelMock.thatResponds(validSql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)
@@ -72,7 +72,7 @@ class LanguageModelSqlFilterBuilderTest {
     void should_fail_to_parse_then_extract_valid_SQL(String dirtySql) {
 
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(dirtySql);
+        ChatModel chatModel = ChatModelMock.thatResponds(dirtySql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)
@@ -104,7 +104,7 @@ class LanguageModelSqlFilterBuilderTest {
 
     @Test
     void should_handle_null_table_definition() {
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("SELECT * FROM table");
+        ChatModel chatModel = ChatModelMock.thatResponds("SELECT * FROM table");
 
         assertThatThrownBy(() -> LanguageModelSqlFilterBuilder.builder()
                         .chatModel(chatModel)
@@ -123,7 +123,7 @@ class LanguageModelSqlFilterBuilderTest {
                 .addColumn("name", "VARCHAR")
                 .build();
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("SELECT * FROM users WHERE id = 1");
+        ChatModel chatModel = ChatModelMock.thatResponds("SELECT * FROM users WHERE id = 1");
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)

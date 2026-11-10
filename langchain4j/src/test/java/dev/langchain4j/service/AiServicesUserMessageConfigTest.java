@@ -51,7 +51,7 @@ class AiServicesUserMessageConfigTest {
     private static final ImageContent imageContent = ImageContent.from(image);
 
     @Spy
-    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel chatModel = ChatModelMock.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -573,7 +573,7 @@ class AiServicesUserMessageConfigTest {
     @Test
     void user_message_configuration_19_3_streaming() throws Exception {
         // given
-        StreamingChatModelMock streamingChatModel = StreamingChatModelMock.thatAlwaysStreams("Berlin");
+        StreamingChatModelMock streamingChatModel = StreamingChatModelMock.thatStreams("Berlin");
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         AiService aiService = AiServices.builder(AiService.class)
                 .streamingChatModel(streamingChatModel)

@@ -46,7 +46,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_a_multimodal_user_message() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
         ImageDescriber describer = AgenticServices.agentBuilder(ImageDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -66,7 +66,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_a_user_message_without_text() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -84,7 +84,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_leave_a_user_message_without_text_unchanged_when_the_context_is_empty() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .chatModel(model)
                 .context(scope -> "")
@@ -101,7 +101,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_all_the_text_of_a_user_message_with_several_text_contents() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
         ContentsDescriber describer = AgenticServices.agentBuilder(ContentsDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -123,7 +123,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_mention_the_contents_of_a_user_message_without_text_in_the_summarized_context() {
-        ChatModelMock describerModel = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock describerModel = ChatModelMock.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .name("describer")
                 .chatModel(describerModel)
@@ -153,7 +153,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_summarize_a_context_containing_a_multimodal_user_message() {
-        ChatModelMock describerModel = ChatModelMock.thatAlwaysResponds("Three llamas.");
+        ChatModelMock describerModel = ChatModelMock.thatResponds("Three llamas.");
         ImageDescriber describer = AgenticServices.agentBuilder(ImageDescriber.class)
                 .name("describer")
                 .chatModel(describerModel)

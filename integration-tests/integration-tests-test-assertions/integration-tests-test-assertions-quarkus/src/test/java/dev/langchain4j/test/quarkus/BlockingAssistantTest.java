@@ -253,7 +253,7 @@ class BlockingAssistantTest {
 
     @Test
     void rethrows_model_failure_from_record() {
-        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> assistant.chat("Hi")))
                 .hasMessageContaining("Model is overloaded");
@@ -261,7 +261,7 @@ class BlockingAssistantTest {
 
     @Test
     void returns_failed_invocation_when_failure_is_expected() {
-        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> assistant.chat("Hi"))

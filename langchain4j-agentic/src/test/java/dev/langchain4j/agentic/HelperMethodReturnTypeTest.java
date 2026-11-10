@@ -49,7 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class HelperMethodReturnTypeTest {
 
-    static final ChatModelMock MODEL = ChatModelMock.thatAlwaysResponds("ok");
+    static final ChatModelMock MODEL = ChatModelMock.thatResponds("ok");
 
     static final ThreadPoolExecutor EXECUTOR = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
 

@@ -29,7 +29,7 @@ class ScoringModelMockTest {
     @Test
     void should_record_asynchronous_requests() {
 
-        ScoringModelMock model = ScoringModelMock.thatAlwaysScores(0.5);
+        ScoringModelMock model = ScoringModelMock.thatScores(0.5);
 
         assertThat(model.scoreAsync(REQUEST).join().scores()).containsExactly(0.5, 0.5);
         assertThat(model.requests()).hasSize(1);
@@ -40,7 +40,7 @@ class ScoringModelMockTest {
 
         RuntimeException failure = new IllegalStateException("down");
 
-        assertThatThrownBy(() -> ScoringModelMock.thatAlwaysThrows(failure).score(REQUEST))
+        assertThatThrownBy(() -> ScoringModelMock.thatThrows(failure).score(REQUEST))
                 .isSameAs(failure);
     }
 }

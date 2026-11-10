@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
-import static dev.langchain4j.test.mock.ChatModelMock.thatAlwaysResponds;
+import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
 import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,7 +95,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_keep_all_tools_visible_when_search_is_not_configured() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("sunny");
+        ChatModelMock model = ChatModelMock.thatResponds("sunny");
         Assistant agent = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
                 .tools(new WeatherTools())

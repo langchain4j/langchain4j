@@ -27,7 +27,7 @@ class DecisionModelMockTest {
     void should_answer_and_record_requests() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
                 .withTokenUsage(new TokenUsage(10, 1));
 
         // when
@@ -43,7 +43,7 @@ class DecisionModelMockTest {
     void should_answer_asynchronously_with_a_completed_future() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
 
         // when
         CompletableFuture<DecisionResponse> future = model.decideAsync(REQUEST);
@@ -58,7 +58,7 @@ class DecisionModelMockTest {
     void should_fail_async_calls_without_recording_them_when_async_is_not_supported() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of("spam", YesNoAnswer.from(0.9)))
                 .withoutAsyncSupport();
 
         // when
@@ -93,7 +93,7 @@ class DecisionModelMockTest {
     void should_fail_sync_and_async_calls_when_configured_to_throw() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("boom"));
+        DecisionModelMock model = DecisionModelMock.thatThrows(new RuntimeException("boom"));
 
         // when-then
         assertThatThrownBy(() -> model.decide(REQUEST)).hasMessage("boom");
@@ -106,7 +106,7 @@ class DecisionModelMockTest {
     @Test
     void request_should_fail_unless_exactly_one_request_was_received() {
 
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)

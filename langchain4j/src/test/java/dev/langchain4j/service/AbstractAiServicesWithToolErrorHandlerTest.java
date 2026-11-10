@@ -264,7 +264,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Paris\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequest1, toolRequest2)));
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(AiMessage.from(toolRequest1, toolRequest2)));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -301,7 +301,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{ invalid json }")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(AiMessage.from(toolExecutionRequest)));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel);
@@ -392,7 +392,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{ invalid json }")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(AiMessage.from(toolExecutionRequest)));
 
         CustomToolException customException = new CustomToolException("Can't parse JSON arguments");
 

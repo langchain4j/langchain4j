@@ -131,7 +131,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_fail_below_default_threshold() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(
                 Map.of("condition1", YesNoAnswer.from(0.5), "condition2", YesNoAnswer.from(0.49)));
 
         assertThatThrownBy(() -> Judge.from(judge)
@@ -175,7 +175,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_throw_on_refusal() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(
                 Map.of("condition1", RefusalAnswer.of(), "condition2", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(() -> Judge.from(judge)
@@ -278,7 +278,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_throw_when_a_criterion_is_not_answered() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(() -> Judge.from(judge)
                         .assertThat(TEXT)
@@ -290,7 +290,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_return_verdicts_with_probabilities() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(
                 Map.of("condition1", YesNoAnswer.from(0.8), "condition2", YesNoAnswer.from(0.2)));
 
         List<JudgeVerdict> verdicts = Judge.from(judge).evaluate(request(TEXT, "is polite", "is short")).verdicts();
@@ -402,7 +402,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_report_the_token_usage_of_the_decision() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)))
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)))
                 .withTokenUsage(new TokenUsage(7, 3));
 
         JudgeResponse response = Judge.from(judge).evaluate(request(TEXT, "is polite"));
@@ -412,7 +412,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_report_no_token_usage_when_the_model_does_not() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
 
         assertThat(Judge.from(judge).evaluate(request(TEXT, "is polite")).tokenUsage()).isNull();
     }
@@ -420,7 +420,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_reject_an_unknown_context_before_calling_the_model() {
-        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
         JudgeContext unknown = new JudgeContext() {};
 
         assertThatThrownBy(() -> Judge.from(judge)

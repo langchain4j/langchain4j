@@ -124,7 +124,7 @@ class SupervisorAgentServiceImplTest {
     }
 
     public interface AgentWithChatModelSubtypeSupplier extends SupervisorAgent {
-        ChatModelMock SUPPLIED_MODEL = ChatModelMock.thatAlwaysResponds("done");
+        ChatModelMock SUPPLIED_MODEL = ChatModelMock.thatResponds("done");
 
         @ChatModelSupplier
         static ChatModelMock chatModel() {

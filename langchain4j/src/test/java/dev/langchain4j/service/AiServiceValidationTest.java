@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class AiServiceValidationTest {
 
-    private static final ChatModel CHAT_MODEL = ChatModelMock.thatAlwaysResponds("Hello there!");
+    private static final ChatModel CHAT_MODEL = ChatModelMock.thatResponds("Hello there!");
 
     record Person(String name) {}
 

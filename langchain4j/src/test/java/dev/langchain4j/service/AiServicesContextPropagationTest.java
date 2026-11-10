@@ -330,7 +330,7 @@ class AiServicesContextPropagationTest {
             return List.of(Content.from("Berlin is the capital of Germany"));
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(asyncQueryTransformer)
                         .contentRetriever(blockingRetriever)
@@ -362,7 +362,7 @@ class AiServicesContextPropagationTest {
         embeddingStore.add(embeddingModel.embed(segment).content(), segment);
         requestIdsSeen.clear();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .contentRetriever(EmbeddingStoreContentRetriever.builder()
                         .embeddingStore(embeddingStore)
                         .embeddingModel(embeddingModel)
@@ -389,7 +389,7 @@ class AiServicesContextPropagationTest {
             return Moderation.notFlagged();
         });
         ModeratedAssistant assistant = AiServices.builder(ModeratedAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .moderationModel(moderationModel)
                 .build();
 
@@ -435,7 +435,7 @@ class AiServicesContextPropagationTest {
             return List.of(Content.from("Berlin is the capital of Germany"));
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(query -> List.of(retriever, retriever))
                         .executor(executor)
@@ -455,7 +455,7 @@ class AiServicesContextPropagationTest {
 
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
         Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when
@@ -472,7 +472,7 @@ class AiServicesContextPropagationTest {
 
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
         Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when-then

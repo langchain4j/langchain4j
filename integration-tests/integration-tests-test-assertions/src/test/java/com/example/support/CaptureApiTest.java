@@ -43,7 +43,7 @@ class CaptureApiTest {
     static final String EXTRACTED = "{\"bookingNumber\":\"MS-777\",\"action\":\"cancel\",\"numberOfGuests\":2}";
     static final String EMAIL = "Hi, please cancel MS-777 for both of us. Klaus";
 
-    PolicyExpert policyExpert = CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused"));
+    PolicyExpert policyExpert = CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused"));
 
     CustomerSupportAgent agent(ChatModelMock model) {
         return CustomerSupport.customerSupportAgent(model, bookings(), policyExpert);
@@ -54,7 +54,7 @@ class CaptureApiTest {
     @Test
     void should_give_typed_structured_output() {
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(EXTRACTED));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(EXTRACTED));
 
         AiServiceCapture capture = capture(() -> extractor.extract(EMAIL));
 
@@ -70,7 +70,7 @@ class CaptureApiTest {
     @Test
     void should_give_the_structured_output_inside_a_future() {
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(EXTRACTED));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(EXTRACTED));
 
         AiServiceCapture capture = capture(() -> extractor.extractAsync(EMAIL));
 
@@ -85,7 +85,7 @@ class CaptureApiTest {
     @Test
     void should_give_result_with_structured_output() {
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(EXTRACTED));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(EXTRACTED));
 
         AiServiceCapture capture = capture(() -> extractor.extractWithDetails(EMAIL));
 
@@ -100,7 +100,7 @@ class CaptureApiTest {
 
     @Test
     void should_give_output_text_of_string_method() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello Klaus, how can I help?"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello Klaus, how can I help?"));
 
         AiServiceCapture capture = capture(() -> agent.chat("klaus", "Hi"));
 
@@ -153,7 +153,7 @@ class CaptureApiTest {
     @Test
     void should_capture_token_stream_started_with_complete_handlers() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Hi ", "there"), bookings());
+                StreamingChatModelMock.thatStreams("Hi ", "there"), bookings());
         List<String> tokens = new CopyOnWriteArrayList<>();
         AtomicReference<ChatResponse> completeResponse = new AtomicReference<>();
 
@@ -172,7 +172,7 @@ class CaptureApiTest {
     @Test
     void should_capture_strings_of_returned_publisher() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Good ", "morning"), bookings());
+                StreamingChatModelMock.thatStreams("Good ", "morning"), bookings());
 
         AiServiceCapture capture = capture(() -> agent.chatReactive("Hi"));
 
@@ -184,7 +184,7 @@ class CaptureApiTest {
     @Test
     void should_capture_publisher_subscribed_to_by_captured_code() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Good ", "morning"), bookings());
+                StreamingChatModelMock.thatStreams("Good ", "morning"), bookings());
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceCapture capture = capture(() -> agent.chatReactive("Hi").subscribe(new CollectingSubscriber<>(items)));
@@ -216,7 +216,7 @@ class CaptureApiTest {
     @Test
     void should_capture_event_publisher_subscribed_to_by_captured_code() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Hello"), bookings());
+                StreamingChatModelMock.thatStreams("Hello"), bookings());
         List<AiServiceStreamingEvent> events = new CopyOnWriteArrayList<>();
 
         AiServiceCapture capture = capture(() -> agent.chatWithEvents("Hi").subscribe(new CollectingSubscriber<>(events)));
@@ -310,7 +310,7 @@ class CaptureApiTest {
     @Test
     void should_check_that_invocation_succeeded() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")), bookings());
+                StreamingChatModelMock.thatThrows(new RuntimeException("Stream broken")), bookings());
 
         AiServiceCapture capture = captureExpectingFailure(() -> agent.chat("Hi").ignoreErrors().start());
 
@@ -323,7 +323,7 @@ class CaptureApiTest {
     @Test
     void should_fail_has_succeeded_for_cancelled_token_stream() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Hello, this is a long answer"), bookings());
+                StreamingChatModelMock.thatStreams("Hello, this is a long answer"), bookings());
 
         AiServiceCapture capture = capture(() -> agent.chat("Hi")
                 .onPartialResponseWithContext((partialResponse, context) -> context.streamingHandle().cancel())
@@ -339,7 +339,7 @@ class CaptureApiTest {
 
     @Test
     void should_check_that_no_sources_were_retrieved() {
-        PolicyExpert expert = CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("Hello!"));
+        PolicyExpert expert = CustomerSupport.policyExpert(ChatModelMock.thatResponds("Hello!"));
 
         assertThat(capture(() -> expert.answer("Hi"))).hasNoRetrievedSources();
 
@@ -350,7 +350,7 @@ class CaptureApiTest {
                 .hasMessageContaining("  - Pets: small pets are allowed");
 
         // the customer support agent has no retrieval augmentor
-        AiServiceCapture agentRecording = capture(() -> agent(ChatModelMock.thatAlwaysResponds("Hello!")).chat("klaus", "Hi"));
+        AiServiceCapture agentRecording = capture(() -> agent(ChatModelMock.thatResponds("Hello!")).chat("klaus", "Hi"));
         assertThatThrownBy(() -> assertThat(agentRecording).hasNoRetrievedSources())
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("Expected no retrieved sources, but no sources were captured");
@@ -366,7 +366,7 @@ class CaptureApiTest {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
                 agentModel,
                 bookings(),
-                CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("Small pets are allowed.")));
+                CustomerSupport.policyExpert(ChatModelMock.thatResponds("Small pets are allowed.")));
 
         AiServiceCapture capture = capture(() -> agent.chat("klaus", "Can I bring my pets?"));
 
@@ -386,7 +386,7 @@ class CaptureApiTest {
                 results -> results.isEmpty() ? "Hello!" : "Cancelled.",
                 toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))));
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(EXTRACTED));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(EXTRACTED));
 
         AiServiceCapture capture = capture(() -> {
             BookingRequest request = extractor.extract(EMAIL);
@@ -424,7 +424,7 @@ class CaptureApiTest {
 
     @Test
     void should_judge_output_text_with_custom_question() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello Klaus, how can I help you today?"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello Klaus, how can I help you today?"));
 
         AiServiceCapture capture = capture(() -> agent.chat("klaus", "Hi"));
 

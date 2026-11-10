@@ -18,12 +18,12 @@ public class TestModels {
     @Produces
     @ApplicationScoped
     ChatModel chatModel() {
-        return ChatModelMock.thatAlwaysResponds(DEFAULT_ANSWER);
+        return ChatModelMock.thatResponds(DEFAULT_ANSWER);
     }
 
     @Produces
     @ApplicationScoped
     StreamingChatModel streamingChatModel() {
-        return StreamingChatModelMock.thatAlwaysStreams("How ", "can ", "I ", "help ", "you?");
+        return StreamingChatModelMock.thatStreams("How ", "can ", "I ", "help ", "you?");
     }
 }

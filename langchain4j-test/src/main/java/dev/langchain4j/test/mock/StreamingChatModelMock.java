@@ -77,7 +77,6 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     private final Function<ChatRequest, AiMessage> answers;
     private final ScriptedResponses steps;
-    private final boolean scripted;
     private final RecordedRequests<ChatRequest> requests = new RecordedRequests<>("chat");
 
     private ModelProvider provider = ModelProvider.OTHER;
@@ -89,16 +88,14 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private boolean streamingOnCallingThread;
     private List<ChatModelListener> listeners = List.of();
 
-    private StreamingChatModelMock(List<Step> steps, boolean scripted) {
+    private StreamingChatModelMock(List<Step> steps) {
         this.answers = null;
         this.steps = new ScriptedResponses(MOCK_NAME, steps);
-        this.scripted = scripted;
     }
 
     private StreamingChatModelMock(Function<ChatRequest, AiMessage> answers) {
         this.answers = ensureNotNull(answers, "answers");
         this.steps = null;
-        this.scripted = false;
     }
 
     /**
@@ -172,7 +169,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     private ScriptedResponses script() {
-        if (!scripted) {
+        if (steps == null) {
             throw new IllegalStateException("Steps can only be added to a mock created with thatStreams(String...),"
                     + " thatStreams(AiMessage, AiMessage...), thatStreams(List), thatCallsTool(...) or thatThrows(...)");
         }
@@ -524,33 +521,19 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * A model that answers every request by streaming the given tokens, which together make up one answer.
-     */
-    public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {
-        return new StreamingChatModelMock(List.of(Step.streaming(asList(tokens))), false);
-    }
-
-    /**
-     * A model that answers every request by streaming the given message, one character per token. It fails on the
-     * second request if the message contains tool calls, because repeating it would make an AI Service call the tools
-     * again and again.
-     */
-    public static StreamingChatModelMock thatAlwaysStreams(AiMessage aiMessage) {
-        return new StreamingChatModelMock(List.of(Step.responding(aiMessage)), false);
-    }
-
-    /**
-     * A model that answers the first request by streaming the given tokens, which together make up one answer. Add the
-     * next steps with {@code then...} methods.
+     * A model that answers every request by streaming the given tokens, which together make up one answer. To answer
+     * later requests differently, add steps with {@code then...} methods.
      */
     public static StreamingChatModelMock thatStreams(String... tokens) {
-        return new StreamingChatModelMock(List.of(Step.streaming(asList(tokens))), true);
+        return new StreamingChatModelMock(List.of(Step.streaming(asList(tokens))));
     }
 
     /**
-     * A model that streams the given messages in order, one per request, one character per token. Add further steps
-     * with {@code then...} methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for
-     * example several tool calls in one answer, built with {@link ChatModelMock#toolCall(String, Map)}.
+     * A model that streams the given messages in order, one per request, one character per token, and then repeats the
+     * last one. It fails instead of repeating a message with tool calls, because that would make an AI Service call the
+     * tools again and again. Add further steps with {@code then...} methods. Use it for answers that
+     * {@link #thatCallsTool(String, Map)} cannot express, for example several tool calls in one answer, built with
+     * {@link ChatModelMock#toolCall(String, Map)}.
      */
     public static StreamingChatModelMock thatStreams(AiMessage first, AiMessage... next) {
         return thatStreams(Stream.concat(Stream.of(first), Stream.of(next)).toList());
@@ -563,7 +546,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     public static StreamingChatModelMock thatStreams(List<AiMessage> aiMessages) {
         ensureNotEmpty(aiMessages, "aiMessages");
         return new StreamingChatModelMock(
-                aiMessages.stream().map(Step::responding).toList(), true);
+                aiMessages.stream().map(Step::responding).toList());
     }
 
     /**
@@ -592,22 +575,15 @@ public class StreamingChatModelMock implements StreamingChatModel {
      * @param jsonArguments the arguments of the tool, as JSON
      */
     public static StreamingChatModelMock thatCallsTool(String toolName, String jsonArguments) {
-        return new StreamingChatModelMock(List.of(Step.callingTool(toolName, jsonArguments, 1)), true);
+        return new StreamingChatModelMock(List.of(Step.callingTool(toolName, jsonArguments, 1)));
     }
 
     /**
-     * A model whose first request fails with the given exception before anything is streamed. Add the next steps with
-     * {@code then...} methods.
+     * A model whose requests all fail with the given exception, before anything is streamed. To let later requests
+     * succeed, add steps with {@code then...} methods.
      */
     public static StreamingChatModelMock thatThrows(RuntimeException exception) {
-        return new StreamingChatModelMock(List.of(Step.failing(exception)), true);
-    }
-
-    /**
-     * A model whose requests all fail with the given exception, before anything is streamed.
-     */
-    public static StreamingChatModelMock thatAlwaysThrows(RuntimeException exception) {
-        return new StreamingChatModelMock(List.of(Step.failing(exception)), false);
+        return new StreamingChatModelMock(List.of(Step.failing(exception)));
     }
 
 }

@@ -65,7 +65,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_complete_once_when_subscriber_requests_one_event_at_a_time() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("Hi"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("Hi"));
         List<ChatModelStreamingEvent> events = new ArrayList<>();
         AtomicInteger completions = new AtomicInteger();
 
@@ -104,7 +104,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_stream_a_single_response_for_every_request() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("Hi"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("Hi"));
 
         assertThat(chat(model)).isEqualTo("Hi");
         assertThat(chat(model)).isEqualTo("Hi");
@@ -114,7 +114,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_fail_instead_of_repeating_a_single_response_with_tool_calls() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from(
                 ToolExecutionRequest.builder().id("1").name("getWeather").arguments("{}").build()));
 
         chat(model);
@@ -154,7 +154,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_stream_given_tokens() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
         List<String> tokens = new CopyOnWriteArrayList<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -183,7 +183,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_publish_given_tokens() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
 
         List<ChatModelStreamingEvent> events = collect(model);
 
@@ -199,7 +199,7 @@ public class StreamingChatModelMockTest {
     void should_fail_fast_when_throwing_from_chat_is_used_with_the_publisher() {
 
         StreamingChatModelMock model =
-                StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("boom")).throwingFromChat();
+                StreamingChatModelMock.thatThrows(new RuntimeException("boom")).throwingFromChat();
 
         // the publisher reports the error to its subscriber, which collect(...) rethrows
         assertThatThrownBy(() -> collect(model))
@@ -210,7 +210,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_publish_the_given_tokens_again_for_every_request() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
 
         collect(model);
         List<ChatModelStreamingEvent> events = collect(model);
@@ -223,7 +223,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_publish_one_token_per_character_when_built_from_ai_message() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("Hello"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("Hello"));
 
         List<ChatModelStreamingEvent> events = collect(model);
 
@@ -262,7 +262,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_report_the_given_token_usage_and_finish_reason_in_every_complete_response() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi")
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi")
                 .withTokenUsage(new TokenUsage(1, 2))
                 .withFinishReason(FinishReason.LENGTH);
 
@@ -276,7 +276,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_report_the_given_token_usages_in_order_then_repeat_the_last_one() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi")
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi")
                 .withTokenUsages(new TokenUsage(1, 2), new TokenUsage(3, 4));
 
         assertThat(chatResponse(model).tokenUsage()).isEqualTo(new TokenUsage(1, 2));
@@ -287,7 +287,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_publish_the_given_token_usages_in_order_then_repeat_the_last_one() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi")
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi")
                 .withTokenUsages(new TokenUsage(1, 2), new TokenUsage(3, 4))
                 .withFinishReason(FinishReason.STOP);
 
@@ -331,7 +331,7 @@ public class StreamingChatModelMockTest {
     void should_fail_after_the_tokens_when_the_stream_breaks() throws Exception {
 
         RuntimeException failure = new IllegalStateException("connection reset");
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo").thenFailsWith(failure);
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo").thenFailsWith(failure);
 
         Streamed first = stream(model);
         assertThat(first.tokens()).containsExactly("Hel", "lo");
@@ -347,7 +347,7 @@ public class StreamingChatModelMockTest {
     void should_publish_the_tokens_and_then_the_error_when_the_stream_breaks() {
 
         RuntimeException failure = new IllegalStateException("connection reset");
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo").thenFailsWith(failure);
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo").thenFailsWith(failure);
 
         List<Object> signals = new ArrayList<>();
         subscribe(model, signals);
@@ -398,7 +398,7 @@ public class StreamingChatModelMockTest {
     void should_always_fail_with_the_given_exception() throws Exception {
 
         RuntimeException failure = new IllegalArgumentException("invalid");
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysThrows(failure);
+        StreamingChatModelMock model = StreamingChatModelMock.thatThrows(failure);
 
         assertThat(stream(model).error()).isSameAs(failure);
         assertThat(stream(model).error()).isSameAs(failure);
@@ -415,23 +415,17 @@ public class StreamingChatModelMockTest {
     }
 
     @Test
-    void should_not_accept_steps_on_a_mock_without_a_script() {
+    void should_not_accept_steps_on_a_mock_that_computes_its_answers() {
 
-        assertThatThrownBy(() -> StreamingChatModelMock.thatAlwaysStreams("Hi").thenStreams("again"))
+        assertThatThrownBy(() -> StreamingChatModelMock.thatStreams(request -> AiMessage.from("Hi"))
+                        .thenStreams("again"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Steps can only be added");
-        assertThatThrownBy(() -> StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("Hi"))
-                        .thenCallsTool("a", Map.of()))
-                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void should_not_accept_a_failure_after_the_tokens_on_a_mock_that_always_fails() {
 
-        assertThatThrownBy(() -> StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception"))
-                        .thenFailsWith(new RuntimeException()))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("thenFailsWith");
         assertThatThrownBy(() -> StreamingChatModelMock.thatThrows(new RuntimeException("a"))
                         .thenFailsWith(new RuntimeException("b")))
                 .isInstanceOf(IllegalStateException.class)
@@ -666,20 +660,9 @@ public class StreamingChatModelMockTest {
     }
 
     @Test
-    void should_not_accept_steps_on_a_mock_that_always_fails_or_computes_its_answers() {
-
-        assertThatThrownBy(() -> StreamingChatModelMock.thatAlwaysThrows(new RuntimeException()).thenStreams("again"))
-                .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> StreamingChatModelMock.thatStreams(request -> AiMessage.from("Hi")).thenStreams("again"))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
     void should_not_accept_null_arguments() {
 
         assertThatThrownBy(() -> StreamingChatModelMock.thatThrows(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> StreamingChatModelMock.thatAlwaysThrows(null))
-                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> StreamingChatModelMock.thatStreams("Hi").thenFailsWith(null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> StreamingChatModelMock.thatStreams((String) null))
@@ -689,7 +672,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_report_the_given_model_names_in_order_then_repeat_the_last_one() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi").withModelNames("a", "b");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi").withModelNames("a", "b");
 
         assertThat(chatResponse(model).modelName()).isEqualTo("a");
         assertThat(chatResponse(model).modelName()).isEqualTo("b");
@@ -700,7 +683,7 @@ public class StreamingChatModelMockTest {
     void should_report_the_given_finish_reasons_in_order_then_repeat_the_last_one() throws Exception {
 
         StreamingChatModelMock model =
-                StreamingChatModelMock.thatAlwaysStreams("Hi").withFinishReasons(FinishReason.LENGTH, FinishReason.STOP);
+                StreamingChatModelMock.thatStreams("Hi").withFinishReasons(FinishReason.LENGTH, FinishReason.STOP);
 
         assertThat(chatResponse(model).finishReason()).isEqualTo(FinishReason.LENGTH);
         assertThat(chatResponse(model).finishReason()).isEqualTo(FinishReason.STOP);
@@ -710,7 +693,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_report_the_given_provider() {
 
-        assertThat(StreamingChatModelMock.thatAlwaysStreams("Hi").withProvider(ModelProvider.OPEN_AI).provider())
+        assertThat(StreamingChatModelMock.thatStreams("Hi").withProvider(ModelProvider.OPEN_AI).provider())
                 .isEqualTo(ModelProvider.OPEN_AI);
     }
 
@@ -723,7 +706,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_stop_after_the_handle_was_cancelled_during_the_last_token() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hel", "lo");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
         List<String> signals = new CopyOnWriteArrayList<>();
         CompletableFuture<Void> lastToken = new CompletableFuture<>();
 
@@ -756,7 +739,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_pass_an_assertion_error_of_the_handler_to_on_error() throws Exception {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi");
         CompletableFuture<Throwable> error = new CompletableFuture<>();
         AssertionError failure = new AssertionError("wrong token");
 
@@ -783,7 +766,7 @@ public class StreamingChatModelMockTest {
 
         List<String> events = new CopyOnWriteArrayList<>();
         RuntimeException failure = new IllegalStateException("connection reset");
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi")
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi")
                 .thenFailsWith(failure)
                 .withListeners(new ChatModelListener() {
                     @Override
@@ -804,7 +787,7 @@ public class StreamingChatModelMockTest {
     @Test
     void should_fail_when_there_is_not_exactly_one_request() {
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hi");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hi");
 
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)

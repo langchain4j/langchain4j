@@ -50,7 +50,7 @@ class SkillsWithToolSearchStreamingTest {
         );
 
         // LLM call 1: sees activate_skill + tool_search_tool, responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
                 AiMessage.from("I don't need any skill."));
         StreamingChatModelMock spyChatModel = spy(chatModel);
 

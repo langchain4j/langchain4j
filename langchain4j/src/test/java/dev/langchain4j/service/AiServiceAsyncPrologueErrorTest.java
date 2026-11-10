@@ -33,7 +33,7 @@ class AiServiceAsyncPrologueErrorTest {
     @Test
     void async_prologue_failure_is_delivered_via_the_future_not_thrown() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("hi"))
+                .chatModel(ChatModelMock.thatResponds("hi"))
                 .build();
 
         // Must NOT throw synchronously.
@@ -46,7 +46,7 @@ class AiServiceAsyncPrologueErrorTest {
     @Test
     void reactive_prologue_failure_is_delivered_via_onError_not_thrown() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("hi"))
+                .chatModel(ChatModelMock.thatResponds("hi"))
                 .build();
 
         // Must NOT throw synchronously.

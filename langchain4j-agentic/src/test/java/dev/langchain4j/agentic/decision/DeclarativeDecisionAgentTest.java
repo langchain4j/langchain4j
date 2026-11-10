@@ -408,7 +408,7 @@ class DeclarativeDecisionAgentTest {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
-            return ChatModelMock.thatAlwaysResponds("LEGAL");
+            return ChatModelMock.thatResponds("LEGAL");
         }
     }
 
@@ -436,7 +436,7 @@ class DeclarativeDecisionAgentTest {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
-            return ChatModelMock.thatAlwaysResponds("no");
+            return ChatModelMock.thatResponds("no");
         }
 
         @DecisionThresholdSupplier

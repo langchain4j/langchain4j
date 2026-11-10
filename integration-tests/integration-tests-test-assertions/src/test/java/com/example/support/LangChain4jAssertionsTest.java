@@ -36,7 +36,7 @@ class LangChain4jAssertionsTest {
                     toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"),
                     toolCall("calculateRefund", "{\"bookingNumber\":\"MS-777\",\"days\":2}"))),
             bookings,
-            CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+            CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
 
     @Test
     void should_mix_langchain4j_and_assertj_assertions() {

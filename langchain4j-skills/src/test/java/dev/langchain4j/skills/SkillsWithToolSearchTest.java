@@ -82,7 +82,7 @@ class SkillsWithToolSearchTest {
         );
 
         // LLM call 1: sees activate_skill + tool_search_tool, responds with text
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("I don't need any skill.");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("I don't need any skill.");
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)

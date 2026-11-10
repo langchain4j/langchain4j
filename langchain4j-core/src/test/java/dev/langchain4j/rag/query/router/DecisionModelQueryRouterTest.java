@@ -45,13 +45,13 @@ class DecisionModelQueryRouterTest {
     DecisionModelMock decisionModel;
 
     DecisionModelMock answering(double hrProbability, double wikiProbability) {
-        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        decisionModel = DecisionModelMock.thatAnswers(Map.of(
                 "source1", YesNoAnswer.from(hrProbability),
                 "source2", YesNoAnswer.from(wikiProbability)));
         return decisionModel;
     }
 
-    final DecisionModel failing = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision model is down"));
+    final DecisionModel failing = DecisionModelMock.thatThrows(new RuntimeException("decision model is down"));
 
     @Test
     void should_route_to_retrievers_above_threshold() {
@@ -255,7 +255,7 @@ class DecisionModelQueryRouterTest {
     @Test
     void should_apply_fallback_strategy_when_decision_model_refuses_to_answer() {
 
-        DecisionModel refusing = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModel refusing = DecisionModelMock.thatAnswers(
                 Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.from(0.9)));
         QueryRouter router = DecisionModelQueryRouter.builder()
                 .decisionModel(refusing)

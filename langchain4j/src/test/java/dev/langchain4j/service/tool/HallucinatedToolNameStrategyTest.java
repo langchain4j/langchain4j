@@ -147,7 +147,7 @@ public class HallucinatedToolNameStrategyTest {
                 .arguments("{\"arg0\":\"mock_action\"}")
                 .build();
         AiMessage aiMessage = AiMessage.from("does not matter", List.of(toolExecutionRequest));
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(aiMessage);
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(aiMessage);
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 

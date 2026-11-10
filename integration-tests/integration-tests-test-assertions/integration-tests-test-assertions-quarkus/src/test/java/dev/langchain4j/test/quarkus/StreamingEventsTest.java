@@ -27,7 +27,7 @@ class StreamingEventsTest {
 
     @Test
     void records_items_of_returned_multi_of_strings() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Red ", "shoes"));
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Something red"));
 
@@ -41,7 +41,7 @@ class StreamingEventsTest {
     @Test
     void records_guarded_answer_of_returned_multi_as_a_single_item() {
         // the output guardrail must see the whole answer, so the Multi emits it as one item
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"));
 
         AiServiceCapture capture = capture(() -> supportService.streamAnswer("Hi"));
 
@@ -51,7 +51,7 @@ class StreamingEventsTest {
 
     @Test
     void records_items_of_returned_multi_of_streaming_events() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Red ", "shoes"));
 
         AiServiceCapture capture =
                 capture(() -> supportService.recommendProductsWithEvents("Something red"));
@@ -72,7 +72,7 @@ class StreamingEventsTest {
 
     @Test
     void records_invocation_when_application_subscribes_to_multi_of_streaming_events() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Red ", "shoes"));
         List<AiServiceStreamingEvent> received = new CopyOnWriteArrayList<>();
 
         AiServiceCapture capture = capture(
@@ -84,7 +84,7 @@ class StreamingEventsTest {
 
     @Test
     void records_invocation_when_application_subscribes_to_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("x", "y"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("x", "y"));
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Hi").subscribe().with(items::add));
@@ -96,7 +96,7 @@ class StreamingEventsTest {
     @Test
     void records_invocation_when_returned_uni_collects_the_multi() {
         // capture(...) subscribes to the Uni, the items of the Multi go to the collector of the application
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"));
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Hi").collect().asList());
 
@@ -105,7 +105,7 @@ class StreamingEventsTest {
 
     @Test
     void has_succeeded_fails_for_failed_stream() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
+        useStreamingChatModel(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broke")));
 
         AiServiceCapture capture = captureExpectingFailure(() -> supportService.recommendProducts("Hi"));
 
@@ -119,7 +119,7 @@ class StreamingEventsTest {
 
     @Test
     void has_succeeded_fails_for_cancelled_stream() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("one ", "two ", "three"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("one ", "two ", "three"));
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Count").select().first());
 

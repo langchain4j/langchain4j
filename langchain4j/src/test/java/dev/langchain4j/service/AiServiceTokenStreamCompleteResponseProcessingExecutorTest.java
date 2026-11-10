@@ -196,7 +196,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_pass_exception_thrown_on_executor_to_error_handler() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("It is 42 degrees"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("It is 42 degrees"));
         TokenStream tokenStream = tokenStream(model, new Tools(), executorService);
 
         RuntimeException exception = new RuntimeException("complete response handler failed");
@@ -218,7 +218,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_pass_error_thrown_on_executor_to_error_handler() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("It is 42 degrees"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("It is 42 degrees"));
         TokenStream tokenStream = tokenStream(model, new Tools(), executorService);
 
         AssertionError assertionError = new AssertionError("complete response handler failed");
@@ -240,7 +240,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_pass_exception_thrown_by_executor_to_error_handler() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("It is 42 degrees"));
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(AiMessage.from("It is 42 degrees"));
         RejectedExecutionException exception = new RejectedExecutionException("rejected");
         TokenStream tokenStream = tokenStream(model, new Tools(), task -> {
             throw exception;

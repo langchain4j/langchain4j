@@ -123,7 +123,7 @@ class AiServiceGuardrailTests {
 
     @Test
     void input_guardrail_should_receive_materialized_multimodal_user_message() {
-        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock chatModelMock = ChatModelMock.thatResponds("does not matter");
         RecordingInputGuardrail inputGuardrail = new RecordingInputGuardrail();
         VisionAssistant assistant = AiServices.builder(VisionAssistant.class)
                 .chatModel(chatModelMock)
@@ -141,7 +141,7 @@ class AiServiceGuardrailTests {
 
     @Test
     void input_guardrail_should_observe_augmented_user_message_after_rag_and_before_chat_request() {
-        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock chatModelMock = ChatModelMock.thatResponds("does not matter");
         RecordingInputGuardrail inputGuardrail = new RecordingInputGuardrail();
         AtomicReference<UserMessage> userMessageSeenByAugmentor = new AtomicReference<>();
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
@@ -166,7 +166,7 @@ class AiServiceGuardrailTests {
 
     @Test
     void input_guardrail_rewrite_should_still_work_for_plain_text_requests() {
-        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock chatModelMock = ChatModelMock.thatResponds("does not matter");
         PlainTextAssistant assistant = AiServices.builder(PlainTextAssistant.class)
                 .chatModel(chatModelMock)
                 .inputGuardrails(new RewritingInputGuardrail())

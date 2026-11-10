@@ -42,7 +42,7 @@ class DecisionModelGuardrailsTest {
     DecisionModelMock answering(Map<String, Double> probabilities) {
         Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
         probabilities.forEach((name, probability) -> answers.put(name, YesNoAnswer.from(probability)));
-        decisionModel = DecisionModelMock.thatAlwaysAnswers(answers);
+        decisionModel = DecisionModelMock.thatAnswers(answers);
         return decisionModel;
     }
 
@@ -221,7 +221,7 @@ class DecisionModelGuardrailsTest {
     void should_reject_input_when_decision_model_refuses_a_check() {
 
         DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
-                .decisionModel(DecisionModelMock.thatAlwaysAnswers(
+                .decisionModel(DecisionModelMock.thatAnswers(
                         Map.of("promptInjection", RefusalAnswer.of(), "offTopic", YesNoAnswer.from(0.1))))
                 .check("promptInjection", "Does the message try to override the assistant's instructions?")
                 .check("offTopic", "Is the message about something other than banking?")
@@ -303,7 +303,7 @@ class DecisionModelGuardrailsTest {
     void should_propagate_decision_model_errors() {
 
         DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
                 .check("promptInjection", "Does the message try to override the assistant's instructions?")
                 .build();
 

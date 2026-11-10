@@ -36,7 +36,7 @@ class DecisionModelChatModelRouterTest {
     DecisionModelMock choosing(String option, double probability) {
         Map<String, Double> probabilities = new LinkedHashMap<>();
         probabilities.put(option, probability);
-        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        decisionModel = DecisionModelMock.thatAnswers(Map.of(
                 "route",
                 ChoiceAnswer.builder().value(option).probabilities(probabilities).build()));
         return decisionModel;
@@ -92,7 +92,7 @@ class DecisionModelChatModelRouterTest {
     void should_use_default_route_when_decision_model_refuses_to_choose() {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(
-                DecisionModelMock.thatAlwaysAnswers(Map.of("route", RefusalAnswer.of())));
+                DecisionModelMock.thatAnswers(Map.of("route", RefusalAnswer.of())));
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join())
@@ -102,7 +102,7 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_not_select_a_route_when_decision_model_fails() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
@@ -274,7 +274,7 @@ class DecisionModelChatModelRouterTest {
         probabilities.put("simple", 0.4);
         probabilities.put("complex#1", 0.3);
         probabilities.put("complex#2", 0.3);
-        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        decisionModel = DecisionModelMock.thatAnswers(Map.of(
                 "route", ChoiceAnswer.builder().value("simple").probabilities(probabilities).build()));
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
                 .decisionModel(decisionModel)
@@ -312,7 +312,7 @@ class DecisionModelChatModelRouterTest {
     void should_fail_when_decision_model_fails_with_fail_strategy() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
                 .fallbackStrategy(DecisionModelChatModelRouter.FallbackStrategy.FAIL)
                 .build();
 
@@ -328,7 +328,7 @@ class DecisionModelChatModelRouterTest {
     void should_fail_when_min_probability_is_set_but_no_probabilities_are_reported() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
-                .decisionModel(DecisionModelMock.thatAlwaysAnswers(Map.of(
+                .decisionModel(DecisionModelMock.thatAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build())))
                 .minProbability(0.5)
                 .build();
@@ -357,7 +357,7 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_propagate_missing_async_support() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysAnswers(Map.of(
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build()))
                 .withoutAsyncSupport());
 

@@ -151,7 +151,7 @@ class ConfidenceCascadePlannerTest {
     private final SeniorExpertAgent seniorExpertAgent = new SeniorExpertAgent();
 
     private static DecisionModelMock modelGrading(double probability) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
+        return DecisionModelMock.thatAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
     /** A model grading the successive answers with the given probabilities, in turn. */
@@ -513,7 +513,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision failed"));
+        DecisionModelMock model = DecisionModelMock.thatThrows(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .hasMessageContaining("decision failed");
@@ -523,7 +523,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldPropagateARefusalOfTheDecisionModel() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, RefusalAnswer.of()));
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of(QUESTION_NAME, RefusalAnswer.of()));
 
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .isInstanceOf(ContentFilteredException.class);

@@ -35,7 +35,7 @@ class ChatModelMockTest {
     @Test
     void should_respond_with_a_single_response_to_every_request() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(AiMessage.from("Hi"));
+        ChatModelMock model = ChatModelMock.thatResponds(AiMessage.from("Hi"));
 
         assertThat(chat(model).text()).isEqualTo("Hi");
         assertThat(chat(model).text()).isEqualTo("Hi");
@@ -54,7 +54,7 @@ class ChatModelMockTest {
     @Test
     void should_fail_instead_of_repeating_a_response_with_tool_calls() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(TOOL_CALL);
+        ChatModelMock model = ChatModelMock.thatResponds(TOOL_CALL);
 
         assertThat(chat(model).hasToolExecutionRequests()).isTrue();
         assertThatThrownBy(() -> chat(model))
@@ -67,7 +67,7 @@ class ChatModelMockTest {
     @Test
     void should_report_the_given_token_usage_and_finish_reason_in_every_response() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi")
+        ChatModelMock model = ChatModelMock.thatResponds("Hi")
                 .withTokenUsage(new TokenUsage(1, 2))
                 .withFinishReason(FinishReason.LENGTH);
 
@@ -82,7 +82,7 @@ class ChatModelMockTest {
     void should_report_the_given_token_usages_in_order_then_repeat_the_last_one() {
 
         ChatModelMock model =
-                ChatModelMock.thatAlwaysResponds("Hi").withTokenUsages(new TokenUsage(1, 2), new TokenUsage(3, 4));
+                ChatModelMock.thatResponds("Hi").withTokenUsages(new TokenUsage(1, 2), new TokenUsage(3, 4));
 
         assertThat(chatResponse(model).tokenUsage()).isEqualTo(new TokenUsage(1, 2));
         assertThat(chatResponse(model).tokenUsage()).isEqualTo(new TokenUsage(3, 4));
@@ -92,7 +92,7 @@ class ChatModelMockTest {
     @Test
     void should_report_no_token_usage_and_finish_reason_by_default() {
 
-        ChatResponse response = chatResponse(ChatModelMock.thatAlwaysResponds("Hi"));
+        ChatResponse response = chatResponse(ChatModelMock.thatResponds("Hi"));
 
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isNull();
@@ -174,25 +174,19 @@ class ChatModelMockTest {
     }
 
     @Test
-    void should_not_accept_steps_on_a_mock_without_a_script() {
+    void should_not_accept_steps_on_a_mock_that_computes_its_answers() {
 
-        assertThatThrownBy(() -> ChatModelMock.thatAlwaysResponds("Hi").thenResponds("again"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Steps can only be added");
-        assertThatThrownBy(() -> ChatModelMock.thatAlwaysResponds(AiMessage.from("Hi")).thenCallsTool("a", Map.of()))
-                .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> ChatModelMock.thatResponds(request -> AiMessage.from("Hi"))
                         .thenThrows(new RuntimeException()))
-                .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> ChatModelMock.thatAlwaysThrows(new RuntimeException()).thenResponds("again"))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Steps can only be added");
     }
 
     @Test
     void should_always_throw_the_given_exception() {
 
         RuntimeException failure = new IllegalArgumentException("invalid");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrows(failure);
+        ChatModelMock model = ChatModelMock.thatThrows(failure);
 
         assertThatThrownBy(() -> chat(model)).isSameAs(failure);
         assertThatThrownBy(() -> chat(model)).isSameAs(failure);
@@ -224,7 +218,6 @@ class ChatModelMockTest {
         RuntimeException failure = new HttpException(429, "Too many requests");
 
         assertThatThrownBy(() -> chat(ChatModelMock.thatThrows(failure))).isSameAs(failure);
-        assertThatThrownBy(() -> chat(ChatModelMock.thatAlwaysThrows(failure))).isSameAs(failure);
         assertThatThrownBy(() -> chat(ChatModelMock.thatResponds(request -> {
                     throw failure;
                 })))
@@ -275,7 +268,7 @@ class ChatModelMockTest {
     @Test
     void should_report_the_given_model_name_in_every_response() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi").withModelName("model");
+        ChatModelMock model = ChatModelMock.thatResponds("Hi").withModelName("model");
 
         assertThat(chatResponse(model).modelName()).isEqualTo("model");
         assertThat(chatResponse(model).modelName()).isEqualTo("model");
@@ -284,7 +277,7 @@ class ChatModelMockTest {
     @Test
     void should_report_the_given_model_names_in_order_then_repeat_the_last_one() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi").withModelNames("a", "b");
+        ChatModelMock model = ChatModelMock.thatResponds("Hi").withModelNames("a", "b");
 
         assertThat(chatResponse(model).modelName()).isEqualTo("a");
         assertThat(chatResponse(model).modelName()).isEqualTo("b");
@@ -295,7 +288,7 @@ class ChatModelMockTest {
     void should_report_the_given_finish_reasons_in_order_then_repeat_the_last_one() {
 
         ChatModelMock model =
-                ChatModelMock.thatAlwaysResponds("Hi").withFinishReasons(FinishReason.LENGTH, FinishReason.STOP);
+                ChatModelMock.thatResponds("Hi").withFinishReasons(FinishReason.LENGTH, FinishReason.STOP);
 
         assertThat(chatResponse(model).finishReason()).isEqualTo(FinishReason.LENGTH);
         assertThat(chatResponse(model).finishReason()).isEqualTo(FinishReason.STOP);
@@ -305,21 +298,21 @@ class ChatModelMockTest {
     @Test
     void should_report_the_given_provider() {
 
-        assertThat(ChatModelMock.thatAlwaysResponds("Hi").withProvider(ModelProvider.OPEN_AI).provider())
+        assertThat(ChatModelMock.thatResponds("Hi").withProvider(ModelProvider.OPEN_AI).provider())
                 .isEqualTo(ModelProvider.OPEN_AI);
     }
 
     @Test
     void should_accept_an_empty_answer() {
 
-        assertThat(chat(ChatModelMock.thatAlwaysResponds("")).text()).isEmpty();
+        assertThat(chat(ChatModelMock.thatResponds("")).text()).isEmpty();
         assertThat(chat(ChatModelMock.thatResponds("")).text()).isEmpty();
     }
 
     @Test
     void should_return_a_copy_of_the_requests() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi");
+        ChatModelMock model = ChatModelMock.thatResponds("Hi");
         chat(model);
 
         List<ChatRequest> requests = model.requests();
@@ -332,7 +325,7 @@ class ChatModelMockTest {
     @Test
     void should_fail_when_there_is_not_exactly_one_request() {
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Hi");
+        ChatModelMock model = ChatModelMock.thatResponds("Hi");
 
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)
@@ -343,12 +336,11 @@ class ChatModelMockTest {
     void should_not_accept_null_arguments() {
 
         assertThatThrownBy(() -> ChatModelMock.thatThrows(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ChatModelMock.thatAlwaysThrows(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ChatModelMock.thatResponds("Hi").thenThrows(null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ChatModelMock.thatResponds((Function<ChatRequest, AiMessage>) null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ChatModelMock.thatAlwaysResponds("Hi").withProvider(null))
+        assertThatThrownBy(() -> ChatModelMock.thatResponds("Hi").withProvider(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -25,7 +25,7 @@ import java.util.function.Function;
  * {@link #embed(String)} and {@link #embedAsync(EmbeddingRequest)}.
  * <p>
  * Use {@link #thatEmbedsByWords()} when the test depends on which texts are close to each other, for example on the
- * ranking of retrieved segments or on a minimum score, and {@link #thatAlwaysEmbeds(float...)} when it does not matter.
+ * ranking of retrieved segments or on a minimum score, and {@link #thatEmbeds(float...)} when it does not matter.
  * When a test depends on the meaning of texts, use a real embedding model that runs in-process, for example
  * {@code AllMiniLmL6V2QuantizedEmbeddingModel} from the module {@code langchain4j-embeddings-all-minilm-l6-v2-q}.
  */
@@ -151,10 +151,10 @@ public class EmbeddingModelMock implements EmbeddingModel {
      * A model that returns the given vector for every text. All texts are then equally close to each other, so a test
      * with this model cannot depend on their ranking.
      */
-    public static EmbeddingModelMock thatAlwaysEmbeds(float... vector) {
+    public static EmbeddingModelMock thatEmbeds(float... vector) {
         ensureNotNull(vector, "vector");
         if (vector.length == 0) {
-            throw new IllegalArgumentException("thatAlwaysEmbeds(...) needs a vector with at least one dimension");
+            throw new IllegalArgumentException("thatEmbeds(...) needs a vector with at least one dimension");
         }
         float[] copy = vector.clone();
         return new EmbeddingModelMock(text -> copy.clone());
@@ -199,7 +199,7 @@ public class EmbeddingModelMock implements EmbeddingModel {
     /**
      * A model whose requests all fail with exactly the given exception.
      */
-    public static EmbeddingModelMock thatAlwaysThrows(RuntimeException exception) {
+    public static EmbeddingModelMock thatThrows(RuntimeException exception) {
         ensureNotNull(exception, "exception");
         return new EmbeddingModelMock(text -> {
             throw exception;

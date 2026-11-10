@@ -141,7 +141,7 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(AiMessage.from(toolExecutionRequest)));
 
         RuntimeException toolError = new RuntimeException("Connection refused: db.internal:5432");
 

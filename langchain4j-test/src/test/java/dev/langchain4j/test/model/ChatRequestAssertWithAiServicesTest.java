@@ -61,7 +61,7 @@ class ChatRequestAssertWithAiServicesTest {
                 .hasToolSpecification("cancelBooking");
         assertThat(model.requests().get(1)).hasUserMessageContaining("MS-777");
 
-        ChatModelMock singleRequestModel = ChatModelMock.thatAlwaysResponds("Hello");
+        ChatModelMock singleRequestModel = ChatModelMock.thatResponds("Hello");
         singleRequestModel.chat(ChatRequestAssertTest.REQUEST);
         assertThat(singleRequestModel.request()).hasSystemMessageContaining("support agent");
     }
@@ -77,7 +77,7 @@ class ChatRequestAssertWithAiServicesTest {
             }
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Your booking is cancelled.")
+                .chatModel(ChatModelMock.thatResponds("Your booking is cancelled.")
                         .withListeners(requestCollector))
                 .tools(new BookingTools())
                 .build();

@@ -69,7 +69,7 @@ class MicrometerMetricsEmbeddingModelListenerTest {
 
     @Test
     void should_record_unknown_provider_name_when_model_provider_is_null() {
-        EmbeddingModel modelWithoutProvider = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withProvider(null);
+        EmbeddingModel modelWithoutProvider = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f).withProvider(null);
 
         listener.onResponse(EmbeddingModelResponseContext.builder()
                 .embeddingRequest(embeddingRequest("text-embedding-3-small"))
@@ -260,6 +260,6 @@ class MicrometerMetricsEmbeddingModelListenerTest {
     }
 
     private static EmbeddingModel embeddingModel() {
-        return EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withProvider(ModelProvider.MICROSOFT_FOUNDRY);
+        return EmbeddingModelMock.thatEmbeds(1f, 2f, 3f).withProvider(ModelProvider.MICROSOFT_FOUNDRY);
     }
 }

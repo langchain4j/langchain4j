@@ -26,7 +26,7 @@ class TokenUsageAndFinishReasonTest {
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
     }
 
     ChatModelMock cancellingModel() {
@@ -62,7 +62,7 @@ class TokenUsageAndFinishReasonTest {
 
     @Test
     void should_fail_when_the_model_did_not_report_token_usage_or_finish_reason() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello"));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Hi")).invocation();
 
@@ -76,7 +76,7 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_detect_a_response_that_was_cut_off() {
         CustomerSupportAgent agent =
-                agent(ChatModelMock.thatAlwaysResponds("Your booking MS-777 starts on").withFinishReason(FinishReason.LENGTH));
+                agent(ChatModelMock.thatResponds("Your booking MS-777 starts on").withFinishReason(FinishReason.LENGTH));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "When does MS-777 start?")).invocation();
 
@@ -119,7 +119,7 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_of_a_publisher() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams("Hello").withTokenUsage(new TokenUsage(7, 3)), bookings());
+                StreamingChatModelMock.thatStreams("Hello").withTokenUsage(new TokenUsage(7, 3)), bookings());
 
         AiServiceInvocation invocation = capture(() -> agent.chatReactive("Hi")).invocation();
 

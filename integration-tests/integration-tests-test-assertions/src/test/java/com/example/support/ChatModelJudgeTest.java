@@ -40,10 +40,10 @@ class ChatModelJudgeTest {
     @Test
     void should_pass_when_the_judge_says_all_criteria_are_satisfied() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                ChatModelMock.thatAlwaysResponds(ANSWER),
+                ChatModelMock.thatResponds(ANSWER),
                 bookings(),
-                CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(assessments("SATISFIED", "SATISFIED"));
+                CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(assessments("SATISFIED", "SATISFIED"));
 
         String answer = capture(() -> agent.chat("klaus", "Show MS-999")).outputText();
 
@@ -63,8 +63,8 @@ class ChatModelJudgeTest {
     @Test
     void should_give_the_judge_the_sources_retrieved_by_the_ai_service() {
         PolicyExpert expert = CustomerSupport.policyExpert(
-                ChatModelMock.thatAlwaysResponds("You can cancel for free up to 7 days before the start date."));
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(assessments("SATISFIED"));
+                ChatModelMock.thatResponds("You can cancel for free up to 7 days before the start date."));
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(assessments("SATISFIED"));
 
         Result<String> result = expert.answerWithSources("Can I cancel for free?");
 

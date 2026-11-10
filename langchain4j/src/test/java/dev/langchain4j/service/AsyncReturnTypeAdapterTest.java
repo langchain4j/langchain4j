@@ -38,7 +38,7 @@ class AsyncReturnTypeAdapterTest {
     @Test
     void ai_service_returns_completion_stage() throws Exception {
         CompletionStageAssistant assistant = AiServices.builder(CompletionStageAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .build();
 
         CompletionStage<String> stage = assistant.chat("What is the capital of Germany?");
@@ -105,7 +105,7 @@ class AsyncReturnTypeAdapterTest {
     @Test
     void ai_service_returns_custom_async_type_via_spi() throws Exception {
         BoxAssistant assistant = AiServices.builder(BoxAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .build();
 
         FutureBox<String> box = assistant.chat("What is the capital of Germany?");

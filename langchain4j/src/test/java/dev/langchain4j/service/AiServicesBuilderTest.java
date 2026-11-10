@@ -60,7 +60,7 @@ class AiServicesBuilderTest {
             }
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -91,7 +91,7 @@ class AiServicesBuilderTest {
 
     @Test
     void should_allow_building_with_only_chat_model() {
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+        ChatModel chatModel = ChatModelMock.thatResponds("response");
 
         TestService service =
                 AiServices.builder(TestService.class).chatModel(chatModel).build();
@@ -117,7 +117,7 @@ class AiServicesBuilderTest {
             }
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatNoException().isThrownBy(() -> AiServices.builder(TestService.class)
                 .chatModel(chatModel)
@@ -133,7 +133,7 @@ class AiServicesBuilderTest {
             }
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -157,7 +157,7 @@ class AiServicesBuilderTest {
         List<Object> innerTools = Arrays.asList(new ToolClass());
         List<Object> outerCollection = Arrays.asList(innerTools);
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -179,7 +179,7 @@ class AiServicesBuilderTest {
         // The varargs version: tools(listOfTools) where listOfTools is itself a list
         List<Object> listOfTools = Arrays.asList(new ToolClass());
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -196,7 +196,7 @@ class AiServicesBuilderTest {
             void readFile(String filePath, @P(required = false) int startLine) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -214,7 +214,7 @@ class AiServicesBuilderTest {
             void readFile(String filePath, @P(required = false, defaultValue = "0") int startLine) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         TestService service = AiServices.builder(TestService.class)
                 .chatModel(chatModel)
@@ -231,7 +231,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "not-an-int") int x) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -248,7 +248,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "10") java.util.Optional<Integer> x) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -266,7 +266,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "999999999999999") int x) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -283,7 +283,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "yes") boolean x) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -305,7 +305,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "ZZZ") Currency c) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)
@@ -322,7 +322,7 @@ class AiServicesBuilderTest {
             void tool(@P(defaultValue = "not-a-uuid") java.util.UUID id) {}
         }
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel chatModel = ChatModelMock.thatResponds("Hello there!");
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(TestService.class)

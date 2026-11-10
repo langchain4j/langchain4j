@@ -1051,7 +1051,7 @@ class AiServicesWithToolsIT {
                     .build();
         };
 
-        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock chatModelMock = ChatModelMock.thatResponds("does not matter");
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -1385,7 +1385,7 @@ class AiServicesWithToolsIT {
             return ToolProviderResult.builder().build();
         };
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds("does not matter"));
+        ChatModel spyModel = spy(ChatModelMock.thatResponds("does not matter"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -2985,7 +2985,7 @@ class AiServicesWithToolsIT {
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                        .chatModel(ChatModelMock.thatResponds("ok"))
                         .tools(new MisconfiguredService())
                         .compensateOnToolErrors(true)
                         .build())
@@ -3010,7 +3010,7 @@ class AiServicesWithToolsIT {
         // Should NOT throw — the user never enabled compensateOnToolErrors,
         // so the mismatched @CompensateFor should be silently ignored
         AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                .chatModel(ChatModelMock.thatResponds("ok"))
                 .tools(new MisconfiguredService())
                 .build();
     }

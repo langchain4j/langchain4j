@@ -137,7 +137,7 @@ class DecisionModelToolSearchStrategyTest {
     void should_propagate_decision_model_errors() {
 
         DecisionModelToolSearchStrategy strategy = new DecisionModelToolSearchStrategy(
-                DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")));
+                DecisionModelMock.thatThrows(new RuntimeException("down")));
 
         assertThatThrownBy(() -> strategy.search(searchRequest("{\"query\": \"weather\"}")))
                 .hasMessage("down");

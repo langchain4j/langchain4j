@@ -647,8 +647,8 @@ class HelperObjectsTest {
     }
 
     public static class TranslatorHelpers {
-        final ChatModelMock english = ChatModelMock.thatAlwaysResponds("hello");
-        final ChatModelMock italian = ChatModelMock.thatAlwaysResponds("ciao");
+        final ChatModelMock english = ChatModelMock.thatResponds("hello");
+        final ChatModelMock italian = ChatModelMock.thatResponds("ciao");
 
         @ChatModelSupplier
         ChatModel chatModel(@V("language") String language, @Injected Formatter formatter) {
@@ -677,7 +677,7 @@ class HelperObjectsTest {
         assertThat(helpers.english.requests()).hasSize(1);
     }
 
-    static final ChatModelMock INHERITED_MODEL = ChatModelMock.thatAlwaysResponds("inherited");
+    static final ChatModelMock INHERITED_MODEL = ChatModelMock.thatResponds("inherited");
 
     public interface ModelDefaults {
 
@@ -702,7 +702,7 @@ class HelperObjectsTest {
 
     @Test
     void static_chat_model_supplier_of_a_super_interface_of_an_ai_agent_is_applied() {
-        ChatModelMock systemModel = ChatModelMock.thatAlwaysResponds("system");
+        ChatModelMock systemModel = ChatModelMock.thatResponds("system");
 
         InheritingTranslation translation =
                 AgenticServices.createAgenticSystem(InheritingTranslation.class, systemModel);

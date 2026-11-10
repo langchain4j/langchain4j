@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AiServiceChatMemoryConfigTest {
     @Spy
-    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel chatModel = ChatModelMock.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -100,7 +100,7 @@ class AiServiceChatMemoryConfigTest {
     @Test
     void should_preserve_memory_for_same_id() {
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
+        ChatModel chatModel = ChatModelMock.thatResponds("response");
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))

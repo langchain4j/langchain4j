@@ -31,7 +31,7 @@ class AiServicesInterfaceLevelSystemMessageTest {
     static final String SYSTEM_MESSAGE = "Given a name of a country, answer with a name of it's capital";
 
     @Spy
-    ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel model = ChatModelMock.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -202,7 +202,7 @@ class AiServicesInterfaceLevelSystemMessageTest {
 
     @Test
     void interface_level_system_message_with_streaming_chat_model() throws Exception {
-        StreamingChatModelMock delegate = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("Berlin"));
+        StreamingChatModelMock delegate = StreamingChatModelMock.thatStreams(AiMessage.from("Berlin"));
         List<ChatRequest> capturedRequests = new ArrayList<>();
         StreamingChatModel streamingModel = new StreamingChatModel() {
             @Override

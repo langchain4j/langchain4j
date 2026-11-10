@@ -39,7 +39,7 @@ class ParallelCaptureTest {
     static final ChatModelMock MODEL = ChatModelMock.thatResponds(ParallelCaptureTest::answerOnceOverlapped);
 
     static final CustomerSupportAgent AGENT = CustomerSupport.customerSupportAgent(
-            MODEL, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+            MODEL, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
 
     static AiMessage answerOnceOverlapped(ChatRequest request) {
         if (RUNNING.incrementAndGet() > 1) {

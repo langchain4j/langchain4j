@@ -287,7 +287,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void tokenStreamWithAConfigurationErrorFiresAnInvocationSummaryEventEndingWithTheError() {
         var assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("Hello"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
@@ -493,7 +493,7 @@ class AiServicesInvocationSummaryEventTest {
     void nestedInvocationWithoutItsOwnSummaryListenerIsNested() {
         var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         NestingAssistant child = AiServices.builder(NestingAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("child answer"))
+                .chatModel(ChatModelMock.thatResponds("child answer"))
                 .build();
         NestingAssistant parent = AiServices.builder(NestingAssistant.class)
                 .chatModel(ChatModelMock.thatResponds(
@@ -528,7 +528,7 @@ class AiServicesInvocationSummaryEventTest {
         NestingAssistant child = childAssistant(children);
         AtomicInteger childCalls = new AtomicInteger();
         NestingAssistant parent = AiServices.builder(NestingAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("parent answer"))
+                .chatModel(ChatModelMock.thatResponds("parent answer"))
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
                         .chatMemoryStore(new InMemoryChatMemoryStore() {
@@ -566,7 +566,7 @@ class AiServicesInvocationSummaryEventTest {
         var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         NestingAssistant child = childAssistant(children);
         var builder = AiServices.builder(NestingAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("parent answer"))
+                .chatModel(ChatModelMock.thatResponds("parent answer"))
                 .registerListener((AiServiceInvocationSummaryListener) parents::add);
         Function<Object, String> callChild = ignored -> child.chat("prepare the request");
         switch (part) {
@@ -634,7 +634,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void concurrentReactiveSubscriptionsFireSeparateInvocationSummaryEvents() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("Hello"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
@@ -661,7 +661,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void eachTokenStreamStartFiresItsOwnInvocationSummaryEvent() {
         var assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("Hello"))
                 .registerListener(invocationSummaryListener)
                 .build();
 
@@ -685,7 +685,7 @@ class AiServicesInvocationSummaryEventTest {
     // A RAG augmentor that never completes, so the invocation can be canceled while it's in flight
     private static NestingAssistant childAssistant(List<AiServiceInvocationSummaryEvent> children) {
         return AiServices.builder(NestingAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("child answer"))
+                .chatModel(ChatModelMock.thatResponds("child answer"))
                 .registerListener((AiServiceInvocationSummaryListener) children::add)
                 .build();
     }

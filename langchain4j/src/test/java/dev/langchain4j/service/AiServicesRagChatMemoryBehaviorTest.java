@@ -60,7 +60,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_store_augmented_message_in_memory_by_default() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -115,7 +115,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_store_only_original_message_in_memory_when_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();

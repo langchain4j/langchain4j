@@ -53,8 +53,9 @@ import java.util.stream.Stream;
  * calls: then the mock fails with an {@link IllegalStateException}, because repeating it would make an AI Service call
  * the tools again and again.
  * <p>
- * For a model that gives the same answer to every request, use {@link #thatAlwaysResponds(String)}. To compute the
- * answer from the request, use {@link #thatResponds(Function)}.
+ * A model that gives the same answer to every request therefore needs only one step:
+ * {@code ChatModelMock.thatResponds("Hello!")}. To compute the answer from the request, use
+ * {@link #thatResponds(Function)}.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test.
  */
@@ -76,20 +77,15 @@ public class ChatModelMock implements ChatModel {
 
     /**
      * Creates a mock that gives the same answer to every request, for subclasses. Otherwise, use
-     * {@link #thatAlwaysResponds(String)}.
+     * {@link #thatResponds(String)}.
      */
     protected ChatModelMock(String response) {
-        this(alwaysAnswering(response), null);
+        this(null, new ScriptedResponses(MOCK_NAME, List.of(Step.responding(AiMessage.from(response)))));
     }
 
     private ChatModelMock(Function<ChatRequest, AiMessage> answers, ScriptedResponses script) {
         this.answers = answers;
         this.script = script;
-    }
-
-    private static Function<ChatRequest, AiMessage> alwaysAnswering(String response) {
-        ensureNotNull(response, "response");
-        return ignored -> AiMessage.from(response);
     }
 
     /**
@@ -321,32 +317,19 @@ public class ChatModelMock implements ChatModel {
     }
 
     /**
-     * A model that answers every request with the given text.
-     */
-    public static ChatModelMock thatAlwaysResponds(String response) {
-        return new ChatModelMock(response);
-    }
-
-    /**
-     * A model that answers every request with the given message. It fails on the second request if the message contains
-     * tool calls, because repeating it would make an AI Service call the tools again and again.
-     */
-    public static ChatModelMock thatAlwaysResponds(AiMessage aiMessage) {
-        ScriptedResponses responses = new ScriptedResponses(MOCK_NAME, List.of(Step.responding(aiMessage)));
-        return new ChatModelMock(ignored -> responses.next().responseOrThrow(), null);
-    }
-
-    /**
-     * A model that answers the first request with the given text. Add the next steps with {@code then...} methods.
+     * A model that answers every request with the given text. To answer later requests differently, add steps with
+     * {@code then...} methods.
      */
     public static ChatModelMock thatResponds(String text) {
         return thatResponds(AiMessage.from(text));
     }
 
     /**
-     * A model that answers with the given messages in order, one per request. Add further steps with {@code then...}
-     * methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for example several tool
-     * calls in one answer: {@code AiMessage.from(toolCall("a", argsA), toolCall("b", argsB))}.
+     * A model that answers with the given messages in order, one per request, and then repeats the last one. It fails
+     * instead of repeating a message with tool calls, because that would make an AI Service call the tools again and
+     * again. Add further steps with {@code then...} methods. Use it for answers that
+     * {@link #thatCallsTool(String, Map)} cannot express, for example several tool calls in one answer:
+     * {@code AiMessage.from(toolCall("a", argsA), toolCall("b", argsB))}.
      */
     public static ChatModelMock thatResponds(AiMessage first, AiMessage... next) {
         return thatResponds(Stream.concat(Stream.of(first), Stream.of(next)).toList());
@@ -395,23 +378,11 @@ public class ChatModelMock implements ChatModel {
     }
 
     /**
-     * A model whose first request fails with exactly the given exception, for example to test your own retry logic. Add
-     * the next steps with {@code then...} methods.
+     * A model whose requests all fail with exactly the given exception. To let later requests succeed, for example to
+     * test your own retry logic, add steps with {@code then...} methods.
      */
     public static ChatModelMock thatThrows(RuntimeException exception) {
         return new ChatModelMock(null, new ScriptedResponses(MOCK_NAME, List.of(Step.failing(exception))));
-    }
-
-    /**
-     * A model whose requests all fail with exactly the given exception.
-     */
-    public static ChatModelMock thatAlwaysThrows(RuntimeException exception) {
-        ensureNotNull(exception, "exception");
-        return new ChatModelMock(
-                ignored -> {
-                    throw exception;
-                },
-                null);
     }
 
     /**

@@ -1110,7 +1110,7 @@ class StreamingAiServicesWithToolsIT {
                 .build();
 
         StreamingChatModel spyModel =
-                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+                spy(StreamingChatModelMock.thatStreams(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 
@@ -1277,7 +1277,7 @@ class StreamingAiServicesWithToolsIT {
                 .build();
 
         StreamingChatModel spyModel =
-                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+                spy(StreamingChatModelMock.thatStreams(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 

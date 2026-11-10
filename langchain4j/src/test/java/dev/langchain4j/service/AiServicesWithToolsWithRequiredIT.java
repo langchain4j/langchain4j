@@ -265,7 +265,7 @@ class AiServicesWithToolsWithRequiredIT {
 
         ToolWithPrimitiveParameter tool = spy(new ToolWithPrimitiveParameter());
 
-        ChatModel chatModelMock = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(ToolExecutionRequest.builder()
+        ChatModel chatModelMock = spy(ChatModelMock.thatResponds(AiMessage.from(ToolExecutionRequest.builder()
                 .id("1")
                 .name("process")
                 .arguments("{\"arg0\":\"Klaus\"}")

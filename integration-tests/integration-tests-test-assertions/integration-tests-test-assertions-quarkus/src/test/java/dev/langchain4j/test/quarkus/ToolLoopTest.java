@@ -116,7 +116,7 @@ class ToolLoopTest {
 
     @Test
     void records_own_chat_model_calls_of_returned_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Your ", "order ", "has ", "shipped."));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Your ", "order ", "has ", "shipped."));
 
         AiServiceCapture capture = capture(() -> supportService.streamAnswer("Where is my order?"));
 
@@ -196,7 +196,7 @@ class ToolLoopTest {
 
     @Test
     void has_no_retrieved_sources_fails_for_ai_service_without_content_retriever() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Red ", "shoes"));
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Something red"));
 

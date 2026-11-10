@@ -166,7 +166,7 @@ class AiServiceModelListenerInvocationIdTest {
     @Test
     void own_chat_calls_of_a_nested_ai_service_should_get_the_nested_invocation_id() {
         Assistant inner = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer").withListeners(recordingListener()))
+                .chatModel(ChatModelMock.thatResponds("inner answer").withListeners(recordingListener()))
                 .registerListener(startedListener())
                 .build();
         Assistant outer = AiServices.builder(Assistant.class)
@@ -184,9 +184,9 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_a_token_stream_handler_on_the_thread_of_the_model_call_should_get_no_invocation_id() {
-        ChatModel modelUsedByHandler = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        ChatModel modelUsedByHandler = ChatModelMock.thatResponds("hello").withListeners(recordingListener());
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("an", "swer").streamingOnCallingThread())
+                .streamingChatModel(StreamingChatModelMock.thatStreams("an", "swer").streamingOnCallingThread())
                 .build();
         CompletableFuture<String> done = new CompletableFuture<>();
 
@@ -203,9 +203,9 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_a_token_stream_handler_should_get_no_invocation_id() {
-        ChatModel modelUsedByHandler = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        ChatModel modelUsedByHandler = ChatModelMock.thatResponds("hello").withListeners(recordingListener());
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("answer"))
                 .build();
         CompletableFuture<String> done = new CompletableFuture<>();
 
@@ -251,7 +251,7 @@ class AiServiceModelListenerInvocationIdTest {
             }
         };
         Assistant inner = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .chatModel(ChatModelMock.thatResponds("inner answer"))
                 .registerListener(recording)
                 .build();
         Assistant outer = AiServices.builder(Assistant.class)
@@ -269,7 +269,7 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_a_tool_should_get_the_invocation_id_of_the_ai_service() {
-        ChatModel modelUsedByTool = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        ChatModel modelUsedByTool = ChatModelMock.thatResponds("hello").withListeners(recordingListener());
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatResponds(callToolThenAnswer("callModel")))
                 .tools(new ModelCallingTool(modelUsedByTool))
@@ -284,7 +284,7 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_a_tool_of_a_nested_ai_service_should_get_the_invocation_id_of_the_nested_ai_service() {
-        ChatModel modelUsedByTool = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        ChatModel modelUsedByTool = ChatModelMock.thatResponds("hello").withListeners(recordingListener());
         Assistant inner = AiServices.builder(Assistant.class)
                 .chatModel(ChatModelMock.thatResponds(callToolThenAnswer("callModel")))
                 .tools(new ModelCallingTool(modelUsedByTool))
@@ -305,9 +305,9 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_an_input_guardrail_should_get_the_invocation_id_of_the_ai_service() {
-        ChatModel judge = ChatModelMock.thatAlwaysResponds("ok").withListeners(recordingListener());
+        ChatModel judge = ChatModelMock.thatResponds("ok").withListeners(recordingListener());
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .inputGuardrails(new InputGuardrail() {
                     @Override
                     public InputGuardrailResult validate(UserMessage userMessage) {
@@ -334,7 +334,7 @@ class AiServiceModelListenerInvocationIdTest {
                     }
                 });
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .contentRetriever(retriever)
                 .registerListener(startedListener())
                 .build();
@@ -349,10 +349,10 @@ class AiServiceModelListenerInvocationIdTest {
     void embedding_store_used_by_a_retriever_should_get_the_invocation_id_of_the_ai_service() {
         EmbeddingStore<TextSegment> store = new InMemoryEmbeddingStore<TextSegment>().addListener(recordingStoreListener());
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .contentRetriever(EmbeddingStoreContentRetriever.builder()
                         .embeddingStore(store)
-                        .embeddingModel(EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f))
+                        .embeddingModel(EmbeddingModelMock.thatEmbeds(1f, 2f, 3f))
                         .build())
                 .registerListener(startedListener())
                 .build();
@@ -382,7 +382,7 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void scoring_model_used_by_a_re_ranking_aggregator_should_get_the_invocation_id_of_the_ai_service() {
-        ScoringModelMock scoringModel = ScoringModelMock.thatAlwaysScores(0.9).withListeners(new ScoringModelListener() {
+        ScoringModelMock scoringModel = ScoringModelMock.thatScores(0.9).withListeners(new ScoringModelListener() {
             @Override
             public void onRequest(ScoringModelRequestContext context) {
                 modelInvocationIds.add(context.invocationId());
@@ -394,7 +394,7 @@ class AiServiceModelListenerInvocationIdTest {
             }
         });
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .contentRetriever(query -> List.of(Content.from("some content")))
                         .contentAggregator(new ReRankingContentAggregator(scoringModel))
@@ -411,10 +411,10 @@ class AiServiceModelListenerInvocationIdTest {
     @Test
     void every_model_and_store_call_of_an_asynchronous_retrieval_should_get_the_invocation_id_of_the_ai_service() {
         // The models complete on other threads, so later stages run in continuations on those threads
-        ChatModel queryModel = ChatModelMock.thatAlwaysResponds("first query\nsecond query")
+        ChatModel queryModel = ChatModelMock.thatResponds("first query\nsecond query")
                 .withListeners(recordingListener());
-        ChatModel routingModel = ChatModelMock.thatAlwaysResponds("1").withListeners(recordingListener());
-        EmbeddingModelMock embeddingModel = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withListeners(new EmbeddingModelListener() {
+        ChatModel routingModel = ChatModelMock.thatResponds("1").withListeners(recordingListener());
+        EmbeddingModelMock embeddingModel = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f).withListeners(new EmbeddingModelListener() {
             @Override
             public void onRequest(EmbeddingModelRequestContext context) {
                 modelInvocationIds.add(context.invocationId());
@@ -433,7 +433,7 @@ class AiServiceModelListenerInvocationIdTest {
                 .embeddingStore(store)
                 .offloadBlocking(true)
                 .build();
-        ScoringModelMock scoringModel = ScoringModelMock.thatAlwaysScores(0.9).withListeners(new ScoringModelListener() {
+        ScoringModelMock scoringModel = ScoringModelMock.thatScores(0.9).withListeners(new ScoringModelListener() {
             @Override
             public void onRequest(ScoringModelRequestContext context) {
                 modelInvocationIds.add(context.invocationId());
@@ -445,7 +445,7 @@ class AiServiceModelListenerInvocationIdTest {
             }
         });
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(new ExpandingQueryTransformer(queryModel))
                         .queryRouter(new LanguageModelQueryRouter(routingModel, Map.of(retriever, "documents")))
@@ -466,9 +466,9 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_a_model_listener_should_get_no_invocation_id() {
-        ChatModel modelUsedByListener = ChatModelMock.thatAlwaysResponds("judged").withListeners(recordingListener());
+        ChatModel modelUsedByListener = ChatModelMock.thatResponds("judged").withListeners(recordingListener());
         List<UUID> toolModelInvocationIds = new CopyOnWriteArrayList<>();
-        ChatModel modelUsedByTool = ChatModelMock.thatAlwaysResponds("hello").withListeners(new ChatModelListener() {
+        ChatModel modelUsedByTool = ChatModelMock.thatResponds("hello").withListeners(new ChatModelListener() {
             @Override
             public void onResponse(ChatModelResponseContext context) {
                 toolModelInvocationIds.add(context.invocationId());
@@ -490,9 +490,9 @@ class AiServiceModelListenerInvocationIdTest {
 
     @Test
     void model_called_by_an_ai_service_listener_should_get_no_invocation_id() {
-        ChatModel modelUsedByListener = ChatModelMock.thatAlwaysResponds("hello").withListeners(recordingListener());
+        ChatModel modelUsedByListener = ChatModelMock.thatResponds("hello").withListeners(recordingListener());
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(ChatModelMock.thatResponds("answer"))
                 .registerListener(new AiServiceListener<AiServiceCompletedEvent>() {
                     @Override
                     public Class<AiServiceCompletedEvent> getEventClass() {

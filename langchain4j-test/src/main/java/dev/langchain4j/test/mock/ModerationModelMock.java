@@ -76,7 +76,7 @@ public class ModerationModelMock implements ModerationModel {
     /**
      * A model whose requests all fail with exactly the given exception.
      */
-    public static ModerationModelMock thatAlwaysThrows(RuntimeException exception) {
+    public static ModerationModelMock thatThrows(RuntimeException exception) {
         ensureNotNull(exception, "exception");
         return new ModerationModelMock(ignored -> {
             throw exception;

@@ -134,7 +134,7 @@ class AgenticScopeEvictionTest {
 
         @ChatModelSupplier
         static ChatModel plannerModel() {
-            return ChatModelMock.thatAlwaysResponds("""
+            return ChatModelMock.thatResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to do"}}
                 """);
         }

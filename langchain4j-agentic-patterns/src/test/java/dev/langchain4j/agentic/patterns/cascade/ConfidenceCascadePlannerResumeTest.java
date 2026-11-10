@@ -117,7 +117,7 @@ class ConfidenceCascadePlannerResumeTest {
     }
 
     private static DecisionModelMock modelGrading(double probability) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
+        return DecisionModelMock.thatAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
     private static DecisionModelMock modelGradingInTurn(double... probabilities) {
@@ -326,7 +326,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeTheFirstTierRuns() {
         ConfidenceCascadePlanner planner =
-                new ConfidenceCascadePlanner(DecisionModelMock.thatAlwaysThrows(new RuntimeException("unused")), 0.5);
+                new ConfidenceCascadePlanner(DecisionModelMock.thatThrows(new RuntimeException("unused")), 0.5);
 
         assertThat(planner.executionState()).isEmpty();
     }

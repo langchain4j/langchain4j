@@ -42,7 +42,7 @@ class StreamingTest {
 
     @Test
     void should_fail_when_token_stream_is_neither_started_nor_returned() {
-        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatAlwaysStreams("Hello"));
+        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatStreams("Hello"));
 
         assertThatThrownBy(() -> capture(() -> {
                     agent.chat("Hi").onPartialResponse(token -> {});
@@ -55,7 +55,7 @@ class StreamingTest {
 
     @Test
     void should_wait_for_token_stream_started_on_another_thread() {
-        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatAlwaysStreams("Hel", "lo"));
+        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatStreams("Hel", "lo"));
 
         AiServiceInvocation invocation = capture(() -> {
                     TokenStream tokenStream = agent.chat("Hi");
@@ -71,7 +71,7 @@ class StreamingTest {
 
     @Test
     void should_fail_when_token_stream_is_started_on_another_thread_too_late() {
-        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatAlwaysStreams("Hello"));
+        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatStreams("Hello"));
         CountDownLatch captureFailed = new CountDownLatch(1);
         CountDownLatch streamCompleted = new CountDownLatch(1);
 
@@ -104,7 +104,7 @@ class StreamingTest {
     @Test
     void should_capture_cancelled_token_stream() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysStreams("Hello, this is a long answer"));
+                agent(StreamingChatModelMock.thatStreams("Hello, this is a long answer"));
 
         // a cancelled invocation does not make capture(...) throw
         AiServiceInvocation invocation = capture(() -> agent.chat("Hi")
@@ -131,7 +131,7 @@ class StreamingTest {
     @Test
     void should_rethrow_failure_of_token_stream_also_when_passed_to_on_error() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
+                agent(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broken")));
         List<Throwable> errors = new CopyOnWriteArrayList<>();
 
         assertThatThrownBy(() -> capture(() -> agent.chat("Hi").onPartialResponse(token -> {}).onError(errors::add).start()))
@@ -142,7 +142,7 @@ class StreamingTest {
     @Test
     void should_return_failed_token_stream_invocation_when_failure_is_expected() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
+                agent(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broken")));
 
         AiServiceInvocation invocation =
                 captureExpectingFailure(() -> agent.chat("Hi").ignoreErrors().start()).invocation();
@@ -153,7 +153,7 @@ class StreamingTest {
     @Test
     void should_return_failed_publisher_invocation_when_failure_is_expected() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
+                agent(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broken")));
 
         assertThatThrownBy(() -> capture(() -> agent.chatReactive("Hi"))).hasMessageContaining("Stream broken");
 
@@ -164,7 +164,7 @@ class StreamingTest {
     @Test
     void should_capture_failure_of_streaming_model_that_throws_from_chat_when_started_by_captured_code() {
         StreamingCustomerSupportAgent agent = agent(
-                StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Cannot connect")).throwingFromChat());
+                StreamingChatModelMock.thatThrows(new RuntimeException("Cannot connect")).throwingFromChat());
 
         AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chat("Hi")
                         .onPartialResponse(token -> {})
@@ -192,7 +192,7 @@ class StreamingTest {
 
     @Test
     void should_not_start_again_a_returned_token_stream_that_was_already_started() {
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams("Hello");
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hello");
         StreamingCustomerSupportAgent agent = agent(model);
 
         AiServiceInvocation invocation = capture(() -> {

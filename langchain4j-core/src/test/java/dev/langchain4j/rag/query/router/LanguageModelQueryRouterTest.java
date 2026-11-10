@@ -49,7 +49,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+        ChatModelMock model = ChatModelMock.thatResponds("2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -75,7 +75,7 @@ class LanguageModelQueryRouterTest {
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+        ChatModelMock model = ChatModelMock.thatResponds("2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -88,7 +88,7 @@ class LanguageModelQueryRouterTest {
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("not a number"); // parse fails
+        ChatModelMock model = ChatModelMock.thatResponds("not a number"); // parse fails
 
         QueryRouter router = new LanguageModelQueryRouter(
                 model, retrieverToDescription, LanguageModelQueryRouter.DEFAULT_PROMPT_TEMPLATE, ROUTE_TO_ALL);
@@ -163,7 +163,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+        ChatModelMock model = ChatModelMock.thatResponds("2");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatModel(model)
@@ -196,7 +196,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
+        ChatModelMock model = ChatModelMock.thatResponds("1, 2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -221,7 +221,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
+        ChatModelMock model = ChatModelMock.thatResponds("1, 2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate, FAIL);
 
@@ -245,7 +245,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
 
         final var retrieverToDescription = Map.of(
                 catArticlesRetriever, "articles about cats",
@@ -266,7 +266,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
+        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -286,7 +286,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -311,7 +311,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
+        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -336,7 +336,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
         FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -358,7 +358,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong"));
+        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong"));
         FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -384,7 +384,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+        ChatModelMock model = ChatModelMock.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -407,7 +407,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+        ChatModelMock model = ChatModelMock.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -435,7 +435,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+        ChatModelMock model = ChatModelMock.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -463,7 +463,7 @@ class LanguageModelQueryRouterTest {
 
         // "1" is a valid id, but "4" is out of range: the fallback strategy should be applied
         // instead of routing to a partial list of retrievers
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 4");
+        ChatModelMock model = ChatModelMock.thatResponds("1, 4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");

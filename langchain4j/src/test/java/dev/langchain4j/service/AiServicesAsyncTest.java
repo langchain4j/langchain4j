@@ -94,7 +94,7 @@ class AiServicesAsyncTest {
     @Test
     void should_reject_raw_completion_stage_return_type_at_build_time() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
 
         assertThatThrownBy(() -> AiServices.builder(RawCompletionStageAssistant.class)
                         .chatModel(chatModel)
@@ -106,7 +106,7 @@ class AiServicesAsyncTest {
     @Test
     void should_accept_parameterized_completion_stage_return_type() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
 
         CompletionStageAssistant assistant = AiServices.builder(CompletionStageAssistant.class)
                 .chatModel(chatModel)
@@ -122,7 +122,7 @@ class AiServicesAsyncTest {
     @Test
     void should_augment_user_message_via_non_blocking_rag_for_completable_future_return_type() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
 
         // A genuinely async content retriever (overrides retrieveAsync): the async RAG path stays non-blocking
         ContentRetriever asyncRetriever = new ContentRetriever() {
@@ -157,7 +157,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_loudly_for_a_blocking_content_retriever_on_the_async_path() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
 
         // A blocking content retriever (no retrieveAsync) wired via the contentRetriever(...) convenience: the async
         // call fails loudly. To offload it, build the augmentor explicitly with offloadBlocking(true) (see the next
@@ -178,7 +178,7 @@ class AiServicesAsyncTest {
     void explicit_augmentor_with_offloadBlocking_offloads_a_blocking_content_retriever() throws Exception {
         // The way to offload a blocking retriever: build the DefaultRetrievalAugmentor explicitly with
         // offloadBlocking(true) and pass it via retrievalAugmentor(...). The blocking work lives with the augmentor.
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -198,7 +198,7 @@ class AiServicesAsyncTest {
     @Test
     void custom_augmentor_implementing_augmentAsync_runs_on_the_async_path() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
 
         // A custom RetrievalAugmentor becomes async by implementing augmentAsync (here it offloads its own blocking
         // augment() to a virtual thread) - the component owns the decision, not the AI Service.
@@ -236,7 +236,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_loudly_for_a_blocking_custom_augmentor_on_the_async_path() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
 
         // A blocking custom augmentor (only implements augment(), so augmentAsync throws): the async call must fail
         // with a clear, actionable error rather than silently offloading. To be async, implement augmentAsync.
@@ -261,7 +261,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_completable_future_without_invoking_blocking_chat() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -423,7 +423,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_result() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatModel(chatModel)
@@ -443,7 +443,7 @@ class AiServicesAsyncTest {
     @Test
     void should_not_append_output_format_instructions_when_returning_chat_response() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
 
         AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
                 .chatModel(chatModel)
@@ -460,7 +460,7 @@ class AiServicesAsyncTest {
     @Test
     void should_not_send_json_schema_when_returning_chat_response() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin")
+        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin")
                 .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
 
         AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
@@ -489,7 +489,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_pojo() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("{\"name\": \"Klaus\"}");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("{\"name\": \"Klaus\"}");
 
         AssistantReturningPojo assistant = AiServices.builder(AssistantReturningPojo.class)
                 .chatModel(chatModel)
@@ -508,7 +508,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_result_with_pojo() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("{\"name\": \"Klaus\"}");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("{\"name\": \"Klaus\"}");
 
         AssistantReturningResultWithPojo assistant = AiServices.builder(AssistantReturningResultWithPojo.class)
                 .chatModel(chatModel)
@@ -583,7 +583,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_enum__async() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("POSITIVE");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("POSITIVE");
 
         AssistantReturningEnum assistant = AiServices.builder(AssistantReturningEnum.class)
                 .chatModel(chatModel)
@@ -600,7 +600,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_boolean__async() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("true");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("true");
 
         AssistantReturningBoolean assistant = AiServices.builder(AssistantReturningBoolean.class)
                 .chatModel(chatModel)
@@ -641,7 +641,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_future_when_model_fails() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("boom"));
+        ChatModelMock chatModel = ChatModelMock.thatThrows(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -667,7 +667,7 @@ class AiServicesAsyncTest {
     @Test
     void model_error_propagates_original_cause_without_completion_exception() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("boom"));
+        ChatModelMock chatModel = ChatModelMock.thatThrows(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -743,7 +743,7 @@ class AiServicesAsyncTest {
     void output_guardrail_error_propagates_original_cause_without_completion_exception() {
 
         OutputGuardedAssistant assistant = AiServices.builder(OutputGuardedAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .build();
 
         CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
@@ -1058,7 +1058,7 @@ class AiServicesAsyncTest {
                 .name("unknownTool")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(AiMessage.from(hallucinatedRequest));
+        ChatModelMock chatModel = ChatModelMock.thatResponds(AiMessage.from(hallucinatedRequest));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1139,7 +1139,7 @@ class AiServicesAsyncTest {
         // non-blocking), so a violation is delivered via the returned future rather than thrown synchronously
         // from the AI Service method.
         AssistantWithInputGuardrail assistant = AiServices.builder(AssistantWithInputGuardrail.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .chatModel(ChatModelMock.thatResponds("Berlin"))
                 .build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
@@ -1733,7 +1733,7 @@ class AiServicesAsyncTest {
     void should_fail_when_completable_future_is_not_parameterized() {
 
         assertThatThrownBy(() -> AiServices.builder(AssistantReturningRawFuture.class)
-                        .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                        .chatModel(ChatModelMock.thatResponds("Berlin"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be parameterized with a concrete type");
@@ -1748,7 +1748,7 @@ class AiServicesAsyncTest {
     void should_fail_when_completable_future_is_parameterized_with_wildcard() {
 
         assertThatThrownBy(() -> AiServices.builder(AssistantReturningWildcardFuture.class)
-                        .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                        .chatModel(ChatModelMock.thatResponds("Berlin"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be parameterized with a concrete type");

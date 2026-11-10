@@ -43,7 +43,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_accept_matching_response() {
 
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModelMock model = DecisionModelMock.thatAnswers(
                 Map.of("urgent", URGENT, "team", TEAM, "frustration", FRUSTRATION));
 
         assertThat(model.decide(REQUEST).choice("team").value()).isEqualTo("billing");
@@ -52,7 +52,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_accept_refusals_for_any_question_type() {
 
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of(
                 "urgent", RefusalAnswer.of(), "team", RefusalAnswer.of(), "frustration", FRUSTRATION));
 
         DecisionResponse response = model.decide(REQUEST);
@@ -66,7 +66,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_attach_offered_options_to_choice_answers_so_that_misspelled_options_are_rejected() {
 
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of(
                 "urgent",
                 URGENT,
                 "team",

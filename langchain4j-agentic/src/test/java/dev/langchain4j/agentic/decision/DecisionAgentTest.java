@@ -328,7 +328,7 @@ class DecisionAgentTest {
     @Test
     void should_propagate_a_refusal_as_a_failure_without_writing_the_output_key() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAlwaysAnswers(Map.of("classify", RefusalAnswer.of())))
+                .decisionModel(DecisionModelMock.thatAnswers(Map.of("classify", RefusalAnswer.of())))
                 .build();
         AgentMonitor monitor = new AgentMonitor();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
@@ -373,7 +373,7 @@ class DecisionAgentTest {
     @Test
     void should_write_the_substitute_result_of_the_error_handler() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .subAgents(router)
@@ -505,7 +505,7 @@ class DecisionAgentTest {
     @Test
     void should_wrap_a_failure_outside_an_agentic_system() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
                 .build();
 
         assertThatThrownBy(() -> router.classify(LEGAL_REQUEST))

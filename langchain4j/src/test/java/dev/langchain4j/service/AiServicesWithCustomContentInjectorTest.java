@@ -26,7 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class AiServicesWithCustomContentInjectorTest {
 
     @Spy
-    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("{\"value\":\"test\"}");
+    ChatModel chatModel = ChatModelMock.thatResponds("{\"value\":\"test\"}");
 
     @AfterEach
     void afterEach() {

@@ -40,7 +40,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void guardrailAfterCleanJsonExtractionCanStillReprompt() {
-        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new StartsWithDear(), new EndsWithSignature()).execute(request);
@@ -52,7 +52,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void guardrailAfterCleanJsonExtractionCanStillRepromptAsync() {
-        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new Async(new StartsWithDear()), new Async(new EndsWithSignature()))
@@ -66,7 +66,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectIsReturnedAfterRepromptingInvalidJson() {
-        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatResponds(REPROMPTED_RESPONSE);
         var request = request("Not JSON at all", chatModel);
 
         var result = executor(new JsonExtractorOutputGuardrail<>(Email.class)).execute(request);
@@ -78,7 +78,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectSurvivesLaterPlainSuccess() {
-        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new JsonExtractorOutputGuardrail<>(Email.class), new AlwaysSuccess())
@@ -92,7 +92,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectIsKeptAlongsideEarlierRewrite() {
-        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatResponds(REPROMPTED_RESPONSE);
         var request = request("""
                 {"body": "Dear Bob, my phone is 555-1234"}""", chatModel);
 

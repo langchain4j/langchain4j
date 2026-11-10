@@ -284,7 +284,7 @@ class ConcurrentAgentResponsesTest {
     void streaming_agent_reports_no_chat_response_rather_than_the_one_of_its_previous_invocation() {
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("It ", "is ", "noon"))
+                .streamingChatModel(StreamingChatModelMock.thatStreams("It ", "is ", "noon"))
                 .listener(collecting(responses))
                 .build();
         UntypedAgent loop = AgenticServices.loopBuilder()

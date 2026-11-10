@@ -123,7 +123,7 @@ class ContextTest {
         AgenticScope agenticScope = mock(AgenticScope.class);
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
 
-        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatStreams("streamed ", "summary");
 
         Context.Summarizer summarizer =
                 Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
@@ -135,8 +135,8 @@ class ContextTest {
 
     @Test
     void sync_and_streaming_summarizers_should_send_the_same_plain_text_request() {
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("sync summary");
-        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("sync summary");
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatStreams("streamed ", "summary");
 
         assertThat(Context.createSummarizer(chatModel).summarize("expert conversation"))
                 .isEqualTo("sync summary");
@@ -155,7 +155,7 @@ class ContextTest {
         RuntimeException error = new RuntimeException("chat failed");
 
         assertThatThrownBy(
-                        () -> Context.createSummarizer(ChatModelMock.thatAlwaysThrows(error)).summarize("expert conversation"))
+                        () -> Context.createSummarizer(ChatModelMock.thatThrows(error)).summarize("expert conversation"))
                 .isSameAs(error);
     }
 
@@ -165,7 +165,7 @@ class ContextTest {
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
 
         RuntimeException error = new RuntimeException("streaming failed");
-        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysThrows(error);
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatThrows(error);
 
         Context.Summarizer summarizer =
                 Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
@@ -179,7 +179,7 @@ class ContextTest {
         AgenticScope agenticScope = mock(AgenticScope.class);
         when(agenticScope.contextAsConversation("expert")).thenReturn("");
 
-        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("summary");
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatStreams("summary");
 
         Context.Summarizer summarizer =
                 Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");

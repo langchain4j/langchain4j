@@ -185,7 +185,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
             }
         };
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingModel(EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withoutAsyncSupport())
+                .embeddingModel(EmbeddingModelMock.thatEmbeds(1f, 2f, 3f).withoutAsyncSupport())
                 .embeddingStore(store)
                 .offloadBlocking(true)
                 .build();

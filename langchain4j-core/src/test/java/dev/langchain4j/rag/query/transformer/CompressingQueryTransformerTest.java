@@ -45,7 +45,7 @@ class CompressingQueryTransformerTest {
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
+        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         // when
@@ -84,7 +84,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
+        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
@@ -166,7 +166,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
+        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model, promptTemplate);
 
@@ -200,7 +200,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
+        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = CompressingQueryTransformer.builder()
                 .chatModel(model)

@@ -32,7 +32,7 @@ class ExpandingQueryTransformerTest {
 
         Query query = Query.from(userMessage.singleText(), metadata);
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
+        ChatModelMock model = ChatModelMock.thatResponds(queriesString);
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
@@ -66,7 +66,7 @@ class ExpandingQueryTransformerTest {
         Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("query 1\nquery 2\nquery 3");
+        ChatModelMock model = ChatModelMock.thatResponds("query 1\nquery 2\nquery 3");
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
@@ -82,7 +82,7 @@ class ExpandingQueryTransformerTest {
         // given
         int n = 5;
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, n);
 
@@ -101,7 +101,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, promptTemplate);
 
@@ -120,7 +120,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate {{n}} variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatResponds("does not matter");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
                 .chatModel(model)

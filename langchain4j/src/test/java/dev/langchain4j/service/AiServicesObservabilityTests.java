@@ -766,10 +766,10 @@ class AiServicesObservabilityTests {
             } else {
                 if (streaming) {
                     builder.executeToolsConcurrently()
-                            .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                            .streamingChatModel(StreamingChatModelMock.thatStreams(
                                     AiMessage.from(DEFAULT_EXPECTED_RESPONSE)));
                 } else {
-                    builder.chatModel(ChatModelMock.thatAlwaysResponds(DEFAULT_EXPECTED_RESPONSE));
+                    builder.chatModel(ChatModelMock.thatResponds(DEFAULT_EXPECTED_RESPONSE));
                 }
             }
 
@@ -785,10 +785,10 @@ class AiServicesObservabilityTests {
             var builder = AiServices.builder(Assistant.class).registerListeners(listeners);
 
             return streaming
-                    ? builder.streamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException(
+                    ? builder.streamingChatModel(StreamingChatModelMock.thatThrows(new RuntimeException(
                                     "LLM invocation failed")))
                             .build()
-                    : builder.chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("LLM invocation failed")))
+                    : builder.chatModel(ChatModelMock.thatThrows(new RuntimeException("LLM invocation failed")))
                             .build();
         }
     }

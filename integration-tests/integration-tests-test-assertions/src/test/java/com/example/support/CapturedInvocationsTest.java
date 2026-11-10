@@ -31,7 +31,7 @@ class CapturedInvocationsTest {
             request -> AiMessage.from("You said: " + ModelScripts.lastUserMessage(request)));
 
     CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-            model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+            model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
 
     @AfterEach
     void shutdown() {

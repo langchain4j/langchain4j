@@ -197,7 +197,7 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * A model that gives every document the given score.
      */
-    public static ScoringModelMock thatAlwaysScores(double score) {
+    public static ScoringModelMock thatScores(double score) {
         return new ScoringModelMock(document -> score);
     }
 
@@ -212,7 +212,7 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * A model whose requests all fail with the given exception.
      */
-    public static ScoringModelMock thatAlwaysThrows(RuntimeException exception) {
+    public static ScoringModelMock thatThrows(RuntimeException exception) {
         ensureNotNull(exception, "exception");
         return new ScoringModelMock(document -> {
             throw exception;

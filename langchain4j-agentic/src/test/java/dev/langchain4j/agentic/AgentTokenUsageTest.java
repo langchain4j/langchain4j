@@ -302,7 +302,7 @@ class AgentTokenUsageTest {
     @Test
     void agent_called_from_a_tool_does_not_add_its_model_calls_to_the_calling_agent() {
         Assistant clock = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("It is noon").withTokenUsage(new TokenUsage(7, 1)))
+                .chatModel(ChatModelMock.thatResponds("It is noon").withTokenUsage(new TokenUsage(7, 1)))
                 .build();
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)

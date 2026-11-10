@@ -34,7 +34,7 @@ class SupervisorSubagentsDescriptionTest {
 
     /** A planner model that immediately reports the task as done. */
     private static ChatModelMock donePlannerModel() {
-        return ChatModelMock.thatAlwaysResponds("""
+        return ChatModelMock.thatResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to do"}}
                 """);
     }

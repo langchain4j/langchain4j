@@ -39,7 +39,7 @@ class StreamingOutputGuardrailBufferDrainTest {
 
     @Test
     void should_drain_buffered_tokens_to_BiConsumer_handler_when_output_guardrails_active() throws Exception {
-        StreamingChatModel model = StreamingChatModelMock.thatAlwaysStreams("Hello", " ", "world", "!");
+        StreamingChatModel model = StreamingChatModelMock.thatStreams("Hello", " ", "world", "!");
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
@@ -62,7 +62,7 @@ class StreamingOutputGuardrailBufferDrainTest {
 
     @Test
     void should_drain_buffered_tokens_to_Consumer_handler_when_output_guardrails_active() throws Exception {
-        StreamingChatModel model = StreamingChatModelMock.thatAlwaysStreams("Hello", " ", "world", "!");
+        StreamingChatModel model = StreamingChatModelMock.thatStreams("Hello", " ", "world", "!");
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)

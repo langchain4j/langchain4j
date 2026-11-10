@@ -45,7 +45,7 @@ class JudgeTest {
     @Test
     void chat_model_judge_passes_satisfied_criteria() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(
                 """
                 {"assessments":[
                   {"conditionNumber":1,"reasoning":"It says 30 days.","result":"SATISFIED"},
@@ -65,7 +65,7 @@ class JudgeTest {
     @Test
     void chat_model_judge_fails_with_reasoning_of_unsatisfied_criterion() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(
                 """
                 {"assessments":[
                   {"conditionNumber":1,"reasoning":"The answer does not offer an exchange.","result":"NOT_SATISFIED"}]}
@@ -83,7 +83,7 @@ class JudgeTest {
     @Test
     void chat_model_judge_with_one_call_per_criterion() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(
                 """
                 {"assessments":[{"conditionNumber":1,"reasoning":"ok","result":"SATISFIED"}]}
                 """);
@@ -126,7 +126,7 @@ class JudgeTest {
 
     @Test
     void judges_streamed_answer() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Returns ", "are ", "free."));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Returns ", "are ", "free."));
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> assistant.chatStream(QUESTION))
                 .invocation();
 

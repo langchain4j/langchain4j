@@ -132,13 +132,13 @@ class DecisionRouterPlannerTest {
     }
 
     private static DecisionModelMock modelAnswering(ChoiceAnswer answer) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, answer));
+        return DecisionModelMock.thatAnswers(Map.of(QUESTION_NAME, answer));
     }
 
     private static DecisionModelMock modelAnsweringRelevance(Map<String, Double> probabilities) {
         Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
         probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.from(probability)));
-        return DecisionModelMock.thatAlwaysAnswers(answers);
+        return DecisionModelMock.thatAnswers(answers);
     }
 
     private <T> T router(Class<T> routerType, DecisionRouterPlanner planner) {
@@ -530,7 +530,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision failed"));
+        DecisionModelMock model = DecisionModelMock.thatThrows(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> router(model).ask(REQUEST)).hasMessageContaining("decision failed");
         assertThat(medicalExpert.calls).hasValue(0);

@@ -34,7 +34,7 @@ public final class TestModels {
 
         @Override
         public StreamingChatModel get() {
-            return StreamingChatModelMock.thatAlwaysStreams("Hello ", "from ", "Miles of Smiles")
+            return StreamingChatModelMock.thatStreams("Hello ", "from ", "Miles of Smiles")
                     .withTokenUsage(TOKEN_USAGE_PER_CALL)
                     .withFinishReason(FinishReason.STOP);
         }

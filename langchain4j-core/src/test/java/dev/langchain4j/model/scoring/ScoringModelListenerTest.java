@@ -114,7 +114,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+        ScoringModel model = ScoringModelMock.thatScores(0.5)
                 .withModelName("default-model")
                 .withListeners(listener);
 
@@ -135,7 +135,7 @@ class ScoringModelListenerTest {
 
         // given: like the in-repo providers, the mock implements scoreAll by calling score(ScoringRequest)
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+        ScoringModel model = ScoringModelMock.thatScores(0.5)
                 .withTokenUsage(new TokenUsage(3))
                 .withListeners(listener);
 
@@ -186,7 +186,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModel model =
-                ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom")).withListeners(listener);
+                ScoringModelMock.thatThrows(new RuntimeException("boom")).withListeners(listener);
 
         // when-then
         assertThatThrownBy(() -> model.scoreAll(List.of(TextSegment.from("a")), "query"))
@@ -207,7 +207,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(new FailingListener(), listener);
+        ScoringModel model = ScoringModelMock.thatScores(0.5).withListeners(new FailingListener(), listener);
 
         // when
         Response<List<Double>> response = model.scoreAll(List.of(TextSegment.from("a")), "query");
@@ -222,7 +222,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom"))
+        ScoringModel model = ScoringModelMock.thatThrows(new RuntimeException("boom"))
                 .withListeners(new FailingListener(), listener);
 
         // when-then
@@ -236,7 +236,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+        ScoringModel model = ScoringModelMock.thatScores(0.5)
                 .withModelName("default-model")
                 .withTokenUsage(new TokenUsage(7))
                 .withListeners(listener);
@@ -263,7 +263,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom"))
+        ScoringModel model = ScoringModelMock.thatThrows(new RuntimeException("boom"))
                 .withListeners(new FailingListener(), listener);
 
         // when
@@ -283,7 +283,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModel model =
-                ScoringModelMock.thatAlwaysScores(0.5).withoutAsyncSupport().withListeners(listener);
+                ScoringModelMock.thatScores(0.5).withoutAsyncSupport().withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -302,7 +302,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(listener);
+        ScoringModel model = ScoringModelMock.thatScores(0.5).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(null);
@@ -318,7 +318,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withProvider(null).withListeners(listener);
+        ScoringModel model = ScoringModelMock.thatScores(0.5).withProvider(null).withListeners(listener);
         ScoringRequest request =
                 ScoringRequest.builder().documents(List.of("a")).query("query").build();
 
@@ -340,7 +340,7 @@ class ScoringModelListenerTest {
         RecordingListener listener = new RecordingListener();
         CompletableFuture<ScoringResponse> inFlight = new CompletableFuture<>();
         ScoringModel model =
-                ScoringModelMock.thatAlwaysScores(0.5).withAsyncResult(() -> inFlight).withListeners(listener);
+                ScoringModelMock.thatScores(0.5).withAsyncResult(() -> inFlight).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -358,7 +358,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+        ScoringModel model = ScoringModelMock.thatScores(0.5)
                 .withAsyncResult(() -> {
                     throw new RuntimeException("boom");
                 })
@@ -380,7 +380,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModel model =
-                ScoringModelMock.thatAlwaysScores(0.5).withAsyncResult(() -> null).withListeners(listener);
+                ScoringModelMock.thatScores(0.5).withAsyncResult(() -> null).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -399,7 +399,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModelMock model =
-                ScoringModelMock.thatAlwaysScores(0.5).implementingOnlyScoreAll().withListeners(listener);
+                ScoringModelMock.thatScores(0.5).implementingOnlyScoreAll().withListeners(listener);
 
         // when-then
         assertThatThrownBy(() -> model.score(ScoringRequest.builder()
@@ -423,7 +423,7 @@ class ScoringModelListenerTest {
                 attributes.put("seen-by-second", attributes.get("id"));
             }
         };
-        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(first, second);
+        ScoringModel model = ScoringModelMock.thatScores(0.5).withListeners(first, second);
 
         // when
         model.scoreAll(List.of(TextSegment.from("a")), "query");

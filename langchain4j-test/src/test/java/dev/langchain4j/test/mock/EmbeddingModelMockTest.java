@@ -20,7 +20,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_always_embed_with_the_given_vector() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
 
         assertThat(vector(model, "one")).containsExactly(1f, 2f, 3f);
         assertThat(vector(model, "two")).containsExactly(1f, 2f, 3f);
@@ -38,7 +38,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_record_the_requests() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f);
 
         model.embed("first");
 
@@ -171,7 +171,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_report_the_given_model_name_and_token_usage() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f)
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f)
                 .withModelName("model")
                 .withTokenUsage(new TokenUsage(1, 0));
 
@@ -185,7 +185,7 @@ class EmbeddingModelMockTest {
     void should_not_share_the_given_vector() {
 
         float[] vector = {1f, 2f};
-        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(vector);
+        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(vector);
 
         vector[0] = 5f;
         vector(model, "one")[1] = 5f;
@@ -196,9 +196,9 @@ class EmbeddingModelMockTest {
     @Test
     void should_not_accept_an_empty_vector() {
 
-        assertThatThrownBy(EmbeddingModelMock::thatAlwaysEmbeds)
+        assertThatThrownBy(EmbeddingModelMock::thatEmbeds)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("thatAlwaysEmbeds");
+                .hasMessageContaining("thatEmbeds");
     }
 
     @Test
@@ -206,15 +206,16 @@ class EmbeddingModelMockTest {
 
         RuntimeException failure = new IllegalStateException("down");
 
-        assertThatThrownBy(() -> EmbeddingModelMock.thatAlwaysThrows(failure).embed("hello"))
+        assertThatThrownBy(() -> EmbeddingModelMock.thatThrows(failure).embed("hello"))
                 .isSameAs(failure);
     }
 
     @Test
     void should_not_accept_null_arguments() {
 
-        assertThatThrownBy(() -> EmbeddingModelMock.thatEmbeds(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> EmbeddingModelMock.thatAlwaysThrows(null))
+        assertThatThrownBy(() -> EmbeddingModelMock.thatEmbeds((float[]) null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> EmbeddingModelMock.thatThrows(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

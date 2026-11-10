@@ -98,7 +98,7 @@ class TypeUtilsTest {
     @Test
     void listNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -120,7 +120,7 @@ class TypeUtilsTest {
     @Test
     void setNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -142,7 +142,7 @@ class TypeUtilsTest {
     @Test
     void resultNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -164,7 +164,7 @@ class TypeUtilsTest {
     @Test
     void resultListNoParametrizedTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -186,7 +186,7 @@ class TypeUtilsTest {
     @Test
     void listWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -208,7 +208,7 @@ class TypeUtilsTest {
     @Test
     void resultListWildcardTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -230,7 +230,7 @@ class TypeUtilsTest {
     @Test
     void resultListTypeParamTypeInvalidServiceDefinition() {
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)
@@ -251,7 +251,7 @@ class TypeUtilsTest {
             Set<?> ask(String input);
         }
         // Given
-        ChatModel stubModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+        ChatModel stubModel = ChatModelMock.thatResponds("Hello there!");
 
         // When
         IllegalArgumentException illegalArgumentException = assertThatExceptionOfType(IllegalArgumentException.class)

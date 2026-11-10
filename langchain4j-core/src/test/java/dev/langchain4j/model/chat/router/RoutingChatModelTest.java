@@ -46,8 +46,8 @@ import org.junit.jupiter.api.Test;
 class RoutingChatModelTest {
 
     final ChatModelMock small =
-            ChatModelMock.thatAlwaysResponds("answer from small").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
-    final ChatModelMock large = ChatModelMock.thatAlwaysResponds("answer from large");
+            ChatModelMock.thatResponds("answer from small").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
+    final ChatModelMock large = ChatModelMock.thatResponds("answer from large");
 
     static ChatModelRouter nonBlocking(ChatModelRouter router) {
         return new ChatModelRouter() {
@@ -449,7 +449,7 @@ class RoutingChatModelTest {
 
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", "Short questions", ChatModelMock.thatAlwaysResponds("answer from small"))
+                .route("simple", "Short questions", ChatModelMock.thatResponds("answer from small"))
                 .route("complex", "Everything else", large)
                 .router(request -> {
                     seen.addAll(request.routes());
@@ -475,7 +475,7 @@ class RoutingChatModelTest {
     @Test
     void should_fail_async_call_when_decision_model_does_not_support_async() {
 
-        DecisionModelMock decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        DecisionModelMock decisionModel = DecisionModelMock.thatAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build()))
                 .withoutAsyncSupport();
         ChatModel chatModel = routingModel(new DecisionModelChatModelRouter(decisionModel));
@@ -588,8 +588,8 @@ class RoutingChatModelTest {
 
     // streaming
 
-    final StreamingChatModelMock smallStreaming = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer from small"));
-    final StreamingChatModelMock largeStreaming = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer from large"));
+    final StreamingChatModelMock smallStreaming = StreamingChatModelMock.thatStreams(AiMessage.from("answer from small"));
+    final StreamingChatModelMock largeStreaming = StreamingChatModelMock.thatStreams(AiMessage.from("answer from large"));
 
     RoutingStreamingChatModel routingStreamingModel(ChatModelRouter router) {
         return RoutingStreamingChatModel.builder()
@@ -748,7 +748,7 @@ class RoutingChatModelTest {
     @Test
     void should_report_error_of_selected_streaming_model_to_handler() {
 
-        StreamingChatModel failing = StreamingChatModelMock.thatAlwaysThrows(new IllegalArgumentException("unsupported parameter"));
+        StreamingChatModel failing = StreamingChatModelMock.thatThrows(new IllegalArgumentException("unsupported parameter"));
         List<Throwable> errors = new ArrayList<>();
 
         RoutingStreamingChatModel.builder()

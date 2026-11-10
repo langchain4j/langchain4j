@@ -243,7 +243,7 @@ class EmbeddingModelListenerTest {
     void embedAsync_should_notify_listeners_on_request_and_error_when_not_supported() {
         // given
         EmbeddingModelListener listener = spy(new SuccessfulListener());
-        EmbeddingModel model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f)
+        EmbeddingModel model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f)
                 .withoutAsyncSupport()
                 .withListeners(listener);
 

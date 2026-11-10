@@ -30,7 +30,7 @@ class ToolAssertionsTest {
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
-                model, bookings, CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+                model, bookings, CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
     }
 
     AiServiceInvocation cancelMs777() {
@@ -128,7 +128,7 @@ class ToolAssertionsTest {
 
     @Test
     void should_check_that_no_tool_was_executed() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello, how can I help?"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello, how can I help?"));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Hi")).invocation();
 

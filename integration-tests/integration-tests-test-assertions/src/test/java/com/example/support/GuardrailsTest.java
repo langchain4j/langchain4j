@@ -49,7 +49,7 @@ class GuardrailsTest {
                 .withTokenUsages(new TokenUsage(50, 10), new TokenUsage(80, 8))
                 .withFinishReason(FinishReason.STOP);
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Cancel MS-777")).invocation();
 

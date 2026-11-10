@@ -28,7 +28,7 @@ public class TestModels {
 
     @Bean
     StreamingChatModel streamingChatModel() {
-        return StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(STREAMED_ANSWER))
+        return StreamingChatModelMock.thatStreams(AiMessage.from(STREAMED_ANSWER))
                 .withTokenUsage(TOKEN_USAGE_PER_CALL)
                 .withFinishReason(FinishReason.STOP);
     }

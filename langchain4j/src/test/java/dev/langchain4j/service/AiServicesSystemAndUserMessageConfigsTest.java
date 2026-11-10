@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AiServicesSystemAndUserMessageConfigsTest {
 
     @Spy
-    ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel model = ChatModelMock.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {

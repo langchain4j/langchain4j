@@ -123,7 +123,7 @@ class AiServicesModerationTest {
     void should_reject_moderation_on_async_return_type() {
         // moderation is not supported on the new asynchronous (CompletableFuture) return type: fail fast
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
+                .chatModel(ChatModelMock.thatResponds("Hello"))
                 .moderationModel(moderationModelReturning(Moderation.notFlagged()))
                 .build();
 

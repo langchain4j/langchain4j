@@ -78,7 +78,7 @@ class RestResourceTest {
 
     @Test
     void http_request_to_multi_endpoint_streams_the_answer() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello ", "world"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Hello ", "world"));
 
         String body = given().queryParam("q", "Hi")
                 .when()
@@ -116,7 +116,7 @@ class RestResourceTest {
 
     @Test
     void records_multi_returned_by_resource_bean() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello ", "world"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Hello ", "world"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> supportResource.chatStream("Hi"))
                 .invocation();

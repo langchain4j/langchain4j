@@ -68,7 +68,7 @@ class JudgeTest {
     void judges_the_captured_answer_with_a_chat_model() {
         AiServiceInvocation invocation =
                 capture(() -> supportAssistant.chat("Please cancel MS-777")).invocation();
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(
                         """
                         {"assessments": [
                           {"conditionNumber": 1, "reasoning": "It says the booking was cancelled.", "result": "SATISFIED"},
@@ -94,7 +94,7 @@ class JudgeTest {
 
     @Test
     void the_judge_model_is_not_captured_as_an_ai_service_invocation() {
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(AiMessage.from(
+        ChatModelMock judgeModel = ChatModelMock.thatResponds(AiMessage.from(
                         """
                         {"assessments": [{"conditionNumber": 1, "reasoning": "greets", "result": "SATISFIED"}]}"""))
                 .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);

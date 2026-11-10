@@ -84,7 +84,7 @@ class DecisionAgentBuilderTest {
         // a class is accepted, for the integrations implementing its agent method through an agentInstanceFactory,
         // but it cannot be implemented by a proxy
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterClass.class)
-                        .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                        .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("A decision agent must be defined by an interface, but " + RouterClass.class.getName()

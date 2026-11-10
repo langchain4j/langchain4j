@@ -162,7 +162,7 @@ class DecisionModelFilteringToolProviderTest {
     void should_fall_back_to_all_tools_when_decision_model_fails() {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(
-                allTools, DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
+                allTools, DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
 
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
                 .hasSize(4);
@@ -183,13 +183,13 @@ class DecisionModelFilteringToolProviderTest {
 
         ToolProvider noTools = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .alwaysInclude("send_email")
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.NO_TOOLS)
                 .build();
         ToolProvider failing = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
+                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.FAIL)
                 .build();
 
@@ -437,7 +437,7 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_select_tools_for_user_message_without_retrieved_content_in_ai_service() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("It will not rain.");
+        ChatModelMock chatModel = ChatModelMock.thatResponds("It will not rain.");
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .contentRetriever(query -> List.of(Content.from("The invoice INV-1 is due tomorrow")))

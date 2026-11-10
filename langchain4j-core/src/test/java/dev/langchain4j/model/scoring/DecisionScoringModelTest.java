@@ -255,7 +255,7 @@ class DecisionScoringModelTest {
     void should_fail_async_scoring_when_response_has_no_answer() {
 
         DecisionModel withoutAnswers =
-                DecisionModelMock.thatAlwaysAnswers(Map.of("unknown", YesNoAnswer.from(0.9)));
+                DecisionModelMock.thatAnswers(Map.of("unknown", YesNoAnswer.from(0.9)));
 
         assertThat(new DecisionScoringModel(withoutAnswers)
                         .scoreAsync(ScoringRequest.builder()
@@ -294,7 +294,7 @@ class DecisionScoringModelTest {
     void should_propagate_decision_model_errors() {
 
         ScoringModel scoringModel =
-                new DecisionScoringModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")));
+                new DecisionScoringModel(DecisionModelMock.thatThrows(new RuntimeException("down")));
 
         assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("text")), "query"))
                 .hasMessage("down");
@@ -312,7 +312,7 @@ class DecisionScoringModelTest {
     void should_cancel_decision_model_call_when_async_scoring_is_cancelled() {
 
         CompletableFuture<DecisionResponse> inFlight = new CompletableFuture<>();
-        DecisionModel pending = DecisionModelMock.thatAlwaysAnswers(Map.of()).withAsyncResponse(request -> inFlight);
+        DecisionModel pending = DecisionModelMock.thatAnswers(Map.of()).withAsyncResponse(request -> inFlight);
 
         new DecisionScoringModel(pending)
                 .scoreAsync(ScoringRequest.builder()
@@ -328,7 +328,7 @@ class DecisionScoringModelTest {
     void should_fail_async_scoring_and_cancel_other_batches_when_a_batch_fails() {
 
         CompletableFuture<DecisionResponse> pending = new CompletableFuture<>();
-        DecisionModel decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of())
+        DecisionModel decisionModel = DecisionModelMock.thatAnswers(Map.of())
                 .withAsyncResponse(request -> request.questions().values().stream()
                                 .anyMatch(question -> question.text().contains("first"))
                         ? CompletableFuture.failedFuture(new RuntimeException("down"))

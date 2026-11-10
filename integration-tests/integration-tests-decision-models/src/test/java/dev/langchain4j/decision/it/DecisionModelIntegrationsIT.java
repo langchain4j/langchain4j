@@ -57,8 +57,8 @@ class DecisionModelIntegrationsIT {
     @Test
     void should_route_chat_requests_by_description() {
 
-        ChatModel small = ChatModelMock.thatAlwaysResponds("small");
-        ChatModel large = ChatModelMock.thatAlwaysResponds("large");
+        ChatModel small = ChatModelMock.thatResponds("small");
+        ChatModel large = ChatModelMock.thatResponds("large");
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", "Greetings, small talk and short factual questions", small)
                 .route("complex", "Writing or debugging code, multi-step reasoning, detailed analysis", large)
@@ -76,9 +76,9 @@ class DecisionModelIntegrationsIT {
 
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", List.of("Greetings and small talk", "Store opening hours", "Order tracking"),
-                        ChatModelMock.thatAlwaysResponds("small"))
+                        ChatModelMock.thatResponds("small"))
                 .route("complex", List.of("Software debugging", "Contract law", "Tax planning"),
-                        ChatModelMock.thatAlwaysResponds("large"))
+                        ChatModelMock.thatResponds("large"))
                 .router(new DecisionModelChatModelRouter(decisionModel))
                 .defaultRoute("complex")
                 .build();

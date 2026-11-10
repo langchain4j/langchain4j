@@ -37,7 +37,7 @@ class ChatExecutorInvocationScopeTest {
     @Test
     void chat_executor_should_call_the_model_as_work_of_the_invocation() {
         ChatExecutor executor = ChatExecutor.builder(
-                        ChatModelMock.thatAlwaysResponds("answer").withListeners(listener))
+                        ChatModelMock.thatResponds("answer").withListeners(listener))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)
                 .build();
@@ -51,7 +51,7 @@ class ChatExecutorInvocationScopeTest {
 
     @Test
     void streaming_chat_executor_should_call_the_model_as_work_of_the_invocation() {
-        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatAlwaysStreams("answer")
+        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatStreams("answer")
                         .streamingOnCallingThread()
                         .withListeners(listener))
                 .chatRequest(CHAT_REQUEST)
@@ -68,7 +68,7 @@ class ChatExecutorInvocationScopeTest {
     @Test
     void streaming_chat_executor_should_call_the_error_handler_outside_of_the_invocation() {
         AtomicReference<UUID> currentInErrorHandler = new AtomicReference<>(UUID.randomUUID());
-        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatAlwaysThrows(new IllegalStateException("failed")))
+        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatThrows(new IllegalStateException("failed")))
                 .errorHandler(error -> currentInErrorHandler.set(CurrentInvocation.invocationId()))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)

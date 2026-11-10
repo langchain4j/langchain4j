@@ -155,7 +155,7 @@ class ReactiveAssistantTest {
 
     @Test
     void rethrows_failure_of_returned_uni() {
-        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> supportService.answerLater("Hi")))
                 .hasMessageContaining("Model is overloaded");
@@ -163,7 +163,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_of_uni_when_failure_is_expected() {
-        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> supportService.answerLater("Hi"))
@@ -174,7 +174,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_when_uni_failure_was_recovered() {
-        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(() -> supportService
                         .answerLater("Hi")
@@ -187,7 +187,7 @@ class ReactiveAssistantTest {
 
     @Test
     void drains_returned_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Your ", "order ", "has ", "shipped.")
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Your ", "order ", "has ", "shipped.")
                 .withTokenUsage(new TokenUsage(10, 4))
                 .withFinishReason(FinishReason.STOP));
 
@@ -204,7 +204,7 @@ class ReactiveAssistantTest {
 
     @Test
     void drains_returned_flow_publisher_of_ai_service() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hi ", "there"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Hi ", "there"));
 
         AiServiceInvocation invocation =
                 AiServiceCapture.capture(() -> assistant.chatStream("Hi")).invocation();
@@ -214,7 +214,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_retrieved_sources_of_streaming_invocation() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("30 ", "days"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("30 ", "days"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.streamAnswer("What is the return period?"))
@@ -225,7 +225,7 @@ class ReactiveAssistantTest {
 
     @Test
     void subscribes_to_returned_multi_collected_to_uni() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.streamAnswer("Hi").collect().asList())
@@ -237,7 +237,7 @@ class ReactiveAssistantTest {
     @Test
     void emits_guarded_streaming_answer_as_a_single_item() {
         // the output guardrail must see the whole answer, so the streamed answer is emitted once it is validated
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"));
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> items.addAll(
@@ -250,7 +250,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_multi_subscribed_inside_captured_code() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"));
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> items.addAll(
@@ -264,7 +264,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_multi_subscribed_with_callbacks_inside_captured_code() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("x", "y"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("x", "y"));
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
@@ -277,7 +277,7 @@ class ReactiveAssistantTest {
 
     @Test
     void drains_returned_multi_item_by_item() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("Red ", "shoes"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.recommendProducts("Something red"))
@@ -291,7 +291,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_cancelled_invocation_when_returned_multi_takes_first_item() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("one ", "two ", "three"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("one ", "two ", "three"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.recommendProducts("Count").select().first())
@@ -309,7 +309,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_cancelled_invocation_when_returned_uni_takes_first_item_of_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("one ", "two ", "three"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("one ", "two ", "three"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.recommendProducts("Count").toUni())
@@ -320,7 +320,7 @@ class ReactiveAssistantTest {
 
     @Test
     void records_cancelled_invocation_when_multi_is_cancelled_inside_captured_code() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("one ", "two ", "three"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("one ", "two ", "three"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> supportService
                         .recommendProducts("Count")
@@ -338,7 +338,7 @@ class ReactiveAssistantTest {
     @Test
     void does_not_cancel_guarded_answer_when_returned_multi_takes_first_item() {
         // the guarded answer is a single item, so taking the first item takes the whole answer
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("one ", "two"));
+        useStreamingChatModel(StreamingChatModelMock.thatStreams("one ", "two"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> supportService.streamAnswer("Count").select().first())
@@ -350,7 +350,7 @@ class ReactiveAssistantTest {
 
     @Test
     void rethrows_failure_of_returned_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
+        useStreamingChatModel(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broke")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> supportService.streamAnswer("Hi")))
                 .hasMessageContaining("Stream broke");
@@ -358,7 +358,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_of_multi_when_failure_is_expected() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
+        useStreamingChatModel(StreamingChatModelMock.thatThrows(new RuntimeException("Stream broke")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> supportService.streamAnswer("Hi"))

@@ -55,8 +55,8 @@ class ToolErrorHandlingNoticeLoggingTest {
         }
     }
 
-    private static final ChatModel CHAT_MODEL = ChatModelMock.thatAlwaysResponds("ok");
-    private static final StreamingChatModel STREAMING_CHAT_MODEL = StreamingChatModelMock.thatAlwaysStreams("ok");
+    private static final ChatModel CHAT_MODEL = ChatModelMock.thatResponds("ok");
+    private static final StreamingChatModel STREAMING_CHAT_MODEL = StreamingChatModelMock.thatStreams("ok");
 
     @BeforeEach
     void resetNotice() {

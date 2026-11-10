@@ -614,7 +614,7 @@ class AiServicesWithRagIT {
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("does not matter"))
+                .chatModel(ChatModelMock.thatResponds("does not matter"))
                 .chatMemory(chatMemory)
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(queryTransformer)
