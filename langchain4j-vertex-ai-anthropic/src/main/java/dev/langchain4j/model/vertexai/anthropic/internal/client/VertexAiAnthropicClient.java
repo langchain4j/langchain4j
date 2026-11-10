@@ -14,7 +14,9 @@ import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
 import io.grpc.StatusRuntimeException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -135,22 +137,59 @@ public class VertexAiAnthropicClient {
     }
 
     private void processTextContentStreaming(String text, StreamingResponseHandler handler) {
-        int chunkSize = 10; // Small chunks to simulate streaming
-
-        for (int i = 0; i < text.length(); i += chunkSize) {
-            int end = Math.min(i + chunkSize, text.length());
-            String chunk = text.substring(i, end);
-
-            // Create a streaming-like JSON chunk
-            String streamChunk = String.format(
-                    "{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"%s\"}}",
-                    chunk.replace("\"", "\\\"").replace("\n", "\\n"));
-
+        for (String streamChunk : toStreamChunks(text)) {
             handler.onChunk(streamChunk);
-
-            // Small delay to simulate streaming
             simulateStreamingDelay(handler);
         }
+    }
+
+    /**
+     * Splits the text into streaming chunks and renders every chunk as the JSON payload of a
+     * {@code content_block_delta} event.
+     * <p>
+     * The text is escaped as a JSON string: an unescaped backslash starts an escape sequence that
+     * silently changes the text ({@code C:\temp} arrives as {@code C:<TAB>emp}) or makes the payload
+     * invalid ({@code \l} is not an escape), and a raw control character is not allowed inside a JSON
+     * string at all. The split never cuts a surrogate pair in half, because each half is encoded as a
+     * replacement character on its own, so an emoji would arrive as {@code ??}.
+     */
+    static List<String> toStreamChunks(String text) {
+        int chunkSize = 10; // Small chunks to simulate streaming
+        List<String> chunks = new ArrayList<>(text.length() / chunkSize + 1);
+
+        for (int i = 0; i < text.length(); ) {
+            int end = Math.min(i + chunkSize, text.length());
+            if (end < text.length() && end - i > 1 && Character.isHighSurrogate(text.charAt(end - 1))) {
+                end--;
+            }
+            chunks.add(String.format(
+                    "{\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"%s\"}}",
+                    escapeJsonString(text.substring(i, end))));
+            i = end;
+        }
+        return chunks;
+    }
+
+    private static String escapeJsonString(String value) {
+        StringBuilder escaped = new StringBuilder(value.length() + 8);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        escaped.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        escaped.append(c);
+                    }
+                }
+            }
+        }
+        return escaped.toString();
     }
 
     private void processToolContentStreaming(
