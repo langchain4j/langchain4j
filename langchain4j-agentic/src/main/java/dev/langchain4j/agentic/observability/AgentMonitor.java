@@ -136,8 +136,10 @@ public class AgentMonitor implements AgentListener {
     public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
-        execution.afterAgentInvocation(agentResponse);
-        finalizeExecution(memoryId, execution);
+        if (execution != null) {
+            execution.afterAgentInvocation(agentResponse);
+            finalizeExecution(memoryId, execution);
+        }
     }
 
     @Override

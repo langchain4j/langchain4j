@@ -55,6 +55,10 @@ class AgentMonitorSuspensionTest {
             } catch (RuntimeException e) {
                 failures.add(e);
                 throw e;
+            } finally {
+                if (agentResponse.agent().name().equals("slow")) {
+                    SLOW_AGENT_NOTIFIED.countDown();
+                }
             }
         }
 
@@ -83,6 +87,8 @@ class AgentMonitorSuspensionTest {
 
     static RecordingMonitor MONITOR;
     static CountDownLatch SLOW_AGENT_LATCH;
+    static CountDownLatch SLOW_AGENT_STARTED;
+    static CountDownLatch SLOW_AGENT_NOTIFIED;
     static CountDownLatch SIBLING_STARTED;
     static CountDownLatch SUSPENSION_NOTIFIED;
     static CountDownLatch DETACHED_AGENT_LATCH;
@@ -91,6 +97,8 @@ class AgentMonitorSuspensionTest {
     void reset() {
         MONITOR = new RecordingMonitor();
         SLOW_AGENT_LATCH = new CountDownLatch(1);
+        SLOW_AGENT_STARTED = new CountDownLatch(1);
+        SLOW_AGENT_NOTIFIED = new CountDownLatch(1);
         SIBLING_STARTED = new CountDownLatch(1);
         SUSPENSION_NOTIFIED = new CountDownLatch(1);
         DETACHED_AGENT_LATCH = new CountDownLatch(1);
@@ -404,6 +412,7 @@ class AgentMonitorSuspensionTest {
     public static class SlowAgent {
         @Agent(async = true, outputKey = "slow")
         public static String slow() throws InterruptedException {
+            SLOW_AGENT_STARTED.countDown();
             SLOW_AGENT_LATCH.await(5, SECONDS);
             return "slow";
         }
@@ -416,7 +425,7 @@ class AgentMonitorSuspensionTest {
         }
     }
 
-    public interface GreeterWithSlowAgent {
+    public interface GreeterWithSlowAgent extends AgenticScopeAccess {
         @SequenceAgent(outputKey = "final", subAgents = {SlowAgent.class, AskName.class, Reader.class})
         ResultWithAgenticScope<String> greet(@MemoryId String id);
 
@@ -752,5 +761,25 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.failures).isEmpty();
         assertThat(MONITOR.ongoingExecutions()).isEmpty();
         assertThat(MONITOR.successfulExecutionsFor("session-13")).containsExactly(execution);
+    }
+
+    // ---- the scope of a suspended execution is evicted while an asynchronous agent of that execution is running ----
+
+    @Test
+    void asynchronous_agent_completing_after_its_suspended_execution_was_dropped_is_ignored() throws InterruptedException {
+        GreeterWithSlowAgent greeter = AgenticServices.createAgenticSystem(GreeterWithSlowAgent.class);
+        assertThat(greeter.greet("session-14").suspended()).isTrue();
+        assertThat(SLOW_AGENT_STARTED.await(10, SECONDS)).isTrue();
+
+        assertThat(greeter.evictAgenticScope("session-14")).isTrue();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+
+        SLOW_AGENT_LATCH.countDown();
+        assertThat(SLOW_AGENT_NOTIFIED.await(10, SECONDS)).isTrue();
+
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-14")).isEmpty();
+        assertThat(MONITOR.failedExecutionsFor("session-14")).isEmpty();
     }
 }
