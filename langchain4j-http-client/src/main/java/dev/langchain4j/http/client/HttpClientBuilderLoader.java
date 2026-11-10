@@ -9,6 +9,15 @@ import java.util.stream.Collectors;
 
 public class HttpClientBuilderLoader {
 
+    /**
+     * Creates an {@link HttpClientBuilder} with one of the {@link HttpClientBuilderFactory factories} on the classpath.
+     * The factory named by the {@code langchain4j.http.clientBuilderFactory} system property is used when that
+     * property is set. Otherwise, the factory with the highest {@link HttpClientBuilderFactory#priority() priority} is used.
+     *
+     * @return a new builder
+     * @throws IllegalStateException if there is no factory on the classpath, if the system property names a factory
+     *                               that is not on the classpath, or if several factories share the highest priority
+     */
     public static HttpClientBuilder loadHttpClientBuilder() {
         String selectedClassName = System.getProperty("langchain4j.http.clientBuilderFactory");
 
