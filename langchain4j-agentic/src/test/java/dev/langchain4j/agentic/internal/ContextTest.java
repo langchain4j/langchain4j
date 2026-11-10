@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -155,7 +155,7 @@ class ContextTest {
         RuntimeException error = new RuntimeException("chat failed");
 
         assertThatThrownBy(
-                        () -> Context.createSummarizer(new ChatModelMock(error)).summarize("expert conversation"))
+                        () -> Context.createSummarizer(ChatModelMock.thatAlwaysThrows(error)).summarize("expert conversation"))
                 .isSameAs(error);
     }
 
@@ -165,7 +165,7 @@ class ContextTest {
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
 
         RuntimeException error = new RuntimeException("streaming failed");
-        StreamingChatModelMock streamingModel = new StreamingChatModelMock(error);
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysThrows(error);
 
         Context.Summarizer summarizer =
                 Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");

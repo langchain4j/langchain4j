@@ -8,8 +8,8 @@ import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.List;
 import java.util.UUID;
@@ -68,7 +68,7 @@ class ChatExecutorInvocationScopeTest {
     @Test
     void streaming_chat_executor_should_call_the_error_handler_outside_of_the_invocation() {
         AtomicReference<UUID> currentInErrorHandler = new AtomicReference<>(UUID.randomUUID());
-        ChatExecutor executor = ChatExecutor.builder(new StreamingChatModelMock(new IllegalStateException("failed")))
+        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatAlwaysThrows(new IllegalStateException("failed")))
                 .errorHandler(error -> currentInErrorHandler.set(CurrentInvocation.invocationId()))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)

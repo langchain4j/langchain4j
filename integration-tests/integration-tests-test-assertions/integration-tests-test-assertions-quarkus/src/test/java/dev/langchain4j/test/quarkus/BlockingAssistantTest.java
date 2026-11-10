@@ -14,7 +14,7 @@ import com.example.support.SupportService;
 import com.example.support.TicketSummarizer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -163,7 +163,7 @@ class BlockingAssistantTest {
 
     @Test
     void sums_token_usage_over_all_model_calls() {
-        useChatModel(ChatModelMock.thatAlwaysResponds(
+        useChatModel(ChatModelMock.thatResponds(
                                 toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-1\"}"),
                                 AiMessage.from("Shipped."))
                         .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(150, 30))
@@ -253,7 +253,7 @@ class BlockingAssistantTest {
 
     @Test
     void rethrows_model_failure_from_record() {
-        useChatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model is overloaded"));
+        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> assistant.chat("Hi")))
                 .hasMessageContaining("Model is overloaded");
@@ -261,7 +261,7 @@ class BlockingAssistantTest {
 
     @Test
     void returns_failed_invocation_when_failure_is_expected() {
-        useChatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model is overloaded"));
+        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> assistant.chat("Hi"))

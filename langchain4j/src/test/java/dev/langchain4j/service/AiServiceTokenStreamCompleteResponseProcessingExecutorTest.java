@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolServiceContext;
@@ -76,7 +76,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_process_every_complete_response_on_executor() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
         AtomicInteger executedTasks = new AtomicInteger();
@@ -112,7 +112,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_process_complete_response_on_delivering_thread_when_executor_runs_task_inline() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
         List<String> deliveringThreadNames = new CopyOnWriteArrayList<>();
@@ -140,7 +140,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_wait_for_concurrently_executed_tools_on_executor() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
         ExecutorService toolExecutorService =
@@ -174,7 +174,7 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
     void should_process_complete_response_on_delivering_thread_when_no_executor() throws Exception {
 
         // given
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
         TokenStream tokenStream = tokenStream(model, tools, null);

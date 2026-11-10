@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
@@ -118,7 +118,7 @@ class ParentInvocationTest {
     void should_not_link_sub_agent_of_supervisor_to_parent_yet() {
         // no parent is the current limitation for sub-agents run by the agentic framework (to be revisited), not the
         // target behaviour
-        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock plannerModel = ChatModelMock.thatResponds(
                 AiMessage.from("""
                 {"agentName": "answer", "arguments": {"text": "Hello"}}
                 """),

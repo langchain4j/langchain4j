@@ -19,8 +19,8 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -31,7 +31,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -189,7 +189,7 @@ class RoutingChatModelTest {
                 .name("weather")
                 .arguments("{}")
                 .build();
-        ChatModelMock small = ChatModelMock.thatAlwaysResponds(AiMessage.from(toolCall), AiMessage.from("It is sunny"));
+        ChatModelMock small = ChatModelMock.thatResponds(AiMessage.from(toolCall), AiMessage.from("It is sunny"));
         List<String> routed = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", small)
@@ -748,7 +748,7 @@ class RoutingChatModelTest {
     @Test
     void should_report_error_of_selected_streaming_model_to_handler() {
 
-        StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));
+        StreamingChatModel failing = StreamingChatModelMock.thatAlwaysThrows(new IllegalArgumentException("unsupported parameter"));
         List<Throwable> errors = new ArrayList<>();
 
         RoutingStreamingChatModel.builder()

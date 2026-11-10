@@ -27,7 +27,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.concurrent.Executor;

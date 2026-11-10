@@ -16,8 +16,8 @@ import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
@@ -289,7 +289,7 @@ class AiServiceToolCallMemoryTest {
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
         ChatModelMock model =
-                ChatModelMock.thatAlwaysResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
+                ChatModelMock.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(model)
@@ -565,7 +565,7 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(StreamingChatModelMock.thatStreams(
                         AiMessage.from(GET_TEMPERATURE), AiMessage.from(GET_TEMPERATURE)))
                 .chatMemory(memory)
                 .tools(new Weather())

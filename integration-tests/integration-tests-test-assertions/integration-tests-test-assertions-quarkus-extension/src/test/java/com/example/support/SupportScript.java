@@ -6,8 +6,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.test.mock.ChatModelMock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -72,11 +74,7 @@ final class SupportScript {
     }
 
     private static ToolExecutionRequest toolCall(String name, String bookingNumber) {
-        return ToolExecutionRequest.builder()
-                .id(name + "-call")
-                .name(name)
-                .arguments("{\"bookingNumber\":\"%s\"}".formatted(bookingNumber))
-                .build();
+        return ChatModelMock.toolCall(name, Map.of("bookingNumber", bookingNumber));
     }
 
     private static String earlierName(List<ChatMessage> messages) {

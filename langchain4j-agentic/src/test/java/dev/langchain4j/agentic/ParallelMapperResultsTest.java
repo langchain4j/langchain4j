@@ -7,7 +7,7 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;

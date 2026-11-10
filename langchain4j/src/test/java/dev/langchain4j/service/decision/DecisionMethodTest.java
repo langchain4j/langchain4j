@@ -2,7 +2,7 @@ package dev.langchain4j.service.decision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;

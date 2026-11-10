@@ -7,9 +7,9 @@ import static dev.langchain4j.test.quarkus.Models.useStreamingChatModel;
 
 import com.example.support.CustomerSupportAssistant;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;

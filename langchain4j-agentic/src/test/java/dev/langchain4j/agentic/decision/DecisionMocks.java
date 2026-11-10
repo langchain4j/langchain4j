@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.decision;
 
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;

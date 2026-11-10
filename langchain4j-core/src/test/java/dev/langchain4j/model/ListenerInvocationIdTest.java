@@ -17,8 +17,8 @@ import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -32,7 +32,7 @@ import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -40,18 +40,18 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.moderation.listener.ModerationModelRequestContext;
 import dev.langchain4j.model.moderation.listener.ModerationModelResponseContext;
-import dev.langchain4j.model.moderation.mock.ModerationModelMock;
+import dev.langchain4j.test.mock.ModerationModelMock;
 import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -122,7 +122,7 @@ class ListenerInvocationIdTest {
     @Test
     void chat_listener_should_get_the_invocation_id_on_error() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
-        ChatModel model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("failed").withListeners(listener);
+        ChatModel model = ChatModelMock.thatAlwaysThrows(new RuntimeException("failed")).withListeners(listener);
         InvocationContext invocation = invocationContext();
 
         assertThatThrownBy(() -> CurrentInvocation.callWith(invocation, () -> model.chat(CHAT_REQUEST)))
@@ -283,7 +283,7 @@ class ListenerInvocationIdTest {
     @Test
     void embedding_listener_should_get_the_current_invocation_id() {
         List<UUID> invocationIds = new CopyOnWriteArrayList<>();
-        EmbeddingModelMock model = new EmbeddingModelMock().withListeners(new EmbeddingModelListener() {
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withListeners(new EmbeddingModelListener() {
             @Override
             public void onRequest(EmbeddingModelRequestContext context) {
                 invocationIds.add(context.invocationId());
@@ -457,7 +457,7 @@ class ListenerInvocationIdTest {
     void streaming_chat_listener_should_get_the_invocation_id_on_error() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
         StreamingChatModel model =
-                new StreamingChatModelMock(new IllegalStateException("failed")).withListeners(listener);
+                StreamingChatModelMock.thatAlwaysThrows(new IllegalStateException("failed")).withListeners(listener);
         InvocationContext invocation = invocationContext();
         CompletableFuture<Throwable> error = new CompletableFuture<>();
 
@@ -483,7 +483,7 @@ class ListenerInvocationIdTest {
     void publisher_chat_listener_should_get_the_invocation_id_on_error_on_another_thread() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
         StreamingChatModel model =
-                new StreamingChatModelMock(new IllegalStateException("failed")).withListeners(listener);
+                StreamingChatModelMock.thatAlwaysThrows(new IllegalStateException("failed")).withListeners(listener);
         InvocationContext invocation = invocationContext();
 
         Flow.Publisher<ChatModelStreamingEvent> publisher =
@@ -504,7 +504,7 @@ class ListenerInvocationIdTest {
     @Test
     void decision_listener_should_get_the_invocation_id_on_error() {
         List<UUID> invocationIds = new CopyOnWriteArrayList<>();
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("failed")
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("failed"))
                 .withListeners(new DecisionModelListener() {
                     @Override
                     public void onError(DecisionModelErrorContext context) {
@@ -526,7 +526,7 @@ class ListenerInvocationIdTest {
     @Test
     void embedding_listener_should_get_the_invocation_id_on_error() {
         List<UUID> invocationIds = new CopyOnWriteArrayList<>();
-        EmbeddingModelMock model = new EmbeddingModelMock().withListeners(new EmbeddingModelListener() {
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withoutAsyncSupport().withListeners(new EmbeddingModelListener() {
             @Override
             public void onError(EmbeddingModelErrorContext context) {
                 invocationIds.add(context.invocationId());
@@ -548,7 +548,7 @@ class ListenerInvocationIdTest {
     @Test
     void scoring_listener_should_get_the_invocation_id_on_error() {
         List<UUID> invocationIds = new CopyOnWriteArrayList<>();
-        ScoringModelMock model = ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("failed")
+        ScoringModelMock model = ScoringModelMock.thatAlwaysThrows(new RuntimeException("failed"))
                 .withListeners(new ScoringModelListener() {
                     @Override
                     public void onError(ScoringModelErrorContext context) {
@@ -662,7 +662,7 @@ class ListenerInvocationIdTest {
     @Test
     void chat_listener_should_get_the_invocation_id_when_the_async_call_fails_on_another_thread() {
         RecordingChatModelListener listener = new RecordingChatModelListener();
-        ChatModel model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("failed").withListeners(listener);
+        ChatModel model = ChatModelMock.thatAlwaysThrows(new RuntimeException("failed")).withListeners(listener);
         InvocationContext invocation = invocationContext();
 
         CompletableFuture<?> future = CurrentInvocation.callWith(invocation, () -> model.chatAsync(CHAT_REQUEST));
@@ -778,7 +778,7 @@ class ListenerInvocationIdTest {
     @Test
     void embedding_listener_should_be_notified_without_the_current_invocation() {
         List<UUID> seenInListener = new CopyOnWriteArrayList<>();
-        EmbeddingModelMock model = new EmbeddingModelMock().withListeners(new EmbeddingModelListener() {
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withListeners(new EmbeddingModelListener() {
             @Override
             public void onRequest(EmbeddingModelRequestContext context) {
                 seenInListener.add(CurrentInvocation.invocationId());

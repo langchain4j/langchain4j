@@ -9,7 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.rag.query.Metadata;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -185,7 +185,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
             }
         };
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingModel(new EmbeddingModelMock())
+                .embeddingModel(EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withoutAsyncSupport())
                 .embeddingStore(store)
                 .offloadBlocking(true)
                 .build();

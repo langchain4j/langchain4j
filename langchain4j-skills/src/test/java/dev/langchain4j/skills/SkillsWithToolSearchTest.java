@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolProviderRequest;
@@ -131,7 +131,7 @@ class SkillsWithToolSearchTest {
 
         // LLM call 1: calls tool_search_tool to search for "inventory"
         // LLM call 2: gets search result, responds with text
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("tool_search_tool")
                         .arguments("{\"terms\": [\"inventory\"]}")
@@ -198,7 +198,7 @@ class SkillsWithToolSearchTest {
         // LLM call 1: calls activate_skill
         // LLM call 2: calls query_inventory (now visible after activation)
         // LLM call 3: responds with text
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -286,7 +286,7 @@ class SkillsWithToolSearchTest {
         // LLM call 2: calls tool_search_tool to find weather tool
         // LLM call 3: calls getWeather (now found via search)
         // LLM call 4: responds with text
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -397,7 +397,7 @@ class SkillsWithToolSearchTest {
         // LLM call 1: activates weather skill only
         // LLM call 2: calls get_weather
         // LLM call 3: responds with text
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")

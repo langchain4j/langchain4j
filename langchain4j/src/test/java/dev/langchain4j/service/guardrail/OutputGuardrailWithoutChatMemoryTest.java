@@ -14,8 +14,8 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -108,7 +108,7 @@ class OutputGuardrailWithoutChatMemoryTest {
                 .name("lookup")
                 .arguments("{}")
                 .build());
-        var model = ChatModelMock.thatAlwaysResponds(toolCall, AiMessage.from(REJECTED), AiMessage.from("good"));
+        var model = ChatModelMock.thatResponds(toolCall, AiMessage.from(REJECTED), AiMessage.from("good"));
 
         assertThat(chat(mode, model, new RejectFirstAnswer(Outcome.REPROMPT))).isEqualTo("good");
         assertThat(model.requests()).hasSize(3);
@@ -161,7 +161,7 @@ class OutputGuardrailWithoutChatMemoryTest {
 
         return switch (mode) {
             case SYNC -> {
-                var model = ChatModelMock.thatAlwaysResponds(answers.toArray(AiMessage[]::new));
+                var model = ChatModelMock.thatResponds(answers);
                 var assistant = build(
                         SyncAssistant.class,
                         withChatMemory,
@@ -170,7 +170,7 @@ class OutputGuardrailWithoutChatMemoryTest {
                 yield model.requests();
             }
             case ASYNC -> {
-                var model = ChatModelMock.thatAlwaysResponds(answers.toArray(AiMessage[]::new));
+                var model = ChatModelMock.thatResponds(answers);
                 var assistant = build(
                         AsyncAssistant.class,
                         withChatMemory,
@@ -179,7 +179,7 @@ class OutputGuardrailWithoutChatMemoryTest {
                 yield model.requests();
             }
             case TOKEN_STREAM -> {
-                var model = StreamingChatModelMock.thatAlwaysStreams(answers);
+                var model = StreamingChatModelMock.thatStreams(answers);
                 var assistant = build(
                         TokenStreamAssistant.class,
                         withChatMemory,
@@ -195,7 +195,7 @@ class OutputGuardrailWithoutChatMemoryTest {
                 yield model.requests();
             }
             case PUBLISHER -> {
-                var model = StreamingChatModelMock.thatAlwaysStreams(answers);
+                var model = StreamingChatModelMock.thatStreams(answers);
                 var assistant = build(
                         PublisherAssistant.class,
                         withChatMemory,

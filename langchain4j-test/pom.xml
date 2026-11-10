@@ -100,7 +100,7 @@
                                 <classpathDependencyExclude>org.apache.opennlp:opennlp-tools</classpathDependencyExclude>
                                 <classpathDependencyExclude>io.smallrye.reactive:mutiny-zero</classpathDependencyExclude>
                             </classpathDependencyExcludes>
-                            <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java</test>
+                            <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java,dev/langchain4j/test/mock/**/*Test.java</test>
                             <systemPropertyVariables>
                                 <withoutLangChain4j>true</withoutLangChain4j>
                             </systemPropertyVariables>

@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -266,7 +266,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
+        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -311,7 +311,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
+        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -358,7 +358,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Something went wrong");
+        ChatModelMock model = ChatModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong"));
         FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();

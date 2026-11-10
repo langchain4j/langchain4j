@@ -19,7 +19,7 @@ import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;

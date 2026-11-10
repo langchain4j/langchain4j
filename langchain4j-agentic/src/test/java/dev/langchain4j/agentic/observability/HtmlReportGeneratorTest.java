@@ -19,7 +19,7 @@ import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -239,7 +239,7 @@ class HtmlReportGeneratorTest {
     void generates_execution_with_the_model_of_each_ai_agent() {
         Assistant assistant = AgenticServices.agentBuilder(
                         Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(ChatModelMock.thatResponds(
                                 AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
@@ -276,7 +276,7 @@ class HtmlReportGeneratorTest {
     @Test
     void does_not_show_a_model_next_to_the_tokens_of_llm_calls_answered_by_different_models() {
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(ChatModelMock.thatResponds(
                                 AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")

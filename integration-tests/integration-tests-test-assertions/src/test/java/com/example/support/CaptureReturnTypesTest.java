@@ -8,8 +8,8 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -94,7 +94,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_capture_token_stream_started_in_the_lambda() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams(
+                StreamingChatModelMock.thatStreams(
                         toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-888\"}"),
                         AiMessage.from("It ends on 2026-12-27.")),
                 bookings());
@@ -191,7 +191,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_subscribe_to_returned_publisher_and_wait_for_it() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams(
+                StreamingChatModelMock.thatStreams(
                         toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"), AiMessage.from("Done.")),
                 bookings());
 

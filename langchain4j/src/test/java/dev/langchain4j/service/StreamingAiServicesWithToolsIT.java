@@ -38,7 +38,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -1181,7 +1181,7 @@ class StreamingAiServicesWithToolsIT {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatStreams(
                 AiMessage.from(toolExecutionRequest1), AiMessage.from(toolExecutionRequest2), AiMessage.from("sunny")));
 
         class WeatherTool {
@@ -1480,7 +1480,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = new StreamingChatModelMock(List.of(
+        StreamingChatModel streamingModel = StreamingChatModelMock.thatStreams(List.of(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1553,7 +1553,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = StreamingChatModelMock.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1632,7 +1632,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = StreamingChatModelMock.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1682,7 +1682,7 @@ class StreamingAiServicesWithToolsIT {
 
         ToolReturningImage tools = spy(new ToolReturningImage());
 
-        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")

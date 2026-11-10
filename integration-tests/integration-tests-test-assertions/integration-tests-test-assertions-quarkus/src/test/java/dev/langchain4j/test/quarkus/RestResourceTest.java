@@ -9,8 +9,8 @@ import static io.restassured.RestAssured.given;
 
 import com.example.support.SupportResource;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
 import io.quarkus.test.junit.QuarkusTest;

@@ -59,9 +59,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
@@ -234,7 +234,7 @@ class HelperObjectsTest {
 
     /** Replies with the system message and the last user message it receives. */
     static ChatModelMock echoModel() {
-        return new ChatModelMock(chatRequest -> {
+        return ChatModelMock.thatResponds(chatRequest -> {
             String system = chatRequest.messages().stream()
                     .filter(SystemMessage.class::isInstance)
                     .map(message -> ((SystemMessage) message).text())
@@ -249,7 +249,7 @@ class HelperObjectsTest {
     /** Replies with the given responses in order. */
     static ChatModelMock scriptedModel(String... responses) {
         Iterator<String> iterator = List.of(responses).iterator();
-        return new ChatModelMock(chatRequest -> AiMessage.from(iterator.next()));
+        return ChatModelMock.thatResponds(chatRequest -> AiMessage.from(iterator.next()));
     }
 
     static String receivedTexts(ChatModelMock model) {

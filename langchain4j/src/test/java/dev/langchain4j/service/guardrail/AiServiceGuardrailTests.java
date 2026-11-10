@@ -19,8 +19,8 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
@@ -387,7 +387,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
 
         var tools = new Object() {
@@ -435,7 +435,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from("bad response"),
                 toolCallResponse,
                 AiMessage.from("still bad"),
@@ -490,7 +490,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from("bad response"), toolCallResponse, AiMessage.from("recovered"));
 
         var tools = new Object() {
@@ -539,7 +539,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
 
         var tools = new Object() {
@@ -593,7 +593,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from("bad response"),
                 toolCallResponse,
                 AiMessage.from("still bad"),
@@ -654,7 +654,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from("bad response"), toolCallResponse, AiMessage.from("recovered"));
 
         var tools = new Object() {
@@ -709,7 +709,7 @@ class AiServiceGuardrailTests {
                 .arguments("{}")
                 .build());
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(
                 AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
 
         var tools = new Object() {

@@ -9,8 +9,8 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -100,7 +100,7 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_and_finish_reason_of_a_token_stream() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams(
+                StreamingChatModelMock.thatStreams(
                                 toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"),
                                 AiMessage.from("It starts on 2026-11-02."))
                         .withTokenUsage(new TokenUsage(40, 10))

@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import java.util.List;
@@ -33,7 +33,7 @@ public class ProgrammaticCreatedImmediateReturnToolTest {
         };
 
         // Mock model that tracks how many times it's called
-        ChatModelMock mockModel = new ChatModelMock(request -> {
+        ChatModelMock mockModel = ChatModelMock.thatResponds(request -> {
             llmCallCount.incrementAndGet();
             return AiMessage.from(ToolExecutionRequest.builder()
                     .id("calc-1")
@@ -82,7 +82,7 @@ public class ProgrammaticCreatedImmediateReturnToolTest {
         };
 
         // Mock model that tracks calls and returns different responses
-        ChatModelMock mockModel = new ChatModelMock(request -> {
+        ChatModelMock mockModel = ChatModelMock.thatResponds(request -> {
             int callNumber = llmCallCount.incrementAndGet();
             if (callNumber == 1) {
                 // First call: request tool execution

@@ -1,7 +1,7 @@
 package com.example.support;
 
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.test.judge.DecisionModelJudge;
 import dev.langchain4j.test.judge.Judge;
 import org.springframework.boot.test.context.TestConfiguration;

@@ -14,7 +14,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatRequestOptions;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -79,7 +79,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest),
                 AiMessage.from("I was not able to get the weather")
         ));
@@ -120,7 +120,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest),
                 AiMessage.from("I was not able to get the weather")
         ));
@@ -157,7 +157,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .name("getImage")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest),
                 AiMessage.from("I was not able to get the image")
         ));
@@ -208,7 +208,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest),
                 AiMessage.from("I was not able to get the weather")
         ));
@@ -340,7 +340,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest1),
                 AiMessage.from(toolExecutionRequest2),
                 AiMessage.from("sunny")

@@ -11,9 +11,9 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
@@ -76,7 +76,7 @@ class ConcurrentAgentResponsesTest {
 
     private static DecisionModelMock modelDecidingAllAtOnce(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
-        return new DecisionModelMock(request -> {
+        return DecisionModelMock.thatAnswers(request -> {
             String question =
                     ((FieldsInput) request.input()).fields().get("request").toString();
             await(allCallsInFlight);

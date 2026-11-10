@@ -1,8 +1,9 @@
-package dev.langchain4j.model.scoring.mock;
+package dev.langchain4j.test.mock;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
@@ -19,15 +20,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleFunction;
 
 /**
- * A {@link ScoringModel} for tests: it scores each document with a fixed or computed score.
- * It supports {@link #score(ScoringRequest)}, {@link #scoreAll(List, String)} (which goes through
- * {@link #score(ScoringRequest)}, so listeners are notified) and {@link #scoreAsync(ScoringRequest)} (the future is
- * already completed when returned), unless created with {@link #withoutAsyncSupport()} or
- * {@link #withAsyncResult(Supplier)}. With {@link #implementingOnlyScoreAll()}, it behaves like a model that implements
- * only {@link #scoreAll(List, String)}.
- * This implementation is experimental and subject to change in the future.
+ * A {@link ScoringModel} for tests: it needs no network, scores each document with a fixed or computed score, and
+ * records the requests it receives. It supports {@link #score(ScoringRequest)}, {@link #scoreAll(List, String)} and
+ * {@link #scoreAsync(ScoringRequest)} (the future is already completed when returned).
  */
 @Experimental
 public class ScoringModelMock implements ScoringModel {
@@ -41,11 +39,9 @@ public class ScoringModelMock implements ScoringModel {
     private Supplier<CompletableFuture<ScoringResponse>> asyncResult;
     private boolean onlyScoreAll;
     private final List<List<TextSegment>> scoreAllCalls = new ArrayList<>();
+    private final RecordedRequests<ScoringRequest> requests = new RecordedRequests<>("scoring");
 
-    /**
-     * @param scores computes the score of a document from its text.
-     */
-    public ScoringModelMock(Function<String, Double> scores) {
+    private ScoringModelMock(Function<String, Double> scores) {
         this.scores = ensureNotNull(scores, "scores");
     }
 
@@ -73,6 +69,9 @@ public class ScoringModelMock implements ScoringModel {
         return this;
     }
 
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
     public ScoringModelMock withListeners(ScoringModelListener... listeners) {
         this.listeners = List.of(listeners);
         return this;
@@ -83,6 +82,7 @@ public class ScoringModelMock implements ScoringModel {
      * {@link AsyncNotSupportedException}, like a scoring model without asynchronous
      * support.
      */
+    @Internal
     public ScoringModelMock withoutAsyncSupport() {
         this.asyncSupported = false;
         return this;
@@ -92,6 +92,7 @@ public class ScoringModelMock implements ScoringModel {
      * Makes {@link #doScoreAsync(ScoringRequest)} return what the given supplier returns (for example a future that
      * is not completed yet, or {@code null}), or throw what it throws.
      */
+    @Internal
     public ScoringModelMock withAsyncResult(Supplier<CompletableFuture<ScoringResponse>> asyncResult) {
         this.asyncResult = asyncResult;
         return this;
@@ -101,6 +102,7 @@ public class ScoringModelMock implements ScoringModel {
      * Makes this mock behave like a model that implements only {@link #scoreAll(List, String)}: it scores in
      * {@link #scoreAll(List, String)} and keeps the default {@link ScoringModel#doScore(ScoringRequest)}.
      */
+    @Internal
     public ScoringModelMock implementingOnlyScoreAll() {
         this.onlyScoreAll = true;
         return this;
@@ -110,6 +112,7 @@ public class ScoringModelMock implements ScoringModel {
      * @return the segments of each call of {@link #scoreAll(List, String)} made by a mock created with
      * {@link #implementingOnlyScoreAll()}.
      */
+    @Internal
     public List<List<TextSegment>> scoreAllCalls() {
         return scoreAllCalls;
     }
@@ -132,9 +135,13 @@ public class ScoringModelMock implements ScoringModel {
         if (onlyScoreAll) {
             return ScoringModel.super.doScore(request);
         }
-        List<Double> result = request.documents().stream().map(scores).toList();
+        requests.add(request);
+        return respond(request);
+    }
+
+    private ScoringResponse respond(ScoringRequest request) {
         return ScoringResponse.builder()
-                .scores(result)
+                .scores(request.documents().stream().map(scores).toList())
                 .modelName(request.modelName())
                 .tokenUsage(tokenUsage)
                 .build();
@@ -148,13 +155,9 @@ public class ScoringModelMock implements ScoringModel {
         if (!asyncSupported) {
             return AsyncNotSupported.failedFuture(getClass(), "doScoreAsync");
         }
+        requests.add(request);
         try {
-            List<Double> result = request.documents().stream().map(scores).toList();
-            return CompletableFuture.completedFuture(ScoringResponse.builder()
-                    .scores(result)
-                    .modelName(request.modelName())
-                    .tokenUsage(tokenUsage)
-                    .build());
+            return CompletableFuture.completedFuture(respond(request));
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
         }
@@ -175,21 +178,45 @@ public class ScoringModelMock implements ScoringModel {
         return provider;
     }
 
+    /**
+     * A copy of the requests received so far, in the order they arrived.
+     */
+    public List<ScoringRequest> requests() {
+        return requests.all();
+    }
+
+    /**
+     * The only request received so far.
+     *
+     * @throws IllegalStateException if the mock received no request or several requests
+     */
+    public ScoringRequest request() {
+        return requests.only();
+    }
+
+    /**
+     * A model that gives every document the given score.
+     */
     public static ScoringModelMock thatAlwaysScores(double score) {
         return new ScoringModelMock(document -> score);
     }
 
-    public static ScoringModelMock thatScores(Function<String, Double> scores) {
-        return new ScoringModelMock(scores);
+    /**
+     * A model that computes the score of a document from its text.
+     */
+    public static ScoringModelMock thatScores(ToDoubleFunction<String> scores) {
+        ensureNotNull(scores, "scores");
+        return new ScoringModelMock(scores::applyAsDouble);
     }
 
-    public static ScoringModelMock thatAlwaysThrowsException() {
-        return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
-    }
-
-    public static ScoringModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
+    /**
+     * A model whose requests all fail with the given exception.
+     */
+    public static ScoringModelMock thatAlwaysThrows(RuntimeException exception) {
+        ensureNotNull(exception, "exception");
         return new ScoringModelMock(document -> {
-            throw new RuntimeException(message);
+            throw exception;
         });
     }
+
 }

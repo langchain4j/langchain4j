@@ -13,7 +13,7 @@ import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -186,7 +186,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModel model =
-                ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom").withListeners(listener);
+                ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom")).withListeners(listener);
 
         // when-then
         assertThatThrownBy(() -> model.scoreAll(List.of(TextSegment.from("a")), "query"))
@@ -222,7 +222,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom")
+        ScoringModel model = ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom"))
                 .withListeners(new FailingListener(), listener);
 
         // when-then
@@ -263,7 +263,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom")
+        ScoringModel model = ScoringModelMock.thatAlwaysThrows(new RuntimeException("boom"))
                 .withListeners(new FailingListener(), listener);
 
         // when

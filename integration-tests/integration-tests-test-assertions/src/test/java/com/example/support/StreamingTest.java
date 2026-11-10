@@ -8,7 +8,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.captureExpectingFail
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import java.util.List;
@@ -131,7 +131,7 @@ class StreamingTest {
     @Test
     void should_rethrow_failure_of_token_stream_also_when_passed_to_on_error() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broken"));
+                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
         List<Throwable> errors = new CopyOnWriteArrayList<>();
 
         assertThatThrownBy(() -> capture(() -> agent.chat("Hi").onPartialResponse(token -> {}).onError(errors::add).start()))
@@ -142,7 +142,7 @@ class StreamingTest {
     @Test
     void should_return_failed_token_stream_invocation_when_failure_is_expected() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broken"));
+                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
 
         AiServiceInvocation invocation =
                 captureExpectingFailure(() -> agent.chat("Hi").ignoreErrors().start()).invocation();
@@ -153,7 +153,7 @@ class StreamingTest {
     @Test
     void should_return_failed_publisher_invocation_when_failure_is_expected() {
         StreamingCustomerSupportAgent agent =
-                agent(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broken"));
+                agent(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")));
 
         assertThatThrownBy(() -> capture(() -> agent.chatReactive("Hi"))).hasMessageContaining("Stream broken");
 
@@ -164,7 +164,7 @@ class StreamingTest {
     @Test
     void should_capture_failure_of_streaming_model_that_throws_from_chat_when_started_by_captured_code() {
         StreamingCustomerSupportAgent agent = agent(
-                StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Cannot connect").throwingFromChat());
+                StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Cannot connect")).throwingFromChat());
 
         AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chat("Hi")
                         .onPartialResponse(token -> {})
@@ -177,7 +177,7 @@ class StreamingTest {
 
     @Test
     void should_capture_several_token_streams() {
-        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatAlwaysStreams(
+        StreamingCustomerSupportAgent agent = agent(StreamingChatModelMock.thatStreams(
                 List.of(AiMessage.from("First"),
                         AiMessage.from("Second"))));
 

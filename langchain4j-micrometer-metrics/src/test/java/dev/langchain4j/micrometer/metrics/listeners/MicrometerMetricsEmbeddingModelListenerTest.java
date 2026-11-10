@@ -15,7 +15,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
@@ -69,7 +69,7 @@ class MicrometerMetricsEmbeddingModelListenerTest {
 
     @Test
     void should_record_unknown_provider_name_when_model_provider_is_null() {
-        EmbeddingModel modelWithoutProvider = new EmbeddingModelMock().withProvider(null);
+        EmbeddingModel modelWithoutProvider = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withProvider(null);
 
         listener.onResponse(EmbeddingModelResponseContext.builder()
                 .embeddingRequest(embeddingRequest("text-embedding-3-small"))
@@ -260,6 +260,6 @@ class MicrometerMetricsEmbeddingModelListenerTest {
     }
 
     private static EmbeddingModel embeddingModel() {
-        return new EmbeddingModelMock().withProvider(ModelProvider.MICROSOFT_FOUNDRY);
+        return EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withProvider(ModelProvider.MICROSOFT_FOUNDRY);
     }
 }

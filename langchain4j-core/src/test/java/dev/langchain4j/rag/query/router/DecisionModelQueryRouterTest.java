@@ -16,7 +16,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -51,7 +51,7 @@ class DecisionModelQueryRouterTest {
         return decisionModel;
     }
 
-    final DecisionModel failing = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision model is down");
+    final DecisionModel failing = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision model is down"));
 
     @Test
     void should_route_to_retrievers_above_threshold() {

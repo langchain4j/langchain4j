@@ -11,8 +11,8 @@ import com.example.support.CustomerContext;
 import com.example.support.CustomerSupportAssistant;
 import com.example.support.SupportService;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -155,7 +155,7 @@ class ReactiveAssistantTest {
 
     @Test
     void rethrows_failure_of_returned_uni() {
-        useChatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model is overloaded"));
+        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> supportService.answerLater("Hi")))
                 .hasMessageContaining("Model is overloaded");
@@ -163,7 +163,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_of_uni_when_failure_is_expected() {
-        useChatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model is overloaded"));
+        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> supportService.answerLater("Hi"))
@@ -174,7 +174,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_when_uni_failure_was_recovered() {
-        useChatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model is overloaded"));
+        useChatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(() -> supportService
                         .answerLater("Hi")
@@ -350,7 +350,7 @@ class ReactiveAssistantTest {
 
     @Test
     void rethrows_failure_of_returned_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broke"));
+        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> supportService.streamAnswer("Hi")))
                 .hasMessageContaining("Stream broke");
@@ -358,7 +358,7 @@ class ReactiveAssistantTest {
 
     @Test
     void returns_failed_invocation_of_multi_when_failure_is_expected() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broke"));
+        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> supportService.streamAnswer("Hi"))

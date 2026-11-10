@@ -13,8 +13,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import java.util.ArrayList;
@@ -162,7 +162,7 @@ class DecisionModelFilteringToolProviderTest {
     void should_fall_back_to_all_tools_when_decision_model_fails() {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(
-                allTools, DecisionModelMock.thatAlwaysThrowsException());
+                allTools, DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
 
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
                 .hasSize(4);
@@ -183,13 +183,13 @@ class DecisionModelFilteringToolProviderTest {
 
         ToolProvider noTools = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatAlwaysThrowsException())
+                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .alwaysInclude("send_email")
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.NO_TOOLS)
                 .build();
         ToolProvider failing = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"))
+                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.FAIL)
                 .build();
 
@@ -407,7 +407,7 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_pass_on_only_relevant_tools_in_ai_service() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("get_weather")

@@ -16,7 +16,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -513,7 +513,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision failed");
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .hasMessageContaining("decision failed");

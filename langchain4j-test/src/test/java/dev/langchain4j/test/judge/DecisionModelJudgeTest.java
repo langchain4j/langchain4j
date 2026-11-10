@@ -18,7 +18,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.MessagesInput;
@@ -266,7 +266,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_throw_on_content_filter() {
-        DecisionModelMock judge = new DecisionModelMock(request -> {
+        DecisionModelMock judge = DecisionModelMock.thatAnswers(request -> {
             throw new ContentFilteredException("blocked by the content filter of the provider");
         });
 

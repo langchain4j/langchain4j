@@ -17,8 +17,8 @@ import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -757,10 +757,10 @@ class AiServicesObservabilityTests {
                 if (streaming) {
                     builder.executeToolsConcurrently()
                             .streamingChatModel(
-                                    StreamingChatModelMock.thatAlwaysStreams(toolRequestMessage, toolResponseMessage))
+                                    StreamingChatModelMock.thatStreams(toolRequestMessage, toolResponseMessage))
                             .tools(new Calculator());
                 } else {
-                    builder.chatModel(ChatModelMock.thatAlwaysResponds(toolRequestMessage, toolResponseMessage))
+                    builder.chatModel(ChatModelMock.thatResponds(toolRequestMessage, toolResponseMessage))
                             .tools(new Calculator());
                 }
             } else {
@@ -785,10 +785,10 @@ class AiServicesObservabilityTests {
             var builder = AiServices.builder(Assistant.class).registerListeners(listeners);
 
             return streaming
-                    ? builder.streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage(
-                                    "LLM invocation failed"))
+                    ? builder.streamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException(
+                                    "LLM invocation failed")))
                             .build()
-                    : builder.chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("LLM invocation failed"))
+                    : builder.chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("LLM invocation failed")))
                             .build();
         }
     }

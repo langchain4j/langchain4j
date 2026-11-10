@@ -23,7 +23,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
@@ -326,7 +326,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeTheFirstTierRuns() {
         ConfidenceCascadePlanner planner =
-                new ConfidenceCascadePlanner(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused"), 0.5);
+                new ConfidenceCascadePlanner(DecisionModelMock.thatAlwaysThrows(new RuntimeException("unused")), 0.5);
 
         assertThat(planner.executionState()).isEmpty();
     }

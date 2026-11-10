@@ -38,7 +38,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -322,7 +322,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees")));
         Tools tools = new Tools();
 
@@ -374,7 +374,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent")));
         ConcurrentTools tools = new ConcurrentTools();
 
@@ -399,7 +399,7 @@ class AiServicesAsyncTest {
     void should_use_chat_memory() throws Exception {
 
         ChatModelMock chatModel =
-                ChatModelMock.thatAlwaysResponds(AiMessage.from("first answer"), AiMessage.from("second answer"));
+                ChatModelMock.thatResponds(AiMessage.from("first answer"), AiMessage.from("second answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -617,7 +617,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
@@ -641,7 +641,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_future_when_model_fails() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -667,7 +667,7 @@ class AiServicesAsyncTest {
     @Test
     void model_error_propagates_original_cause_without_completion_exception() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -704,7 +704,7 @@ class AiServicesAsyncTest {
                 .arguments("{}")
                 .build();
         ChatModelMock chatModel =
-                ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest), AiMessage.from("ignored"));
+                ChatModelMock.thatResponds(AiMessage.from(toolExecutionRequest), AiMessage.from("ignored"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -795,7 +795,7 @@ class AiServicesAsyncTest {
         // tool-aware reprompt executor must resolve that tool (via the async tool loop) so the guardrail only ever
         // sees the final textual answer, not the intermediate tool-calling message.
         RepromptWeatherTool tool = new RepromptWeatherTool();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from("bad answer"),
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -1005,7 +1005,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(firstRequest), AiMessage.from(secondRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
 
@@ -1170,7 +1170,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         AsyncTools tools = new AsyncTools();
 
@@ -1243,7 +1243,7 @@ class AiServicesAsyncTest {
                     .name("currentHumidity")
                     .arguments("{}")
                     .build();
-            ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+            ChatModelMock chatModel = ChatModelMock.thatResponds(
                     AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
             ConcurrentAsyncTools tools = new ConcurrentAsyncTools(toolPool);
 
@@ -1296,7 +1296,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         MixedTools tools = new MixedTools();
 
@@ -1347,7 +1347,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         SequentialAsyncTools tools = new SequentialAsyncTools();
 
@@ -1385,7 +1385,7 @@ class AiServicesAsyncTest {
                 .arguments("{}")
                 .build();
         // each round the LLM calls a single async tool, then answers
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(firstRoundRequest),
                 AiMessage.from(secondRoundRequest),
                 AiMessage.from("42 degrees, 69 percent"));
@@ -1433,7 +1433,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("It is 69 percent humidity"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1477,7 +1477,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         AsyncTools tools = new AsyncTools();
 
@@ -1511,7 +1511,7 @@ class AiServicesAsyncTest {
                 .arguments("{ invalid json }")
                 .build();
         ChatModelMock chatModel =
-                ChatModelMock.thatAlwaysResponds(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+                ChatModelMock.thatResponds(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1551,7 +1551,7 @@ class AiServicesAsyncTest {
         ToolProvider toolProvider =
                 request -> ToolProviderResult.builder().add(toolSpecification, toolExecutor).build();
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1594,7 +1594,7 @@ class AiServicesAsyncTest {
                         CompletableFuture.delayedExecutor(50, MILLISECONDS));
             }
         };
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1626,7 +1626,7 @@ class AiServicesAsyncTest {
                 .build();
         ToolExecutor syncOnlyToolExecutor = (request, memoryId) -> "42";
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1668,7 +1668,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the temperature"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1704,7 +1704,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the temperature"));
 
         Assistant assistant = AiServices.builder(Assistant.class)

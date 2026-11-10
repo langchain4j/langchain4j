@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
 import static dev.langchain4j.internal.RetryUtils.DEFAULT_RETRY_POLICY;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,7 +14,7 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ class AiServiceThrowingExceptionIT {
 
         AtomicInteger invocationCount = new AtomicInteger(0);
 
-        ChatModel chatModel = new ChatModelMock(chatRequest -> {
+        ChatModel chatModel = ChatModelMock.thatResponds(chatRequest -> {
             invocationCount.incrementAndGet();
             throw new HttpException(429, "Insufficient quota");
         });
@@ -54,11 +55,11 @@ class AiServiceThrowingExceptionIT {
 
         AtomicInteger invocationCount = new AtomicInteger(0);
 
-        ChatModel chatModel = new ChatModelMock(chatRequest -> {
+        ChatModel chatModel = ChatModelMock.thatResponds(
+                chatRequest -> DEFAULT_RETRY_POLICY.withRetry(() -> mappingException(() -> {
                     invocationCount.incrementAndGet();
                     throw new HttpException(429, "Insufficient quota");
-                })
-                .withRetryPolicy(DEFAULT_RETRY_POLICY);
+                })));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
@@ -79,11 +80,11 @@ class AiServiceThrowingExceptionIT {
 
         AtomicInteger invocationCount = new AtomicInteger(0);
 
-        ChatModel chatModel = new ChatModelMock(chatRequest -> {
+        ChatModel chatModel = ChatModelMock.thatResponds(
+                chatRequest -> DEFAULT_RETRY_POLICY.withRetry(() -> mappingException(() -> {
                     invocationCount.incrementAndGet();
                     throw new HttpException(404, "Not Found");
-                })
-                .withRetryPolicy(DEFAULT_RETRY_POLICY);
+                })));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 

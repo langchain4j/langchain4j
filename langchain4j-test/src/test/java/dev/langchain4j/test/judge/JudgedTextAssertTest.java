@@ -10,9 +10,9 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.rag.content.Content;
@@ -334,7 +334,7 @@ class JudgedTextAssertTest {
 
     @Test
     void should_not_wrap_exceptions_thrown_by_the_judge_model() {
-        ChatModelMock judge = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model is down");
+        ChatModelMock judge = ChatModelMock.thatAlwaysThrows(new RuntimeException("model is down"));
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isNotInstanceOf(JudgeException.class)

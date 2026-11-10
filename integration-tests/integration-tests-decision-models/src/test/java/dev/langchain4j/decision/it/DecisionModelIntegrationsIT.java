@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;

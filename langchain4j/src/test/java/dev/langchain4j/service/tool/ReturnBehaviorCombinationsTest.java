@@ -19,8 +19,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -259,7 +259,7 @@ class ReturnBehaviorCombinationsTest {
 
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
@@ -298,7 +298,7 @@ class ReturnBehaviorCombinationsTest {
 
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
@@ -347,7 +347,7 @@ class ReturnBehaviorCombinationsTest {
 
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
@@ -398,7 +398,7 @@ class ReturnBehaviorCombinationsTest {
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
         StreamingChatModelMock model =
-                StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolRequests), AiMessage.from("final answer"));
+                StreamingChatModelMock.thatStreams(AiMessage.from(toolRequests), AiMessage.from("final answer"));
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 

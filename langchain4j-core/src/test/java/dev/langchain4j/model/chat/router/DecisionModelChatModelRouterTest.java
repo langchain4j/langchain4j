@@ -15,7 +15,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
@@ -102,7 +102,7 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_not_select_a_route_when_decision_model_fails() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException());
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
@@ -312,7 +312,7 @@ class DecisionModelChatModelRouterTest {
     void should_fail_when_decision_model_fails_with_fail_strategy() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
-                .decisionModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"))
+                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
                 .fallbackStrategy(DecisionModelChatModelRouter.FallbackStrategy.FAIL)
                 .build();
 

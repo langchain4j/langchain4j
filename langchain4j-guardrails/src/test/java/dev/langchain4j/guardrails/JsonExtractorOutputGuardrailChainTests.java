@@ -11,7 +11,7 @@ import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
@@ -131,7 +131,8 @@ class JsonExtractorOutputGuardrailChainTests {
     }
 
     private static List<String> repromptTexts(ChatModelMock chatModel) {
-        return chatModel.getRequests().stream()
+        return chatModel.requests().stream()
+                .map(request -> request.messages())
                 .map(messages -> ((UserMessage) messages.get(messages.size() - 1)).singleText())
                 .toList();
     }

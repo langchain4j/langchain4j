@@ -7,7 +7,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import static dev.langchain4j.test.service.AiServiceCapture.captureExpectingFailure;
 
 import com.example.support.SupportService;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.service.AiServiceStreamingEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
@@ -105,7 +105,7 @@ class StreamingEventsTest {
 
     @Test
     void has_succeeded_fails_for_failed_stream() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broke"));
+        useStreamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broke")));
 
         AiServiceCapture capture = captureExpectingFailure(() -> supportService.recommendProducts("Hi"));
 

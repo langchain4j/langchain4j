@@ -9,8 +9,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -46,7 +46,7 @@ public class HallucinatedToolNameStrategyTest {
     @Test
     void should_fail_on_hallucinated_tool_execution() {
 
-        ChatModel chatModel = new ChatModelMock(ignore -> AiMessage.from(
+        ChatModel chatModel = ChatModelMock.thatResponds(ignore -> AiMessage.from(
                 ToolExecutionRequest.builder().id("id").name("unknown").build()));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
@@ -68,7 +68,7 @@ public class HallucinatedToolNameStrategyTest {
     @Test
     void should_retry_on_hallucinated_tool_execution() {
 
-        ChatModel chatModel = new ChatModelMock(chatRequest -> {
+        ChatModel chatModel = ChatModelMock.thatResponds(chatRequest -> {
             List<ToolExecutionResultMessage> toolResults = chatRequest.messages().stream()
                     .filter(ToolExecutionResultMessage.class::isInstance)
                     .map(ToolExecutionResultMessage.class::cast)
@@ -203,7 +203,7 @@ public class HallucinatedToolNameStrategyTest {
 
         AiMessage aiMessage3 = AiMessage.from("6.97070153193991E8");
 
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(aiMessage1, aiMessage2, aiMessage3);
+        StreamingChatModelMock model = StreamingChatModelMock.thatStreams(aiMessage1, aiMessage2, aiMessage3);
         Calculator calculator = spy(new Calculator());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);

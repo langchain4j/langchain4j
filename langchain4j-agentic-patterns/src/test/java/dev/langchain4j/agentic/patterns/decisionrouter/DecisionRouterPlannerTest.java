@@ -13,7 +13,7 @@ import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -530,7 +530,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision failed");
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> router(model).ask(REQUEST)).hasMessageContaining("decision failed");
         assertThat(medicalExpert.calls).hasValue(0);

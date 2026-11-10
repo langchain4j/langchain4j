@@ -12,7 +12,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class FailureTest {
 
-    ChatModelMock overloadedModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model overloaded");
+    ChatModelMock overloadedModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("Model overloaded"));
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
@@ -124,8 +124,7 @@ class FailureTest {
 
     @Test
     void should_match_failure_by_cause() {
-        CustomerSupportAgent agent = agent(new ChatModelMock(
-                new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysThrows(new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
 
         AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chat("klaus", "Hi")).invocation();
 

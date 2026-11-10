@@ -11,7 +11,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -226,7 +226,7 @@ class ToolAssertionsTest {
     @Test
     void should_check_a_tool_of_another_ai_service() {
         Concierge concierge = AiServices.builder(Concierge.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(ChatModelMock.thatResponds(
                         toolCall("bookTable", "{\"guests\":2}"), AiMessage.from("Booked.")))
                 .tools(new StrictTools())
                 .build();

@@ -12,27 +12,27 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.moderation.listener.ModerationModelRequestContext;
-import dev.langchain4j.model.moderation.mock.ModerationModelMock;
+import dev.langchain4j.test.mock.ModerationModelMock;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.DefaultAiServiceListenerRegistrar;
@@ -183,7 +183,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_scoring_model_listeners() throws Exception {
-        ScoringModelMock model = new ScoringModelMock(document -> 0.5);
+        ScoringModelMock model = ScoringModelMock.thatScores(document -> 0.5);
 
         withProviders(
                 () -> model.score(ScoringRequest.builder()
@@ -228,7 +228,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners() throws Exception {
-        EmbeddingModelMock model = new EmbeddingModelMock();
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
 
         withProviders(() -> model.embed("hello"), recording());
 
@@ -237,7 +237,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners_of_an_async_embedding() throws Exception {
-        EmbeddingModelMock model = new EmbeddingModelMock().withAsyncSupport();
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
 
         withProviders(
                 () -> assertThat(model.embedAsync(EmbeddingRequest.builder().input("hello").build()))
@@ -250,7 +250,7 @@ class ObservabilityListenersTest {
     @Test
     void should_notify_provided_embedding_model_listeners_of_a_model_that_notifies_its_listeners_itself()
             throws Exception {
-        EmbeddingModelMock model = new EmbeddingModelMock();
+        EmbeddingModelMock model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
         List<TextSegment> segments = List.of(TextSegment.from("hello"));
 
         withProviders(
@@ -272,7 +272,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_scoring_model_listeners_of_an_async_scoring() throws Exception {
-        ScoringModelMock model = new ScoringModelMock(document -> 0.5);
+        ScoringModelMock model = ScoringModelMock.thatScores(document -> 0.5);
 
         withProviders(
                 () -> assertThat(model.scoreAsync(ScoringRequest.builder()

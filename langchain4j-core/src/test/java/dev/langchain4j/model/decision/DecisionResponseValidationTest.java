@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -89,17 +89,13 @@ class DecisionResponseValidationTest {
             Map<String, DecisionAnswer> answers, String expectedMessage) {
 
         List<Throwable> errors = new ArrayList<>();
-        DecisionModelMock model = new DecisionModelMock(request -> answers) {
-            @Override
-            public List<DecisionModelListener> listeners() {
-                return List.of(new DecisionModelListener() {
+        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> answers)
+                .withListeners(new DecisionModelListener() {
                     @Override
                     public void onError(DecisionModelErrorContext context) {
                         errors.add(context.error());
                     }
                 });
-            }
-        };
 
         assertThatThrownBy(() -> model.decide(REQUEST))
                 .isInstanceOf(InvalidDecisionResponseException.class)

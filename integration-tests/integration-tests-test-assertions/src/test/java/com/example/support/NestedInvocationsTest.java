@@ -9,7 +9,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -84,7 +84,7 @@ class NestedInvocationsTest {
                         toolCall("askPolicyExpert", "{\"question\":\"Can I bring my dog?\"}"))),
                 bookings(),
                 CustomerSupport.policyExpert(
-                        ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Policy model overloaded")));
+                        ChatModelMock.thatAlwaysThrows(new RuntimeException("Policy model overloaded"))));
 
         // the tool failure is reported to the agent's model, which answers anyway
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Can I bring my dog?")).invocation();

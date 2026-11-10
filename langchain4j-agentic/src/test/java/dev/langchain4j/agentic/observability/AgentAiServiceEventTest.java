@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
-import static dev.langchain4j.model.chat.mock.ChatModelMock.thatAlwaysResponds;
+import static dev.langchain4j.test.mock.ChatModelMock.thatAlwaysResponds;
+import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,8 +23,8 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.DefaultAiServiceListenerRegistrar;
@@ -64,7 +65,7 @@ class AgentAiServiceEventTest {
     void ai_service_events_are_notified_between_the_agent_invocation_callbacks() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(thatAlwaysResponds(weatherCall(), AiMessage.from("sunny")))
+                .chatModel(thatResponds(weatherCall(), AiMessage.from("sunny")))
                 .tools(new WeatherTools())
                 .listener(recorder(calls, false))
                 .build();
@@ -234,7 +235,7 @@ class AgentAiServiceEventTest {
                     .chatModel(thatAlwaysResponds("expert answer"))
                     .build();
             Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                    .chatModel(thatAlwaysResponds(AiMessage.from(toolCall("1", "askExpert")), AiMessage.from("answer")))
+                    .chatModel(thatResponds(AiMessage.from(toolCall("1", "askExpert")), AiMessage.from("answer")))
                     .tools(new ExpertTools(expert))
                     .build();
 
@@ -421,7 +422,7 @@ class AgentAiServiceEventTest {
     void ai_service_events_of_a_streaming_agent_are_notified() throws Exception {
         List<String> calls = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(weatherCall(), AiMessage.from("sunny")))
+                .streamingChatModel(StreamingChatModelMock.thatStreams(weatherCall(), AiMessage.from("sunny")))
                 .tools(new WeatherTools())
                 .listener(recorder(calls, false))
                 .build();
@@ -475,7 +476,7 @@ class AgentAiServiceEventTest {
     void ai_service_error_is_notified_before_the_agent_invocation_error() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model failure"))
+                .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model failure")))
                 .listener(recorder(calls, false))
                 .build();
 
@@ -538,7 +539,7 @@ class AgentAiServiceEventTest {
                 aiServices.compensateOnToolErrors(true);
             }
         };
-        Assistant assistant = builder.chatModel(thatAlwaysResponds(
+        Assistant assistant = builder.chatModel(thatResponds(
                         AiMessage.from(toolCall("reserve-1", "reserve"), toolCall("pay-1", "pay")),
                         AiMessage.from("payment failed")))
                 .tools(new BookingTools())

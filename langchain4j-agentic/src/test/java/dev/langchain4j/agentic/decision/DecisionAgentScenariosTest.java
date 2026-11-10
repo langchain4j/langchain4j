@@ -25,8 +25,8 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -198,7 +198,7 @@ class DecisionAgentScenariosTest {
                 .inputKey(Double.class, "amount")
                 .outputKey("receipt")
                 .build();
-        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(AiMessage.from("""
+        ChatModelMock plannerModel = ChatModelMock.thatResponds(AiMessage.from("""
                 {"agentName": "isEligible", "arguments": {"customerProfile": "Mario, income 3000 USD, no debts", "amount": 1000}}
                 """), AiMessage.from("""
                 {"agentName": "credit", "arguments": {"amount": 1000}}

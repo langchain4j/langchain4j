@@ -89,13 +89,15 @@
             <!-- But we can't depend on the module directly because it would introduce a circular dependency -->
             <!-- The langchain4j-test module depends on this module -->
             <!-- So instead we will just add the source of that module to the test source of this module -->
-            <!-- Core tests only need the guardrail assertions, so only that package is copied (keeping its folders) -->
+            <!-- Core tests only need the guardrail assertions and the model mocks, so only those packages are copied (keeping their folders) -->
+            <!-- The mocks also reach other modules through the test-jar of this module: langchain4j-test depends on langchain4j, so langchain4j cannot depend on it -->
+            <!-- Maven does not see this copy as a dependency, so a change in the mocks alone does not select these modules in incremental builds -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>copy-langchain4j-test-guardrail-sources</id>
+                        <id>copy-langchain4j-test-sources</id>
                         <phase>generate-test-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
@@ -107,6 +109,7 @@
                                     <directory>${project.basedir}/../langchain4j-test/src/main/java</directory>
                                     <includes>
                                         <include>dev/langchain4j/test/guardrail/**</include>
+                                        <include>dev/langchain4j/test/mock/**</include>
                                     </includes>
                                 </resource>
                             </resources>

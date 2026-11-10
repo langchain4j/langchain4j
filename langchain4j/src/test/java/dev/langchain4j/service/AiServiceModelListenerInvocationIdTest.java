@@ -18,18 +18,18 @@ import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.ScoringModelMock;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
@@ -116,7 +116,7 @@ class AiServiceModelListenerInvocationIdTest {
     @Test
     void own_chat_calls_of_a_token_stream_ai_service_should_get_its_invocation_id() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(StreamingChatModelMock.thatStreams(
                                 AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("doNothing")
@@ -144,7 +144,7 @@ class AiServiceModelListenerInvocationIdTest {
     @Test
     void own_chat_calls_of_a_reactive_ai_service_should_get_its_invocation_id() {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(StreamingChatModelMock.thatStreams(
                                 AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("doNothing")
@@ -255,7 +255,7 @@ class AiServiceModelListenerInvocationIdTest {
                 .registerListener(recording)
                 .build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(new ChatModelMock(request -> AiMessage.from(inner.chat("help"))))
+                .chatModel(ChatModelMock.thatResponds(request -> AiMessage.from(inner.chat("help"))))
                 .registerListener(recording)
                 .build();
 
@@ -352,7 +352,7 @@ class AiServiceModelListenerInvocationIdTest {
                 .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
                 .contentRetriever(EmbeddingStoreContentRetriever.builder()
                         .embeddingStore(store)
-                        .embeddingModel(new EmbeddingModelMock())
+                        .embeddingModel(EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f))
                         .build())
                 .registerListener(startedListener())
                 .build();
@@ -414,7 +414,7 @@ class AiServiceModelListenerInvocationIdTest {
         ChatModel queryModel = ChatModelMock.thatAlwaysResponds("first query\nsecond query")
                 .withListeners(recordingListener());
         ChatModel routingModel = ChatModelMock.thatAlwaysResponds("1").withListeners(recordingListener());
-        EmbeddingModelMock embeddingModel = new EmbeddingModelMock().withAsyncSupport().withListeners(new EmbeddingModelListener() {
+        EmbeddingModelMock embeddingModel = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f).withListeners(new EmbeddingModelListener() {
             @Override
             public void onRequest(EmbeddingModelRequestContext context) {
                 modelInvocationIds.add(context.invocationId());

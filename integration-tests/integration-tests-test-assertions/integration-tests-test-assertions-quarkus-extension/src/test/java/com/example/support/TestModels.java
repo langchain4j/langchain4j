@@ -2,14 +2,14 @@ package com.example.support;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.function.Supplier;
 
 /**
- * The models of the AI Services, using the shared mocks of langchain4j-core. The AI Services get them with
+ * The models of the AI Services, using the mocks of langchain4j-test. The AI Services get them with
  * {@code @RegisterAiService(chatLanguageModelSupplier = ...)} or
  * {@code @RegisterAiService(streamingChatLanguageModelSupplier = ...)}.
  */

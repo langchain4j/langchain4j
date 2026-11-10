@@ -1,9 +1,10 @@
-package dev.langchain4j.model.decision.mock;
+package dev.langchain4j.test.mock;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -15,23 +16,23 @@ import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 /**
- * A {@link DecisionModel} for tests: it answers with fixed or computed answers and records the requests it receives.
- * It supports both {@link #decide(DecisionRequest)} and {@link #decideAsync(DecisionRequest)} (the future is already
- * completed when returned), unless created with {@link #withoutAsyncSupport()}.
+ * A {@link DecisionModel} for tests: it needs no network, answers with fixed or computed answers, and records the
+ * requests it receives. It supports both {@link #decide(DecisionRequest)} and {@link #decideAsync(DecisionRequest)} (the
+ * future is already completed when returned).
  */
 @Experimental
 public class DecisionModelMock implements DecisionModel {
 
     private final Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers;
-    private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
+    private final RecordedRequests<DecisionRequest> requests = new RecordedRequests<>("decision");
     private TokenUsage tokenUsage;
     private String modelName;
     private ModelProvider provider = ModelProvider.OTHER;
@@ -39,7 +40,7 @@ public class DecisionModelMock implements DecisionModel {
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
     private List<DecisionModelListener> listeners = List.of();
 
-    public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
+    private DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
         this.answers = ensureNotNull(answers, "answers");
     }
 
@@ -74,9 +75,10 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * Makes {@link #decideAsync(DecisionRequest)} fail with an
-     * {@link dev.langchain4j.exception.AsyncNotSupportedException}, like a decision model without asynchronous
+     * {@link AsyncNotSupportedException}, like a decision model without asynchronous
      * support.
      */
+    @Internal
     public DecisionModelMock withoutAsyncSupport() {
         this.asyncSupported = false;
         return this;
@@ -86,6 +88,7 @@ public class DecisionModelMock implements DecisionModel {
      * Makes {@link #decideAsync(DecisionRequest)} return the future given by the function instead of answering, for
      * example a future that is never completed, to test cancellation.
      */
+    @Internal
     public DecisionModelMock withAsyncResponse(Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse) {
         this.asyncResponse = asyncResponse;
         return this;
@@ -121,8 +124,11 @@ public class DecisionModelMock implements DecisionModel {
                 .build();
     }
 
+    /**
+     * A copy of the requests received so far, in the order they arrived.
+     */
     public List<DecisionRequest> requests() {
-        return new ArrayList<>(requests);
+        return requests.all();
     }
 
     /**
@@ -131,11 +137,7 @@ public class DecisionModelMock implements DecisionModel {
      * @throws IllegalStateException if the mock received no request or several requests.
      */
     public DecisionRequest request() {
-        List<DecisionRequest> requests = requests();
-        if (requests.size() != 1) {
-            throw new IllegalStateException("Expected exactly 1 request, but received " + requests.size());
-        }
-        return requests.get(0);
+        return requests.only();
     }
 
     /**
@@ -171,26 +173,29 @@ public class DecisionModelMock implements DecisionModel {
      *
      * @throws IllegalStateException when a request contains a question that is not a yes/no question.
      */
-    public static DecisionModelMock thatAnswersYesNoQuestions(Function<YesNoQuestion, Double> probability) {
+    public static DecisionModelMock thatAnswersYesNoQuestions(ToDoubleFunction<YesNoQuestion> probability) {
         ensureNotNull(probability, "probability");
         return thatAnswersQuestions(question -> {
             if (!(question instanceof YesNoQuestion yesNoQuestion)) {
                 throw new IllegalStateException("Expected a yes/no question, but got " + question);
             }
-            return YesNoAnswer.from(probability.apply(yesNoQuestion));
+            return YesNoAnswer.from(probability.applyAsDouble(yesNoQuestion));
         });
     }
 
-    public static DecisionModelMock thatAlwaysThrowsException() {
-        return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
-    }
-
-    public static DecisionModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
+    /**
+     * A model whose requests all fail with the given exception.
+     */
+    public static DecisionModelMock thatAlwaysThrows(RuntimeException exception) {
+        ensureNotNull(exception, "exception");
         return new DecisionModelMock(request -> {
-            throw new RuntimeException(message);
+            throw exception;
         });
     }
 
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
     public DecisionModelMock withListeners(DecisionModelListener... listeners) {
         this.listeners = List.of(listeners);
         return this;

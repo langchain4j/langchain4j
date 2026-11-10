@@ -4,7 +4,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.test.service.AiServiceCapture;
 import dev.langchain4j.test.service.AiServiceInvocation;

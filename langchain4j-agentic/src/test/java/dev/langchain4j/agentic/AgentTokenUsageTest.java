@@ -15,7 +15,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -138,7 +138,7 @@ class AgentTokenUsageTest {
     }
 
     private static Assistant assistantWithToolUsingModels(String toolCallingModel, String answeringModel) {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock model = ChatModelMock.thatResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("time")

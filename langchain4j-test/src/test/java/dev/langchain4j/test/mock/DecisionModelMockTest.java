@@ -1,4 +1,4 @@
-package dev.langchain4j.model.decision.mock;
+package dev.langchain4j.test.mock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -93,7 +93,7 @@ class DecisionModelMockTest {
     void should_fail_sync_and_async_calls_when_configured_to_throw() {
 
         // given
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrows(new RuntimeException("boom"));
 
         // when-then
         assertThatThrownBy(() -> model.decide(REQUEST)).hasMessage("boom");
@@ -110,6 +110,6 @@ class DecisionModelMockTest {
 
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Expected exactly 1 request, but received 0");
+                .hasMessage("Expected exactly 1 decision request, but received 0");
     }
 }

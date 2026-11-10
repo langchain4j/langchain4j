@@ -1,6 +1,6 @@
 package dev.langchain4j.test.quarkus;
 
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.test.judge.DecisionModelJudge;
 import dev.langchain4j.test.judge.Judge;

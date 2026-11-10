@@ -7,8 +7,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.ScoringModelMock;
 import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -24,9 +24,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.moderation.mock.ModerationModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ModerationModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -454,7 +454,7 @@ class AiServiceCaptureTest {
         @Test
         void output_should_throw_when_the_invocation_failed() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             AiServiceCapture capture = captureExpectingFailure(() -> assistant.chat("Hi"));
@@ -576,7 +576,7 @@ class AiServiceCaptureTest {
         @Test
         void lambda_output_should_throw_when_the_lambda_threw() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             AiServiceCapture capture = captureExpectingFailure(() -> assistant.chat("Hi"));
@@ -754,7 +754,7 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_nothing_after_a_capture_that_failed() {
             Assistant failing = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
@@ -862,7 +862,7 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_own_chat_model_calls_of_a_token_stream() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                    .streamingChatModel(StreamingChatModelMock.thatStreams(
                             AiMessage.from(toolRequest("cancelBooking")), AiMessage.from("answer")))
                     .tools(new BookingTools())
                     .build();
@@ -877,7 +877,7 @@ class AiServiceCaptureTest {
         @Test
         void should_report_the_token_usage_of_the_last_own_chat_model_call_as_last_response_of_a_token_stream() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                    .streamingChatModel(StreamingChatModelMock.thatStreams(
                                     AiMessage.from(toolRequest("cancelBooking")), AiMessage.from("answer"))
                             .withTokenUsages(new TokenUsage(100, 10), new TokenUsage(150, 20)))
                     .tools(new BookingTools())
@@ -913,7 +913,7 @@ class AiServiceCaptureTest {
         @Test
         void requests_should_fail_when_the_model_did_not_respond() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             AiServiceCapture capture = captureExpectingFailure(() -> assistant.chat("Hi"));
@@ -1055,6 +1055,23 @@ class AiServiceCaptureTest {
 
     @Nested
     class ToolsAndSources {
+
+        @Test
+        void should_capture_what_a_scripted_chat_model_makes_an_ai_service_do() {
+            ChatModelMock model = ChatModelMock.thatCallsTool("cancelBooking", Map.of("bookingNumber", "MS-777"))
+                    .thenResponds("Booking MS-777 is cancelled.");
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatModel(model)
+                    .tools(new BookingTools())
+                    .build();
+
+            AiServiceCapture capture = capture(() -> assistant.chat("Cancel booking MS-777"));
+
+            LangChain4jAssertions.assertThat(capture)
+                    .hasToolExecutedWith("cancelBooking", Map.of("bookingNumber", "MS-777"));
+            assertThat(capture.outputText()).isEqualTo("Booking MS-777 is cancelled.");
+            LangChain4jAssertions.assertThat(capture.lastRequest()).hasUserMessageContaining("MS-777");
+        }
 
 
         // tool assertions
@@ -1269,13 +1286,64 @@ class AiServiceCaptureTest {
     @Nested
     class Streaming {
 
+        @Test
+        void should_capture_what_a_scripted_streaming_model_makes_an_ai_service_do() {
+            StreamingChatModelMock model = StreamingChatModelMock.thatCallsTool(
+                            "cancelBooking", Map.of("bookingNumber", "MS-777"))
+                    .thenStreams("Booking ", "cancelled.");
+            StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                    .streamingChatModel(model)
+                    .tools(new BookingTools())
+                    .build();
+
+            AiServiceCapture capture =
+                    capture(() -> assistant.chat("Cancel booking MS-777").ignoreErrors().start());
+
+            LangChain4jAssertions.assertThat(capture)
+                    .hasToolExecutedWith("cancelBooking", Map.of("bookingNumber", "MS-777"));
+            assertThat(capture.outputText()).isEqualTo("Booking cancelled.");
+        }
+
+        @Test
+        void should_capture_a_stream_that_breaks_after_its_tokens() {
+            IllegalStateException failure = new IllegalStateException("connection reset");
+            StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                    .streamingChatModel(
+                            StreamingChatModelMock.thatStreams("Hel", "lo").thenFailsWith(failure))
+                    .build();
+            List<String> tokens = new CopyOnWriteArrayList<>();
+
+            AiServiceCapture capture = captureExpectingFailure(() -> assistant
+                    .chat("Hi")
+                    .onPartialResponse(tokens::add)
+                    .ignoreErrors()
+                    .start());
+
+            LangChain4jAssertions.assertThat(capture).hasFailedWith(IllegalStateException.class);
+            assertThat(tokens).containsExactly("Hel", "lo");
+        }
+
+        @Test
+        void should_stop_a_streaming_ai_service_with_a_clear_error_when_a_tool_call_is_the_last_step() {
+            StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                    .streamingChatModel(
+                            StreamingChatModelMock.thatCallsTool("cancelBooking", Map.of("bookingNumber", "MS-777")))
+                    .tools(new BookingTools())
+                    .build();
+
+            AiServiceCapture capture = captureExpectingFailure(
+                    () -> assistant.chat("Cancel booking MS-777").ignoreErrors().start());
+
+            assertThat(capture.invocation().error()).hasMessageContaining("has no more responses");
+        }
+
 
         // streaming
 
         @Test
         void should_capture_a_token_stream_started_in_the_lambda() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                    .streamingChatModel(StreamingChatModelMock.thatStreams(
                             AiMessage.from(toolRequest("cancelBooking")), AiMessage.from("Ok")))
                     .contentRetriever(query -> List.of(Content.from("Bookings can be cancelled.")))
                     .tools(new BookingTools())
@@ -1334,7 +1402,7 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_the_events_of_a_publisher_of_streaming_events() {
             EventsAssistant assistant = AiServices.builder(EventsAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                    .streamingChatModel(StreamingChatModelMock.thatStreams(
                             AiMessage.from(toolRequest("cancelBooking")), AiMessage.from("Cancelled")))
                     .tools(new BookingTools())
                     .build();
@@ -1452,6 +1520,19 @@ class AiServiceCaptureTest {
     @Nested
     class Failures {
 
+        @Test
+        void should_stop_an_ai_service_with_a_clear_error_when_a_tool_call_is_the_last_step() {
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatModel(ChatModelMock.thatCallsTool("cancelBooking", Map.of("bookingNumber", "MS-777")))
+                    .tools(new BookingTools())
+                    .build();
+
+            AiServiceCapture capture = captureExpectingFailure(() -> assistant.chat("Cancel booking MS-777"));
+
+            assertThat(capture.invocation().toolExecutions()).hasSize(1);
+            assertThat(capture.invocation().error()).hasMessageContaining("has no more responses");
+        }
+
 
         // hasSucceeded() and hasNoRetrievedSources()
 
@@ -1461,7 +1542,7 @@ class AiServiceCaptureTest {
                     .chatModel(ChatModelMock.thatAlwaysResponds("Hello!"))
                     .build();
             Assistant failing = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             LangChain4jAssertions.assertThat(capture(() -> assistant.chat("Hi"))).hasSucceeded();
@@ -1503,7 +1584,7 @@ class AiServiceCaptureTest {
         @Test
         void should_check_failure_type() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(new ChatModelMock(new RuntimeException("outer", new IllegalStateException("root cause"))))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("outer", new IllegalStateException("root cause"))))
                     .build();
 
             AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
@@ -1520,7 +1601,7 @@ class AiServiceCaptureTest {
         @Test
         void should_return_failure_of_token_stream_when_model_throws_from_chat() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Cannot connect")
+                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Cannot connect"))
                             .throwingFromChat())
                     .build();
 
@@ -1535,7 +1616,7 @@ class AiServiceCaptureTest {
         @Test
         void should_match_failure_message_of_a_cause() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(new ChatModelMock(new RuntimeException("outer", new IllegalStateException("root cause"))))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("outer", new IllegalStateException("root cause"))))
                     .build();
 
             AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
@@ -1546,7 +1627,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_invocation() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hello"))).hasMessage("model unavailable");
@@ -1555,7 +1636,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_invocation_caught_by_captured_code() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             assertThatThrownBy(() -> capture(() -> {
@@ -1600,7 +1681,7 @@ class AiServiceCaptureTest {
         @Test
         void should_not_rethrow_failure_of_nested_invocation_handled_by_tool() {
             Assistant inner = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("expert unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("expert unavailable")))
                     .build();
             Assistant outer = AiServices.builder(Assistant.class)
                     .chatModel(ChatModelMock.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}")))
@@ -1618,7 +1699,7 @@ class AiServiceCaptureTest {
         @Test
         void should_fail_assertions_on_failed_invocation_until_failure_is_checked() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
@@ -1725,7 +1806,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_token_stream() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("stream failed"))
+                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("stream failed")))
                     .build();
             List<Throwable> errors = new CopyOnWriteArrayList<>();
 
@@ -1754,7 +1835,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_exception_thrown_after_a_failed_invocation() {
             Assistant failing = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             assertThatThrownBy(() -> capture(() -> {
@@ -1785,7 +1866,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_async_invocation() {
             AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hi"))).hasMessage("model unavailable");
@@ -1802,7 +1883,7 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_reactive_invocation() {
             ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("stream failed"))
+                    .streamingChatModel(StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("stream failed")))
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hi"))).hasMessage("stream failed");
@@ -2063,7 +2144,7 @@ class AiServiceCaptureTest {
 
         @Test
         void should_capture_the_model_calls_of_retrieval() {
-            EmbeddingModelMock embeddingModel = new EmbeddingModelMock();
+            EmbeddingModelMock embeddingModel = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f);
             InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
             TextSegment segment = TextSegment.from("Bookings can be cancelled.");
             embeddingStore.add(embeddingModel.embed(segment).content(), segment);
@@ -2074,7 +2155,7 @@ class AiServiceCaptureTest {
                                     .embeddingStore(embeddingStore)
                                     .embeddingModel(embeddingModel)
                                     .build())
-                            .contentAggregator(new ReRankingContentAggregator(new ScoringModelMock(text -> 0.9)))
+                            .contentAggregator(new ReRankingContentAggregator(ScoringModelMock.thatScores(text -> 0.9)))
                             .build())
                     .build();
 
@@ -2135,7 +2216,7 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_a_failed_model_call() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatAlwaysThrowsExceptionWithMessage("model unavailable"))
+                    .chatModel(ChatModelMock.thatAlwaysThrows(new RuntimeException("model unavailable")))
                     .build();
 
             AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
@@ -2151,7 +2232,7 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_the_streaming_chat_calls_of_the_ai_service() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                    .streamingChatModel(StreamingChatModelMock.thatStreams(
                             AiMessage.from(toolRequest("cancelBooking")), AiMessage.from("answer")))
                     .tools(new BookingTools())
                     .build();
@@ -2181,7 +2262,7 @@ class AiServiceCaptureTest {
 
         @Test
         void should_not_report_a_failed_component_call_as_own() {
-            ChatModelMock rewritingModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("rewriting failed");
+            ChatModelMock rewritingModel = ChatModelMock.thatAlwaysThrows(new RuntimeException("rewriting failed"));
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
                     .retrievalAugmentor(DefaultRetrievalAugmentor.builder()

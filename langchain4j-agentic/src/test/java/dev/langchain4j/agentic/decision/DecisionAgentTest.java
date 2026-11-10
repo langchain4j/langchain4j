@@ -42,7 +42,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -314,7 +314,7 @@ class DecisionAgentTest {
     void should_propagate_the_failure_of_the_decision_model() {
         RuntimeException failure = new RuntimeException("rate limit exceeded");
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(new DecisionModelMock(request -> {
+                .decisionModel(DecisionModelMock.thatAnswers(request -> {
                     throw failure;
                 }))
                 .build();
@@ -373,7 +373,7 @@ class DecisionAgentTest {
     @Test
     void should_write_the_substitute_result_of_the_error_handler() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAlwaysThrowsException())
+                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .subAgents(router)
@@ -505,7 +505,7 @@ class DecisionAgentTest {
     @Test
     void should_wrap_a_failure_outside_an_agentic_system() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"))
+                .decisionModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")))
                 .build();
 
         assertThatThrownBy(() -> router.classify(LEGAL_REQUEST))

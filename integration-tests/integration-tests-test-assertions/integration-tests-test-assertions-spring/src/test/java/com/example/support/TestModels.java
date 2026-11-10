@@ -3,16 +3,15 @@ package com.example.support;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.Collections;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 
 /**
- * The models of the application, replaced by the shared mocks of langchain4j-core.
+ * The models of the application, replaced by the mocks of langchain4j-test.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestModels {
@@ -29,9 +28,7 @@ public class TestModels {
 
     @Bean
     StreamingChatModel streamingChatModel() {
-        // thatAlwaysStreams(...) answers only once: every response is consumed from a queue
-        return StreamingChatModelMock.thatAlwaysStreams(
-                        Collections.nCopies(1_000, AiMessage.from(STREAMED_ANSWER)))
+        return StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(STREAMED_ANSWER))
                 .withTokenUsage(TOKEN_USAGE_PER_CALL)
                 .withFinishReason(FinishReason.STOP);
     }

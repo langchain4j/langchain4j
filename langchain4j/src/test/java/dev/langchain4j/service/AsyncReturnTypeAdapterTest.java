@@ -7,7 +7,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void async_ai_service_executes_completion_stage_returning_tool() throws Exception {
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
@@ -84,7 +84,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void sync_ai_service_joins_completion_stage_returning_tool() {
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
@@ -123,7 +123,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void async_ai_service_executes_custom_async_type_returning_tool_via_spi() throws Exception {
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModelMock chatModel = ChatModelMock.thatResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)

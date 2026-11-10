@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -105,7 +105,7 @@ public class AiServicesWithToolErrorHandlerTest extends AbstractAiServicesWithTo
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("There is no such order")));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class).chatModel(spyModel);

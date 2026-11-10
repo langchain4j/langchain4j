@@ -9,7 +9,7 @@ import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -294,7 +294,7 @@ class DecisionScoringModelTest {
     void should_propagate_decision_model_errors() {
 
         ScoringModel scoringModel =
-                new DecisionScoringModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+                new DecisionScoringModel(DecisionModelMock.thatAlwaysThrows(new RuntimeException("down")));
 
         assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("text")), "query"))
                 .hasMessage("down");

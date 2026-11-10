@@ -2,15 +2,15 @@ package com.example.support;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 
 /**
- * The models that the {@code @AiService} interfaces name, replaced by the shared mocks of langchain4j-core.
+ * The models that the {@code @AiService} interfaces name, replaced by the mocks of langchain4j-test.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestModels {

@@ -11,10 +11,10 @@ import static dev.langchain4j.test.service.AiServiceCapture.captureExpectingFail
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.test.service.ChatModelCall;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.service.AiServiceStreamingEvent;
@@ -132,7 +132,7 @@ class CaptureApiTest {
     @Test
     void should_capture_token_stream_started_in_the_lambda() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams(
+                StreamingChatModelMock.thatStreams(
                         toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-888\"}"),
                         AiMessage.from("It ends on 2026-12-27.")),
                 bookings());
@@ -196,7 +196,7 @@ class CaptureApiTest {
     @Test
     void should_capture_events_of_returned_event_publisher() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysStreams(
+                StreamingChatModelMock.thatStreams(
                         toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"), AiMessage.from("Cancelled.")),
                 bookings());
 
@@ -310,7 +310,7 @@ class CaptureApiTest {
     @Test
     void should_check_that_invocation_succeeded() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("Stream broken"), bookings());
+                StreamingChatModelMock.thatAlwaysThrows(new RuntimeException("Stream broken")), bookings());
 
         AiServiceCapture capture = captureExpectingFailure(() -> agent.chat("Hi").ignoreErrors().start());
 

@@ -23,7 +23,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
@@ -191,7 +191,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeDeciding() {
         DecisionRouterPlanner planner =
-                new DecisionRouterPlanner(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused"));
+                new DecisionRouterPlanner(DecisionModelMock.thatAlwaysThrows(new RuntimeException("unused")));
 
         assertThat(planner.executionState()).isEmpty();
     }

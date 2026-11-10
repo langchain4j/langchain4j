@@ -18,7 +18,7 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
@@ -243,7 +243,9 @@ class EmbeddingModelListenerTest {
     void embedAsync_should_notify_listeners_on_request_and_error_when_not_supported() {
         // given
         EmbeddingModelListener listener = spy(new SuccessfulListener());
-        EmbeddingModel model = new EmbeddingModelMock().withListeners(listener);
+        EmbeddingModel model = EmbeddingModelMock.thatAlwaysEmbeds(1f, 2f, 3f)
+                .withoutAsyncSupport()
+                .withListeners(listener);
 
         // when
         CompletableFuture<EmbeddingResponse> future =
