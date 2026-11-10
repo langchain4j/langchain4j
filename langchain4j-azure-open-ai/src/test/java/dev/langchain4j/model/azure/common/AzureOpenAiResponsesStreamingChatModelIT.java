@@ -4,18 +4,18 @@ import static java.time.Duration.ofSeconds;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import dev.langchain4j.model.azure.AzureModelBuilders;
 import dev.langchain4j.model.azure.AzureOpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -42,16 +42,19 @@ class AzureOpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatMode
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(AZURE_OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL, AZURE_OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL_STRICT_SCHEMA);
+        return List.of(
+                AZURE_OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL,
+                AZURE_OPEN_AI_RESPONSES_STREAMING_CHAT_MODEL_STRICT_SCHEMA);
     }
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        AzureOpenAiResponsesStreamingChatModel.Builder chatModelBuilder = AzureOpenAiResponsesStreamingChatModel.builder()
-                .apiKey(AzureModelBuilders.getAzureOpenaiKey())
-                .endpoint(AzureModelBuilders.getAzureOpenaiEndpoint())
-                .defaultRequestParameters(parameters)
-                .logRequestsAndResponses(true);
+        AzureOpenAiResponsesStreamingChatModel.Builder chatModelBuilder =
+                AzureOpenAiResponsesStreamingChatModel.builder()
+                        .apiKey(AzureModelBuilders.getAzureOpenaiKey())
+                        .endpoint(AzureModelBuilders.getAzureOpenaiEndpoint())
+                        .defaultRequestParameters(parameters)
+                        .logRequestsAndResponses(true);
         if (parameters.modelName() == null) {
             chatModelBuilder.deploymentName(AzureModelBuilders.DEFAULT_RESPONSES_CHAT_MODEL);
         }
@@ -97,15 +100,13 @@ class AzureOpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatMode
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
-    }
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {}
 
     @Disabled("TODO fix: RateLimit Status code 429")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
-    }
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {}
 
     @Override
     @Disabled
@@ -160,7 +161,8 @@ class AzureOpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatMode
 
     @Override
     @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(StreamingChatModel model) {}
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
+            StreamingChatModel model) {}
 
     @Override
     @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
@@ -177,5 +179,4 @@ class AzureOpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatMode
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
         }
     }
-
 }

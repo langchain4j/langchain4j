@@ -1,7 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
-import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;

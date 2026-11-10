@@ -2,8 +2,6 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementFrom;
-import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
-import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
