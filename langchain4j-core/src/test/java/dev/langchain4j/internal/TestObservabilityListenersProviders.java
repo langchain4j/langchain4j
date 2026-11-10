@@ -130,6 +130,8 @@ public final class TestObservabilityListenersProviders {
         }
     }
 
+    public static class ProvidingNothing implements ObservabilityListenersProvider {}
+
     public static class ThrowingFromGetter implements ObservabilityListenersProvider {
 
         @Override

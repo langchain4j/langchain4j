@@ -16,17 +16,21 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.moderation.listener.ModerationModelRequestContext;
 import dev.langchain4j.model.moderation.mock.ModerationModelMock;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
@@ -304,6 +308,36 @@ class ObservabilityListenersTest {
         List<ChatModelListener> listeners = List.of(new ChatModelListener() {});
 
         assertThat(ObservabilityListeners.chat(listeners)).isSameAs(listeners);
+    }
+
+    @Test
+    void should_not_change_the_listeners_when_a_provider_provides_none() throws Exception {
+        List<ChatModelListener> chat = List.of(new ChatModelListener() {});
+        List<EmbeddingModelListener> embedding = List.of(new EmbeddingModelListener() {});
+        List<ModerationModelListener> moderation = List.of(new ModerationModelListener() {});
+        List<ScoringModelListener> scoring = List.of(new ScoringModelListener() {});
+        List<DecisionModelListener> decision = List.of(new DecisionModelListener() {});
+        List<AiServiceListener<?>> registered = new ArrayList<>();
+        AiServiceListenerRegistrar registrar = new DefaultAiServiceListenerRegistrar() {
+            @Override
+            public <T extends AiServiceEvent> void register(AiServiceListener<T> listener) {
+                registered.add(listener);
+            }
+        };
+
+        withProviders(
+                () -> {
+                    ObservabilityListeners.registerWith(registrar);
+
+                    assertThat(ObservabilityListeners.chat(chat)).isSameAs(chat);
+                    assertThat(ObservabilityListeners.embedding(embedding)).isSameAs(embedding);
+                    assertThat(ObservabilityListeners.moderation(moderation)).isSameAs(moderation);
+                    assertThat(ObservabilityListeners.scoring(scoring)).isSameAs(scoring);
+                    assertThat(ObservabilityListeners.decision(decision)).isSameAs(decision);
+                },
+                TestObservabilityListenersProviders.ProvidingNothing.class.getName());
+
+        assertThat(registered).isEmpty();
     }
 
     @Test
