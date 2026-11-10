@@ -86,9 +86,9 @@ takes about a third more than its raw size. To change the limit, set it on the b
 #### Custom HTTP client
 
 By default, the Streamable HTTP transport sends its requests with the JDK HTTP client
-(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in). You can use any other
-[HTTP client](./customizable-http-client.md) instead, for example to reuse a proxy or
-TLS setup. Pass its builder:
+(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in), even when other HTTP clients
+are on the classpath. You can use any other [HTTP client](./customizable-http-client.md) instead,
+for example to reuse a proxy or TLS setup. Pass its builder:
 
 ```java
 McpTransport transport = StreamableHttpMcpTransport.builder()
@@ -99,8 +99,17 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
-If you exclude `langchain4j-http-client-jdk` from your dependencies, you must set
-`httpClientBuilder(...)` or `httpClient(...)`.
+When you do not pass a builder, the transport uses another client in only two cases:
+
+- The JVM system property `langchain4j.http.clientBuilderFactory` names its factory, for example
+  `-Dlangchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.okhttp.OkHttpClientBuilderFactory`.
+  Setting it in `application.properties` has no effect. It applies to every module that
+  [discovers an HTTP client](./customizable-http-client.md#selecting-an-http-client).
+- `langchain4j-http-client-jdk` is excluded from your dependencies. The client is then
+  [selected from the classpath](./customizable-http-client.md#selecting-an-http-client).
+
+In both cases, the transport sets a 60-second connection timeout (overridden by `timeout(...)`)
+and turns the read timeout off, because MCP streams can stay idle for a long time.
 
 The HTTP client must support streaming responses (`HttpClient.stream(request, parser)`).
 The JDK, OkHttp and Apache clients do. The Spring `RestClient` integration supports it only
@@ -111,8 +120,8 @@ Things to know when you use your own HTTP client:
 
 - **TLS, HTTP version and redirects** are configured on the HTTP client. The transport options
   `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(true)` work only with the default
-  JDK client. Combining them with `httpClientBuilder(...)` or `httpClient(...)` fails when the
-  transport is built.
+  JDK client. Combining them with `httpClientBuilder(...)`, `httpClient(...)` or another client
+  selected as described above fails when the transport is built.
 - **Redirects:** the transport does not follow redirects by default, but OkHttp and Apache do.
   On a redirect, they can send your custom headers (for example an API key) and the request body
   to another host. If you don't need redirects, turn them off on the client, for example
