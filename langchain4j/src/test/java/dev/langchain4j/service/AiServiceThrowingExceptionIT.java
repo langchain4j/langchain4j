@@ -31,10 +31,10 @@ class AiServiceThrowingExceptionIT {
 
         AtomicInteger invocationCount = new AtomicInteger(0);
 
-        ChatModel chatModel = ChatModelMock.thatResponds(chatRequest -> {
+        ChatModel chatModel = ChatModelMock.thatResponds(chatRequest -> mappingException(() -> {
             invocationCount.incrementAndGet();
             throw new HttpException(429, "Insufficient quota");
-        });
+        }));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
