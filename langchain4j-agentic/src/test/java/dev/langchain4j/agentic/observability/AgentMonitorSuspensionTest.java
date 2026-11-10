@@ -150,8 +150,6 @@ class AgentMonitorSuspensionTest {
         AgentInvocation root = execution.topLevelInvocations();
         assertThat(root.suspended()).isTrue();
         assertThat(root.done()).isFalse();
-        assertThat(root.suspensions()).hasSize(1);
-        assertThat(root.suspensions().get(0).finishTime()).isNull();
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName");
         assertThat(execution.agenticScope().pendingResponseIds()).containsExactly("name");
         assertThat(execution.topLevelInvocations().suspendedDuration()).isGreaterThanOrEqualTo(Duration.ZERO);
@@ -165,15 +163,10 @@ class AgentMonitorSuspensionTest {
         assertThat(execution.suspended()).isFalse();
         assertThat(root.done()).isTrue();
         assertThat(root.suspended()).isFalse();
-        assertThat(root.suspensions()).hasSize(1);
-        AgentInvocation.Suspension suspension = root.suspensions().get(0);
-        assertThat(suspension.startTime()).isAfterOrEqualTo(root.startTime());
-        assertThat(suspension.finishTime()).isAfterOrEqualTo(suspension.startTime()).isBeforeOrEqualTo(root.finishTime());
-        assertThat(root.suspendedDuration()).isEqualTo(Duration.between(suspension.startTime(), suspension.finishTime()));
-        assertThat(root.suspendedDuration()).isLessThanOrEqualTo(root.duration());
+        assertThat(root.suspendedDuration()).isPositive().isLessThanOrEqualTo(root.duration());
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName", "greet");
         assertThat(root.nestedInvocations()).allMatch(AgentInvocation::done);
-        assertThat(root.nestedInvocations()).allMatch(i -> i.suspensions().isEmpty());
+        assertThat(root.nestedInvocations()).allMatch(i -> i.suspendedDuration().isZero());
     }
 
     // ---- nested scenario: root sequence -> inner sequence -> HITL ----
@@ -207,13 +200,13 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.successfulExecutionsFor("session-2")).containsExactly(execution);
 
         AgentInvocation root = execution.topLevelInvocations();
-        assertThat(root.suspensions()).hasSize(1);
+        assertThat(root.suspendedDuration()).isPositive();
         List<AgentInvocation> rootNested = root.nestedInvocations();
         assertThat(rootNested).extracting(i -> i.agent().name()).containsExactly("a", "inner", "d");
         assertThat(rootNested).allMatch(AgentInvocation::done);
 
         AgentInvocation inner = rootNested.get(1);
-        assertThat(inner.suspensions()).hasSize(1);
+        assertThat(inner.suspendedDuration()).isPositive();
         assertThat(inner.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName", "greet");
         assertThat(inner.nestedInvocations()).allMatch(AgentInvocation::done);
     }
@@ -239,9 +232,12 @@ class AgentMonitorSuspensionTest {
     void loop_suspended_at_every_iteration_keeps_a_single_invocation_and_its_iteration_indexes() {
         var result = AgenticServices.createAgenticSystem(LoopingGreeter.class).greet("session-3");
         MonitoredExecution execution = MONITOR.ongoingExecutionFor("session-3");
+        AgentInvocation loop = execution.topLevelInvocations().nestedInvocations().get(0);
 
         int resumes = 0;
         while (result.suspended()) {
+            // the loop invocation waits for the human at every iteration
+            assertThat(loop.suspended()).isTrue();
             result = result.completePendingResponse("Mario");
             resumes++;
         }
@@ -252,12 +248,13 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.successfulExecutionsFor("session-3")).containsExactly(execution);
 
         AgentInvocation root = execution.topLevelInvocations();
-        assertThat(root.suspensions()).hasSize(2);
+        assertThat(root.suspendedDuration()).isPositive();
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("loop");
 
-        AgentInvocation loop = root.nestedInvocations().get(0);
+        assertThat(root.nestedInvocations()).containsExactly(loop);
         assertThat(loop.done()).isTrue();
-        assertThat(loop.suspensions()).hasSize(2);
+        assertThat(loop.suspended()).isFalse();
+        assertThat(loop.suspendedDuration()).isPositive();
         assertThat(loop.nestedInvocations())
                 .extracting(i -> i.agent().name())
                 .containsExactly("a", "askName", "b", "a", "askName", "b");
@@ -299,7 +296,7 @@ class AgentMonitorSuspensionTest {
         AgentInvocation root = execution.topLevelInvocations();
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("a", "par", "d");
         AgentInvocation par = root.nestedInvocations().get(1);
-        assertThat(par.suspensions()).hasSize(1);
+        assertThat(par.suspendedDuration()).isPositive();
         assertThat(par.nestedInvocations()).extracting(i -> i.agent().name()).containsExactlyInAnyOrder("inner", "c");
         assertThat(par.nestedInvocations()).allMatch(AgentInvocation::done);
 
@@ -307,14 +304,14 @@ class AgentMonitorSuspensionTest {
                 .filter(i -> i.agent().name().equals("inner"))
                 .findFirst()
                 .orElseThrow();
-        assertThat(inner.suspensions()).hasSize(1);
+        assertThat(inner.suspendedDuration()).isPositive();
         assertThat(inner.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName", "greet");
 
         AgentInvocation c = par.nestedInvocations().stream()
                 .filter(i -> i.agent().name().equals("c"))
                 .findFirst()
                 .orElseThrow();
-        assertThat(c.suspensions()).isEmpty();
+        assertThat(c.suspendedDuration()).isZero();
     }
 
     // ---- resume by invoking the agent method again, without ResultWithAgenticScope ----
@@ -348,7 +345,7 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.ongoingExecutions()).isEmpty();
         assertThat(MONITOR.successfulExecutionsFor("session-5")).containsExactly(execution);
         AgentInvocation root = execution.topLevelInvocations();
-        assertThat(root.suspensions()).hasSize(1);
+        assertThat(root.suspendedDuration()).isPositive();
         assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName", "greet");
     }
 
@@ -385,7 +382,7 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.failedExecutionsFor("session-6")).containsExactly(execution);
         assertThat(execution.hasError()).isTrue();
         assertThat(execution.error().agentName()).isEqualTo("failingGreet");
-        assertThat(execution.topLevelInvocations().suspensions()).hasSize(1);
+        assertThat(execution.topLevelInvocations().suspendedDuration()).isPositive();
         assertThat(execution.topLevelInvocations().nestedInvocations())
                 .extracting(i -> i.agent().name())
                 .containsExactly("askName", "failingGreet");
@@ -437,9 +434,9 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.failures).isEmpty();
         assertThat(MONITOR.ongoingExecutions()).isEmpty();
         assertThat(MONITOR.successfulExecutionsFor("session-7")).containsExactly(execution);
-        assertThat(root.suspensions()).hasSize(1);
+        assertThat(root.suspendedDuration()).isPositive();
         assertThat(slow.done()).isTrue();
-        assertThat(slow.suspensions()).isEmpty();
+        assertThat(slow.suspendedDuration()).isZero();
         assertThat(root.nestedInvocations())
                 .extracting(i -> i.agent().name())
                 .containsExactly("slow", "askName", "read");
@@ -496,7 +493,7 @@ class AgentMonitorSuspensionTest {
                 .orElseThrow();
         assertThat(c.done()).isTrue();
         assertThat(c.suspended()).isFalse();
-        assertThat(c.suspensions()).isEmpty();
+        assertThat(c.suspendedDuration()).isZero();
         assertThat(par.suspended()).isTrue();
 
         result = result.completePendingResponse("Mario");
@@ -504,8 +501,8 @@ class AgentMonitorSuspensionTest {
         assertThat(result.result()).isEqualTo("Hello Mario");
         assertThat(MONITOR.failures).isEmpty();
         assertThat(MONITOR.successfulExecutionsFor("session-8")).containsExactly(execution);
-        assertThat(c.suspensions()).isEmpty();
-        assertThat(par.suspensions()).hasSize(1);
+        assertThat(c.suspendedDuration()).isZero();
+        assertThat(par.suspendedDuration()).isPositive();
     }
 
     // ---- a parallel sibling fails after the other branch suspended the system ----
@@ -605,8 +602,7 @@ class AgentMonitorSuspensionTest {
                 .orElseThrow();
         assertThat(inner.done()).isFalse();
         assertThat(inner.suspended()).isFalse();
-        assertThat(inner.suspensions()).hasSize(1);
-        assertThat(inner.suspensions().get(0).finishTime()).isNotNull();
+        assertThat(inner.suspendedDuration()).isPositive();
 
         // the next root call on this memory id is a new execution, instead of a failure of the monitor
         greeter.greet("session-10");
@@ -658,7 +654,7 @@ class AgentMonitorSuspensionTest {
         assertThat(MONITOR.successfulExecutionsFor("session-11")).containsExactly(execution);
         assertThat(root.nestedInvocations()).containsExactly(gate);
         assertThat(gate.done()).isTrue();
-        assertThat(gate.suspensions()).hasSize(1);
+        assertThat(gate.suspendedDuration()).isPositive();
     }
 
     // ---- an asynchronous agent suspends the system after the root call returned ----
