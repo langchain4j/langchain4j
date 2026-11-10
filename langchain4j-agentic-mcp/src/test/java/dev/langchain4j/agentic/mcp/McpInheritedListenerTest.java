@@ -37,6 +37,7 @@ class McpInheritedListenerTest {
                         .isError(false)
                         .build());
         UntypedAgent greeter = McpAgent.builder(mcpClient)
+                .name("greet")
                 .inputKeys("name")
                 .outputKey("greeting")
                 .build();
