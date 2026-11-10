@@ -65,6 +65,12 @@ public class ChatMemoryService {
     }
 
     public ChatMemory evictChatMemory(Object memoryId) {
+        if (chatMemoryProvider == null) {
+            throw new UnsupportedOperationException("Cannot evict the chat memory of the memory id '" + memoryId
+                    + "': this AI service has a single chat memory, shared by all the memory ids. Configure it with"
+                    + " chatMemoryProvider(...) instead of chatMemory(...) to have a chat memory for each memory id,"
+                    + " which can be evicted.");
+        }
         return chatMemories.remove(memoryId);
     }
 

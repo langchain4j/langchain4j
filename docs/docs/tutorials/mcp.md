@@ -131,8 +131,13 @@ Things to know when you use your own HTTP client:
   a limited number of events and fail the response when the buffer is full.
 - **Error responses:** when the server answers with an error status, for example `404` for an expired
   session, the JDK, OkHttp and Apache clients report it as soon as the response headers arrive. The
-  transport then fails the request, or starts a new session, right away. Other clients may report the
-  error only after they have read the whole response body.
+  transport then fails the request with an `HttpException` that carries the status code, or starts a
+  new session, right away. Other clients may report the error only after they have read the whole
+  response body. With protocol `2026-07-28`, a server may also reject a request with a client error
+  status and a JSON-RPC error in a JSON body, for example `404` with error code `-32601` for a method
+  it does not know. For such a response, the transport reads the body, and the request fails with the
+  server's JSON-RPC error, the same as when the error comes with status `200`. This applies to every
+  `4xx` status except `401`, `403` and `429`, which always fail the request with their status code.
 
 Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
 closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client
@@ -238,9 +243,13 @@ McpClient mcpClient = DefaultMcpClient.builder()
 
 Detection costs one extra round trip when the client starts: it sends a `server/discover`
 request, and treats the server as a legacy server if the answer is an error or does not
-arrive within `protocolDetectionTimeout`. That timeout defaults to `initializationTimeout`
-(30 seconds), because a server started as a subprocess needs time to boot before it can
-answer anything, and giving up too early would make a modern server look like a legacy one.
+arrive within `protocolDetectionTimeout`. A few error codes are handled differently. If the
+server answers with an "unsupported protocol version" error (`-32022`), the client starts
+again with one of the versions that the error lists, and fails to start if it lists none. If
+the server answers with `-32020` or `-32021`, the client fails to start with that error.
+`protocolDetectionTimeout` defaults to `initializationTimeout` (30 seconds), because a server
+started as a subprocess needs time to boot before it can answer anything, and giving up too
+early would make a modern server look like a legacy one.
 A fallback caused by silence rather than by an error is logged as a warning, since it is the
 case where the server may have been misjudged.
 

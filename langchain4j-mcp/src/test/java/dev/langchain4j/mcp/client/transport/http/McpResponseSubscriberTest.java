@@ -109,6 +109,27 @@ class McpResponseSubscriberTest {
     }
 
     @Test
+    void error_head_whose_body_is_read_keeps_reading_until_the_error() {
+        Queue<Runnable> tasks = new ArrayDeque<>();
+        RecordingSubscriber downstream = new RecordingSubscriber();
+        McpResponseSubscriber subscriber = new McpResponseSubscriber(downstream, tasks::add, errorHead -> true);
+        RecordingSubscription upstream = new RecordingSubscription();
+        subscriber.onSubscribe(upstream);
+        HttpErrorResponseReceived head = new HttpErrorResponseReceived(400, Map.of());
+        RuntimeException error = new RuntimeException("error with body");
+
+        subscriber.onNext(head);
+        assertThat(upstream.cancelled).isFalse();
+        tasks.remove().run();
+        assertThat(upstream.requests).containsExactly(1L, 1L);
+
+        subscriber.onError(error);
+        tasks.remove().run();
+        assertThat(downstream.signals).containsExactly(head, error);
+        assertThat(upstream.cancelled).isFalse();
+    }
+
+    @Test
     void rejected_error_head_delivery_fails_once_and_cancels_upstream() {
         RecordingSubscriber downstream = new RecordingSubscriber();
         RejectedExecutionException rejection = new RejectedExecutionException("executor stopped");

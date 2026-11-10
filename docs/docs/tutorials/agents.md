@@ -707,6 +707,78 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
+The root call of the agentic system does not wait either for an asynchronous agent whose result nobody reads: it returns as soon as the other agents are done, while that agent is still running, and the `AgenticScope` is ended at that point as for any other root call, without waiting for it. This makes it possible to delegate a long side task to the last agent of a workflow, like a fix delegated to a remote coding agent that takes minutes, while the workflow returns its own result in seconds:
+
+```java
+RemediationAgent remediation = AgenticServices
+        .a2aBuilder(REMEDIATION_SERVER_URL, RemediationAgent.class)
+        .async(true)
+        .outputKey("fix")
+        .listener(new AgentListener() {
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                // called when the remediation completes, after analyze(...) returned
+                notifyTeam(response.output());
+            }
+        })
+        .build();
+
+RolloutAnalysis analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysis.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+String decision = analysis.analyze(rollout); // returns while the remediation is still running
+```
+
+The result of such an agent reaches you in two ways:
+
+- the `afterAgentInvocation` of its `AgentListener` is called when the agent completes. This is the way to consume it, which is why the listener is registered on the agent itself in the example above.
+- the result is written to the `AgenticScope` under the output key of the agent, where a later root call on the same memory id can read it.
+
+To wait for such an agent anyway, for example in a test, call the agentic system through a method returning a `ResultWithAgenticScope` and read the output key of the agent: `readState` waits until the agent completes.
+
+```java
+public interface RolloutAnalysisWithScope {
+
+    @Agent
+    ResultWithAgenticScope<String> analyze(@V("rollout") String rollout);
+}
+
+RolloutAnalysisWithScope analysis = AgenticServices
+        .sequenceBuilder(RolloutAnalysisWithScope.class)
+        .subAgents(dataCollector, scorer, remediation)
+        .outputKey("decision")
+        .build();
+
+ResultWithAgenticScope<String> result = analysis.analyze(rollout); // returns while the remediation is still running
+String fix = result.agenticScope().readState("fix", ""); // waits for the remediation to complete
+```
+
+When such an agent fails:
+
+- the error handler of the agentic system handles the failure, on the thread of the agent, and the `onAgentInvocationError` of its listener is notified. The root call has already returned its result, so no compensation runs for it.
+- an `AgentMonitor` records the execution as failed, unless the error handler recovered the failure.
+- reading the result of the failed agent throws its failure, until the next root call on the same memory id starts and drops it. A saved copy of the `AgenticScope` never contains it.
+
+When such an agent suspends the agentic system, like an A2A client agent whose remote task needs more input:
+
+- its pending response is left in the `AgenticScope`, as for a synchronous agent, and an agent reading its result suspends the agentic system as usual.
+- when the root call returns without noticing the suspension, it cannot throw the `AgenticSystemSuspendedException` to its caller, so the `onAgenticSystemSuspended` of the listener of the agentic system is notified instead. The next root call on the same memory id resumes from the pending response once it is completed, or suspends again otherwise.
+
+The `AgenticScope` and the later root calls behave as follows:
+
+- an ephemeral `AgenticScope` is destroyed at the end of the root call as usual, so `beforeAgenticScopeDestroyed` is notified before the events of the asynchronous agents of that scope still running. These agents keep writing their results to it, where the caller can read them through a `ResultWithAgenticScope`.
+- a persistent `AgenticScope` is saved at the end of the root call without the pending results, and again when each of them completes.
+- a later root call on the same memory id waits for the asynchronous agents of the previous call still running before it starts, so that only one root call at a time runs on an `AgenticScope`. A caller invoking the same memory id again right after the previous call returned may therefore block until they complete.
+
+Also note that:
+
+- asynchronous agents run on the default executor of LangChain4j, so their pending work is lost when the JVM exits.
+- when the root call ends while some asynchronous agents are still running, the `AgenticScope` logs their output keys at debug level. This tells whether the root call was blocked by an asynchronous agent or returned without waiting for it.
+- the `output` function or the output key of the root agent reads the `AgenticScope` like any other agent does: an asynchronous agent whose result they read is awaited before the root call returns, as in the evening planner example above.
+
 ## Streaming agents
 
 In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 
@@ -1102,7 +1174,21 @@ This last method also supports filtering by memory id, for instance `HtmlReportG
 
 An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
 
-By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+When the agentic system is [suspended](#agenticscope-and-agentic-systems-recoverability), for instance by a human-in-the-loop step returning a `SuspendedResponse`, its execution stays among the ongoing ones of the `AgentMonitor`, and the invocations of the root agent and of the workflows containing the suspended step stay in progress, marked as suspended: their `suspended()` method returns `true`, like the `suspended()` method of the `MonitoredExecution`. The invocation of the step waiting for the human is recorded as finished, and an agent still running in another branch of a parallel workflow is reported as suspended too, until it completes. Since the system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of starting new ones, so once they finish their `duration()` spans the wait, which `suspendedDuration()` tells apart from the time spent running; a loop containing the step waiting for a human is suspended once per iteration. An invocation still in progress throws an `IllegalStateException` from `duration()` and `output()`, while `suspendedDuration()` can be called at any time. The HTML report labels a suspended execution as "suspended" instead of "running".
+
+You can find out which sessions are waiting and for what:
+
+```java
+MonitoredExecution execution = monitor.ongoingExecutionFor("order-12345");
+if (execution != null && execution.suspended()) {
+    Set<String> waitingFor = execution.agenticScope().pendingResponseIds();
+    Duration waited = execution.topLevelInvocations().suspendedDuration();
+}
+```
+
+An invocation that the resumed run does not continue, like a branch of a router whose condition changed, stays unfinished, and the execution ends with its root agent. The same happens to an asynchronous agent that suspends the system after the root call returned: the execution is recorded as finished and the root call resuming it as a new one. A monitor created after the suspension, for instance after a crash and a restart, has no record of it and records the resumed call as a new execution.
+
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth from finished sessions. The limit does not apply to ongoing executions: an execution that stays suspended, because it is never resumed, is kept until its scope is evicted with `evictAgenticScope`, when the monitor drops it, since nothing can resume it anymore, and a later call on that memory id starts a new execution.
 
 The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
 
@@ -1227,9 +1313,9 @@ In a very similar way, annotating other `static` methods in the agent interface,
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
-| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
-| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`. |
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope`.         |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope` |
+| `@DecisionModelSupplier`      | Returns the `DecisionModel` to be used by a [decision agent](#decision-agents). It could be both a fixed model, if the method has no argument or only arguments provided by a `SupplierParameterResolver`, or a function of the `AgenticScope`. |
 | `@DecisionThresholdSupplier`  | Returns the threshold of the `boolean` answers of a [decision agent](#decision-agents), as a `double`. It takes the `ThresholdContext` describing the question and is invoked at every invocation. |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
@@ -1323,6 +1409,42 @@ Map<String, Object> input = Map.of(
 
 String story = (String) novelCreator.invoke(input);
 ```
+
+### Helper objects
+
+The methods annotated with `@Output`, `@ExitCondition`, `@ActivationCondition`, `@ChatModelSupplier` and the other annotations of the two tables above are the *helper methods* of an agent. In an agent interface they are static. They can also be instance methods of the *helper objects* of the agent: plain objects that an integration provides for each agent type through the `helperObjectsResolver` of an `AgentConfigurator`, built with `AgentConfigurator.builder()`. This is how a dependency injection container, like the Quarkus extension, keeps the helpers of an agent on a bean, with its injected fields and its interceptors: there the agent class itself is its own helper object. For instance the `EveningPlannerAgent` above can get its listener from a helper object holding it, instead of a static method creating it:
+
+```java
+public class PlannerHelpers {
+
+    private final AgentListener listener; // in a container, an injected bean
+
+    public PlannerHelpers(AgentListener listener) {
+        this.listener = listener;
+    }
+
+    @AgentListenerSupplier
+    AgentListener listener() {
+        return listener;
+    }
+}
+
+AgentConfigurator configurator = AgentConfigurator.builder()
+        .helperObjectsResolver(agentType -> agentType == EveningPlannerAgent.class
+                ? List.of(new PlannerHelpers(new AgentMonitor()))
+                : List.of())
+        .build();
+EveningPlannerAgent eveningPlannerAgent = AgenticServices
+        .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL, configurator);
+```
+
+The resolver is called once for each agent of the system when it is built, and the objects it returns are shared by all the invocations of the agent. An instance helper takes the same parameters as the static form: values read from the `AgenticScope`, the parameters provided by the framework, like `@LoopCounter` or the `ErrorContext`, and the ones resolved through a `SupplierParameterResolver`. The rules are the following:
+
+- for one annotation an agent has one helper: a static method of the agent type together with an instance method of a helper object, or two helper objects with the same annotation, is a configuration error, except for the annotations allowed several times on an agent, like `@ActivationCondition` with a value on a conditional agent;
+- a non-static helper declared by the agent type itself, like a `default` method of the interface, needs a helper object that is an instance of its declaring type, otherwise creating the agentic system fails instead of ignoring the method;
+- an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields; a final method of a final class, as in a Kotlin class by default, is fine, since no proxy can subclass such a class;
+- an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
+- in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
 
 ## Strongly typed inputs and outputs
 
@@ -1545,7 +1667,7 @@ SupervisorAgent bankSupervisor = AgenticServices
 
 Note that the subagents can also be complex agents implementing a workflow, that will be seen as a single agent by the supervisor.
 
-The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server is down, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again.
+The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent that is unavailable, like an A2A or MCP agent whose description cannot be read because its server is down, which is reported with an `AgentUnavailableException`, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again. Any other failure while reading a description, like a configuration error of an MCP agent whose tool does not exist on its server, fails the invocation of the supervisor instead, so that it does not go unnoticed.
 
 The resulting `SupervisorAgent` typically takes a user request as input and produces a response, so its signature is simply as follows:
 
@@ -2951,7 +3073,7 @@ public class ExchangeOperator {
 }
 ```
 
-so that it can be used in the same way as the other subagents made available to the supervisor. 
+so that it can be used in the same way as the other subagents made available to the supervisor. An agent passed as an instance like this is also its own [helper object](#helper-objects): its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`. 
 
 ```java
 WithdrawAgent withdrawAgent = AgenticServices
@@ -3016,7 +3138,7 @@ public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 }
 ```
 
-This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
+This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user. Like every agent passed as an instance, such an object is also its own [helper object](#helper-objects).
 
 The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows you to define this function together with the agent description, and the output variable where the user's response will be written.
 
@@ -3360,11 +3482,13 @@ By doing so it internally sends a summarization prompt, similar to the one of th
 
 The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
 
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry together with the chat memory objects of its agents, or `deleteAgenticScope` to delete also the messages they stored.
 
 ```java
 agent.evictAgenticScope(memoryId);
 ```
+
+`evictAgenticScope` removes the `AgenticScope` from the registry and forgets the chat memory objects that the agents of the system hold for that ID, with the meaning of `ChatMemoryAccess.evictChatMemory` for an AI service: the messages they stored stay in their `ChatMemoryStore`. A chat memory without a store of its own, like `MessageWindowChatMemory.withMaxMessages(10)`, keeps its messages in the object, so they are lost with it. When the conversation has to be deleted too, call `deleteAgenticScope(memoryId)` instead: it clears each of those chat memories, which deletes their messages from the store, before evicting them. Both methods reach only the chat memories created in this JVM for that ID; the messages stored by another node, or before a restart, have to be deleted through the store.
 
 Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
 
@@ -3521,6 +3645,8 @@ String result = workflow.processOrder("order-12345", "1000 widgets");
 ```
 
 Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
+
+An `AgentMonitor` that was listening when the system was suspended continues the recorded invocations on resume, as explained in the [monitoring](#monitoring) section. A monitor created later, for instance after a restart, records the resumed call as a new execution.
 
 ## Agents Registry
 
@@ -3709,7 +3835,7 @@ The first invocation of the agent pays the latency of the card fetch. Calling th
 ```java
 AgentCard agentCard = ((A2AClientInstance) creativeWriter).agentCard();
 ```
- When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent:
+ When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. It extends `AgentUnavailableException`, the type common to every unavailable remote agent, A2A or MCP, which carries the name of the agent. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent, here recognized by its own type, or by `AgentUnavailableException` to treat an unavailable MCP agent in the same way:
 
 ```java
 UntypedAgent pipeline = AgenticServices.sequenceBuilder()
@@ -3993,13 +4119,13 @@ public interface DeclarativeA2AWithUrlSupplier {
 
 The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
 
-This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents, although that method is invoked later, when the MCP client is first needed.
 
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
 
-To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The builder queries the MCP server for the tool specification (name, description, input schema) and creates an agent that forwards invocations to that tool.
+To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The agent reads the tool specification (name, description, input schema) from the MCP server the first time it is needed, as explained in the [tool resolution](#tool-resolution) section, and forwards its invocations to that tool.
 
 For example, if an MCP server exposes a `generate_story` tool, it can be wrapped as an untyped agent:
 
@@ -4017,7 +4143,21 @@ UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
 String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
 ```
 
-The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters. They are mandatory for an untyped agent, which could not report any argument without them until its tool is resolved, so building one without them fails with an `IllegalArgumentException`; a typed agent takes them from the parameters of its method when they are not set.
+
+A `DefaultMcpClient` connects to its server when it is created. To defer that until the client is first needed, give the builder a `Supplier<McpClient>` instead of the client:
+
+```java
+UntypedAgent storyGenerator = McpAgent.builder(() -> new DefaultMcpClient.Builder()
+                .transport(myMcpTransport)
+                .build())
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
 
 As with other agents, MCP tool agents can also be created with a typed interface:
 
@@ -4038,7 +4178,7 @@ String story = storyGenerator.generateStory("dragons and wizards");
 
 In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
 
-Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance.
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance. This method is invoked when the client is first needed, normally on the first invocation of the agent, and not when the agentic system is built, so that creating a `DefaultMcpClient`, which connects to its server, does not require the server to be up at that time. As for the supplier given to `McpAgent.builder()`, the client it returns is used by every invocation of the agent, and the agent never closes it.
 
 ```java
 public interface DeclarativeMcpStoryGenerator {
@@ -4057,4 +4197,55 @@ public interface DeclarativeMcpStoryGenerator {
                 .build();
     }
 }
+```
+
+### Tool resolution
+
+Building an MCP tool agent, or an agentic system containing one, never contacts the MCP server: the tool is looked up, through the `listTools()` method of the `McpClient`, the first time it is needed, which is normally the first invocation of the agent. In this way an MCP server that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an MCP agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The `McpClient` given to `McpAgent.builder()` is created by the caller, so a `DefaultMcpClient`, which connects to its server when it is created, does so at that moment: to defer the connection too, give the builder a `Supplier<McpClient>` instead, as shown above, which is invoked when the client is first needed, as the `@McpClientSupplier` method of a declarative agent is.
+
+This has a few consequences for what is known about the agent before its first invocation.
+
+- **Name**: the name of an MCP agent is always known locally, without the tool. It is the one set through the `name` attribute of the `@McpClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `McpAgent.builder(mcpClient)` takes its configured `toolName` or, without one, the placeholder `mcp-agent`, which logs a warning when the agent is built: at most one agent of an agentic system can be named with the placeholder, and building a system containing two of them fails with an `AgenticSystemConfigurationException`, since they could not be told apart in the events, the reports and the supervisor prompts. Setting a meaningful name is recommended for untyped agents anyway, especially when they are used by a supervisor, whose model sees the name of every subagent. The name, and the agent id derived from it, are used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and they never change, not even after the tool has been resolved. The name of the tool itself is available through the `toolName()` method of the `McpClientInstance` interface, implemented by every MCP tool agent, which resolves the tool when no `toolName` is configured.
+- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@McpClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is the one of the tool, which is resolved the first time the description is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor resolves the tool. When the tool cannot be resolved because the MCP server is unavailable, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. A configuration error, like a tool that does not exist on the server, fails the invocation of the supervisor and the generation of the report instead, so that it does not go unnoticed. Setting the description explicitly avoids all this, and also keeps the description of the tool, which is controlled by the MCP server, out of the prompt of the supervisor. The descriptions of the input parameters of the tool still reach that prompt once the tool is resolved.
+- **Arguments**: the arguments of the agent never contact the server, because every workflow reads them when it is built. Until the tool is resolved they are those of the agent method for a typed agent, and the `inputKeys`, without type information, for an untyped one, which is why they are mandatory for it: the planners that read the arguments at invocation, without resolving the tool, would otherwise find none. Once the tool is resolved, the arguments carry the descriptions of that schema and, for an untyped agent, also its types and optionality. A typed agent checks that its inputs are available before contacting the server, while an untyped one resolves the tool first, because its required inputs are only known from the schema.
+- **Client supplier**: the parameters of the `@McpClientSupplier` method provided by a `SupplierParameterResolver` are resolved when the agent is built, like those of the other supplier methods, while the method itself runs when the client is first needed, so a value resolved per request is the one of the thread building the agent and not the one of the first caller. The declared return type of the method is checked when the agent is built too: it must be `McpClient`, a subtype, or a supertype such as `Object`, in which case the instance it returns is checked when the client is created.
+
+The tool is resolved once: a later change of the tool on the MCP server is only seen after the agent is built again. The first invocation of the agent pays the latency of the tool resolution. Calling the `toolSpecification()` method of the `McpClientInstance` interface resolves the tool immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the tool cannot be resolved:
+
+```java
+ToolSpecification tool = ((McpClientInstance) storyGenerator).toolSpecification();
+```
+
+Inside a declarative agentic system the MCP agent is wrapped, so it is reached through the `as` method of the corresponding subagent, found by name among the `subagents()` of the `AgentInstance` of the system. For instance, for a sequence using the `DeclarativeMcpStoryGenerator` above, whose MCP agent is named after its `generateStory` method:
+
+```java
+public interface StoryPipeline {
+
+    @SequenceAgent(outputKey = "story", subAgents = DeclarativeMcpStoryGenerator.class)
+    String write(@V("topic") String topic);
+}
+
+StoryPipeline storyPipeline = AgenticServices.createAgenticSystem(StoryPipeline.class);
+AgentInstance mcpSubagent = ((AgentInstance) storyPipeline).subagents().stream()
+        .filter(subagent -> subagent.name().equals("generateStory"))
+        .findFirst()
+        .orElseThrow();
+ToolSpecification tool = mcpSubagent.as(McpClientInstance.class).toolSpecification();
+```
+
+When the MCP client cannot be created or the tools cannot be listed, the invocation fails with an `McpToolResolutionException`, carrying the name of the agent and the configured name of the tool, with the original error as cause. It extends `AgentUnavailableException`, like the `A2AAgentCardException` of the A2A agents, so an error handler can recognize an unavailable remote agent of either kind by that common type, as the one below does. The failure is not cached: the next invocation resolves the tool again, so an MCP server that becomes available later works without rebuilding the agentic system. A tool that is not found on the server, or a missing `toolName` when the server exposes more than one tool, is instead a configuration error, reported with an `AgenticSystemConfigurationException` at the first resolution. Being thrown during the invocation of the agent, these exceptions also reach the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional MCP agent whose server is down. Here `storyGenerator` is one of the MCP tool agents created with `McpAgent.builder()` above, and `analyzer` any other agent writing the `topic` it needs:
+
+```java
+UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+        .subAgents(analyzer, storyGenerator)
+        .outputKey("story")
+        .errorHandler(errorContext -> {
+            for (Throwable cause = errorContext.exception(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof AgentUnavailableException unavailable) {
+                    return ErrorRecoveryResult.result("no story available, " + unavailable.agentName() + " is unreachable");
+                }
+            }
+            return ErrorRecoveryResult.throwException();
+        })
+        .build();
 ```

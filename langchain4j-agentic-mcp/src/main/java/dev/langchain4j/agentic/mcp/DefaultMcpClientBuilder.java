@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.mcp;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
-import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -27,14 +27,19 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,34 +47,66 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultMcpClientBuilder.class);
 
+    /**
+     * The name of an untyped agent without a configured tool name, whose tool is only known once resolved. Using it
+     * logs a warning, and at most one agent of an agentic system can be named with it, since those agents could not
+     * be told apart otherwise, as {@link McpClientAgentInvoker} checks.
+     */
+    static final String PLACEHOLDER_NAME = "mcp-agent";
+
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
-    private final McpClient mcpClient;
     private final Class<T> agentServiceClass;
+    private final Optional<Method> agentMethod;
+    private Supplier<McpClient> mcpClientSupplier;
+    private final ReentrantLock lazyInitLock = new ReentrantLock();
+
+    // The MCP client is created and the tool resolved lazily, the first time they are needed, so that building an
+    // agentic system never depends on the availability of the MCP server
+    private volatile McpClient mcpClient;
+    private volatile ToolSpecification tool;
 
     private String toolName;
     private String name;
+    private boolean placeholderName;
     private String agentId;
     private String description;
     private InternalAgent parent;
 
     private String[] inputKeys;
-    private Map<String, String> inputDescriptions = Map.of();
-    private List<AgentArgument> arguments = List.of();
+    private volatile Map<String, String> inputDescriptions = Map.of();
+    private volatile List<AgentArgument> arguments = List.of();
     private String outputKey;
     private boolean async;
 
     private AgentListener agentListener;
     private AgentCondition activationCondition;
 
-    DefaultMcpClientBuilder(McpClient mcpClient, Class<T> agentServiceClass) {
-        this.mcpClient = mcpClient;
+    DefaultMcpClientBuilder(Supplier<McpClient> mcpClientSupplier, Class<T> agentServiceClass) {
+        this.mcpClientSupplier = mcpClientSupplier;
         this.agentServiceClass = agentServiceClass;
+        this.agentMethod = agentMethod(agentServiceClass);
     }
 
     @Override
     public McpClientBuilder<T> toolName(String toolName) {
         this.toolName = toolName;
+        return this;
+    }
+
+    @Override
+    public McpClientBuilder<T> name(String name) {
+        if (!isNullOrBlank(name)) {
+            this.name = name;
+        }
+        return this;
+    }
+
+    @Override
+    public McpClientBuilder<T> description(String description) {
+        if (!isNullOrBlank(description)) {
+            this.description = description;
+        }
         return this;
     }
 
@@ -105,37 +142,29 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public T build() {
-        ToolSpecification toolSpec = findTool();
-
-        this.name = toolSpec.name();
-        this.agentId = this.name;
-        this.description = toolSpec.description();
-        JsonObjectSchema params = toolSpec.parameters();
-        if (params != null && params.properties() != null) {
-            Map<String, String> descriptions = new HashMap<>();
-            params.properties().forEach((key, schema) -> {
-                if (schema != null
-                        && schema.description() != null
-                        && !schema.description().isBlank()) {
-                    descriptions.put(key, schema.description());
-                }
-            });
-            this.inputDescriptions = Map.copyOf(descriptions);
-        }
-
+        // An untyped agent would report no argument until its tool is resolved, while some planners read the
+        // arguments at invocation without resolving it, so its input keys are mandatory, as for an untyped A2A agent
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
-            if (params != null && params.properties() != null) {
-                this.inputKeys = params.properties().keySet().toArray(new String[0]);
-            } else {
-                this.inputKeys = new String[0];
-            }
+            throw new IllegalArgumentException("Input keys must be provided for an untyped MCP client agent: "
+                    + "set McpClientBuilder.inputKeys(...) with the names of the input parameters of its tool");
         }
-
-        if (agentServiceClass == UntypedAgent.class) {
-            this.arguments = McpSchemaToType.arguments(params, inputKeys);
-        } else {
-            this.arguments = McpSchemaToType.mergeDescriptions(typedArguments(), inputDescriptions);
+        if (description == null) {
+            description = agentMethod.map(DefaultMcpClientBuilder::annotatedDescription).orElse(null);
         }
+        // The local name, and the agent id derived from it, are fixed before the proxy is handed out, and the
+        // arguments are the local ones until the tool is resolved
+        if (name == null) {
+            name = defaultName();
+        }
+        agentId = name;
+        if (placeholderName) {
+            LOG.warn(
+                    "The MCP client agent has neither a name nor a tool name and is named with the placeholder '{}': "
+                            + "set McpClientBuilder.name(...) or toolName(...) to give it a meaningful name, "
+                            + "which is mandatory when an agentic system contains more than one such agent",
+                    PLACEHOLDER_NAME);
+        }
+        this.arguments = localArguments();
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
@@ -143,22 +172,138 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         return (T) agent;
     }
 
-    private List<AgentArgument> typedArguments() {
-        for (Method method : agentServiceClass.getMethods()) {
-            Optional<Method> agentMethod = getAnnotatedMethod(method, Agent.class);
-            if (agentMethod.isEmpty()) {
-                agentMethod = getAnnotatedMethod(method, McpClientAgent.class);
-            }
-            if (agentMethod.isPresent()) {
-                return AgentUtil.argumentsFromMethod(agentMethod.get());
-            }
+    /**
+     * The arguments known without the tool: those of the agent method of a typed agent, or the mandatory input keys
+     * of an untyped one, without type information.
+     */
+    private List<AgentArgument> localArguments() {
+        if (agentServiceClass != UntypedAgent.class) {
+            return typedArguments();
         }
-        return List.of();
+        return Stream.of(inputKeys).map(key -> new AgentArgument(Object.class, key)).toList();
     }
 
-    private ToolSpecification findTool() {
-        List<ToolSpecification> tools = mcpClient.listTools();
-        if (toolName == null || toolName.isBlank()) {
+    private List<AgentArgument> typedArguments() {
+        return agentMethod.map(AgentUtil::argumentsFromMethod).orElse(List.of());
+    }
+
+    private static Optional<Method> agentMethod(Class<?> agentServiceClass) {
+        if (agentServiceClass == UntypedAgent.class) {
+            return Optional.empty();
+        }
+        Optional<Method> agentMethod = AgentUtil.getAnnotatedMethodOnClass(agentServiceClass, Agent.class)
+                .or(() -> AgentUtil.getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class));
+        if (agentMethod.isPresent()) {
+            return agentMethod;
+        }
+        List<Method> abstractMethods = Stream.of(agentServiceClass.getMethods())
+                .filter(method -> Modifier.isAbstract(method.getModifiers()))
+                .toList();
+        return abstractMethods.size() == 1 ? Optional.of(abstractMethods.get(0)) : Optional.empty();
+    }
+
+    private static String annotatedName(Method agentMethod) {
+        Agent agent = agentMethod.getAnnotation(Agent.class);
+        if (agent != null) {
+            return agent.name();
+        }
+        McpClientAgent mcpClientAgent = agentMethod.getAnnotation(McpClientAgent.class);
+        return mcpClientAgent != null ? mcpClientAgent.name() : null;
+    }
+
+    private static String annotatedDescription(Method agentMethod) {
+        Agent agent = agentMethod.getAnnotation(Agent.class);
+        if (agent != null) {
+            return firstNonBlank(agent.description(), agent.value());
+        }
+        McpClientAgent mcpClientAgent = agentMethod.getAnnotation(McpClientAgent.class);
+        return mcpClientAgent != null ? firstNonBlank(mcpClientAgent.description(), mcpClientAgent.value()) : null;
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (!isNullOrBlank(first)) {
+            return first;
+        }
+        return isNullOrBlank(second) ? null : second;
+    }
+
+    /**
+     * Returns the tool specification, creating the MCP client and listing the tools of the server the first time.
+     * Concurrent first invocations resolve the tool once, and a failed resolution is not cached, so that the next
+     * invocation retries it.
+     */
+    private ToolSpecification resolveTool() {
+        ToolSpecification resolvedTool = tool;
+        if (resolvedTool == null) {
+            lockForLazyInit();
+            try {
+                resolvedTool = tool;
+                if (resolvedTool == null) {
+                    resolvedTool = findTool(listTools());
+                    applyTool(resolvedTool);
+                }
+            } finally {
+                lazyInitLock.unlock();
+            }
+        }
+        return resolvedTool;
+    }
+
+    private void lockForLazyInit() {
+        try {
+            lazyInitLock.lockInterruptibly();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new McpToolResolutionException(name(), configuredToolName(), e);
+        }
+    }
+
+    private McpClient client() {
+        McpClient client = mcpClient;
+        if (client == null) {
+            lockForLazyInit();
+            try {
+                client = mcpClient;
+                if (client == null) {
+                    client = createClient();
+                    mcpClient = client;
+                    mcpClientSupplier = null;
+                }
+            } finally {
+                lazyInitLock.unlock();
+            }
+        }
+        return client;
+    }
+
+    private McpClient createClient() {
+        McpClient client;
+        try {
+            client = mcpClientSupplier.get();
+        } catch (AgenticSystemConfigurationException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new McpToolResolutionException(name(), configuredToolName(), e);
+        }
+        if (client == null) {
+            throw new AgenticSystemConfigurationException(
+                    "The MCP client supplier of the MCP client agent '" + name() + "' returned null");
+        }
+        return client;
+    }
+
+    private List<ToolSpecification> listTools() {
+        McpClient client = client();
+        try {
+            return client.listTools();
+        } catch (RuntimeException e) {
+            throw new McpToolResolutionException(name(), configuredToolName(), e);
+        }
+    }
+
+    private ToolSpecification findTool(List<ToolSpecification> tools) {
+        String configuredToolName = configuredToolName();
+        if (configuredToolName == null) {
             if (tools.size() == 1) {
                 return tools.get(0);
             }
@@ -168,25 +313,58 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         }
 
         return tools.stream()
-                .filter(t -> toolName == null || t.name().equals(toolName))
+                .filter(t -> t.name().equals(configuredToolName))
                 .findFirst()
-                .orElseThrow(() ->
-                        new AgenticSystemConfigurationException("Tool '" + toolName + "' not found. Available tools: "
-                                + tools.stream().map(ToolSpecification::name).toList()));
+                .orElseThrow(() -> new AgenticSystemConfigurationException("Tool '" + configuredToolName
+                        + "' not found. Available tools: "
+                        + tools.stream().map(ToolSpecification::name).toList()));
+    }
+
+    /** Fills in what is known only from the tool: the argument descriptions and, for an untyped agent, the types. */
+    private void applyTool(ToolSpecification resolvedTool) {
+        JsonObjectSchema params = resolvedTool.parameters();
+        Map<String, String> descriptions = new HashMap<>();
+        if (params != null && params.properties() != null) {
+            params.properties().forEach((key, schema) -> {
+                if (schema != null
+                        && schema.description() != null
+                        && !schema.description().isBlank()) {
+                    descriptions.put(key, schema.description());
+                }
+            });
+        }
+
+        inputDescriptions = Map.copyOf(descriptions);
+        arguments = agentServiceClass == UntypedAgent.class
+                ? McpSchemaToType.arguments(params, inputKeys)
+                : McpSchemaToType.mergeDescriptions(typedArguments(), inputDescriptions);
+        tool = resolvedTool;
+    }
+
+    private String configuredToolName() {
+        return isNullOrBlank(toolName) ? null : toolName;
     }
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
-            return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            try {
+                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof Error error) {
+                    throw error;
+                }
+                throw (Exception) e.getCause();
+            }
         }
 
         if (method.getDeclaringClass() == McpClientInstance.class) {
             return switch (method.getName()) {
-                case "toolName" -> name;
-                case "toolDescription" -> description;
+                case "toolSpecification" -> resolveTool();
+                case "toolName" -> toolName();
+                case "toolDescription" -> resolveTool().description();
                 case "inputKeys" -> inputKeys;
-                case "inputDescriptions" -> inputDescriptions;
+                case "inputDescriptions" -> inputDescriptions();
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on McpClientInstance class: " + method.getName());
@@ -196,12 +374,24 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         return invokeTool(method, args);
     }
 
+    /** The configured tool name, else the name of the single tool of the server, resolved at this point. */
+    private String toolName() {
+        String configuredToolName = configuredToolName();
+        return configuredToolName != null ? configuredToolName : resolveTool().name();
+    }
+
+    private Map<String, String> inputDescriptions() {
+        resolveTool();
+        return inputDescriptions;
+    }
+
     private static Type getReturnType(Method method) {
         Type type = method.getGenericReturnType();
         return type == Object.class ? String.class : type;
     }
 
     private Object invokeTool(Method method, Object[] args) {
+        ToolSpecification resolvedTool = resolveTool();
         Type returnType = getReturnType(method);
         Map<String, Object> argsMap = new HashMap<>();
 
@@ -213,7 +403,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         } else {
             String[] keys = inputKeys;
             if (keys == null) {
-                keys = java.util.stream.Stream.of(method.getParameters())
+                keys = Stream.of(method.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new);
             }
@@ -225,18 +415,18 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         String argumentsJson = Json.toJson(argsMap);
 
         ToolExecutionRequest executionRequest = ToolExecutionRequest.builder()
-                .name(name)
+                .name(resolvedTool.name())
                 .arguments(argumentsJson)
                 .build();
 
-        ToolExecutionResult result = mcpClient.executeTool(executionRequest);
+        ToolExecutionResult result = client().executeTool(executionRequest);
 
         if (result.isError()) {
             throw new RuntimeException("MCP tool execution failed: " + result.resultText());
         }
 
         String responseText = result.resultText();
-        LOG.debug("MCP tool '{}' response: {}", name, responseText);
+        LOG.debug("MCP tool '{}' response: {}", resolvedTool.name(), responseText);
 
         return serviceOutputParser.parseText(returnType, responseText);
     }
@@ -255,7 +445,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public void appendId(String idSuffix) {
-        this.agentId = this.agentId + idSuffix;
+        this.agentId = agentId + idSuffix;
     }
 
     @Override
@@ -273,9 +463,28 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         return null;
     }
 
+    /**
+     * The name, fixed by {@link #build()}, is always known locally, without contacting the MCP server: it is the
+     * explicit one, else the one of the annotation of the agent method, else the name of that method for a typed
+     * agent, else the configured tool name for an untyped agent, else a placeholder. It never changes afterwards, not
+     * even when the tool is resolved, because the agent id is derived from it.
+     */
     @Override
     public String name() {
         return name;
+    }
+
+    private String defaultName() {
+        if (agentMethod.isPresent()) {
+            String annotatedName = annotatedName(agentMethod.get());
+            return isNullOrBlank(annotatedName) ? agentMethod.get().getName() : annotatedName;
+        }
+        String configuredToolName = configuredToolName();
+        if (configuredToolName != null) {
+            return configuredToolName;
+        }
+        placeholderName = true;
+        return PLACEHOLDER_NAME;
     }
 
     @Override
@@ -283,9 +492,12 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         return agentId;
     }
 
+    /**
+     * The explicit description, else the one of the MCP tool, which is resolved at this point if not yet done.
+     */
     @Override
     public String description() {
-        return description;
+        return description != null ? description : resolveTool().description();
     }
 
     @Override
@@ -308,6 +520,11 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         return activationCondition;
     }
 
+    /**
+     * The arguments never contact the MCP server, because every workflow reads them when it is built: they are the
+     * local ones until the tool is resolved, and carry the types, optionality and descriptions of its input schema
+     * afterwards.
+     */
     @Override
     public List<AgentArgument> arguments() {
         return arguments;

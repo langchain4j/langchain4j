@@ -182,7 +182,7 @@ class StreamableHttpMcpTransportSpiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {401, 503})
+    @ValueSource(ints = {400, 401, 503})
     void should_fail_with_the_status_code_of_an_http_error(int status) throws Exception {
         start(builder());
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
@@ -194,6 +194,18 @@ class StreamableHttpMcpTransportSpiTest {
                 .isInstanceOf(HttpException.class)
                 .hasMessage("Unexpected status code: " + status);
         assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(status);
+    }
+
+    @Test
+    void should_complete_with_the_json_rpc_error_of_a_client_that_only_reports_the_failure() throws Exception {
+        start(builder());
+        transport.setModernProtocol(true);
+        CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
+        String error = "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}";
+
+        httpClient.nextExchange().fail(new HttpException(400, error));
+
+        assertThat(result.get(5, TimeUnit.SECONDS)).isEqualTo(error);
     }
 
     @ParameterizedTest

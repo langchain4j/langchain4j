@@ -1,5 +1,6 @@
 package dev.langchain4j.observability.api;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import java.util.Arrays;
 import java.util.ServiceLoader;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -115,6 +116,8 @@ public interface AiServiceListenerRegistrar {
      * This method first attempts to load an instance of {@link AiServiceListenerRegistrar}
      * using {@link ServiceLoader}. If no implementation is found, the default
      * instance provided by {@link DefaultAiServiceListenerRegistrar#newInstance()} is returned.
+     * The listeners of the internal {@code ObservabilityListenersProvider}s found with {@link ServiceLoader} are also
+     * registered with it.
      * @param shouldThrowExceptionOnEventError Indicates whether to throw exceptions on event errors.
      *                                         If {@code true}, exceptions will be thrown; otherwise, errors
      *                                         will be handled silently.
@@ -126,6 +129,7 @@ public interface AiServiceListenerRegistrar {
                 .orElseGet(DefaultAiServiceListenerRegistrar::new);
 
         registrar.shouldThrowExceptionOnEventError(shouldThrowExceptionOnEventError);
+        ObservabilityListeners.registerWith(registrar);
         return registrar;
     }
 }

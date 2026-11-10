@@ -3,18 +3,19 @@ package dev.langchain4j.agentic.agent;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentToolExecution;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentToolExecution;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgentAiServiceEvent;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.internal.AgentModelResponse;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -34,6 +35,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
@@ -73,6 +75,16 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.chatModelProvider = builder.chatModelProvider;
         this.streamingChatModelProvider = builder.streamingChatModelProvider;
         context.eventListenerRegistrar = new ForwardingRegistrar(context.eventListenerRegistrar);
+    }
+
+    /**
+     * @return the AI service implementing this agent, built by {@link AiServices} from the
+     *         agent type: an integration that builds its own AI service implementation reaches it here, for instance
+     *         to manage the chat memories it created
+     */
+    @Internal
+    public Object aiService() {
+        return agent;
     }
 
     @Override
@@ -280,10 +292,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 && parentListener.inheritedBySubagents()
                 && isNewListener(agentListener, parentListener)) {
             agentListener = composeWithInherited(agentListener, parentListener);
-            context.toolService.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
-            context.toolService.afterToolExecution(toolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(this, toolExecution)));
+            context.toolService.beforeToolExecution(
+                    beforeToolExecution -> beforeAgentToolExecution(agentListener, this, beforeToolExecution));
+            context.toolService.afterToolExecution(
+                    toolExecution -> afterAgentToolExecution(agentListener, this, toolExecution));
         }
     }
 

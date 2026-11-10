@@ -6,6 +6,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.service.tool.BeforeToolExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +46,8 @@ public class ListenerNotifierUtil {
             Object output,
             ChatRequest chatRequest,
             ChatResponse chatResponse) {
-        afterAgentInvocation(listener, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
+        afterAgentInvocation(
+                listener, new AgentResponse(agenticScope, agent, inputs, output, chatRequest, chatResponse));
     }
 
     public static void afterAgentInvocation(
@@ -92,6 +95,31 @@ public class ListenerNotifierUtil {
                 listener.onAgentSkipped(new AgentSkipped(agenticScope, agent, reason));
             } catch (Exception e) {
                 LOG.error("agentSkipped listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public static void beforeAgentToolExecution(
+            AgentListener listener, AgentInstance agent, BeforeToolExecution beforeToolExecution) {
+        if (listener != null) {
+            try {
+                listener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution));
+            } catch (Exception e) {
+                LOG.error(
+                        "beforeAgentToolExecution listener for agent " + agent.name() + " failed: " + e.getMessage(),
+                        e);
+            }
+        }
+    }
+
+    public static void afterAgentToolExecution(
+            AgentListener listener, AgentInstance agent, ToolExecution toolExecution) {
+        if (listener != null) {
+            try {
+                listener.afterAgentToolExecution(new AfterAgentToolExecution(agent, toolExecution));
+            } catch (Exception e) {
+                LOG.error(
+                        "afterAgentToolExecution listener for agent " + agent.name() + " failed: " + e.getMessage(), e);
             }
         }
     }

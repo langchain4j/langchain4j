@@ -7,15 +7,25 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.workflow.ParallelAgentService;
 import java.lang.reflect.Method;
+import java.util.List;
 
 public class ParallelAgentServiceImpl<T> extends AbstractServiceBuilder<T, ParallelAgentService<T>>
         implements ParallelAgentService<T> {
 
     public ParallelAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        this(agentServiceClass, agenticMethod, List.of());
+    }
+
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public ParallelAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
         super(agentServiceClass, agenticMethod);
-        configureParallel(agentServiceClass);
+        configureParallel(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override
@@ -38,10 +48,10 @@ public class ParallelAgentServiceImpl<T> extends AbstractServiceBuilder<T, Paral
         return "Parallel";
     }
 
-    private void configureParallel(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureParallel(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
 
-        parallelExecutor(agentServiceClass).ifPresent(this::executor);
+        parallelExecutor(helpers).ifPresent(this::executor);
     }
 }

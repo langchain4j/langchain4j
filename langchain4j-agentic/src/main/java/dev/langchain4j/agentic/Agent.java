@@ -4,6 +4,7 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgentListener;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -151,6 +152,12 @@ public @interface Agent {
 
     /**
      * If true, the agent will be invoked in an asynchronous manner, allowing the workflow to continue without waiting for the agent's result.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */

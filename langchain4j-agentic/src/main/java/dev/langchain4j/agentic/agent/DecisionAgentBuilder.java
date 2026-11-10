@@ -119,10 +119,6 @@ public class DecisionAgentBuilder<T> {
 
     private DecisionAgentBuilder(Class<T> agentServiceClass, boolean configureDeclarativeAgent) {
         this.agentServiceClass = ensureNotNull(agentServiceClass, "agentServiceClass");
-        if (!agentServiceClass.isInterface()) {
-            throw new IllegalArgumentException("A decision agent must be defined by an interface, but "
-                    + agentServiceClass.getName() + " is a class");
-        }
         this.agenticMethod = validateAgentClass(agentServiceClass);
         validateMethod(agentServiceClass, agenticMethod);
         this.decisionMethod = DecisionMethod.from(agenticMethod);
@@ -280,7 +276,16 @@ public class DecisionAgentBuilder<T> {
 
     /**
      * Controls whether this agent executes asynchronously within an agentic system: the decision call then runs
-     * on the executor used for every asynchronous agent, and the agents reading its output wait for it.
+     * on the executor used for every asynchronous agent.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
+     *
+     * @param async {@code true} to run asynchronously
+     * @return this builder
      */
     public DecisionAgentBuilder<T> async(boolean async) {
         this.async = async;
@@ -359,6 +364,10 @@ public class DecisionAgentBuilder<T> {
      * {@code boolean} answer
      */
     public T build() {
+        if (agentInstanceFactory == null && !agentServiceClass.isInterface()) {
+            throw new IllegalArgumentException("A decision agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         if ((decisionModel == null) == (decisionModelProvider == null)) {
             throw new IllegalArgumentException(
                     "One and only one of decisionModel and decisionModelProvider must be set for the decision agent '"
