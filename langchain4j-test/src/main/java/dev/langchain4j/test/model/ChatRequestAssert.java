@@ -11,35 +11,28 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.test.LangChain4jAssertions;
 import dev.langchain4j.test.internal.ChatMessageTexts;
+import dev.langchain4j.test.service.AiServiceCapture;
 import java.util.List;
 import org.assertj.core.api.AbstractObjectAssert;
 
 /**
  * Assertions on a request sent to a chat model: its messages and the tools it offers. Use them to check what an AI
  * Service sent to the model, for example that the system message and the prompt template were filled in as expected.
- * To get the requests, register a {@code ChatModelListener} on the chat model that the AI Service uses:
+ * To get the requests, capture what the AI Service does with {@link AiServiceCapture}:
  * <pre>{@code
  * import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
+ * import static dev.langchain4j.test.service.AiServiceCapture.capture;
  *
- * List<ChatRequest> requests = new CopyOnWriteArrayList<>();
- * ChatModelListener requestCollector = new ChatModelListener() {
- *     @Override
- *     public void onRequest(ChatModelRequestContext requestContext) {
- *         requests.add(requestContext.chatRequest());
- *     }
- * };
- * // for example OpenAiChatModel.builder()...listeners(requestCollector).build()
+ * AiServiceCapture capture = capture(() -> assistant.chat("Cancel booking MS-777"));
  *
- * assistant.chat("Cancel booking MS-777");
- *
- * assertThat(requests.get(0))
+ * assertThat(capture.firstRequest())
  *         .hasSystemMessageContaining("support agent")
  *         .hasUserMessageContaining("MS-777")
  *         .hasToolSpecification("cancelBooking");
  * }</pre>
- * When a framework creates the chat model for you, register the listener the way that framework expects, for example
- * as a bean. When an assertion fails, the message lists all messages or tools of the request; each message text is
- * cut to 1000 characters.
+ * Any other {@link ChatRequest} can be checked too, for example one collected by a {@code ChatModelListener}. When an
+ * assertion fails, the message lists all messages or tools of the request; each message text is cut to 1000
+ * characters.
  */
 @Experimental
 public final class ChatRequestAssert extends AbstractObjectAssert<ChatRequestAssert, ChatRequest> {
