@@ -94,4 +94,15 @@ public @interface A2AClientAgent {
      * @return the tenant identifier, or empty to auto-detect from the URL.
      */
     String tenant() default "";
+
+    /**
+     * Number of seconds given to the fetch of the agent card, which happens the first time the card is needed,
+     * normally on the first invocation of the agent. When the card is not fetched within this time the invocation
+     * fails with an {@code A2AAgentCardException} caused by a {@link java.util.concurrent.TimeoutException}.
+     * Concurrent first invocations wait on the same fetch, so none of them waits longer than this time.
+     *
+     * @return the number of seconds given to the fetch of the agent card, or 0 for the default of 30 seconds.
+     * @since 1.24.0
+     */
+    int resolutionTimeoutSeconds() default 0;
 }

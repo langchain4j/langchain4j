@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.time.Duration;
 import java.util.function.Predicate;
 
 public interface McpClientBuilder<T> {
@@ -86,6 +87,27 @@ public interface McpClientBuilder<T> {
      * evaluated more than once, so it must be free of side effects.
      */
     McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
+
+    /**
+     * Sets the time given to the resolution of the MCP tool, that is the creation of the MCP client by its supplier
+     * and the listing of the tools of the MCP server, which happens the first time the tool is needed, normally on
+     * the first invocation of the agent, on a thread of the LangChain4j executor. When the tool is not resolved
+     * within this time the resolution is interrupted and the invocation fails with an
+     * {@code McpToolResolutionException} caused by a {@link java.util.concurrent.TimeoutException}. Concurrent first
+     * invocations wait on the same resolution, so none of them waits longer than this time, and they all fail when
+     * it fails, while the next invocation resolves the tool again.
+     * <p>
+     * By default the resolution has no such limit and takes as long as the MCP client allows: a
+     * {@code DefaultMcpClient} has its own {@code initializationTimeout} and {@code toolExecutionTimeout}, which
+     * still apply when this one is set, so that the shortest of them ends the resolution.
+     *
+     * @param resolutionTimeout the time given to the resolution of the MCP tool, which must be positive
+     * @return this builder for method chaining
+     * @since 1.24.0
+     */
+    default McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
+        return this;
+    }
 
     T build();
 }

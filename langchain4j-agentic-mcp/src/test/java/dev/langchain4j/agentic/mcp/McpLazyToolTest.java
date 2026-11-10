@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -40,16 +41,20 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +64,9 @@ import org.junit.jupiter.api.Test;
  * The MCP client of an MCP client agent is created and its tool resolved lazily, on the first invocation, so that
  * building an agentic system never depends on the availability of the MCP server (issue #6957). The name of the
  * agent is always known locally, the description and the argument details come from the tool when first needed, a
- * failed resolution is retried, and concurrent first invocations resolve the tool once.
+ * failed resolution is retried, and concurrent first invocations resolve the tool once. The resolution runs on a
+ * thread of the LangChain4j executor, within the resolution timeout of the agent when one is set, and the
+ * invocations waiting on it all fail when it fails (issue #6958).
  */
 class McpLazyToolTest {
 
@@ -81,7 +88,7 @@ class McpLazyToolTest {
 
     /**
      * An MCP server, as seen through the clients it hands out: counts the clients created and the tool listings, and
-     * can be told to be down, or slow.
+     * can be told to be down, or slow, or to make the creation of a client or a listing wait on a gate.
      */
     static class McpServer implements Supplier<McpClient> {
 
@@ -89,8 +96,12 @@ class McpLazyToolTest {
         final String reply;
         final AtomicInteger clients = new AtomicInteger();
         final AtomicInteger listings = new AtomicInteger();
+        final CountDownLatch interrupted = new CountDownLatch(1);
         volatile boolean down;
         volatile long delayMillis;
+        volatile CountDownLatch creationGate;
+        volatile CountDownLatch listingGate;
+        volatile Thread supplyingThread;
 
         McpServer(String reply, ToolSpecification... tools) {
             this.reply = reply;
@@ -100,6 +111,8 @@ class McpLazyToolTest {
         @Override
         public McpClient get() {
             clients.incrementAndGet();
+            supplyingThread = Thread.currentThread();
+            awaitGate(creationGate);
             if (down) {
                 // like DefaultMcpClient, whose constructor fails when the server does not answer its initialization
                 throw new IllegalStateException("connection refused");
@@ -113,8 +126,21 @@ class McpLazyToolTest {
             return client;
         }
 
+        private void awaitGate(CountDownLatch gate) {
+            if (gate != null) {
+                try {
+                    gate.await();
+                } catch (InterruptedException e) {
+                    interrupted.countDown();
+                    // like DefaultMcpClient, which reports the interruption of a request with a RuntimeException
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+
         private List<ToolSpecification> listTools() throws InterruptedException {
             listings.incrementAndGet();
+            awaitGate(listingGate);
             if (delayMillis > 0) {
                 Thread.sleep(delayMillis);
             }
@@ -276,6 +302,36 @@ class McpLazyToolTest {
         }
     }
 
+    public interface ImpatientStoryAgent {
+
+        @McpClientAgent(toolName = "writer", outputKey = "story", resolutionTimeoutSeconds = 1)
+        String generateStory(@V("topic") String topic);
+
+        @McpClientSupplier
+        static Object mcpClient() {
+            return server.get();
+        }
+    }
+
+    public interface ImpatientPipeline {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {Analyzer.class, ImpatientStoryAgent.class})
+        String process(@V("request") String request);
+    }
+
+    public interface StoryAgentWithNegativeTimeout {
+
+        @McpClientAgent(toolName = "writer", outputKey = "story", resolutionTimeoutSeconds = -1)
+        String generateStory(@V("topic") String topic);
+
+        @McpClientSupplier
+        static Object mcpClient() {
+            return server.get();
+        }
+    }
+
     /** A typed agent for the programmatic builder. */
     public interface Writer {
 
@@ -384,6 +440,164 @@ class McpLazyToolTest {
         assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
         assertThat(server.clients).hasValue(2);
         assertThat(server.listings).hasValue(1);
+    }
+
+    /** Starts the given number of concurrent invocations and returns once they all wait on the same resolution. */
+    private static List<Thread> startWaitingInvocations(int count, Writer writer, List<Throwable> failures) {
+        List<Thread> callers = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Thread caller = new Thread(() -> failures.add(catchThrowable(() -> writer.write("dragons"))));
+            caller.start();
+            callers.add(caller);
+        }
+        await().atMost(10, TimeUnit.SECONDS)
+                .until(() -> callers.stream().allMatch(caller -> caller.getState() == Thread.State.WAITING));
+        return callers;
+    }
+
+    private static void join(List<Thread> callers) throws InterruptedException {
+        for (Thread caller : callers) {
+            caller.join(10_000);
+        }
+    }
+
+    @Test
+    void a_client_supplier_that_never_returns_fails_after_the_resolution_timeout() throws Exception {
+        server.creationGate = new CountDownLatch(1);
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .isInstanceOf(AgentUnavailableException.class)
+                .hasMessageEndingWith("'writer' of the MCP client agent 'write' within 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(server.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // once the interrupted supplier has ended, the next invocation resolves the tool again
+        server.creationGate = null;
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(McpToolResolutionException.class)
+                .untilAsserted(() -> assertThat(writer.write("dragons")).isEqualTo("a story about dragons"));
+        assertThat(server.clients).hasValue(2);
+    }
+
+    @Test
+    void a_listing_of_the_tools_that_never_returns_fails_after_the_resolution_timeout_and_keeps_the_client()
+            throws Exception {
+        server.listingGate = new CountDownLatch(1);
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasMessageEndingWith("within 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(server.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the client created before the listing timed out is used again
+        server.listingGate = null;
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(McpToolResolutionException.class)
+                .untilAsserted(() -> assertThat(writer.write("dragons")).isEqualTo("a story about dragons"));
+        assertThat(server.clients).hasValue(1);
+        assertThat(server.listings).hasValue(2);
+    }
+
+    @Test
+    void concurrent_invocations_share_the_failure_of_a_single_resolution() throws Exception {
+        server.down = true;
+        server.creationGate = new CountDownLatch(1);
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .outputKey("story")
+                .build();
+
+        List<Throwable> failures = new CopyOnWriteArrayList<>();
+        List<Thread> callers = startWaitingInvocations(8, writer, failures);
+        server.creationGate.countDown();
+        join(callers);
+
+        assertThat(failures).hasSize(8).doesNotHaveDuplicates().allSatisfy(failure -> assertThat(failure)
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasCauseInstanceOf(IllegalStateException.class));
+        assertThat(failures.stream().map(Throwable::getCause).distinct()).hasSize(1);
+        assertThat(server.clients).hasValue(1);
+
+        // the failure is not cached: the next invocation resolves the tool again
+        server.down = false;
+        assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
+        assertThat(server.clients).hasValue(2);
+    }
+
+    @Test
+    void concurrent_invocations_share_a_configuration_error() throws Exception {
+        server.listingGate = new CountDownLatch(1);
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("poet")
+                .outputKey("story")
+                .build();
+
+        List<Throwable> failures = new CopyOnWriteArrayList<>();
+        List<Thread> callers = startWaitingInvocations(8, writer, failures);
+        server.listingGate.countDown();
+        join(callers);
+
+        assertThat(failures).hasSize(8).allSatisfy(failure -> assertThat(failure)
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("'poet' not found"));
+        assertThat(failures.stream().distinct()).hasSize(1);
+        assertThat(server.listings).hasValue(1);
+    }
+
+    @Test
+    void the_client_supplier_runs_on_a_thread_of_the_executor() {
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .outputKey("story")
+                .build();
+
+        assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
+
+        assertThat(server.supplyingThread).isNotNull().isNotSameAs(Thread.currentThread());
+    }
+
+    @Test
+    void the_resolution_timeout_of_the_annotation_is_applied() {
+        server.creationGate = new CountDownLatch(1);
+        ImpatientPipeline pipeline = AgenticServices.createAgenticSystem(ImpatientPipeline.class, (ChatModel) null);
+
+        Throwable failure = catchThrowable(() -> pipeline.process("dragons"));
+
+        assertThat(causeOfType(failure, McpToolResolutionException.class))
+                .hasMessageContaining("'generateStory'")
+                .hasMessageEndingWith("within 1 s")
+                .hasCauseInstanceOf(TimeoutException.class);
+    }
+
+    @Test
+    void the_resolution_timeout_must_be_positive() {
+        var builder = McpAgent.builder(server, Writer.class);
+
+        assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ZERO))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be positive");
+        assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be positive");
+        assertThatThrownBy(() -> builder.resolutionTimeout(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be positive");
+        assertThatThrownBy(() ->
+                        AgenticServices.createAgenticSystem(StoryAgentWithNegativeTimeout.class, (ChatModel) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be positive");
     }
 
     @Test
