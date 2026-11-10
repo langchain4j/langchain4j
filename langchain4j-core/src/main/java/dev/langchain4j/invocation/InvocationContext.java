@@ -6,6 +6,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.spi.CapturedContext;
+import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +85,21 @@ public interface InvocationContext {
      * The method name on {@link #interfaceName()} where the invocation was initiated from
      */
     String methodName();
+
+    /**
+     * The declared return type of the AI Service method, including its type arguments (for example
+     * {@code List<String>} or {@code TokenStream}).
+     * <p>
+     * Frameworks that create the context with their own AI Service implementation return {@code null} until they
+     * add support for it.
+     *
+     * @return the return type of the AI Service method, or {@code null} if it is not known
+     * @since 1.24.0
+     */
+    @Experimental
+    default Type methodReturnType() {
+        return null;
+    }
 
     /**
      * The arguments passed into the AI Service method
@@ -184,6 +200,7 @@ public interface InvocationContext {
         private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
+        private Type methodReturnType;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
         private UserMessage originalUserMessage;
@@ -204,6 +221,7 @@ public interface InvocationContext {
             parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
+            methodReturnType(invocationContext.methodReturnType());
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
             originalUserMessage(invocationContext.originalUserMessage());
@@ -252,6 +270,17 @@ public interface InvocationContext {
          */
         public Builder methodName(String methodName) {
             this.methodName = methodName;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext#methodReturnType()}.
+         *
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder methodReturnType(Type methodReturnType) {
+            this.methodReturnType = methodReturnType;
             return this;
         }
 
@@ -376,6 +405,11 @@ public interface InvocationContext {
 
         public String methodName() {
             return methodName;
+        }
+
+        @Experimental
+        public Type methodReturnType() {
+            return methodReturnType;
         }
 
         public List<@NonNull Object> methodArguments() {
