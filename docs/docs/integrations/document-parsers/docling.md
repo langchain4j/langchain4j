@@ -27,7 +27,7 @@ This module depends on `docling-serve-api` (the interface) and includes `docling
 <dependency>
     <groupId>ai.docling</groupId>
     <artifactId>docling-serve-client</artifactId>
-    <version>0.6.4</version>
+    <version>0.7.1</version>
 </dependency>
 ```
 
