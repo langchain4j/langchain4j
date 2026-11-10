@@ -22,6 +22,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>A visual tree chart of the agent hierarchy showing topology types, names, and properties</li>
  *   <li>A waterfall timeline of execution traces grouped by memory/session ID</li>
  * </ul>
+ *
+ * <p>An execution suspended by a human-in-the-loop step stays among the ongoing ones, with the invocations of the
+ * root agent and of the workflows containing that step in progress and marked as suspended: when the agentic
+ * system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of
+ * starting new ones. A suspended execution is dropped when its scope is evicted, since nothing can resume it
+ * anymore. A monitor created after the suspension, for instance after a restart, has no record of the suspended
+ * execution and records the resumed invocation as a new execution.
  */
 public class AgentMonitor implements AgentListener {
 
@@ -129,8 +136,10 @@ public class AgentMonitor implements AgentListener {
     public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
-        execution.afterAgentInvocation(agentResponse);
-        finalizeExecution(memoryId, execution);
+        if (execution != null) {
+            execution.afterAgentInvocation(agentResponse);
+            finalizeExecution(memoryId, execution);
+        }
     }
 
     @Override
@@ -161,6 +170,30 @@ public class AgentMonitor implements AgentListener {
     }
 
     @Override
+    public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null) {
+            execution.agenticSystemSuspended();
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    /**
+     * Drops the execution of the evicted scope if it is suspended: nothing can resume it anymore, so the next root
+     * call on that memory id, on a new scope, is a new execution. An execution still running is left alone, its root
+     * call ends it.
+     */
+    @Override
+    public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null && execution.suspended()) {
+            ongoingExecutions.remove(memoryId, execution);
+        }
+    }
+
+    @Override
     public void onAgentSkipped(AgentSkipped agentSkipped) {
         MonitoredExecution execution =
                 ongoingExecutions.get(agentSkipped.agenticScope().memoryId());
@@ -170,6 +203,7 @@ public class AgentMonitor implements AgentListener {
     }
 
     private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+        execution.endSuspendedInvocationsIfRootEnded();
         if (!execution.ongoingInvocations().isEmpty()
                 || execution.hasRunningAsyncAgents()
                 || (!execution.done() && !execution.hasError())) {

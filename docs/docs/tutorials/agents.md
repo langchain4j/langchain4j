@@ -1174,7 +1174,21 @@ This last method also supports filtering by memory id, for instance `HtmlReportG
 
 An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
 
-By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+When the agentic system is [suspended](#agenticscope-and-agentic-systems-recoverability), for instance by a human-in-the-loop step returning a `SuspendedResponse`, its execution stays among the ongoing ones of the `AgentMonitor`, and the invocations of the root agent and of the workflows containing the suspended step stay in progress, marked as suspended: their `suspended()` method returns `true`, like the `suspended()` method of the `MonitoredExecution`. The invocation of the step waiting for the human is recorded as finished, and an agent still running in another branch of a parallel workflow is reported as suspended too, until it completes. Since the system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of starting new ones, so once they finish their `duration()` spans the wait, which `suspendedDuration()` tells apart from the time spent running; a loop containing the step waiting for a human is suspended once per iteration. An invocation still in progress throws an `IllegalStateException` from `duration()` and `output()`, while `suspendedDuration()` can be called at any time. The HTML report labels a suspended execution as "suspended" instead of "running".
+
+You can find out which sessions are waiting and for what:
+
+```java
+MonitoredExecution execution = monitor.ongoingExecutionFor("order-12345");
+if (execution != null && execution.suspended()) {
+    Set<String> waitingFor = execution.agenticScope().pendingResponseIds();
+    Duration waited = execution.topLevelInvocations().suspendedDuration();
+}
+```
+
+An invocation that the resumed run does not continue, like a branch of a router whose condition changed, stays unfinished, and the execution ends with its root agent. The same happens to an asynchronous agent that suspends the system after the root call returned: the execution is recorded as finished and the root call resuming it as a new one. A monitor created after the suspension, for instance after a crash and a restart, has no record of it and records the resumed call as a new execution.
+
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth from finished sessions. The limit does not apply to ongoing executions: an execution that stays suspended, because it is never resumed, is kept until its scope is evicted with `evictAgenticScope`, when the monitor drops it, since nothing can resume it anymore, and a later call on that memory id starts a new execution.
 
 The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
 
@@ -3631,6 +3645,8 @@ String result = workflow.processOrder("order-12345", "1000 widgets");
 ```
 
 Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
+
+An `AgentMonitor` that was listening when the system was suspended continues the recorded invocations on resume, as explained in the [monitoring](#monitoring) section. A monitor created later, for instance after a restart, records the resumed call as a new execution.
 
 ## Agents Registry
 
