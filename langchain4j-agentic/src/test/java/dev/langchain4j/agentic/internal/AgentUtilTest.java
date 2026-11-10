@@ -9,6 +9,8 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AgentUtilTest {
 
@@ -140,16 +142,17 @@ class AgentUtilTest {
         assertThat(args.positionalArgs()[0]).isEqualTo(Category.LEGAL);
     }
 
-    @Test
-    void should_throw_when_string_is_not_an_enum_constant() {
+    @ParameterizedTest
+    @ValueSource(strings = {"SPORTS", "\"SPORTS\""})
+    void should_list_the_enum_constants_when_string_is_not_one_of_them(String value) {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
-        scope.writeState("category", "SPORTS");
+        scope.writeState("category", value);
 
         assertThatThrownBy(() -> AgentUtil.agentInvocationArguments(
                         scope, List.of(new AgentArgument(Category.class, "category"))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("'category'")
-                .hasMessageNotContaining("SPORTS");
+                .hasMessage("Cannot read agent argument 'category' as " + Category.class.getName()
+                        + ". It must be the name of one of its constants: LEGAL, MEDICAL.");
     }
 
     @Test
