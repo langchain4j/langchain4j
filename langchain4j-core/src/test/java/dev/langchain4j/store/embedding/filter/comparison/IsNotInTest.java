@@ -6,6 +6,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import dev.langchain4j.data.document.Metadata;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class IsNotInTest {
@@ -45,6 +46,19 @@ class IsNotInTest {
 
         // then: since isEqualTo(1.1) matches this metadata, isNotIn(1.1) must not match
         assertThat(isNotIn.test(metadata)).isFalse();
+    }
+
+    @Test
+    void shouldBeConsistentWithIsNotEqualToWhenActualValueIsNonUUIDString() {
+        // given: a string metadata value that is not a UUID and a UUID comparison value
+        UUID uuid = UUID.randomUUID();
+        IsNotEqualTo isNotEqualTo = new IsNotEqualTo("key", uuid);
+        IsNotIn isNotIn = new IsNotIn("key", List.of(uuid));
+        Metadata metadata = new Metadata(Map.of("key", "not-a-uuid"));
+
+        // then: isNotIn(x) must match (and not throw) whenever isNotEqualTo(x) matches
+        assertThat(isNotEqualTo.test(metadata)).isTrue();
+        assertThat(isNotIn.test(metadata)).isTrue();
     }
 
     @Test
