@@ -19,9 +19,10 @@ import java.util.concurrent.CompletableFuture;
  * {@link #sendMessage(McpCallContext)}. The overloads that take a bare {@link McpClientMessage}
  * wrap it in a {@link McpCallContext} without per-call headers or {@code _meta}.
  *
- * <p>{@link #close()} must release whatever the transport has acquired so far, and must also work
- * when {@link #start(McpOperationHandler)} failed or was never called, because a client that fails
- * to initialize closes its transport. It may be called more than once.
+ * <p>{@link #stop()} undoes what {@link #start(McpOperationHandler)} did, so that the transport can
+ * be started again, while {@link #close()} releases the transport for good. A client whose
+ * initialization fails stops its transport, which the caller keeps owning. Both must also work when
+ * {@code start} failed or was never called, and may be called more than once.
  */
 public interface McpTransport extends Closeable {
 
@@ -30,6 +31,19 @@ public interface McpTransport extends Closeable {
      * This does NOT yet send the "initialize" message to negotiate capabilities.
      */
     void start(McpOperationHandler messageHandler);
+
+    /**
+     * Releases what {@link #start(McpOperationHandler)} acquired, such as a subprocess, a container
+     * or a connection, without closing the transport itself, so that it can be started again: for a
+     * transport that connects per request it amounts to forgetting the session, the equivalent of a
+     * reconnection. The client calls it when its construction fails, because the caller keeps owning
+     * the transport in that case. The default does nothing, which leaks whatever {@code start}
+     * acquired until the next {@code start} or {@code close}: a transport that acquires anything
+     * there should override it.
+     *
+     * @since 1.24.0
+     */
+    default void stop() {}
 
     /**
      * Sends the MCP {@code InitializeRequest} and returns the server's response as unparsed JSON

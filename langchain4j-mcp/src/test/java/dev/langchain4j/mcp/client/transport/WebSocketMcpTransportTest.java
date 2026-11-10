@@ -3,8 +3,10 @@ package dev.langchain4j.mcp.client.transport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
@@ -67,6 +69,32 @@ class WebSocketMcpTransportTest {
         CompletableFuture<String> result = transport.sendRequest(new McpPingRequest(42L));
 
         assertThat(result).isNotDone();
+    }
+
+    @Test
+    void stopShouldCloseTheConnectionAndAllowANewOne() throws Exception {
+        WebSocket webSocket = mock(WebSocket.class);
+        when(webSocket.sendClose(anyInt(), anyString())).thenReturn(CompletableFuture.completedFuture(webSocket));
+        WebSocketMcpTransport transport =
+                WebSocketMcpTransport.builder().url("ws://localhost/mcp").build();
+        webSocketRef(transport).set(CompletableFuture.completedFuture(webSocket));
+
+        transport.stop();
+
+        // the connection is closed and forgotten, so that the next start opens a new one, while the transport
+        // itself, unlike after close(), is still usable
+        verify(webSocket).sendClose(WebSocket.NORMAL_CLOSURE, "Client closing");
+        assertThat(webSocketRef(transport).get()).isNull();
+        assertThat(isClosed(transport)).isFalse();
+
+        transport.close();
+        assertThat(isClosed(transport)).isTrue();
+    }
+
+    private static boolean isClosed(WebSocketMcpTransport transport) throws Exception {
+        Field field = WebSocketMcpTransport.class.getDeclaredField("closed");
+        field.setAccessible(true);
+        return field.getBoolean(transport);
     }
 
     private static WebSocketMcpTransport transportSending(CompletableFuture<WebSocket> sendResult) throws Exception {

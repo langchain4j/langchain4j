@@ -60,6 +60,16 @@ class DockerMcpTransportTest {
     }
 
     @Test
+    void stopShouldDoNothingWhenTheContainerWasNeverCreated() {
+        DockerMcpTransport transport = DockerMcpTransport.builder()
+                .dockerHost("tcp://localhost:2375")
+                .image("alpine")
+                .build();
+
+        assertThatCode(transport::stop).doesNotThrowAnyException();
+    }
+
+    @Test
     void shouldSetTlsVerifyFromCorrectlySpelledBuilderMethod() throws Exception {
         DockerMcpTransport transport = DockerMcpTransport.builder()
                 .dockerHost("tcp://localhost:2375")

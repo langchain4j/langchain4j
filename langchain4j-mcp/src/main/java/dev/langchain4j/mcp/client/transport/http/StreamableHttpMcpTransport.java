@@ -510,6 +510,21 @@ public class StreamableHttpMcpTransport implements McpTransport {
         return false;
     }
 
+    /**
+     * Forgets the session and ends the exchanges in flight, the subsidiary SSE channel included, without closing the
+     * HTTP client: the next initialization starts a new session.
+     */
+    @Override
+    public void stop() {
+        // cleared first, so that the cancelled subsidiary channel does not schedule its reconnection
+        subsidiaryChannelEstablished = false;
+        subsidiaryLastEventId.set(null);
+        activeExchanges.forEach(HttpExchange::cancel);
+        initialization = null;
+        initializeInProgress.set(null);
+        mcpSessionId.set(null);
+    }
+
     @Override
     public void close() throws IOException {
         if (closed.compareAndSet(false, true)) {

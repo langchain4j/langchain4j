@@ -220,8 +220,9 @@ public class DefaultMcpClientTest {
 
         // and: transport should be started
         verify(transport).start(any(McpOperationHandler.class));
-        // and: the transport is closed, since the caller gets no client to close it through
-        verify(transport).close();
+        // and: the transport is stopped, not closed: the caller gets no client, but keeps owning the transport
+        verify(transport).stop();
+        verify(transport, never()).close();
     }
 
     @Test
@@ -249,12 +250,13 @@ public class DefaultMcpClientTest {
         // then: no further actions should be taken
         verify(transport, times(1)).start(any(McpOperationHandler.class));
         verify(transport, times(1)).sendInitializeRequest(any());
-        // and: the transport was closed once, by the failed build, and not again by the callback
-        verify(transport, times(1)).close();
+        // and: the transport was stopped once, by the failed build, and not again by the callback
+        verify(transport, times(1)).stop();
+        verify(transport, never()).close();
     }
 
     @Test
-    public void should_close_the_transport_when_the_initialization_times_out() throws Exception {
+    public void should_stop_the_transport_when_the_initialization_times_out() throws Exception {
         // given: a server that never answers the initialize request, like a stdio subprocess that fails to boot
         final McpTransport transport = getMinimalMcpTransportMock();
         when(transport.sendInitializeRequest(any())).thenReturn(new CompletableFuture<>());
@@ -266,15 +268,16 @@ public class DefaultMcpClientTest {
         // when
         assertThatThrownBy(() -> clientBuilder.build()).hasCauseInstanceOf(TimeoutException.class);
 
-        // then: the transport started for the failed build is closed after it was started, so that a subprocess
+        // then: the transport started for the failed build is stopped after it was started, so that a subprocess
         // or a connection started for it does not outlive the attempt, which a Supplier<McpClient> may repeat
         InOrder inOrder = inOrder(transport);
         inOrder.verify(transport).start(any(McpOperationHandler.class));
-        inOrder.verify(transport).close();
+        inOrder.verify(transport).stop();
+        verify(transport, never()).close();
     }
 
     @Test
-    public void should_close_the_transport_when_starting_it_fails() throws Exception {
+    public void should_stop_the_transport_when_starting_it_fails() throws Exception {
         // given: a transport that cannot start, like a stdio command that does not exist
         final McpTransport transport = getMinimalMcpTransportMock();
         doThrow(new RuntimeException("apples")).when(transport).start(any(McpOperationHandler.class));
@@ -284,11 +287,12 @@ public class DefaultMcpClientTest {
         assertThatThrownBy(() -> clientBuilder.build()).hasMessageContaining("apples");
 
         // then
-        verify(transport).close();
+        verify(transport).stop();
+        verify(transport, never()).close();
     }
 
     @Test
-    public void should_close_the_transport_when_the_failure_comes_after_the_initialization() throws Exception {
+    public void should_stop_the_transport_when_the_failure_comes_after_the_initialization() throws Exception {
         // given: an initialization that succeeds, followed by a health check that cannot be scheduled
         final McpTransport transport = getMinimalMcpTransportMock();
         final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder()
@@ -300,21 +304,48 @@ public class DefaultMcpClientTest {
         assertThatThrownBy(() -> clientBuilder.build()).isInstanceOf(IllegalArgumentException.class);
 
         // then
-        verify(transport).close();
+        verify(transport).stop();
+        verify(transport, never()).close();
     }
 
     @Test
-    public void should_report_the_initialization_failure_when_closing_the_transport_also_fails() throws Exception {
+    public void should_report_the_initialization_failure_when_stopping_the_transport_also_fails() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
         doThrow(new RuntimeException("apples")).when(transport).sendInitializeRequest(any());
-        doThrow(new RuntimeException("oranges")).when(transport).close();
+        doThrow(new RuntimeException("oranges")).when(transport).stop();
         final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder().transport(transport);
 
         // when
         assertThatThrownBy(() -> clientBuilder.build())
-                // then: the failure of the close does not replace the failure that matters to the caller
+                // then: the failure of the stop does not replace the failure that matters to the caller
                 .hasMessageContaining("apples");
+        verify(transport).stop();
+    }
+
+    @Test
+    public void should_allow_another_build_with_the_same_transport_after_a_failed_one() throws Exception {
+        // given: a server that refuses the first initialization and accepts the next one, like one still booting
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendInitializeRequest(any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("not yet")))
+                .thenReturn(CompletableFuture.completedFuture(
+                        JsonNodeFactory.instance.objectNode().toString()));
+        final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion(DefaultMcpClient.PROTOCOL_VERSION_LEGACY);
+
+        // when: the first build fails and the second one, with the same transport, succeeds
+        assertThatThrownBy(() -> clientBuilder.build()).hasMessageContaining("not yet");
+        try (DefaultMcpClient client = clientBuilder.build()) {
+            // then: the failed build stopped the transport, which the caller kept, and the next build started it again
+            InOrder inOrder = inOrder(transport);
+            inOrder.verify(transport).start(any(McpOperationHandler.class));
+            inOrder.verify(transport).stop();
+            inOrder.verify(transport).start(any(McpOperationHandler.class));
+            verify(transport, never()).close();
+        }
+        // and: the client that was built owns the transport and closes it with itself
         verify(transport).close();
     }
 

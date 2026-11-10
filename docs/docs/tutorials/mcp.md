@@ -219,9 +219,11 @@ if there are multiple MCP clients, and it is necessary to disambiguate among the
 Building the client connects to the server, so `build()` throws an exception when the server
 cannot be reached or does not answer in time. The time limits are `initializationTimeout` and,
 when the protocol version is detected automatically, also `protocolDetectionTimeout` (see
-[Protocol Version](#protocol-version)). When `build()` fails, the client has already closed the
-transport, so you do not need to close it yourself. To try again, create a new transport: the
-Streamable HTTP and WebSocket transports cannot be used again once they are closed.
+[Protocol Version](#protocol-version)). When `build()` fails, the client stops the transport: the
+subprocess, container or connection started for the attempt is released, and the transport stays
+yours, ready for another attempt or to be closed. The client owns the transport, and closes it when
+it is itself closed, only once `build()` succeeds. A custom `McpTransport` releases what its
+`start()` acquired in `stop()`, which does nothing by default.
 
 ### Protocol Version
 

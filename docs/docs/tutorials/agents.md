@@ -4143,7 +4143,7 @@ UntypedAgent storyGenerator = McpAgent.builder(() -> new DefaultMcpClient.Builde
         .build();
 ```
 
-The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed. Create the transport inside the supplier, as in the example above: a `DefaultMcpClient` that fails to connect closes its transport, and the Streamable HTTP and WebSocket transports cannot be used again once they are closed. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+The supplier is invoked on the thread that first needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, it is invoked again the next time the client is needed, and a `DefaultMcpClient` that fails to connect stops its transport, releasing the subprocess, container or connection started for the attempt, so the supplier can create the transport inside, as in the example above, or reuse one it holds. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
 
 As with other agents, MCP tool agents can also be created with a typed interface:
 

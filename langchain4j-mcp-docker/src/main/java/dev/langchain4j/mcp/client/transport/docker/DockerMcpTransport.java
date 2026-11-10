@@ -218,7 +218,7 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
-    public void close() throws IOException {
+    public void stop() {
         String containerToRemove = containerId;
         if (containerToRemove == null) {
             return; // no container was created, or it has already been removed
@@ -227,6 +227,11 @@ public class DockerMcpTransport implements McpTransport {
         log.debug("Removing container {}", containerToRemove);
         // forced, so that it also kills a running container and removes one that has already exited
         dockerClient.removeContainerCmd(containerToRemove).withForce(true).exec();
+    }
+
+    @Override
+    public void close() throws IOException {
+        stop();
     }
 
     private CompletableFuture<String> execute(String request, Long id) {

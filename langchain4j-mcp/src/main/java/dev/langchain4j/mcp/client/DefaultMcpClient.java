@@ -248,8 +248,15 @@ public class DefaultMcpClient implements McpClient {
             initialize();
             startAutoHealthCheck();
         } catch (RuntimeException e) {
-            // The caller gets no client to close. This also stops the transport callback from reconnecting.
+            // The caller gets no client, but keeps owning the transport: it is stopped, not closed, so that what
+            // start() acquired, like a subprocess or a connection, is released while the transport can be started
+            // again by another attempt. Marking the client closed stops the transport callback from reconnecting.
             releaseResources();
+            try {
+                transport.stop();
+            } catch (Exception ex) {
+                log.warn("Cannot stop MCP transport", ex);
+            }
             throw e;
         }
     }
@@ -1630,8 +1637,14 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void close() {
         releaseResources();
+        try {
+            transport.close();
+        } catch (Exception e) {
+            log.warn("Cannot close MCP transport", e);
+        }
     }
 
+    /** Releases what the client holds besides the transport, and marks it closed. */
     private void releaseResources() {
         closed = true;
         // Cancel list-change subscription
@@ -1651,11 +1664,6 @@ public class DefaultMcpClient implements McpClient {
         activeSubscriptions.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();
-        }
-        try {
-            transport.close();
-        } catch (Exception e) {
-            log.warn("Cannot close MCP transport", e);
         }
     }
 
@@ -1836,12 +1844,13 @@ public class DefaultMcpClient implements McpClient {
 
         /**
          * Sets the transport protocol to use for communicating with the
-         * MCP server. This is a mandatory parameter. The DefaultMcpClient
-         * takes over the resource ownership of this transport: it closes
-         * the transport when it is itself closed, and also when building
-         * the client fails. Use a new transport for each attempt to build
-         * a client, because the Streamable HTTP and WebSocket transports
-         * cannot be used again once they are closed.
+         * MCP server. This is a mandatory parameter. A successfully built
+         * DefaultMcpClient takes over the resource ownership of this
+         * transport and closes it when it is itself closed. When building
+         * the client fails, the transport is only stopped: the subprocess,
+         * container or connection started for the attempt is released, and
+         * the caller keeps owning the transport, which can be given to
+         * another attempt or closed.
          */
         public Builder transport(McpTransport transport) {
             this.transport = transport;
