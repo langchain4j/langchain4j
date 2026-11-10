@@ -454,7 +454,10 @@ public class AgentUtil {
                 continue;
             }
             if (additionalArgs.containsKey(argName)) {
-                positionalArgs[i++] = additionalArgs.get(argName);
+                // converted like a value read from the scope, but not written to it
+                Object argValue = adaptValueToType(additionalArgs.get(argName), arg.rawType(), argName);
+                positionalArgs[i++] = argValue;
+                namedArgs.put(argName, argValue);
                 continue;
             }
 

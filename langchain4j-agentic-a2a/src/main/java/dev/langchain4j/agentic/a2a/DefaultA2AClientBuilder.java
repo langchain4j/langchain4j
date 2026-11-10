@@ -61,7 +61,6 @@ import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
 import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.http.A2ACardResolver;
-import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.a2aproject.sdk.spec.A2AClientError;
@@ -158,7 +157,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         A2ACardResolver cardResolver;
         try {
             cardResolver = A2ACardResolver.builder()
-                    .httpClient(A2AHttpClientFactory.create())
                     .baseUrl(a2aServerUrl)
                     .agentCardPath(null)
                     .tenant(tenant)
