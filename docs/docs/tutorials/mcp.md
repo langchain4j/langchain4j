@@ -96,6 +96,11 @@ McpTransport transport = HttpMcpTransport.builder()
     .build();
 ```
 
+**_NOTE:_** As with the other network transports, a single message received from the server can be at most
+20 MiB by default. If the server sends a larger message, the transport drops the message and closes the SSE channel.
+Requests that are still waiting for a response end when their timeout expires. To change the limit, set it on the
+builder, for example `.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
+
 For the Docker stdio transport, you first need to add a module to your pom.xml:
 
 ```xml
