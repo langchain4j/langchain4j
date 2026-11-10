@@ -12,6 +12,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
@@ -52,6 +53,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
     private static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
     private static final int SSE_DATA_FIELD_NAME_LENGTH = "data:".length();
+    private static final String HTTP_CLIENT_FACTORY_PROPERTY = "langchain4j.http.clientBuilderFactory";
+    private static final String JDK_HTTP_CLIENT_FACTORY = "dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory";
     private final String url;
     private final McpHeadersSupplier customHeadersSupplier;
     private final boolean logResponses;
@@ -98,16 +101,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
         if (builder.httpClientBuilder != null || builder.httpClient != null) {
             String supplied = builder.httpClient != null ? "httpClient(...)" : "httpClientBuilder(...)";
-            List<String> conflicting = new ArrayList<>();
-            if (sslContext != null) {
-                conflicting.add("sslContext(...)");
-            }
-            if (builder.forceHttpVersion1_1) {
-                conflicting.add("setHttpVersion1_1()");
-            }
-            if (Boolean.TRUE.equals(builder.followRedirects)) {
-                conflicting.add("followRedirects(true)");
-            }
+            List<String> conflicting = jdkOnlyOptions(builder);
             if (builder.httpClient != null && builder.timeout != null) {
                 conflicting.add("timeout(...)");
             }
@@ -127,39 +121,70 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 ownedHttpClient = httpClient instanceof AutoCloseable closeable ? closeable : null;
             }
         } else {
-            HttpClientBuilder clientBuilder = HttpClientBuilderLoader.loadHttpClientBuilder();
-            if (JdkMcpHttpClientBuilder.supports(clientBuilder)) {
-                JdkMcpHttpClientBuilder.configure(
-                        clientBuilder,
-                        sslContext,
-                        builder.forceHttpVersion1_1,
-                        builder.followRedirects,
-                        builder.executor);
-                clientBuilder.readTimeout(null);
-            } else {
-                List<String> conflicting = new ArrayList<>();
-                if (sslContext != null) {
-                    conflicting.add("sslContext(...)");
-                }
-                if (builder.forceHttpVersion1_1) {
-                    conflicting.add("setHttpVersion1_1()");
-                }
-                if (builder.followRedirects != null) {
-                    conflicting.add("followRedirects(...)");
-                }
-                if (!conflicting.isEmpty()) {
-                    throw new IllegalArgumentException(String.join(", ", conflicting)
-                            + " require the JDK HTTP client, but "
-                            + clientBuilder.getClass().getName()
-                            + " was selected; configure the HTTP client with httpClientBuilder(...) instead");
-                }
-                // Zero disables the read timeout for OkHttp and Apache, allowing idle MCP streams.
-                clientBuilder.readTimeout(Duration.ZERO);
-            }
-            clientBuilder.connectTimeout(timeout);
-            httpClient = ensureNotNull(clientBuilder.build(), "httpClientBuilder.build()");
+            httpClient = createDefaultHttpClient(builder, timeout);
             ownedHttpClient = httpClient instanceof AutoCloseable closeable ? closeable : null;
         }
+    }
+
+    private static HttpClient createDefaultHttpClient(Builder builder, Duration timeout) {
+        String selectedFactory = System.getProperty(HTTP_CLIENT_FACTORY_PROPERTY);
+        if (selectedFactory != null && !selectedFactory.equals(JDK_HTTP_CLIENT_FACTORY)) {
+            return createDiscoveredHttpClient(builder, timeout);
+        }
+        try {
+            return createJdkHttpClient(builder, timeout);
+        } catch (NoClassDefFoundError e) {
+            return createDiscoveredHttpClient(builder, timeout); // the application excluded the JDK client
+        }
+    }
+
+    private static HttpClient createJdkHttpClient(Builder builder, Duration timeout) {
+        java.net.http.HttpClient.Builder clientBuilder = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(timeout)
+                .version(
+                        builder.forceHttpVersion1_1
+                                ? java.net.http.HttpClient.Version.HTTP_1_1
+                                : java.net.http.HttpClient.Version.HTTP_2);
+        if (builder.followRedirects) {
+            clientBuilder.followRedirects(java.net.http.HttpClient.Redirect.NORMAL);
+        }
+        if (builder.executor != null) {
+            clientBuilder.executor(builder.executor);
+        }
+        if (builder.sslContext != null) {
+            clientBuilder.sslContext(builder.sslContext);
+        }
+        return JdkHttpClient.builder()
+                .httpClientBuilder(clientBuilder)
+                .streamingBackpressure(true)
+                .build();
+    }
+
+    private static HttpClient createDiscoveredHttpClient(Builder builder, Duration timeout) {
+        HttpClientBuilder clientBuilder = HttpClientBuilderLoader.loadHttpClientBuilder();
+        List<String> jdkOnlyOptions = jdkOnlyOptions(builder);
+        if (!jdkOnlyOptions.isEmpty()) {
+            throw new IllegalArgumentException(String.join(", ", jdkOnlyOptions)
+                    + " can be used only with the JDK HTTP client, but " + clientBuilder.getClass().getName()
+                    + " is used; configure it on the HTTP client and pass it with httpClientBuilder(...) instead");
+        }
+        clientBuilder.connectTimeout(timeout);
+        clientBuilder.readTimeout(Duration.ZERO); // MCP responses and notification streams can stay idle for a long time
+        return ensureNotNull(clientBuilder.build(), "httpClientBuilder.build()");
+    }
+
+    private static List<String> jdkOnlyOptions(Builder builder) {
+        List<String> options = new ArrayList<>();
+        if (builder.sslContext != null) {
+            options.add("sslContext(...)");
+        }
+        if (builder.forceHttpVersion1_1) {
+            options.add("setHttpVersion1_1()");
+        }
+        if (builder.followRedirects) {
+            options.add("followRedirects(true)");
+        }
+        return options;
     }
 
     @Override
@@ -930,15 +955,17 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private SSLContext sslContext;
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
-        private Boolean followRedirects;
+        private boolean followRedirects = false;
         private Integer maxMessageSize;
 
         /**
          * Supplies the HTTP backend used for all requests, including the subsidiary SSE channel.
          * The client must implement {@link HttpClient#stream(HttpRequest, ServerSentEventParser)}
          * and honor subscription cancellation; otherwise every request fails.
-         * Without a custom builder or client, the transport discovers a client with
-         * {@link HttpClientBuilderLoader}; the JDK client is a fallback when no other client is available.
+         * Without a custom builder or client, the transport uses the JDK HTTP client when it is on the classpath,
+         * even if other HTTP clients are on the classpath too. It uses another client only when the
+         * {@code langchain4j.http.clientBuilderFactory} system property names it, or when the JDK client is excluded
+         * from the classpath. {@link HttpClientBuilderLoader} then selects the client.
          * <p>
          * The transport owns the client it builds and closes it on {@link StreamableHttpMcpTransport#close()} if it implements
          * {@link AutoCloseable}; clients that do not implement it are not closed.
@@ -947,7 +974,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * corresponding transport options. Cannot be combined with {@code httpClient}.
          * An explicit transport {@link #timeout(Duration)} is set as the connection timeout on the supplied builder;
          * otherwise the supplied backend retains its connection timeout settings and defaults.
-         * The 60-second default applies only to automatically discovered backends.
+         * The 60-second default applies only when no builder or client is supplied.
          * <p>
          * The transport does not override the backend's read timeout, and MCP responses and SSE streams
          * can stay idle for a long time. Some backends have a short default read timeout (10 seconds for OkHttp),
@@ -1072,13 +1099,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * Supplies a custom {@link SSLContext} used when establishing HTTPS connections to the MCP server,
          * allowing private CAs or certificates.
-         * Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or {@link #httpClient(HttpClient)};
-         * configure it on the HTTP client instead.
-         *
-         * @deprecated Configure TLS with {@link #httpClientBuilder(HttpClientBuilder)} instead.
-         * Only supported when the automatically discovered client is the JDK client; otherwise building fails.
+         * Works only with the JDK HTTP client. Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)}
+         * or {@link #httpClient(HttpClient)}; configure it on the HTTP client instead.
          */
-        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
             return this;
@@ -1086,13 +1109,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * Forces the transport to use HTTP/1.1 instead of the default HTTP/2.
-         * Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or {@link #httpClient(HttpClient)};
-         * configure it on the HTTP client instead.
-         *
-         * @deprecated Configure the HTTP version with {@link #httpClientBuilder(HttpClientBuilder)} instead.
-         * Only supported when the automatically discovered client is the JDK client; otherwise building fails.
+         * Works only with the JDK HTTP client. Cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)}
+         * or {@link #httpClient(HttpClient)}; configure it on the HTTP client instead.
          */
-        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
             this.forceHttpVersion1_1 = true;
             return this;
@@ -1103,14 +1122,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * When enabled, the transport will automatically follow redirects
          * using {@link java.net.http.HttpClient.Redirect#NORMAL} policy (always redirect,
          * except from HTTPS to HTTP).
-         * Defaults to {@code false} with the automatically discovered JDK client.
-         * Enabling it cannot be combined with {@link #httpClientBuilder(HttpClientBuilder)} or
-         * {@link #httpClient(HttpClient)}; configure redirects on the HTTP client instead.
-         *
-         * @deprecated Configure redirects with {@link #httpClientBuilder(HttpClientBuilder)} instead.
-         * Calling this method (even with {@code false}) fails when a non-JDK client is automatically discovered.
+         * Defaults to {@code false}.
+         * Enabling it works only with the JDK HTTP client, and cannot be combined with
+         * {@link #httpClientBuilder(HttpClientBuilder)} or {@link #httpClient(HttpClient)};
+         * configure redirects on the HTTP client instead.
          */
-        @Deprecated(since = "1.24.0", forRemoval = true)
         public StreamableHttpMcpTransport.Builder followRedirects(boolean followRedirects) {
             this.followRedirects = followRedirects;
             return this;

@@ -13,17 +13,17 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderFactory;
-import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.MockHttpClient;
-import dev.langchain4j.http.client.apache.ApacheHttpClientBuilderFactory;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory;
+import dev.langchain4j.http.client.okhttp.OkHttpClient;
 import dev.langchain4j.http.client.okhttp.OkHttpClientBuilderFactory;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.spi.ServiceHelper;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -66,14 +66,39 @@ class StreamableHttpMcpTransportDiscoveryTest {
         }
     }
 
+    @Test
+    void should_use_jdk_client_when_other_clients_are_on_the_classpath() throws Exception {
+        // The JDK, OkHttp and Apache clients are all on this module's test classpath.
+        try (var transport = StreamableHttpMcpTransport.builder().url(URL).build()) {
+            assertThat(httpClientOf(transport)).isInstanceOf(JdkHttpClient.class);
+        }
+    }
+
+    @Test
+    void should_use_jdk_client_when_the_system_property_names_it() throws Exception {
+        System.setProperty(PROPERTY, JdkHttpClientBuilderFactory.class.getName());
+        try (var transport = StreamableHttpMcpTransport.builder().url(URL).build()) {
+            assertThat(httpClientOf(transport)).isInstanceOf(JdkHttpClient.class);
+        }
+    }
+
+    @Test
+    void should_use_the_client_named_by_the_system_property() throws Exception {
+        System.setProperty(PROPERTY, OkHttpClientBuilderFactory.class.getName());
+        try (var transport = StreamableHttpMcpTransport.builder().url(URL).build()) {
+            assertThat(httpClientOf(transport)).isInstanceOf(OkHttpClient.class);
+        }
+    }
+
     @ParameterizedTest
     @NullSource
     @ValueSource(ints = 13)
-    void should_discover_preferred_client_configure_timeouts_send_requests_and_close(Integer timeout) throws Exception {
+    void should_configure_timeouts_send_requests_and_close_the_selected_client(Integer timeout) throws Exception {
         MockHttpClient client = MockHttpClient.withScriptedStreaming();
         HttpClientBuilder clientBuilder = mock(HttpClientBuilder.class, RETURNS_SELF);
         when(clientBuilder.build()).thenReturn(client);
         HttpClientBuilderFactory factory = () -> clientBuilder;
+        System.setProperty(PROPERTY, factory.getClass().getName());
         try (var services = mockStatic(ServiceHelper.class, CALLS_REAL_METHODS)) {
             services.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
                     .thenReturn(List.of(new JdkHttpClientBuilderFactory(), factory));
@@ -84,20 +109,7 @@ class StreamableHttpMcpTransportDiscoveryTest {
             try (var transport = builder.build()) {
                 verify(clientBuilder).connectTimeout(Duration.ofSeconds(timeout == null ? 60 : timeout));
                 verify(clientBuilder).readTimeout(Duration.ZERO);
-                transport.start(new McpOperationHandler(
-                        new ConcurrentHashMap<>(),
-                        List::of,
-                        transport,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null));
+                start(transport);
                 var response = transport.sendRequest(new McpListToolsRequest(1L, null));
                 var exchange = client.nextExchange();
                 exchange.open(200, Map.of("Content-Type", List.of("application/json")));
@@ -111,10 +123,11 @@ class StreamableHttpMcpTransportDiscoveryTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"sslContext", "setHttpVersion1_1", "followRedirects(true)", "followRedirects(false)"})
+    @ValueSource(strings = {"sslContext", "setHttpVersion1_1", "followRedirects"})
     void should_reject_jdk_options_before_building_another_client(String option) throws Exception {
         HttpClientBuilder clientBuilder = mock(HttpClientBuilder.class, RETURNS_SELF);
         HttpClientBuilderFactory factory = () -> clientBuilder;
+        System.setProperty(PROPERTY, factory.getClass().getName());
         try (var services = mockStatic(ServiceHelper.class, CALLS_REAL_METHODS)) {
             services.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
                     .thenReturn(List.of(factory));
@@ -122,62 +135,18 @@ class StreamableHttpMcpTransportDiscoveryTest {
             switch (option) {
                 case "sslContext" -> builder.sslContext(SSLContext.getDefault());
                 case "setHttpVersion1_1" -> builder.setHttpVersion1_1();
-                case "followRedirects(true)" -> builder.followRedirects(true);
-                case "followRedirects(false)" -> builder.followRedirects(false);
+                case "followRedirects" -> builder.followRedirects(true);
             }
             assertThatThrownBy(builder::build)
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("require the JDK HTTP client")
-                    .hasMessageContaining(option.split("\\(")[0]);
+                    .hasMessageContaining("only with the JDK HTTP client")
+                    .hasMessageContaining(option);
             verify(clientBuilder, never()).build();
         }
     }
 
     @Test
-    void should_preserve_jdk_options_and_streaming_backpressure() throws Exception {
-        JdkHttpClientBuilder clientBuilder = JdkHttpClient.builder();
-        HttpClientBuilderFactory factory = () -> clientBuilder;
-        var executor = (java.util.concurrent.Executor) Runnable::run;
-        SSLContext sslContext = SSLContext.getDefault();
-        try (var services = mockStatic(ServiceHelper.class, CALLS_REAL_METHODS)) {
-            services.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
-                    .thenReturn(List.of(factory));
-            try (var transport = StreamableHttpMcpTransport.builder()
-                    .url(URL)
-                    .sslContext(sslContext)
-                    .setHttpVersion1_1()
-                    .followRedirects(true)
-                    .executor(executor)
-                    .build()) {
-                assertThat(clientBuilder.streamingBackpressure()).isTrue();
-                assertThat(clientBuilder.readTimeout()).isNull();
-                assertThat(clientBuilder.connectTimeout()).isEqualTo(Duration.ofSeconds(60));
-                var nativeClient = clientBuilder.httpClientBuilder().build();
-                try {
-                    assertThat(nativeClient.sslContext()).isSameAs(sslContext);
-                    assertThat(nativeClient.version()).isEqualTo(java.net.http.HttpClient.Version.HTTP_1_1);
-                    assertThat(nativeClient.followRedirects()).isEqualTo(java.net.http.HttpClient.Redirect.NORMAL);
-                    assertThat(nativeClient.executor()).contains(executor);
-                } finally {
-                    if (nativeClient instanceof AutoCloseable closeable) {
-                        closeable.close();
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    void should_use_jdk_when_it_is_the_only_factory() {
-        try (var services = mockStatic(ServiceHelper.class, CALLS_REAL_METHODS)) {
-            services.when(() -> ServiceHelper.loadFactories(HttpClientBuilderFactory.class))
-                    .thenReturn(List.of(new JdkHttpClientBuilderFactory()));
-            assertThat(HttpClientBuilderLoader.loadHttpClientBuilder()).isInstanceOf(JdkHttpClientBuilder.class);
-        }
-    }
-
-    @Test
-    void should_keep_discovered_okhttp_stream_open_beyond_its_default_read_timeout() throws Exception {
+    void should_keep_okhttp_stream_open_beyond_its_default_read_timeout() throws Exception {
         System.setProperty(PROPERTY, OkHttpClientBuilderFactory.class.getName());
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         CountDownLatch release = new CountDownLatch(1);
@@ -202,20 +171,7 @@ class StreamableHttpMcpTransportDiscoveryTest {
         try (var transport = StreamableHttpMcpTransport.builder()
                 .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
                 .build()) {
-            transport.start(new McpOperationHandler(
-                    new ConcurrentHashMap<>(),
-                    List::of,
-                    transport,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null));
+            start(transport);
             var response = transport.sendRequest(new McpListToolsRequest(1L, null));
             headersSent.get(5, TimeUnit.SECONDS);
             // OkHttp's unconfigured read timeout would end this idle stream after ten seconds.
@@ -225,19 +181,6 @@ class StreamableHttpMcpTransportDiscoveryTest {
         } finally {
             release.countDown();
             server.stop(0);
-        }
-    }
-
-    @Test
-    void should_reject_multiple_preferred_clients_and_allow_explicit_jdk_selection() throws Exception {
-        // All three real service providers are present on this module's test classpath.
-        assertThatThrownBy(() -> StreamableHttpMcpTransport.builder().url(URL).build())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(OkHttpClientBuilderFactory.class.getName())
-                .hasMessageContaining(ApacheHttpClientBuilderFactory.class.getName());
-        System.setProperty(PROPERTY, JdkHttpClientBuilderFactory.class.getName());
-        try (var transport = StreamableHttpMcpTransport.builder().url(URL).build()) {
-            assertThat(transport).isNotNull();
         }
     }
 
@@ -262,10 +205,33 @@ class StreamableHttpMcpTransportDiscoveryTest {
             builder.getClass().getMethod("url", String.class).invoke(builder, URL);
             try (var transport =
                     (AutoCloseable) builder.getClass().getMethod("build").invoke(builder)) {
-                assertThat(transport).isNotNull();
+                assertThat(httpClientOf(transport).getClass().getName()).containsIgnoringCase(backend);
             }
         } finally {
             Thread.currentThread().setContextClassLoader(previous);
         }
+    }
+
+    private static Object httpClientOf(Object transport) throws Exception {
+        Field field = transport.getClass().getDeclaredField("httpClient");
+        field.setAccessible(true);
+        return field.get(transport);
+    }
+
+    private static void start(StreamableHttpMcpTransport transport) {
+        transport.start(new McpOperationHandler(
+                new ConcurrentHashMap<>(),
+                List::of,
+                transport,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null));
     }
 }

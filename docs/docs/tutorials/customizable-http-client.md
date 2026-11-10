@@ -44,8 +44,9 @@ implementation is present:
 -Dlangchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.jdk.JdkHttpClientBuilderFactory
 ```
 
-Adding a single alternative implementation no longer requires excluding the JDK dependency.
 Passing a builder explicitly bypasses discovery and this system property.
+
+The MCP Streamable HTTP transport follows different rules: see [Custom HTTP client](./mcp.md#custom-http-client).
 
 ## Customizing JDK's `HttpClient`
 
