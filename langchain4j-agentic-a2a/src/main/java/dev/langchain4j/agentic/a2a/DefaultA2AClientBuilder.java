@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
@@ -180,15 +181,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return cardResolver;
     }
 
+    private String describeCard() {
+        return "the agent card of A2A agent '" + name() + "'";
+    }
+
     /**
      * Returns the agent card, fetching it from the A2A server the first time, on a thread of the LangChain4j
      * executor and within the resolution timeout. Concurrent first invocations wait on a single fetch and all fail
      * when it fails, while a failed fetch is not cached, so that the next invocation retries it.
      */
-    private String describeCard() {
-        return "the agent card of A2A agent '" + name() + "'";
-    }
-
     private AgentCard resolveAgentCard() {
         try {
             return cardResolution.get(resolutionTimeout);
@@ -207,7 +208,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             lazyInitLock.lockInterruptibly();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new A2AAgentCardException(name(), a2aServerUrl, e);
+            // The card is already fetched here: the lock only guards the creation of the client
+            throw new AgentUnavailableException(
+                    name(), "Interrupted while waiting for the client of A2A agent '" + name() + "' to be created", e);
         }
     }
 

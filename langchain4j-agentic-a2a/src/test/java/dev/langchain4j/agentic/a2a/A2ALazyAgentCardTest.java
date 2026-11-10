@@ -600,6 +600,50 @@ class A2ALazyAgentCardTest {
     }
 
     @Test
+    void an_invocation_interrupted_while_another_one_creates_the_client_does_not_report_a_failed_fetch()
+            throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        CountDownLatch creating = new CountDownLatch(1);
+        CountDownLatch gate = new CountDownLatch(1);
+        useLazyA2AService(cardSource, card -> {
+            creating.countDown();
+            try {
+                gate.await();
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(e);
+            }
+            return new ReplyingClient("fixed", card).client;
+        });
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+
+        AtomicReference<String> fix = new AtomicReference<>();
+        Thread creator = new Thread(() -> fix.set(fixer.fix("a broken build")));
+        creator.start();
+        assertThat(creating.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the card is fetched by now: the second invocation only waits for the client that the first one creates
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread waiter = new Thread(() -> failure.set(catchThrowable(() -> fixer.fix("a broken build"))));
+        waiter.start();
+        await().atMost(10, TimeUnit.SECONDS).until(() -> waiter.getState() == Thread.State.WAITING);
+        waiter.interrupt();
+        waiter.join(10_000);
+
+        assertThat(failure.get())
+                .isInstanceOf(AgentUnavailableException.class)
+                .isNotInstanceOf(A2AAgentCardException.class)
+                .hasMessage("Interrupted while waiting for the client of A2A agent 'fix' to be created")
+                .hasCauseInstanceOf(InterruptedException.class);
+
+        gate.countDown();
+        creator.join(10_000);
+        assertThat(fix).hasValue("fixed");
+        assertThat(cardSource.fetches).hasValue(1);
+    }
+
+    @Test
     void the_resolution_timeout_of_the_annotation_is_applied() {
         CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
         cardSource.gate = new CountDownLatch(1);
