@@ -37,15 +37,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiResponsesChatModelIT {
 
-    private static final String DEPLOYMENT_NAME = "gpt-6-luna";
-
     @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({"gpt-6-luna"})
     void should_use_json_format(String deploymentName) {
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .deploymentName(deploymentName)
                 .responseFormat(ResponseFormat.JSON)
-                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -67,8 +63,6 @@ class AzureOpenAiResponsesChatModelIT {
         String modelNameString = modelName.toString();
 
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(modelNameString)
                 .maxOutputTokens(16)
                 .logRequestsAndResponses(true)
@@ -130,9 +124,7 @@ class AzureOpenAiResponsesChatModelIT {
                 .build();
 
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .deploymentName(DEPLOYMENT_NAME)
                 .strictJsonSchema(true)
-                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -154,7 +146,6 @@ class AzureOpenAiResponsesChatModelIT {
         Duration timeout = Duration.ofMillis(millis);
 
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .deploymentName(DEPLOYMENT_NAME)
                 .logRequestsAndResponses(true)
                 .maxRetries(0)
                 .timeout(timeout)
@@ -170,9 +161,7 @@ class AzureOpenAiResponsesChatModelIT {
 
         // given
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName(DEPLOYMENT_NAME)
+                .deploymentName("o4-mini")
                 .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
@@ -191,11 +180,7 @@ class AzureOpenAiResponsesChatModelIT {
         int maxCompletionTokens = 200;
 
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName(DEPLOYMENT_NAME)
                 .maxOutputTokens(maxCompletionTokens)
-                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -215,11 +200,7 @@ class AzureOpenAiResponsesChatModelIT {
         ReasoningEffortValue reasoningEffort = ReasoningEffortValue.LOW;
 
         ChatModel model = AzureModelBuilders.responsesChatModelBuilder()
-                .endpoint(getAzureOpenaiEndpoint())
-                .apiKey(getAzureOpenaiKey())
-                .deploymentName(DEPLOYMENT_NAME)
                 .reasoningEffort(reasoningEffort.toString())
-                .temperature(1.0)
                 .logRequestsAndResponses(true)
                 .build();
 

@@ -7,8 +7,11 @@ public class AzureModelBuilders {
 
     // Use the lower max_tokens limit to avoid rate-limiting
     private static final int DEFAULT_MAX_TOKENS = 100;
+    // Reasoning models spend output tokens on hidden reasoning, so 100 can leave no room for visible text
+    private static final int DEFAULT_RESPONSES_MAX_TOKENS = 2000;
     private static final double DEFAULT_TEMPERATURE = 0.1;
     public static final String DEFAULT_CHAT_MODEL = "gpt-4o-mini";
+    public static final String DEFAULT_RESPONSES_CHAT_MODEL = "gpt-6-luna";
 
     private AzureModelBuilders() {}
 
@@ -47,9 +50,8 @@ public class AzureModelBuilders {
         return AzureOpenAiResponsesChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
-                .deploymentName(DEFAULT_CHAT_MODEL)
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxOutputTokens(DEFAULT_MAX_TOKENS)
+                .deploymentName(DEFAULT_RESPONSES_CHAT_MODEL)
+                .maxOutputTokens(DEFAULT_RESPONSES_MAX_TOKENS)
                 .logRequestsAndResponses(true);
     }
 
@@ -58,9 +60,8 @@ public class AzureModelBuilders {
         return AzureOpenAiResponsesStreamingChatModel.builder()
                 .endpoint(getAzureOpenaiEndpoint())
                 .apiKey(getAzureOpenaiKey())
-                .deploymentName(DEFAULT_CHAT_MODEL)
-                .temperature(DEFAULT_TEMPERATURE)
-                .maxOutputTokens(DEFAULT_MAX_TOKENS)
+                .deploymentName(DEFAULT_RESPONSES_CHAT_MODEL)
+                .maxOutputTokens(DEFAULT_RESPONSES_MAX_TOKENS)
                 .logRequestsAndResponses(true);
     }
 
