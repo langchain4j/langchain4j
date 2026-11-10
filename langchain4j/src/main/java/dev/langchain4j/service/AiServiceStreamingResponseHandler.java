@@ -343,15 +343,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private void processCompleteResponse(ChatResponse chatResponse) {
         fireResponseReceivedEvent(chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
+
+        if (aiMessage.hasToolExecutionRequests() && toolCallingRoundTripsLeft-- == 0) {
+            throw runtime(
+                    "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                    context.toolService.maxToolCallingRoundTrips());
+        }
+
         addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
-
-            if (toolCallingRoundTripsLeft-- == 0) {
-                throw runtime(
-                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
-                        context.toolService.maxToolCallingRoundTrips());
-            }
 
             if (intermediateResponseHandler != null) {
                 intermediateResponseHandler.accept(chatResponse);

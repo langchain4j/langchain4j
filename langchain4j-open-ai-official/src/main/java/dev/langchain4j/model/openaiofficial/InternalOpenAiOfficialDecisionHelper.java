@@ -9,6 +9,7 @@ import com.openai.models.decisions.DecisionChoiceOption;
 import com.openai.models.decisions.DecisionChoiceValue;
 import com.openai.models.decisions.DecisionCreateParams;
 import com.openai.models.decisions.DecisionInputImage;
+import com.openai.models.decisions.DecisionInputItem;
 import com.openai.models.decisions.DecisionInputMessage;
 import com.openai.models.decisions.DecisionInputPart;
 import com.openai.models.decisions.DecisionInputText;
@@ -65,8 +66,7 @@ class InternalOpenAiOfficialDecisionHelper {
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
             if (parameters.promptCacheKey() != null) {
-                // the SDK has no typed setter for it yet
-                params.putAdditionalBodyProperty("prompt_cache_key", JsonValue.from(parameters.promptCacheKey()));
+                params.promptCacheKey(parameters.promptCacheKey());
             }
             parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
         }
@@ -77,19 +77,20 @@ class InternalOpenAiOfficialDecisionHelper {
         if (input instanceof TextInput text) {
             params.input(text.text());
         } else if (input instanceof FieldsInput fields) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toLabeledParts(fields.fields()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toLabeledParts(fields.fields()))));
         } else if (input instanceof ContentsInput contents) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toInputParts(contents.contents()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toInputParts(contents.contents()))));
         } else if (input instanceof MessagesInput messages) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toTranscriptParts(messages.messages()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toTranscriptParts(messages.messages()))));
         } else {
             throw new UnsupportedFeatureException(
                     "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
         }
     }
 
-    private static DecisionInputMessage userMessage(List<DecisionInputPart> parts) {
-        return DecisionInputMessage.builder().contentOfParts(parts).build();
+    private static DecisionInputItem userMessage(List<DecisionInputPart> parts) {
+        return DecisionInputItem.ofDecisionInputMessage(DecisionInputMessage.ofUser(
+                DecisionInputMessage.User.builder().contentOfParts(parts).build()));
     }
 
     /**
@@ -126,6 +127,7 @@ class InternalOpenAiOfficialDecisionHelper {
             case "model" -> params.model(jsonField(value));
             case "input" -> params.input(jsonField(value));
             case "questions" -> params.questions(jsonField(value));
+            case "prompt_cache_key" -> params.promptCacheKey(jsonField(value));
             default -> params.putAdditionalBodyProperty(name, JsonValue.from(value));
         }
     }
