@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -9,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -317,10 +319,27 @@ class HtmlReportGeneratorTest {
         when(remoteAgent.agentId()).thenReturn("fixer$0");
         when(remoteAgent.topology()).thenReturn(AgenticSystemTopology.AI_AGENT);
         when(remoteAgent.description())
-                .thenThrow(new IllegalStateException("Failed to fetch the agent card of A2A agent 'fixer'"));
+                .thenThrow(new AgentUnavailableException(
+                        "fixer",
+                        "Failed to fetch the agent card of A2A agent 'fixer'",
+                        new IllegalStateException("connection refused")));
 
         String html = HtmlReportGenerator.generateTopology(remoteAgent);
 
         assertThat(html).contains("fixer").contains("unavailable: Failed to fetch the agent card");
+    }
+
+    @Test
+    void fails_when_the_description_of_an_agent_fails_for_another_reason_than_its_unavailability() {
+        // like an MCP agent whose configured tool does not exist on its server: a configuration error to report
+        AgentInstance misconfiguredAgent = mock(AgentInstance.class);
+        when(misconfiguredAgent.name()).thenReturn("fixer");
+        when(misconfiguredAgent.agentId()).thenReturn("fixer$0");
+        when(misconfiguredAgent.topology()).thenReturn(AgenticSystemTopology.AI_AGENT);
+        when(misconfiguredAgent.description()).thenThrow(new IllegalStateException("Tool 'fixr' not found"));
+
+        assertThatThrownBy(() -> HtmlReportGenerator.generateTopology(misconfiguredAgent))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'fixr' not found");
     }
 }
