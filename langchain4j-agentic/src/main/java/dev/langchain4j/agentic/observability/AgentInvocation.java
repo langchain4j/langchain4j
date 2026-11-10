@@ -8,7 +8,9 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,19 +23,19 @@ public class AgentInvocation {
     private final List<ToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
-    private final LocalDateTime startTime;
+    private final Instant startInstant;
 
     private AgentResponse agentResponse;
-    private LocalDateTime finishTime;
+    private Instant finishInstant;
     private int iterationIndex = -1;
     private String skipReason;
 
     private Duration suspendedTime = Duration.ZERO;
-    private volatile LocalDateTime suspendedAt;
+    private volatile Instant suspendedAt;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
-        this.startTime = LocalDateTime.now();
+        this.startInstant = Instant.now();
     }
 
     /**
@@ -43,7 +45,7 @@ public class AgentInvocation {
         AgentInvocation invocation =
                 new AgentInvocation(new AgentRequest(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of()));
         invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of());
-        invocation.finishTime = invocation.startTime;
+        invocation.finishInstant = invocation.startInstant;
         invocation.skipReason = agentSkipped.reason();
         return invocation;
     }
@@ -51,7 +53,7 @@ public class AgentInvocation {
     synchronized void finished(AgentResponse agentResponse) {
         cancelSuspension();
         this.agentResponse = agentResponse;
-        this.finishTime = LocalDateTime.now();
+        this.finishInstant = Instant.now();
     }
 
     /**
@@ -60,8 +62,8 @@ public class AgentInvocation {
      * already finished.
      */
     synchronized void markSuspended() {
-        if (suspendedAt == null && finishTime == null) {
-            suspendedAt = LocalDateTime.now();
+        if (suspendedAt == null && finishInstant == null) {
+            suspendedAt = Instant.now();
         }
     }
 
@@ -70,9 +72,9 @@ public class AgentInvocation {
      * agentic system, or the execution ended without invoking it again.
      */
     synchronized void markResumed() {
-        LocalDateTime start = suspendedAt;
+        Instant start = suspendedAt;
         if (start != null) {
-            suspendedTime = suspendedTime.plus(Duration.between(start, LocalDateTime.now()));
+            suspendedTime = suspendedTime.plus(Duration.between(start, Instant.now()));
             suspendedAt = null;
         }
     }
@@ -95,7 +97,7 @@ public class AgentInvocation {
     }
 
     public boolean done() {
-        return finishTime != null;
+        return finishInstant != null;
     }
 
     /**
@@ -114,8 +116,8 @@ public class AgentInvocation {
      * iteration. Once the invocation is finished, its {@link #duration()} includes this time.
      */
     public synchronized Duration suspendedDuration() {
-        LocalDateTime start = suspendedAt;
-        return start == null ? suspendedTime : suspendedTime.plus(Duration.between(start, LocalDateTime.now()));
+        Instant start = suspendedAt;
+        return start == null ? suspendedTime : suspendedTime.plus(Duration.between(start, Instant.now()));
     }
 
     /**
@@ -134,18 +136,22 @@ public class AgentInvocation {
     }
 
     public LocalDateTime startTime() {
-        return startTime;
+        return LocalDateTime.ofInstant(startInstant, ZoneId.systemDefault());
     }
 
     public LocalDateTime finishTime() {
-        return finishTime;
+        return finishInstant == null ? null : LocalDateTime.ofInstant(finishInstant, ZoneId.systemDefault());
     }
 
+    /**
+     * Returns how long the invocation took, measured between two instants: a daylight saving time change in the
+     * meantime does not affect it, unlike the difference between {@link #startTime()} and {@link #finishTime()}.
+     */
     public Duration duration() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Duration.between(startTime, finishTime);
+        return Duration.between(startInstant, finishInstant);
     }
 
     public AgentInstance agent() {
@@ -243,8 +249,8 @@ public class AgentInvocation {
                 "agent=" + agent().name() +
                 (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
                 (skipped() ? ", skipped=" + skipReason : "") +
-                ", startTime=" + startTime +
-                ", finishTime=" + finishTime +
+                ", startTime=" + startTime() +
+                ", finishTime=" + finishTime() +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
                 (suspendedDuration().isZero() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
                 ", tokens=" + (done() ? totalTokenCount() : "in progress") +
