@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.agent;
 
 import dev.langchain4j.exception.LangChain4jException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Thrown when an agent cannot be used because something it depends on is unavailable, typically the server of a
@@ -12,8 +13,9 @@ import dev.langchain4j.exception.LangChain4jException;
  * invocation, with a warning, the HTML reports show its description as unavailable, and an error handler can
  * recognize it in the cause chain of the {@link AgentInvocationException} it receives to skip the agent. A
  * dependency that does not answer within the resolution timeout of the agent is reported in the same way, with a
- * {@link java.util.concurrent.TimeoutException} as cause. The invocations that were waiting for the dependency
- * when it failed all fail, but the failure is not cached: the next invocation tries again.
+ * {@link TimeoutException} as cause. The invocations that were waiting for the dependency
+ * when it failed all fail, but the failure is not cached: the next invocation tries again, as soon as an
+ * interrupted attempt has ended.
  *
  * @since 1.24.0
  */

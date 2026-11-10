@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,7 +36,10 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.mcp.client.DefaultMcpClient;
+import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -47,6 +52,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -59,6 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  * The MCP client of an MCP client agent is created and its tool resolved lazily, on the first invocation, so that
@@ -68,6 +75,7 @@ import org.junit.jupiter.api.Test;
  * thread of the LangChain4j executor, within the resolution timeout of the agent when one is set, and the
  * invocations waiting on it all fail when it fails (issue #6958).
  */
+@Timeout(60)
 class McpLazyToolTest {
 
     private static final ToolSpecification WRITER_TOOL = tool("writer", "Writes a story about a topic", "topic");
@@ -550,6 +558,29 @@ class McpLazyToolTest {
     }
 
     @Test
+    void the_resolution_timeout_stops_a_real_client_detecting_the_protocol_of_a_silent_server() {
+        McpTransport silentTransport = mock(McpTransport.class);
+        when(silentTransport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> new CompletableFuture<>());
+        Writer writer = McpAgent.builder(
+                        () -> new DefaultMcpClient.Builder()
+                                .transport(silentTransport)
+                                .initializationTimeout(Duration.ofMinutes(2))
+                                .build(),
+                        Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasCauseInstanceOf(TimeoutException.class);
+
+        verify(silentTransport, timeout(10_000)).stop();
+        verify(silentTransport, never()).sendInitializeRequest(any());
+    }
+
+    @Test
     void concurrent_invocations_share_the_failure_of_a_single_resolution() throws Exception {
         server.down = true;
         server.creationGate = new CountDownLatch(1);
@@ -630,9 +661,7 @@ class McpLazyToolTest {
         assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be positive");
-        assertThatThrownBy(() -> builder.resolutionTimeout(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
+        assertThat(builder.resolutionTimeout(null)).isSameAs(builder);
         assertThatThrownBy(() ->
                         AgenticServices.createAgenticSystem(StoryAgentWithNegativeTimeout.class, (ChatModel) null))
                 .isInstanceOf(IllegalArgumentException.class)

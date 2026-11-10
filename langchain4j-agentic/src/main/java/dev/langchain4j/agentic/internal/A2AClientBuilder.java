@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -151,14 +152,17 @@ public interface A2AClientBuilder<T> {
 
     /**
      * Sets the time given to the fetch of the agent card, which happens the first time the card is needed, normally
-     * on the first invocation of the agent, on a thread of the LangChain4j executor. When the card is not fetched
-     * within this time the fetch is interrupted and the invocation fails with an {@code A2AAgentCardException}
-     * caused by a {@link java.util.concurrent.TimeoutException}. Concurrent first invocations wait on the same
-     * fetch, so none of them waits longer than this time, and they all fail when it fails, while the next
-     * invocation fetches the card again. The default is 30 seconds.
+     * on the first invocation of the agent, on a thread of the LangChain4j executor. It does not limit the messages
+     * sent to the agent. When the card is not fetched within this time the fetch is interrupted and the invocation
+     * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}. Concurrent first invocations
+     * wait on the same fetch, so none of them waits longer than this time, and they all fail when it fails. An
+     * invocation arriving before the interrupted fetch has ended fails at once with the same timeout, and the next
+     * one after that fetches the card again. The default is 30 seconds.
      *
-     * @param resolutionTimeout the time given to the fetch of the agent card, which must be positive
+     * @param resolutionTimeout the time given to the fetch of the agent card, which must be positive, or
+     *                          {@code null} for the default
      * @return this builder for method chaining
+     * @throws IllegalArgumentException if the time is zero or negative
      * @since 1.24.0
      */
     default A2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {

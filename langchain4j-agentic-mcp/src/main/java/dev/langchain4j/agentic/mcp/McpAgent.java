@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.mcp.client.McpClient;
+import java.time.Duration;
 import java.util.function.Supplier;
 
 /**
@@ -58,7 +59,7 @@ public class McpAgent {
      * Creates a builder for an untyped MCP client agent whose MCP client is created lazily.
      * <p>
      * The supplier is invoked on a thread of the LangChain4j executor, not on the one of the invocation that first
-     * needs the client, within the {@link McpClientBuilder#resolutionTimeout(java.time.Duration) resolution timeout}
+     * needs the client, within the {@link McpClientBuilder#resolutionTimeout(Duration) resolution timeout}
      * of the agent when one is set, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
      * the current user. When it fails, the invocations waiting for the client fail, it is invoked again the next time
@@ -83,7 +84,7 @@ public class McpAgent {
      * client is created lazily.
      * <p>
      * The supplier is invoked on a thread of the LangChain4j executor, not on the one of the invocation that first
-     * needs the client, within the {@link McpClientBuilder#resolutionTimeout(java.time.Duration) resolution timeout}
+     * needs the client, within the {@link McpClientBuilder#resolutionTimeout(Duration) resolution timeout}
      * of the agent when one is set, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
      * the current user. When it fails, the invocations waiting for the client fail, it is invoked again the next time

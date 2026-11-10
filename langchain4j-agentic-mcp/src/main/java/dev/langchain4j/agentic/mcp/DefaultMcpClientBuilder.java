@@ -145,7 +145,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
-        if (resolutionTimeout == null || resolutionTimeout.isZero() || resolutionTimeout.isNegative()) {
+        if (resolutionTimeout != null && (resolutionTimeout.isZero() || resolutionTimeout.isNegative())) {
             throw new IllegalArgumentException(
                     "The resolution timeout of an MCP client agent must be positive: " + resolutionTimeout);
         }

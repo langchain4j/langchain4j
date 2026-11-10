@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.a2a;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -104,7 +105,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     // The agent card is fetched lazily, the first time it is needed, and the client is created from it at that
     // point, so that building an agentic system never depends on the availability of the remote agent
     private final LazyResolution<AgentCard> cardResolution;
-    private Duration resolutionTimeout = DEFAULT_RESOLUTION_TIMEOUT;
+    Duration resolutionTimeout;
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
 
@@ -253,6 +254,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
+
+        resolutionTimeout = getOrDefault(resolutionTimeout, DEFAULT_RESOLUTION_TIMEOUT);
 
         if (description == null) {
             description = agentMethod().map(DefaultA2AClientBuilder::annotatedDescription).orElse(null);
@@ -695,7 +698,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public DefaultA2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
-        if (resolutionTimeout == null || resolutionTimeout.isZero() || resolutionTimeout.isNegative()) {
+        if (resolutionTimeout != null && (resolutionTimeout.isZero() || resolutionTimeout.isNegative())) {
             throw new IllegalArgumentException(
                     "The resolution timeout of an A2A client agent must be positive: " + resolutionTimeout);
         }

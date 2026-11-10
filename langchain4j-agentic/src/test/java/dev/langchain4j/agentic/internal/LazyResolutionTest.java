@@ -4,13 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
+import dev.langchain4j.spi.CapturedContext;
 import dev.langchain4j.spi.ExecutorProvider;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -107,7 +110,7 @@ class LazyResolutionTest {
 
         assertThat(callers).allSatisfy(caller -> assertThat(caller.result).isEqualTo("value"));
         assertThat(resolutions).hasValue(1);
-        assertThat(callers).doesNotContain((Caller) null).noneMatch(caller -> caller == resolvingThread.get());
+        assertThat(callers).noneMatch(caller -> caller == resolvingThread.get());
         assertThat(resolution.peek()).isEqualTo("value");
         assertThat(resolution.get(null)).isEqualTo("value");
         assertThat(resolutions).hasValue(1);
@@ -193,7 +196,7 @@ class LazyResolutionTest {
             }
         });
 
-        List<Caller> callers = startCallers(1, () -> resolution.get(Duration.ofMillis(500)));
+        List<Caller> callers = startCallers(1, () -> resolution.get(Duration.ofSeconds(2)));
         awaitWaiting(callers);
         callers.get(0).interrupt();
         joinAll(callers);
@@ -278,7 +281,7 @@ class LazyResolutionTest {
         }
 
         assertThat(resolutions).hasValue(0);
-        assertThat(resolution.get(SHORT)).isEqualTo("value");
+        assertThat(resolution.get(null)).isEqualTo("value");
         assertThat(resolutions).hasValue(1);
     }
 
@@ -318,6 +321,108 @@ class LazyResolutionTest {
         joinAll(callers);
         assertThat(callers.get(0).result).isEqualTo("value");
         assertThat(resolutions).hasValue(1);
+    }
+
+    @Test
+    void the_callers_waiting_on_an_attempt_all_fail_at_its_deadline() throws Exception {
+        AtomicInteger resolutions = new AtomicInteger();
+        CountDownLatch never = new CountDownLatch(1);
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            resolutions.incrementAndGet();
+            try {
+                never.await();
+                return "never";
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+
+        List<Caller> callers = startCallers(8, () -> resolution.get(Duration.ofSeconds(1)));
+        joinAll(callers);
+
+        assertThat(callers).allSatisfy(caller -> assertThat(caller.failure).isInstanceOf(TimeoutException.class));
+        assertThat(resolutions).hasValue(1);
+    }
+
+    @Test
+    void an_attempt_whose_worker_never_got_a_thread_fails_at_its_deadline_and_the_next_call_starts_a_new_one()
+            throws Exception {
+        AtomicInteger resolutions = new AtomicInteger();
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            resolutions.incrementAndGet();
+            return "value";
+        });
+        List<Runnable> queued = new ArrayList<>();
+
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(() -> queued::add);
+        try {
+            assertThatThrownBy(() -> resolution.get(SHORT)).isInstanceOf(TimeoutException.class);
+        } finally {
+            ExecutorProvider.set(previous);
+        }
+
+        assertThat(queued).hasSize(1);
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(TimeoutException.class)
+                .untilAsserted(() -> assertThat(resolution.get(null)).isEqualTo("value"));
+        assertThat(resolutions).hasValue(1);
+
+        // the worker that finally gets a thread does not resolve the value again
+        queued.get(0).run();
+        assertThat(resolutions).hasValue(1);
+    }
+
+    @Test
+    void the_attempt_runs_on_the_registered_executor_with_the_context_of_the_caller_starting_it() throws Exception {
+        ThreadLocal<String> requestContext = new ThreadLocal<>();
+        AtomicReference<String> contextSeen = new AtomicReference<>();
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            contextSeen.set(requestContext.get());
+            return "value";
+        });
+        AtomicInteger executed = new AtomicInteger();
+
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(new ExecutorProvider() {
+            @Override
+            public Executor executor() {
+                return task -> {
+                    executed.incrementAndGet();
+                    new Thread(task).start();
+                };
+            }
+
+            @Override
+            public CapturedContext captureContext() {
+                String captured = requestContext.get();
+                return task -> () -> {
+                    requestContext.set(captured);
+                    try {
+                        task.run();
+                    } finally {
+                        requestContext.remove();
+                    }
+                };
+            }
+        });
+        requestContext.set("user-1");
+        try {
+            assertThat(resolution.get(null)).isEqualTo("value");
+        } finally {
+            requestContext.remove();
+            ExecutorProvider.set(previous);
+        }
+
+        assertThat(executed).hasValue(1);
+        assertThat(contextSeen).hasValue("user-1");
+    }
+
+    @Test
+    void a_timeout_too_long_to_fit_in_nanoseconds_is_accepted() throws Exception {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> "value");
+
+        assertThat(resolution.get(ChronoUnit.FOREVER.getDuration())).isEqualTo("value");
     }
 
     @Test

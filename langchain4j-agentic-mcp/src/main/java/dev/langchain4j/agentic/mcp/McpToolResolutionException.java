@@ -38,7 +38,7 @@ public class McpToolResolutionException extends AgentUnavailableException {
      *
      * @since 1.24.0
      */
-    public McpToolResolutionException(String agentName, String toolName, Duration timeout, TimeoutException cause) {
+    McpToolResolutionException(String agentName, String toolName, Duration timeout, TimeoutException cause) {
         super(
                 agentName,
                 message(agentName, toolName)

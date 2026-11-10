@@ -257,6 +257,9 @@ public class DefaultMcpClient implements McpClient {
             } catch (Exception ex) {
                 log.warn("Cannot stop MCP transport", ex);
             }
+            if (e.getCause() instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw e;
         }
     }
@@ -291,6 +294,9 @@ public class DefaultMcpClient implements McpClient {
             log.debug("Server does not support modern protocol, falling back to legacy initialize");
             initializeLegacy(legacyFallbackVersion);
         } catch (Exception e) {
+            if (e.getCause() instanceof InterruptedException) {
+                throw e;
+            }
             if (e.getCause() instanceof TimeoutException) {
                 // Unlike an error answer, silence does not prove the server is a legacy one, so say
                 // so: a server that was merely slow is about to be used with the wrong protocol.

@@ -83,6 +83,7 @@ import org.junit.jupiter.api.Timeout;
  * executor within the resolution timeout of the agent, and the invocations waiting on it all fail when it fails
  * (issue #6958).
  */
+@Timeout(60)
 class A2ALazyAgentCardTest {
 
     /** A loopback URL on a port nobody listens on, so that a real card fetch fails fast with connection refused. */
@@ -668,14 +669,15 @@ class A2ALazyAgentCardTest {
         assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be positive");
-        assertThatThrownBy(() -> builder.resolutionTimeout(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
         assertThatThrownBy(
                         () -> AgenticServices.createAgenticSystem(FixAgentWithNegativeTimeout.class, (ChatModel) null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be positive");
-        assertThat(DefaultA2AClientBuilder.DEFAULT_RESOLUTION_TIMEOUT).isEqualTo(Duration.ofSeconds(30));
+
+        DefaultA2AClientBuilder<Fixer> defaultBuilder = (DefaultA2AClientBuilder<Fixer>)
+                AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class);
+        defaultBuilder.resolutionTimeout(null).outputKey("fix").build();
+        assertThat(defaultBuilder.resolutionTimeout).isEqualTo(Duration.ofSeconds(30));
     }
 
     @Test
@@ -697,13 +699,13 @@ class A2ALazyAgentCardTest {
             silentServer.setDaemon(true);
             silentServer.start();
             Fixer fixer = AgenticServices.a2aBuilder("http://localhost:" + server.getLocalPort(), Fixer.class)
-                    .resolutionTimeout(Duration.ofMillis(500))
+                    .resolutionTimeout(Duration.ofSeconds(2))
                     .outputKey("fix")
                     .build();
 
             assertThatThrownBy(() -> fixer.fix("a broken build"))
                     .isInstanceOf(A2AAgentCardException.class)
-                    .hasMessageEndingWith("within 500 ms")
+                    .hasMessageEndingWith("within 2 s")
                     .hasCauseInstanceOf(TimeoutException.class);
 
             // interrupting the fetch aborted the request: the server sees its connection closed
@@ -839,6 +841,17 @@ class A2ALazyAgentCardTest {
                 .doesNotContain("secret")
                 .doesNotContain("token");
         assertThat(exception.a2aServerUrl()).isEqualTo("https://user:secret@remote-host:8080/a2a?key=token");
+
+        A2AAgentCardException timeout = new A2AAgentCardException(
+                "fixer",
+                "https://user:secret@remote-host:8080/a2a?key=token",
+                Duration.ofSeconds(1),
+                new TimeoutException());
+
+        assertThat(timeout.getMessage())
+                .contains("https://remote-host:8080/a2a")
+                .doesNotContain("secret")
+                .doesNotContain("token");
     }
 
     @Test

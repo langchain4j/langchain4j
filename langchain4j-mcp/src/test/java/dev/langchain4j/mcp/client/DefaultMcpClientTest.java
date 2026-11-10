@@ -1749,6 +1749,40 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void an_interrupt_during_protocol_detection_fails_instead_of_falling_back_to_legacy() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CountDownLatch detectionSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            detectionSent.countDown();
+            return new CompletableFuture<>();
+        });
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        AtomicReference<Boolean> interruptFlagKept = new AtomicReference<>();
+
+        Thread connecting = new Thread(() -> {
+            try {
+                new DefaultMcpClient.Builder()
+                        .transport(transport)
+                        .initializationTimeout(Duration.ofMinutes(2))
+                        .build();
+            } catch (Throwable e) {
+                failure.set(e);
+                interruptFlagKept.set(Thread.currentThread().isInterrupted());
+            }
+        });
+        connecting.start();
+        assertThat(detectionSent.await(10, TimeUnit.SECONDS)).isTrue();
+        connecting.interrupt();
+        connecting.join(10_000);
+
+        assertThat(connecting.isAlive()).isFalse();
+        assertThat(failure.get()).hasCauseInstanceOf(InterruptedException.class);
+        assertThat(interruptFlagKept.get()).isTrue();
+        verify(transport, never()).sendInitializeRequest(any());
+        verify(transport).stop();
+    }
+
+    @Test
     public void explicit_protocol_version_skips_the_detection_request() {
         McpTransport transport = getMinimalMcpTransportMock();
 

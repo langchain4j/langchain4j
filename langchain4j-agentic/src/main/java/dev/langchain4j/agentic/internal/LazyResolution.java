@@ -2,7 +2,9 @@ package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.spi.CapturedContext;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -31,7 +33,8 @@ import org.slf4j.LoggerFactory;
  *
  * @param <T> the type of the resolved value
  */
-public class LazyResolution<T> {
+@Internal
+public final class LazyResolution<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(LazyResolution.class);
 
@@ -175,14 +178,15 @@ public class LazyResolution<T> {
             try {
                 if (timeout != null) {
                     // completes the outcome on the JDK thread scheduling delays, also when nobody waits on it any more
-                    outcome.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                    outcome.orTimeout(TimeUnit.NANOSECONDS.convert(timeout), TimeUnit.NANOSECONDS);
                 }
                 outcome.whenComplete((resolved, failure) -> {
                     if (failure instanceof TimeoutException) {
                         expire();
                     }
                 });
-                DefaultExecutorProvider.getDefaultExecutor().execute(worker);
+                CapturedContext context = DefaultExecutorProvider.captureContext();
+                DefaultExecutorProvider.getDefaultExecutor().execute(context != null ? context.wrap(worker) : worker);
             } catch (Throwable notStarted) {
                 // Whatever prevents the worker from starting, an Error included, like a provider of the executor that
                 // cannot be loaded or a thread that cannot be created: an attempt left in place would block every

@@ -39,7 +39,7 @@ public class A2AAgentCardException extends AgentUnavailableException {
      *
      * @since 1.24.0
      */
-    public A2AAgentCardException(String agentName, String a2aServerUrl, Duration timeout, TimeoutException cause) {
+    A2AAgentCardException(String agentName, String a2aServerUrl, Duration timeout, TimeoutException cause) {
         super(
                 agentName,
                 "Failed to fetch the agent card of A2A agent '" + agentName + "' from "
