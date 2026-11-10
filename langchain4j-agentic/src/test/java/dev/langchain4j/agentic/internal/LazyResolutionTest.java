@@ -8,6 +8,7 @@ import dev.langchain4j.spi.ExecutorProvider;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ServiceConfigurationError;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
@@ -269,6 +270,44 @@ class LazyResolutionTest {
 
         assertThat(resolutions).hasValue(0);
         assertThat(resolution.get(SHORT)).isEqualTo("value");
+        assertThat(resolutions).hasValue(1);
+    }
+
+    @Test
+    void an_attempt_that_cannot_start_because_of_an_error_fails_and_the_next_call_starts_a_new_one() throws Exception {
+        // a provider that cannot supply its executor, then an executor that cannot create a thread
+        assertEndedWhenNotStarted(
+                () -> {
+                    throw new ServiceConfigurationError("broken provider");
+                },
+                ServiceConfigurationError.class);
+        assertEndedWhenNotStarted(
+                () -> task -> {
+                    throw new OutOfMemoryError("unable to create native thread");
+                },
+                OutOfMemoryError.class);
+    }
+
+    private static void assertEndedWhenNotStarted(ExecutorProvider broken, Class<? extends Error> error)
+            throws Exception {
+        AtomicInteger resolutions = new AtomicInteger();
+        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+            resolutions.incrementAndGet();
+            return "value";
+        });
+
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(broken);
+        try {
+            assertThatThrownBy(() -> resolution.get(null)).isInstanceOf(error);
+        } finally {
+            ExecutorProvider.set(previous);
+        }
+
+        // without a timeout, a call joining an attempt that was never ended would wait forever
+        List<Caller> callers = startCallers(1, () -> resolution.get(null));
+        joinAll(callers);
+        assertThat(callers.get(0).result).isEqualTo("value");
         assertThat(resolutions).hasValue(1);
     }
 

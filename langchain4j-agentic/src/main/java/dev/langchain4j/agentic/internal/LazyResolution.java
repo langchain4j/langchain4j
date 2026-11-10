@@ -132,7 +132,7 @@ public class LazyResolution<T> {
         private final Supplier<T> resolver;
         private final Duration timeout;
 
-        // What the callers wait on: completed by the worker, by the deadline, or by the executor rejecting the worker
+        // What the callers wait on: completed by the worker, by the deadline, or when the worker cannot be started
         private final CompletableFuture<T> outcome = new CompletableFuture<>();
 
         // A FutureTask, because its cancellation interrupts the thread running it only while it is running it
@@ -147,21 +147,24 @@ public class LazyResolution<T> {
         }
 
         void start() {
-            if (timeout != null) {
-                // completes the outcome on the JDK thread scheduling delays, also when nobody waits on it any more
-                outcome.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS);
-            }
-            outcome.whenComplete((resolved, failure) -> {
-                if (failure instanceof TimeoutException) {
-                    expire();
-                }
-            });
             try {
+                if (timeout != null) {
+                    // completes the outcome on the JDK thread scheduling delays, also when nobody waits on it any more
+                    outcome.orTimeout(timeout.toNanos(), TimeUnit.NANOSECONDS);
+                }
+                outcome.whenComplete((resolved, failure) -> {
+                    if (failure instanceof TimeoutException) {
+                        expire();
+                    }
+                });
                 DefaultExecutorProvider.getDefaultExecutor().execute(worker);
-            } catch (RuntimeException rejected) {
+            } catch (Throwable notStarted) {
+                // Whatever prevents the worker from starting, an Error included, like a provider of the executor that
+                // cannot be loaded or a thread that cannot be created: an attempt left in place would block every
+                // later caller, forever when there is no timeout
                 if (claimed.compareAndSet(false, true)) {
                     end(this, null);
-                    outcome.completeExceptionally(rejected);
+                    outcome.completeExceptionally(notStarted);
                 }
             }
         }
