@@ -4,6 +4,8 @@ import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -145,6 +147,27 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     default A2AClientBuilder<T> tenant(String tenant) {
+        return this;
+    }
+
+    /**
+     * Sets the time given to the fetch of the agent card, which happens the first time the card is needed, normally
+     * on the first invocation of the agent, on a thread of the LangChain4j executor. It does not limit the messages
+     * sent to the agent. When the card is not fetched within this time the fetch is interrupted and the invocation
+     * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}. Concurrent first invocations
+     * wait on the same fetch, so none of them waits longer than this time, and they all fail when it fails. An
+     * invocation arriving before the interrupted fetch has ended fails at once with the same timeout, and the next
+     * one after that fetches the card again. The default is 30 seconds, and a time of zero removes the limit: the
+     * card is then fetched by the first invocation needing it, on its own thread, and the fetch takes as long as the
+     * server of the agent makes it take.
+     *
+     * @param resolutionTimeout the time given to the fetch of the agent card, {@link Duration#ZERO} for no limit, or
+     *                          {@code null} for the default
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if the time is negative
+     * @since 1.24.0
+     */
+    default A2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
         return this;
     }
 

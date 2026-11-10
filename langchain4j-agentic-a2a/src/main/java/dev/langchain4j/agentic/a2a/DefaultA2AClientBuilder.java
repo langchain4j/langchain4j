@@ -2,15 +2,18 @@ package dev.langchain4j.agentic.a2a;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.LazyResolution;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
@@ -36,6 +39,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +48,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -90,14 +95,17 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private final Class<T> agentServiceClass;
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
+    /** The time given to the fetch of the agent card when none is configured. */
+    static final Duration DEFAULT_RESOLUTION_TIMEOUT = Duration.ofSeconds(30);
+
     private final String a2aServerUrl;
-    private Supplier<AgentCard> agentCardSource;
     private final Function<AgentCard, Client> clientFactory;
     private final ReentrantLock lazyInitLock = new ReentrantLock();
 
     // The agent card is fetched lazily, the first time it is needed, and the client is created from it at that
     // point, so that building an agentic system never depends on the availability of the remote agent
-    private volatile AgentCard agentCard;
+    private final LazyResolution<AgentCard> cardResolution;
+    Duration resolutionTimeout;
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
 
@@ -126,7 +134,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         // The URL is validated now, so that a configuration error still fails when the agent is built,
         // but the card itself is fetched only when first needed
         A2ACardResolver cardResolver = cardResolver(a2aServerUrl, this.tenant);
-        this.agentCardSource = cardResolver::getAgentCard;
+        this.cardResolution = new LazyResolution<>(this::describeCard, cardResolver::getAgentCard);
         this.clientFactory = this::buildClient;
     }
 
@@ -134,9 +142,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     DefaultA2AClientBuilder(AgentCard agentCard, Class<T> agentServiceClass, Client a2aClient) {
         this.a2aServerUrl = agentCard.url();
         this.agentServiceClass = agentServiceClass;
-        this.agentCardSource = () -> agentCard;
+        this.cardResolution = LazyResolution.resolved(agentCard);
         this.clientFactory = card -> a2aClient;
-        this.agentCard = agentCard;
         this.a2aClient = a2aClient;
     }
 
@@ -149,7 +156,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             Function<AgentCard, Client> clientFactory) {
         this.a2aServerUrl = a2aServerUrl;
         this.agentServiceClass = agentServiceClass;
-        this.agentCardSource = agentCardSource;
+        this.cardResolution = new LazyResolution<>(this::describeCard, agentCardSource);
         this.clientFactory = clientFactory != null ? clientFactory : this::buildClient;
     }
 
@@ -175,26 +182,27 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return cardResolver;
     }
 
+    private String describeCard() {
+        return "the agent card of A2A agent '" + name() + "'";
+    }
+
     /**
-     * Returns the agent card, fetching it from the A2A server the first time. Concurrent first invocations perform
-     * a single fetch, and a failed fetch is not cached, so that the next invocation retries it.
+     * Returns the agent card, fetching it from the A2A server the first time, on a thread of the LangChain4j
+     * executor and within the resolution timeout, or on the thread of the first invocation needing it when that
+     * timeout is zero. Concurrent first invocations wait on a single fetch and all fail
+     * when it fails, while a failed fetch is not cached, so that the next invocation retries it.
      */
     private AgentCard resolveAgentCard() {
-        AgentCard card = agentCard;
-        if (card == null) {
-            lockForLazyInit();
-            try {
-                card = agentCard;
-                if (card == null) {
-                    card = fetchAgentCard();
-                    agentCard = card;
-                    agentCardSource = null;
-                }
-            } finally {
-                lazyInitLock.unlock();
-            }
+        try {
+            return cardResolution.get(resolutionTimeout);
+        } catch (TimeoutException e) {
+            throw new A2AAgentCardException(name(), a2aServerUrl, resolutionTimeout, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new A2AAgentCardException(name(), a2aServerUrl, e);
+        } catch (RuntimeException e) {
+            throw new A2AAgentCardException(name(), a2aServerUrl, e);
         }
-        return card;
     }
 
     private void lockForLazyInit() {
@@ -202,26 +210,23 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             lazyInitLock.lockInterruptibly();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new A2AAgentCardException(name(), a2aServerUrl, e);
-        }
-    }
-
-    private AgentCard fetchAgentCard() {
-        try {
-            return agentCardSource.get();
-        } catch (RuntimeException e) {
-            throw new A2AAgentCardException(name(), a2aServerUrl, e);
+            // The card is already fetched here: the lock only guards the creation of the client
+            throw new AgentUnavailableException(
+                    name(), "Interrupted while waiting for the client of A2A agent '" + name() + "' to be created", e);
         }
     }
 
     private Client client() {
         Client client = a2aClient;
         if (client == null) {
+            // The card is resolved before taking the lock, which only guards the creation of the client, so that
+            // concurrent first invocations all wait on the same fetch instead of queueing to make their own
+            AgentCard card = resolveAgentCard();
             lockForLazyInit();
             try {
                 client = a2aClient;
                 if (client == null) {
-                    client = clientFactory.apply(resolveAgentCard());
+                    client = clientFactory.apply(card);
                     a2aClient = client;
                 }
             } finally {
@@ -250,6 +255,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
+
+        resolutionTimeout = getOrDefault(resolutionTimeout, DEFAULT_RESOLUTION_TIMEOUT);
 
         if (description == null) {
             description = agentMethod().map(DefaultA2AClientBuilder::annotatedDescription).orElse(null);
@@ -691,6 +698,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
+    public DefaultA2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
+        if (resolutionTimeout != null && resolutionTimeout.isNegative()) {
+            throw new IllegalArgumentException(
+                    "The resolution timeout of an A2A client agent must not be negative: " + resolutionTimeout);
+        }
+        this.resolutionTimeout = resolutionTimeout;
+        return this;
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public A2AClientBuilder<T> streamingClientListener(A2AStreamingClientListener<?> clientListener) {
         this.streamingClientListener = (A2AStreamingClientListener<TaskUpdateEvent>) clientListener;
@@ -749,7 +766,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             String annotatedName = annotatedName(agentMethod.get());
             return isNullOrBlank(annotatedName) ? agentMethod.get().getName() : annotatedName;
         }
-        AgentCard card = agentCard;
+        AgentCard card = cardResolution.peek();
         return card != null ? card.name() : placeholderName(a2aServerUrl);
     }
 
@@ -893,7 +910,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (tenant != null) {
             return tenant;
         }
-        AgentCard card = agentCard;
+        AgentCard card = cardResolution.peek();
         return card != null ? extractTenantFromAgentCard(card) : null;
     }
 

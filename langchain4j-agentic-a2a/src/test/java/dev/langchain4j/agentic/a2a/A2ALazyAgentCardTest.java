@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.a2a;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
@@ -35,18 +36,26 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.V;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.net.ServerSocket;
+import java.net.Socket;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -71,8 +80,11 @@ import org.junit.jupiter.api.Timeout;
  * The agent card of an A2A client agent is fetched lazily, on the first invocation, so that building an agentic
  * system never depends on the availability of the remote agent (issue #6922). The name of the agent is always known
  * locally, the description and the auto-detected tenant come from the card when first needed, a failed fetch is
- * retried, and concurrent first invocations fetch the card once.
+ * retried, and concurrent first invocations fetch the card once. The fetch runs on a thread of the LangChain4j
+ * executor within the resolution timeout of the agent, and the invocations waiting on it all fail when it fails
+ * (issue #6958).
  */
+@Timeout(60)
 class A2ALazyAgentCardTest {
 
     /** A loopback URL on a port nobody listens on, so that a real card fetch fails fast with connection refused. */
@@ -102,13 +114,20 @@ class A2ALazyAgentCardTest {
                 .build();
     }
 
-    /** A card source that counts its fetches and can be told to fail or to be slow. */
+    /**
+     * A card source that counts its fetches and can be told to fail, to be slow, or to wait on a gate, failing like
+     * the card resolver of the SDK when it is interrupted there.
+     */
     static class CardSource implements Supplier<AgentCard> {
 
         final AgentCard card;
         final AtomicInteger fetches = new AtomicInteger();
+        final CountDownLatch interrupted = new CountDownLatch(1);
         volatile boolean failing;
+        volatile boolean ignoringInterrupt;
         volatile long delayMillis;
+        volatile CountDownLatch gate;
+        volatile Thread fetchingThread;
 
         CardSource(AgentCard card) {
             this.card = card;
@@ -117,6 +136,19 @@ class A2ALazyAgentCardTest {
         @Override
         public AgentCard get() {
             fetches.incrementAndGet();
+            fetchingThread = Thread.currentThread();
+            CountDownLatch gate = this.gate;
+            if (gate != null) {
+                try {
+                    gate.await();
+                } catch (InterruptedException e) {
+                    interrupted.countDown();
+                    if (!ignoringInterrupt) {
+                        throw new A2AClientError("Failed to obtain agent card", e);
+                    }
+                    awaitUninterruptibly(gate);
+                }
+            }
             if (delayMillis > 0) {
                 try {
                     Thread.sleep(delayMillis);
@@ -128,6 +160,17 @@ class A2ALazyAgentCardTest {
                 throw new A2AClientError("Failed to obtain agent card", new IOException("connection refused"));
             }
             return card;
+        }
+
+        private static void awaitUninterruptibly(CountDownLatch gate) {
+            while (true) {
+                try {
+                    gate.await();
+                    return;
+                } catch (InterruptedException ignored) {
+                    // like a fetch blocked where the interruption of its thread is not noticed
+                }
+            }
         }
     }
 
@@ -285,6 +328,47 @@ class A2ALazyAgentCardTest {
         }
     }
 
+    public interface ImpatientFixAgent {
+
+        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = 1)
+        String applyFix(@V("analysis") String analysis);
+
+        @A2AServerUrlSupplier
+        static String a2aServerUrl() {
+            return UNREACHABLE_A2A_SERVER_URL;
+        }
+    }
+
+    public interface ImpatientPipeline {
+
+        @SequenceAgent(
+                outputKey = "fix",
+                subAgents = {Analyzer.class, ImpatientFixAgent.class})
+        String process(@V("request") String request);
+    }
+
+    public interface FixAgentWithoutTimeout {
+
+        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = 0)
+        String applyFix(@V("analysis") String analysis);
+
+        @A2AServerUrlSupplier
+        static String a2aServerUrl() {
+            return UNREACHABLE_A2A_SERVER_URL;
+        }
+    }
+
+    public interface FixAgentWithNegativeTimeout {
+
+        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = -2)
+        String applyFix(@V("analysis") String analysis);
+
+        @A2AServerUrlSupplier
+        static String a2aServerUrl() {
+            return UNREACHABLE_A2A_SERVER_URL;
+        }
+    }
+
     /** A typed agent for the programmatic builder. */
     public interface Fixer {
 
@@ -409,6 +493,268 @@ class A2ALazyAgentCardTest {
         assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
         assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
         assertThat(cardSource.fetches).hasValue(2);
+    }
+
+    @Test
+    void a_fetch_that_never_completes_fails_after_the_resolution_timeout() throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.gate = new CountDownLatch(1);
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("fix")
+                .build();
+
+        assertThatThrownBy(() -> fixer.fix("a broken build"))
+                .isInstanceOf(A2AAgentCardException.class)
+                .isInstanceOf(AgentUnavailableException.class)
+                .hasMessageContaining("'fix'")
+                .hasMessageEndingWith("http://remote-host:8080 within 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(cardSource.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // once the interrupted fetch has ended, the next invocation fetches the card again
+        cardSource.gate = null;
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(A2AAgentCardException.class)
+                .untilAsserted(() -> assertThat(fixer.fix("a broken build")).isEqualTo("fixed"));
+        assertThat(cardSource.fetches).hasValue(2);
+    }
+
+    @Test
+    void an_invocation_arriving_while_a_fetch_that_timed_out_is_still_running_fails_at_once_saying_so()
+            throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        CountDownLatch gate = new CountDownLatch(1);
+        cardSource.gate = gate;
+        cardSource.ignoringInterrupt = true;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("fix")
+                .build();
+
+        assertThatThrownBy(() -> fixer.fix("a broken build"))
+                .isInstanceOf(A2AAgentCardException.class)
+                .hasMessageEndingWith("http://remote-host:8080 within 200 ms");
+        assertThat(cardSource.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the card is not fetched a second time while the first fetch is running, and the failure does not read as
+        // if the server had been given the timeout again
+        assertThatThrownBy(() -> fixer.fix("a broken build"))
+                .isInstanceOf(A2AAgentCardException.class)
+                .hasMessageContaining("'fix'")
+                .hasMessageEndingWith(
+                        "http://remote-host:8080: the previous fetch is still running after its timeout of 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(cardSource.fetches).hasValue(1);
+
+        // the card that the first fetch returns in the end is kept
+        gate.countDown();
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(A2AAgentCardException.class)
+                .untilAsserted(() -> assertThat(fixer.fix("a broken build")).isEqualTo("fixed"));
+        assertThat(cardSource.fetches).hasValue(1);
+    }
+
+    @Test
+    void concurrent_invocations_share_the_failure_of_a_single_fetch() throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.failing = true;
+        cardSource.gate = new CountDownLatch(1);
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+
+        List<Throwable> failures = new CopyOnWriteArrayList<>();
+        List<Thread> callers = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            Thread caller = new Thread(() -> failures.add(catchThrowable(() -> fixer.fix("a broken build"))));
+            caller.start();
+            callers.add(caller);
+        }
+        // every invocation is waiting on the fetch started by the first one when that fetch fails
+        await().atMost(10, TimeUnit.SECONDS)
+                .until(() -> callers.stream().allMatch(caller -> caller.getState() == Thread.State.WAITING));
+        cardSource.gate.countDown();
+        for (Thread caller : callers) {
+            caller.join(10_000);
+        }
+
+        assertThat(failures).hasSize(8).doesNotHaveDuplicates().allSatisfy(failure -> assertThat(failure)
+                .isInstanceOf(A2AAgentCardException.class)
+                .hasCauseInstanceOf(A2AClientError.class));
+        assertThat(failures.stream().map(Throwable::getCause).distinct()).hasSize(1);
+        assertThat(cardSource.fetches).hasValue(1);
+
+        // the failure is not cached: the next invocation fetches the card again
+        cardSource.failing = false;
+        assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
+        assertThat(cardSource.fetches).hasValue(2);
+    }
+
+    @Test
+    void the_card_is_fetched_on_a_thread_of_the_executor_and_the_client_is_created_by_the_caller() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        AtomicReference<Thread> clientCreationThread = new AtomicReference<>();
+        useLazyA2AService(cardSource, card -> {
+            clientCreationThread.set(Thread.currentThread());
+            return new ReplyingClient("fixed", card).client;
+        });
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+
+        assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
+
+        assertThat(cardSource.fetchingThread).isNotNull().isNotSameAs(Thread.currentThread());
+        assertThat(clientCreationThread).hasValue(Thread.currentThread());
+    }
+
+    @Test
+    void an_invocation_interrupted_while_another_one_creates_the_client_does_not_report_a_failed_fetch()
+            throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        CountDownLatch creating = new CountDownLatch(1);
+        CountDownLatch gate = new CountDownLatch(1);
+        useLazyA2AService(cardSource, card -> {
+            creating.countDown();
+            try {
+                gate.await();
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(e);
+            }
+            return new ReplyingClient("fixed", card).client;
+        });
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .outputKey("fix")
+                .build();
+
+        AtomicReference<String> fix = new AtomicReference<>();
+        Thread creator = new Thread(() -> fix.set(fixer.fix("a broken build")));
+        creator.start();
+        assertThat(creating.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the card is fetched by now: the second invocation only waits for the client that the first one creates
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread waiter = new Thread(() -> failure.set(catchThrowable(() -> fixer.fix("a broken build"))));
+        waiter.start();
+        await().atMost(10, TimeUnit.SECONDS).until(() -> waiter.getState() == Thread.State.WAITING);
+        waiter.interrupt();
+        waiter.join(10_000);
+
+        assertThat(failure.get())
+                .isInstanceOf(AgentUnavailableException.class)
+                .isNotInstanceOf(A2AAgentCardException.class)
+                .hasMessage("Interrupted while waiting for the client of A2A agent 'fix' to be created")
+                .hasCauseInstanceOf(InterruptedException.class);
+
+        gate.countDown();
+        creator.join(10_000);
+        assertThat(fix).hasValue("fixed");
+        assertThat(cardSource.fetches).hasValue(1);
+    }
+
+    @Test
+    void the_resolution_timeout_of_the_annotation_is_applied() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.gate = new CountDownLatch(1);
+        useLazyA2AService(cardSource, replying("fixed"));
+        ImpatientPipeline pipeline = AgenticServices.createAgenticSystem(ImpatientPipeline.class, (ChatModel) null);
+
+        Throwable failure = catchThrowable(() -> pipeline.process("a broken build"));
+
+        assertThat(causeOfType(failure, A2AAgentCardException.class))
+                .hasMessageContaining("'applyFix'")
+                .hasMessageEndingWith("within 1 s")
+                .hasCauseInstanceOf(TimeoutException.class);
+    }
+
+    @Test
+    void the_resolution_timeout_is_thirty_seconds_by_default_and_cannot_be_negative() {
+        A2AClientBuilder<Fixer> builder = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class);
+
+        assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be negative");
+        assertThatThrownBy(
+                        () -> AgenticServices.createAgenticSystem(FixAgentWithNegativeTimeout.class, (ChatModel) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be negative");
+
+        // not set, on the builder or with the -1 that is the default of the annotation, it is 30 seconds
+        assertThat(resolutionTimeoutOf(AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                        .resolutionTimeout(null)
+                        .outputKey("fix")
+                        .build()))
+                .isEqualTo(Duration.ofSeconds(30));
+        assertThat(resolutionTimeoutOf(AgenticServices.createAgenticSystem(FixAgent.class, (ChatModel) null)))
+                .isEqualTo(Duration.ofSeconds(30));
+        assertThat(resolutionTimeoutOf(AgenticServices.createAgenticSystem(ImpatientFixAgent.class, (ChatModel) null)))
+                .isEqualTo(Duration.ofSeconds(1));
+        // zero is kept as it is, and means no limit
+        assertThat(resolutionTimeoutOf(AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                        .resolutionTimeout(Duration.ZERO)
+                        .outputKey("fix")
+                        .build()))
+                .isEqualTo(Duration.ZERO);
+        assertThat(resolutionTimeoutOf(
+                        AgenticServices.createAgenticSystem(FixAgentWithoutTimeout.class, (ChatModel) null)))
+                .isEqualTo(Duration.ZERO);
+    }
+
+    private static Duration resolutionTimeoutOf(Object a2aAgent) {
+        return ((DefaultA2AClientBuilder<?>) Proxy.getInvocationHandler(a2aAgent)).resolutionTimeout;
+    }
+
+    @Test
+    void a_zero_resolution_timeout_removes_the_limit() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.delayMillis = 300;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .resolutionTimeout(Duration.ZERO)
+                .outputKey("fix")
+                .build();
+
+        // no deadline at all, and not one that has already passed
+        assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
+        // without a deadline at which to abandon it, the fetch is made by the invocation itself
+        assertThat(cardSource.fetchingThread).isSameAs(Thread.currentThread());
+    }
+
+    @Test
+    void the_fetch_of_a_card_from_a_server_that_never_answers_is_aborted_at_the_timeout() throws Exception {
+        // the real card resolver of the SDK, against a server that accepts the connection and never answers
+        CountDownLatch connectionClosed = new CountDownLatch(1);
+        try (ServerSocket server = new ServerSocket(0)) {
+            Thread silentServer = new Thread(() -> {
+                try (Socket connection = server.accept()) {
+                    InputStream request = connection.getInputStream();
+                    while (request.read() != -1) {
+                        // reads the request without ever answering it, until the client closes the connection
+                    }
+                } catch (IOException e) {
+                    // a connection reset by the client is the end of the request too
+                }
+                connectionClosed.countDown();
+            });
+            silentServer.setDaemon(true);
+            silentServer.start();
+            Fixer fixer = AgenticServices.a2aBuilder("http://localhost:" + server.getLocalPort(), Fixer.class)
+                    .resolutionTimeout(Duration.ofSeconds(2))
+                    .outputKey("fix")
+                    .build();
+
+            assertThatThrownBy(() -> fixer.fix("a broken build"))
+                    .isInstanceOf(A2AAgentCardException.class)
+                    .hasMessageEndingWith("within 2 s")
+                    .hasCauseInstanceOf(TimeoutException.class);
+
+            // interrupting the fetch aborted the request: the server sees its connection closed
+            assertThat(connectionClosed.await(10, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
@@ -539,6 +885,17 @@ class A2ALazyAgentCardTest {
                 .doesNotContain("secret")
                 .doesNotContain("token");
         assertThat(exception.a2aServerUrl()).isEqualTo("https://user:secret@remote-host:8080/a2a?key=token");
+
+        A2AAgentCardException timeout = new A2AAgentCardException(
+                "fixer",
+                "https://user:secret@remote-host:8080/a2a?key=token",
+                Duration.ofSeconds(1),
+                new TimeoutException());
+
+        assertThat(timeout.getMessage())
+                .contains("https://remote-host:8080/a2a")
+                .doesNotContain("secret")
+                .doesNotContain("token");
     }
 
     @Test
