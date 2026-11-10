@@ -132,7 +132,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         // The URL is validated now, so that a configuration error still fails when the agent is built,
         // but the card itself is fetched only when first needed
         A2ACardResolver cardResolver = cardResolver(a2aServerUrl, this.tenant);
-        this.cardResolution = new LazyResolution<>(cardResolver::getAgentCard);
+        this.cardResolution = new LazyResolution<>(this::describeCard, cardResolver::getAgentCard);
         this.clientFactory = this::buildClient;
     }
 
@@ -154,7 +154,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             Function<AgentCard, Client> clientFactory) {
         this.a2aServerUrl = a2aServerUrl;
         this.agentServiceClass = agentServiceClass;
-        this.cardResolution = new LazyResolution<>(agentCardSource);
+        this.cardResolution = new LazyResolution<>(this::describeCard, agentCardSource);
         this.clientFactory = clientFactory != null ? clientFactory : this::buildClient;
     }
 
@@ -185,6 +185,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
      * executor and within the resolution timeout. Concurrent first invocations wait on a single fetch and all fail
      * when it fails, while a failed fetch is not cached, so that the next invocation retries it.
      */
+    private String describeCard() {
+        return "the agent card of A2A agent '" + name() + "'";
+    }
+
     private AgentCard resolveAgentCard() {
         try {
             return cardResolution.get(resolutionTimeout);

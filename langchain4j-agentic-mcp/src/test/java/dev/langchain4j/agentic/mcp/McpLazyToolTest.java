@@ -98,6 +98,7 @@ class McpLazyToolTest {
         final AtomicInteger listings = new AtomicInteger();
         final CountDownLatch interrupted = new CountDownLatch(1);
         volatile boolean down;
+        volatile boolean ignoringInterrupt;
         volatile long delayMillis;
         volatile CountDownLatch creationGate;
         volatile CountDownLatch listingGate;
@@ -127,13 +128,16 @@ class McpLazyToolTest {
         }
 
         private void awaitGate(CountDownLatch gate) {
-            if (gate != null) {
+            while (gate != null) {
                 try {
                     gate.await();
+                    return;
                 } catch (InterruptedException e) {
                     interrupted.countDown();
-                    // like DefaultMcpClient, which reports the interruption of a request with a RuntimeException
-                    throw new IllegalStateException(e);
+                    if (!ignoringInterrupt) {
+                        // like DefaultMcpClient, which reports the interruption of a request with a RuntimeException
+                        throw new IllegalStateException(e);
+                    }
                 }
             }
         }
@@ -483,6 +487,41 @@ class McpLazyToolTest {
                 .ignoreExceptionsInstanceOf(McpToolResolutionException.class)
                 .untilAsserted(() -> assertThat(writer.write("dragons")).isEqualTo("a story about dragons"));
         assertThat(server.clients).hasValue(2);
+    }
+
+    @Test
+    void an_invocation_arriving_while_a_resolution_that_timed_out_is_still_running_fails_at_once_saying_so()
+            throws Exception {
+        CountDownLatch gate = new CountDownLatch(1);
+        server.creationGate = gate;
+        server.ignoringInterrupt = true;
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("story")
+                .build();
+
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasMessageEndingWith("'writer' of the MCP client agent 'write' within 200 ms");
+        assertThat(server.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the tool is not resolved a second time while the first resolution is running, and the failure does not
+        // read as if the server had been given the timeout again
+        assertThatThrownBy(() -> writer.write("dragons"))
+                .isInstanceOf(McpToolResolutionException.class)
+                .hasMessageEndingWith("'writer' of the MCP client agent 'write': the previous resolution is still"
+                        + " running after its timeout of 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(server.clients).hasValue(1);
+
+        // the tool that the first resolution finds in the end is kept
+        gate.countDown();
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(McpToolResolutionException.class)
+                .untilAsserted(() -> assertThat(writer.write("dragons")).isEqualTo("a story about dragons"));
+        assertThat(server.clients).hasValue(1);
+        assertThat(server.listings).hasValue(1);
     }
 
     @Test

@@ -122,6 +122,7 @@ class A2ALazyAgentCardTest {
         final AtomicInteger fetches = new AtomicInteger();
         final CountDownLatch interrupted = new CountDownLatch(1);
         volatile boolean failing;
+        volatile boolean ignoringInterrupt;
         volatile long delayMillis;
         volatile CountDownLatch gate;
         volatile Thread fetchingThread;
@@ -140,7 +141,10 @@ class A2ALazyAgentCardTest {
                     gate.await();
                 } catch (InterruptedException e) {
                     interrupted.countDown();
-                    throw new A2AClientError("Failed to obtain agent card", e);
+                    if (!ignoringInterrupt) {
+                        throw new A2AClientError("Failed to obtain agent card", e);
+                    }
+                    awaitUninterruptibly(gate);
                 }
             }
             if (delayMillis > 0) {
@@ -154,6 +158,17 @@ class A2ALazyAgentCardTest {
                 throw new A2AClientError("Failed to obtain agent card", new IOException("connection refused"));
             }
             return card;
+        }
+
+        private static void awaitUninterruptibly(CountDownLatch gate) {
+            while (true) {
+                try {
+                    gate.await();
+                    return;
+                } catch (InterruptedException ignored) {
+                    // like a fetch blocked where the interruption of its thread is not noticed
+                }
+            }
         }
     }
 
@@ -491,6 +506,42 @@ class A2ALazyAgentCardTest {
                 .ignoreExceptionsInstanceOf(A2AAgentCardException.class)
                 .untilAsserted(() -> assertThat(fixer.fix("a broken build")).isEqualTo("fixed"));
         assertThat(cardSource.fetches).hasValue(2);
+    }
+
+    @Test
+    void an_invocation_arriving_while_a_fetch_that_timed_out_is_still_running_fails_at_once_saying_so()
+            throws Exception {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        CountDownLatch gate = new CountDownLatch(1);
+        cardSource.gate = gate;
+        cardSource.ignoringInterrupt = true;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .resolutionTimeout(Duration.ofMillis(200))
+                .outputKey("fix")
+                .build();
+
+        assertThatThrownBy(() -> fixer.fix("a broken build"))
+                .isInstanceOf(A2AAgentCardException.class)
+                .hasMessageEndingWith("http://remote-host:8080 within 200 ms");
+        assertThat(cardSource.interrupted.await(10, TimeUnit.SECONDS)).isTrue();
+
+        // the card is not fetched a second time while the first fetch is running, and the failure does not read as
+        // if the server had been given the timeout again
+        assertThatThrownBy(() -> fixer.fix("a broken build"))
+                .isInstanceOf(A2AAgentCardException.class)
+                .hasMessageContaining("'fix'")
+                .hasMessageEndingWith(
+                        "http://remote-host:8080: the previous fetch is still running after its timeout of 200 ms")
+                .hasCauseInstanceOf(TimeoutException.class);
+        assertThat(cardSource.fetches).hasValue(1);
+
+        // the card that the first fetch returns in the end is kept
+        gate.countDown();
+        await().atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptionsInstanceOf(A2AAgentCardException.class)
+                .untilAsserted(() -> assertThat(fixer.fix("a broken build")).isEqualTo("fixed"));
+        assertThat(cardSource.fetches).hasValue(1);
     }
 
     @Test

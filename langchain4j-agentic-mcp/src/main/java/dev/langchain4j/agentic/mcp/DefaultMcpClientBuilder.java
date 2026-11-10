@@ -65,7 +65,8 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     // The MCP client is created and the tool resolved lazily, the first time they are needed, so that building an
     // agentic system never depends on the availability of the MCP server
     private volatile McpClient mcpClient;
-    private final LazyResolution<ToolSpecification> toolResolution = new LazyResolution<>(this::findToolOnServer);
+    private final LazyResolution<ToolSpecification> toolResolution = new LazyResolution<>(
+            () -> "the MCP tool of the MCP client agent '" + name() + "'", this::findToolOnServer);
     private Duration resolutionTimeout;
 
     private String toolName;

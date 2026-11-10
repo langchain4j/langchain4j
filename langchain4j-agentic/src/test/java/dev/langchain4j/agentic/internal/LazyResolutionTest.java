@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -28,6 +29,8 @@ import org.junit.jupiter.api.Timeout;
 class LazyResolutionTest {
 
     private static final Duration SHORT = Duration.ofMillis(200);
+
+    private static final Supplier<String> WHAT = () -> "the value of the test";
 
     /** A platform thread calling the resolution, keeping what the call returned or threw. */
     private static class Caller extends Thread {
@@ -89,7 +92,7 @@ class LazyResolutionTest {
         AtomicInteger resolutions = new AtomicInteger();
         AtomicReference<Thread> resolvingThread = new AtomicReference<>();
         CountDownLatch release = new CountDownLatch(1);
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             resolvingThread.set(Thread.currentThread());
             awaitUninterruptibly(release, new CountDownLatch(1));
@@ -115,7 +118,7 @@ class LazyResolutionTest {
         AtomicInteger resolutions = new AtomicInteger();
         CountDownLatch release = new CountDownLatch(1);
         IllegalStateException down = new IllegalStateException("down");
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             awaitUninterruptibly(release, new CountDownLatch(1));
             throw down;
@@ -133,7 +136,7 @@ class LazyResolutionTest {
     @Test
     void a_call_after_a_failure_starts_a_new_attempt() throws Exception {
         AtomicInteger resolutions = new AtomicInteger();
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             if (resolutions.incrementAndGet() == 1) {
                 throw new IllegalStateException("down");
             }
@@ -152,7 +155,7 @@ class LazyResolutionTest {
     void an_attempt_that_does_not_end_within_its_timeout_fails_and_is_interrupted() throws Exception {
         AtomicInteger resolutions = new AtomicInteger();
         CountDownLatch interrupted = new CountDownLatch(1);
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             if (resolutions.incrementAndGet() > 1) {
                 return "value";
             }
@@ -180,7 +183,7 @@ class LazyResolutionTest {
     @Test
     void an_attempt_is_interrupted_at_its_deadline_even_when_nobody_waits_on_it_any_more() throws Exception {
         CountDownLatch interrupted = new CountDownLatch(1);
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             try {
                 new CountDownLatch(1).await();
                 return "never";
@@ -204,18 +207,24 @@ class LazyResolutionTest {
         AtomicInteger resolutions = new AtomicInteger();
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch interrupted = new CountDownLatch(1);
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             awaitUninterruptibly(release, interrupted);
             return "late value";
         });
 
-        assertThatThrownBy(() -> resolution.get(SHORT)).isInstanceOf(TimeoutException.class);
+        assertThatThrownBy(() -> resolution.get(SHORT))
+                .isExactlyInstanceOf(TimeoutException.class)
+                .hasMessage("Not resolved within 200 ms");
         assertThat(interrupted.await(10, TimeUnit.SECONDS)).isTrue();
 
-        // a call arriving while the thread of the attempt has not ended fails at once, without resolving again
+        // a call arriving while the thread of the attempt has not ended fails at once, without resolving again, and
+        // says so instead of reporting a timeout it did not wait for
         long start = System.nanoTime();
-        assertThatThrownBy(() -> resolution.get(Duration.ofMinutes(1))).isInstanceOf(TimeoutException.class);
+        assertThatThrownBy(() -> resolution.get(Duration.ofMinutes(1)))
+                .isInstanceOf(LazyResolution.StillRunningException.class)
+                .isInstanceOf(TimeoutException.class)
+                .hasMessage("The previous resolution is still running after its timeout of 200 ms");
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
         assertThat(resolutions).hasValue(1);
 
@@ -229,7 +238,7 @@ class LazyResolutionTest {
     void a_caller_interrupted_while_waiting_fails_alone() throws Exception {
         AtomicInteger resolutions = new AtomicInteger();
         CountDownLatch release = new CountDownLatch(1);
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             awaitUninterruptibly(release, new CountDownLatch(1));
             return "value";
@@ -251,7 +260,7 @@ class LazyResolutionTest {
     @Test
     void an_attempt_rejected_by_the_executor_fails_and_the_next_call_starts_a_new_one() throws Exception {
         AtomicInteger resolutions = new AtomicInteger();
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             return "value";
         });
@@ -291,7 +300,7 @@ class LazyResolutionTest {
     private static void assertEndedWhenNotStarted(ExecutorProvider broken, Class<? extends Error> error)
             throws Exception {
         AtomicInteger resolutions = new AtomicInteger();
-        LazyResolution<String> resolution = new LazyResolution<>(() -> {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
             resolutions.incrementAndGet();
             return "value";
         });

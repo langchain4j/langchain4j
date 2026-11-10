@@ -13,7 +13,9 @@ import java.util.concurrent.TimeoutException;
  * invocation and the error handler of the agentic system, where it can be recognized to skip or retry an
  * unavailable remote agent, by this type or by its supertype {@link AgentUnavailableException}, common to every
  * integration. A fetch that does not complete within the resolution timeout of the agent, 30 seconds by default, is
- * interrupted and reported with this exception too, with a {@link TimeoutException} as cause. Concurrent first
+ * interrupted and reported with this exception too, with a {@link TimeoutException} as cause. As long as a fetch
+ * that timed out has not reacted to its interruption, the card cannot be fetched again: the invocations arriving
+ * in the meantime fail at once, with a message saying that the previous fetch is still running. Concurrent first
  * invocations wait on the same fetch and all fail when it fails, each with its own exception sharing that cause,
  * but a failed fetch is not cached: the next invocation retries it.
  *
@@ -32,7 +34,8 @@ public class A2AAgentCardException extends AgentUnavailableException {
     }
 
     /**
-     * Creates the exception reporting that the agent card was not fetched within the resolution timeout.
+     * Creates the exception reporting that the agent card was not fetched within the resolution timeout, or, when
+     * the cause says so, that the fetch which timed out before is still running.
      *
      * @since 1.24.0
      */
@@ -40,7 +43,11 @@ public class A2AAgentCardException extends AgentUnavailableException {
         super(
                 agentName,
                 "Failed to fetch the agent card of A2A agent '" + agentName + "' from "
-                        + withoutCredentials(a2aServerUrl) + " within " + LazyResolution.describe(timeout),
+                        + withoutCredentials(a2aServerUrl)
+                        + (cause instanceof LazyResolution.StillRunningException
+                                ? ": the previous fetch is still running after its timeout of "
+                                : " within ")
+                        + LazyResolution.describe(timeout),
                 cause);
         this.a2aServerUrl = a2aServerUrl;
     }
