@@ -16,6 +16,7 @@ import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.MemoryId;
@@ -51,6 +52,16 @@ class AgentMonitorSuspensionTest {
         public void afterAgentInvocation(AgentResponse agentResponse) {
             try {
                 super.afterAgentInvocation(agentResponse);
+            } catch (RuntimeException e) {
+                failures.add(e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+            try {
+                super.beforeAgenticScopeDestroyed(agenticScope);
             } catch (RuntimeException e) {
                 failures.add(e);
                 throw e;
@@ -129,7 +140,7 @@ class AgentMonitorSuspensionTest {
 
     // ---- scenario of the issue: root sequence -> HITL ----
 
-    public interface Greeter {
+    public interface Greeter extends AgenticScopeAccess {
         @SequenceAgent(outputKey = "greeting", subAgents = {AskName.class, Greet.class})
         ResultWithAgenticScope<String> greet(@MemoryId String id);
 
@@ -702,5 +713,44 @@ class AgentMonitorSuspensionTest {
 
         await().atMost(10, SECONDS).until(() -> MONITOR.successfulExecutionsFor("session-12").size() == 2);
         assertThat(MONITOR.failures).isEmpty();
+    }
+
+    // ---- the scope of a suspended execution is evicted before the system is resumed ----
+
+    @Test
+    void suspended_execution_is_dropped_when_its_scope_is_evicted() {
+        Greeter greeter = AgenticServices.createAgenticSystem(Greeter.class);
+        var result = greeter.greet("session-13");
+        assertThat(result.suspended()).isTrue();
+        MonitoredExecution abandoned = MONITOR.ongoingExecutionFor("session-13");
+        assertThat(abandoned.suspended()).isTrue();
+
+        assertThat(greeter.evictAgenticScope("session-13")).isTrue();
+
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-13")).isEmpty();
+        assertThat(MONITOR.failedExecutionsFor("session-13")).isEmpty();
+
+        // the next call on this memory id is a new execution on a new scope, not folded into the abandoned one
+        result = greeter.greet("session-13");
+        assertThat(result.suspended()).isTrue();
+        MonitoredExecution execution = MONITOR.ongoingExecutionFor("session-13");
+        assertThat(execution).isNotSameAs(abandoned);
+        assertThat(execution.agenticScope()).isNotSameAs(abandoned.agenticScope());
+        AgentInvocation root = execution.topLevelInvocations();
+        assertThat(root.nestedInvocations()).extracting(i -> i.agent().name()).containsExactly("askName");
+
+        result = result.completePendingResponse("Mario");
+
+        assertThat(result.result()).isEqualTo("Hello Mario");
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-13")).containsExactly(execution);
+
+        // evicting the scope of a finished execution leaves its record alone
+        assertThat(greeter.evictAgenticScope("session-13")).isTrue();
+        assertThat(MONITOR.failures).isEmpty();
+        assertThat(MONITOR.ongoingExecutions()).isEmpty();
+        assertThat(MONITOR.successfulExecutionsFor("session-13")).containsExactly(execution);
     }
 }
