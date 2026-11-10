@@ -147,8 +147,8 @@ public class DefaultMcpClient implements McpClient {
     private volatile CompletableFuture<String> listChangeSubscriptionFuture;
 
     public DefaultMcpClient(Builder builder) {
+        transport = ensureNotNull(builder.transport, "transport");
         try {
-            transport = ensureNotNull(builder.transport, "transport");
             key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
             clientName = getOrDefault(builder.clientName, "langchain4j");
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
@@ -248,10 +248,15 @@ public class DefaultMcpClient implements McpClient {
             initialize();
             startAutoHealthCheck();
         } catch (RuntimeException e) {
-            // Mark the client as closed if initialization fails,
-            // so that the transport callback won't try to
-            // reinitialize it (indefinitely).
-            closed = true;
+            // The caller gets no client, but keeps owning the transport: it is stopped, not closed, so that what
+            // start() acquired, like a subprocess or a connection, is released while the transport can be started
+            // again by another attempt. Marking the client closed stops the transport callback from reconnecting.
+            releaseResources();
+            try {
+                transport.stop();
+            } catch (Exception ex) {
+                log.warn("Cannot stop MCP transport", ex);
+            }
             throw e;
         }
     }
@@ -1631,6 +1636,16 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void close() {
+        releaseResources();
+        try {
+            transport.close();
+        } catch (Exception e) {
+            log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    /** Releases what the client holds besides the transport, and marks it closed. */
+    private void releaseResources() {
         closed = true;
         // Cancel list-change subscription
         CompletableFuture<String> listChangeFuture = listChangeSubscriptionFuture;
@@ -1649,11 +1664,6 @@ public class DefaultMcpClient implements McpClient {
         activeSubscriptions.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();
-        }
-        try {
-            transport.close();
-        } catch (Exception e) {
-            log.warn("Cannot close MCP transport", e);
         }
     }
 
@@ -1834,9 +1844,13 @@ public class DefaultMcpClient implements McpClient {
 
         /**
          * Sets the transport protocol to use for communicating with the
-         * MCP server. This is a mandatory parameter. A successfully
-         * constructed DefaultMcpClient takes over the resource ownership
-         * of this transport and will close it when it itself is closed.
+         * MCP server. This is a mandatory parameter. A successfully built
+         * DefaultMcpClient takes over the resource ownership of this
+         * transport and closes it when it is itself closed. When building
+         * the client fails, the transport is only stopped: the subprocess,
+         * container or connection started for the attempt is released, and
+         * the caller keeps owning the transport, which can be given to
+         * another attempt or closed.
          */
         public Builder transport(McpTransport transport) {
             this.transport = transport;

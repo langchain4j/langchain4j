@@ -21,8 +21,9 @@ import java.lang.annotation.Target;
  * return type is checked at that moment too: it must be the McpClient, a subtype, or a supertype such as Object, in
  * which case the instance it returns is checked when the client is created. The method runs on the thread that first
  * needs the client, and the client it returns is then used by every invocation of the agent, so it must not depend on
- * per-request or per-user state. When it fails, it is invoked again the next time the client is needed. The agent
- * never closes the client.
+ * per-request or per-user state. When it fails, it is invoked again the next time the client is needed, and a
+ * {@code DefaultMcpClient} that fails to connect stops its transport, so this method can reuse one or create it inside.
+ * The agent never closes the client.
  */
 @Retention(RUNTIME)
 @Target({METHOD})

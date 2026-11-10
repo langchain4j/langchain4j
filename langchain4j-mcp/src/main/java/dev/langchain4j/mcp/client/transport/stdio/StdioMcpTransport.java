@@ -173,8 +173,13 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public void close() throws IOException {
+    public void stop() {
         stopCurrentProcess();
+    }
+
+    @Override
+    public void close() throws IOException {
+        stop();
         // the executor is shared (DefaultExecutorProvider) and host-owned, so it is intentionally not shut down here
     }
 

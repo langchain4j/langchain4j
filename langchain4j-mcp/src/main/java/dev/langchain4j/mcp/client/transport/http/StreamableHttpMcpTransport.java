@@ -40,6 +40,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -78,6 +79,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final Executor executor;
     private final Executor responseExecutor;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    // lets a reconnect that was scheduled before stop() notice that it must not run anymore
+    private final AtomicInteger stopCount = new AtomicInteger();
     private final Set<HttpExchange> activeExchanges = ConcurrentHashMap.newKeySet();
 
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
@@ -493,12 +496,13 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (closed.get() || !subsidiaryChannelEstablished) {
             return;
         }
+        int stopsWhenScheduled = stopCount.get();
         long delayMs = subsidiaryRetryMs.get();
         LOG.debug("Scheduling subsidiary SSE channel reconnect in {} ms", delayMs);
         Executor delayedExecutor = CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS, executor);
         CompletableFuture.runAsync(
                 () -> {
-                    if (!closed.get()) {
+                    if (!closed.get() && stopCount.get() == stopsWhenScheduled) {
                         startSubsidiaryChannel(false, requestContext);
                     }
                 },
@@ -508,6 +512,22 @@ public class StreamableHttpMcpTransport implements McpTransport {
     @Override
     public boolean requiresCancellationNotification() {
         return false;
+    }
+
+    /**
+     * Forgets the session and ends the exchanges in flight, the subsidiary SSE channel included, without closing the
+     * HTTP client: the next initialization starts a new session.
+     */
+    @Override
+    public void stop() {
+        stopCount.incrementAndGet();
+        // cleared first, so that the cancelled subsidiary channel does not schedule its reconnection
+        subsidiaryChannelEstablished = false;
+        subsidiaryLastEventId.set(null);
+        activeExchanges.forEach(HttpExchange::cancel);
+        initialization = null;
+        initializeInProgress.set(null);
+        mcpSessionId.set(null);
     }
 
     @Override
