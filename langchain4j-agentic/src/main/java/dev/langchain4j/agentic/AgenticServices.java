@@ -1063,7 +1063,7 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
-        if (a2aClient.resolutionTimeoutSeconds() != 0) {
+        if (a2aClient.resolutionTimeoutSeconds() != -1) {
             a2aClientBuilder.resolutionTimeout(Duration.ofSeconds(a2aClient.resolutionTimeoutSeconds()));
         }
         AgentCondition a2aActivationCondition = activationCondition(helpers);
@@ -1133,7 +1133,7 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
-        if (mcpAgent.resolutionTimeoutSeconds() != 0) {
+        if (mcpAgent.resolutionTimeoutSeconds() != -1) {
             mcpClientBuilder.resolutionTimeout(Duration.ofSeconds(mcpAgent.resolutionTimeoutSeconds()));
         }
         AgentCondition mcpActivationCondition = activationCondition(helpers);

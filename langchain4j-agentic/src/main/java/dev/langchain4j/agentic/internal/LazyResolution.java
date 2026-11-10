@@ -90,8 +90,8 @@ public final class LazyResolution<T> {
     /**
      * Returns the value, resolving it first if needed, or waiting for the attempt that is already resolving it.
      *
-     * @param timeout the time given to the attempt started by this call, or {@code null} for no limit: a call
-     *                joining an attempt already started waits until the deadline of that attempt
+     * @param timeout the time given to the attempt started by this call, or {@code null} or zero for no limit: a
+     *                call joining an attempt already started waits until the deadline of that attempt
      * @return the resolved value
      * @throws RuntimeException the failure of the attempt, the same instance for every caller waiting on it
      * @throws TimeoutException when the attempt did not resolve the value within its timeout, and a
@@ -115,7 +115,7 @@ public final class LazyResolution<T> {
             }
             current = attempt;
             if (current == null) {
-                current = new Attempt(resolver, timeout);
+                current = new Attempt(resolver, timeout == null || timeout.isZero() ? null : timeout);
                 attempt = current;
                 created = true;
             }

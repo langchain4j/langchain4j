@@ -37,6 +37,7 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.V;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Duration;
@@ -346,9 +347,20 @@ class A2ALazyAgentCardTest {
         String process(@V("request") String request);
     }
 
+    public interface FixAgentWithoutTimeout {
+
+        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = 0)
+        String applyFix(@V("analysis") String analysis);
+
+        @A2AServerUrlSupplier
+        static String a2aServerUrl() {
+            return UNREACHABLE_A2A_SERVER_URL;
+        }
+    }
+
     public interface FixAgentWithNegativeTimeout {
 
-        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = -1)
+        @A2AClientAgent(outputKey = "fix", resolutionTimeoutSeconds = -2)
         String applyFix(@V("analysis") String analysis);
 
         @A2AServerUrlSupplier
@@ -660,24 +672,54 @@ class A2ALazyAgentCardTest {
     }
 
     @Test
-    void the_resolution_timeout_must_be_positive_and_is_thirty_seconds_by_default() {
+    void the_resolution_timeout_is_thirty_seconds_by_default_and_cannot_be_negative() {
         A2AClientBuilder<Fixer> builder = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class);
 
-        assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ZERO))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
         assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
+                .hasMessageContaining("must not be negative");
         assertThatThrownBy(
                         () -> AgenticServices.createAgenticSystem(FixAgentWithNegativeTimeout.class, (ChatModel) null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
+                .hasMessageContaining("must not be negative");
 
-        DefaultA2AClientBuilder<Fixer> defaultBuilder = (DefaultA2AClientBuilder<Fixer>)
-                AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class);
-        defaultBuilder.resolutionTimeout(null).outputKey("fix").build();
-        assertThat(defaultBuilder.resolutionTimeout).isEqualTo(Duration.ofSeconds(30));
+        // not set, on the builder or with the -1 that is the default of the annotation, it is 30 seconds
+        assertThat(resolutionTimeoutOf(AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                        .resolutionTimeout(null)
+                        .outputKey("fix")
+                        .build()))
+                .isEqualTo(Duration.ofSeconds(30));
+        assertThat(resolutionTimeoutOf(AgenticServices.createAgenticSystem(FixAgent.class, (ChatModel) null)))
+                .isEqualTo(Duration.ofSeconds(30));
+        assertThat(resolutionTimeoutOf(AgenticServices.createAgenticSystem(ImpatientFixAgent.class, (ChatModel) null)))
+                .isEqualTo(Duration.ofSeconds(1));
+        // zero is kept as it is, and means no limit
+        assertThat(resolutionTimeoutOf(AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                        .resolutionTimeout(Duration.ZERO)
+                        .outputKey("fix")
+                        .build()))
+                .isEqualTo(Duration.ZERO);
+        assertThat(resolutionTimeoutOf(
+                        AgenticServices.createAgenticSystem(FixAgentWithoutTimeout.class, (ChatModel) null)))
+                .isEqualTo(Duration.ZERO);
+    }
+
+    private static Duration resolutionTimeoutOf(Object a2aAgent) {
+        return ((DefaultA2AClientBuilder<?>) Proxy.getInvocationHandler(a2aAgent)).resolutionTimeout;
+    }
+
+    @Test
+    void a_zero_resolution_timeout_removes_the_limit() {
+        CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
+        cardSource.delayMillis = 300;
+        useLazyA2AService(cardSource, replying("fixed"));
+        Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
+                .resolutionTimeout(Duration.ZERO)
+                .outputKey("fix")
+                .build();
+
+        // no deadline at all, and not one that has already passed
+        assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
     }
 
     @Test

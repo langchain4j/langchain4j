@@ -157,12 +157,13 @@ public interface A2AClientBuilder<T> {
      * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}. Concurrent first invocations
      * wait on the same fetch, so none of them waits longer than this time, and they all fail when it fails. An
      * invocation arriving before the interrupted fetch has ended fails at once with the same timeout, and the next
-     * one after that fetches the card again. The default is 30 seconds.
+     * one after that fetches the card again. The default is 30 seconds, and a time of zero removes the limit, so
+     * that the fetch takes as long as the server of the agent makes it take.
      *
-     * @param resolutionTimeout the time given to the fetch of the agent card, which must be positive, or
+     * @param resolutionTimeout the time given to the fetch of the agent card, {@link Duration#ZERO} for no limit, or
      *                          {@code null} for the default
      * @return this builder for method chaining
-     * @throws IllegalArgumentException if the time is zero or negative
+     * @throws IllegalArgumentException if the time is negative
      * @since 1.24.0
      */
     default A2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {

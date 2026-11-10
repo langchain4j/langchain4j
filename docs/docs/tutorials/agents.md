@@ -3836,7 +3836,7 @@ The first invocation of the agent pays the latency of the card fetch. Calling th
 AgentCard agentCard = ((A2AClientInstance) creativeWriter).agentCard();
 ```
 
-The card is fetched on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context), within a timeout of 30 seconds by default, since the HTTP client that the a2a-java SDK uses for it has none. This timeout only limits the fetch of the card, not the messages sent to the agent. The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@A2AClientAgent` annotation, changes it:
+The card is fetched on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context), within a timeout of 30 seconds by default, since the HTTP client that the a2a-java SDK uses for it has none. This timeout only limits the fetch of the card, not the messages sent to the agent. The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@A2AClientAgent` annotation, changes it, and a value of zero removes the limit:
 
 ```java
 UntypedAgent creativeWriter = AgenticServices
@@ -4249,7 +4249,7 @@ AgentInstance mcpSubagent = ((AgentInstance) storyPipeline).subagents().stream()
 ToolSpecification tool = mcpSubagent.as(McpClientInstance.class).toolSpecification();
 ```
 
-The resolution, that is the creation of the client by its supplier and the listing of the tools, runs on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context). The invocations reaching the agent while its tool is being resolved wait on that same resolution instead of making their own, and when it fails they all fail, instead of trying again one after the other. By default the resolution takes as long as the MCP client allows: a `DefaultMcpClient` waits up to 30 seconds for the detection of the protocol version (`protocolDetectionTimeout`, skipped when `protocolVersion` is set), up to 30 seconds for its initialization (`initializationTimeout`) and up to 60 seconds for each request listing the tools (`toolExecutionTimeout`). The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@McpClientAgent` annotation, puts one limit on the whole resolution, whatever the client. It does not limit the execution of the tool:
+The resolution, that is the creation of the client by its supplier and the listing of the tools, runs on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context). The invocations reaching the agent while its tool is being resolved wait on that same resolution instead of making their own, and when it fails they all fail, instead of trying again one after the other. By default the resolution takes as long as the MCP client allows: a `DefaultMcpClient` waits up to 30 seconds for the detection of the protocol version (`protocolDetectionTimeout`, skipped when `protocolVersion` is set), up to 30 seconds for its initialization (`initializationTimeout`) and up to 60 seconds for each request listing the tools (`toolExecutionTimeout`). The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@McpClientAgent` annotation, puts one limit on the whole resolution, whatever the client, while a value of zero means no such limit, as when it is not set. It does not limit the execution of the tool:
 
 ```java
 UntypedAgent storyGenerator = McpAgent.builder(mcpClient)

@@ -92,9 +92,10 @@ public @interface McpClientAgent {
      * {@link TimeoutException}. Concurrent first invocations wait on the same resolution, so
      * none of them waits longer than this time.
      *
-     * @return the number of seconds given to the resolution of the MCP tool, or 0 for no limit other than the
-     * timeouts of the MCP client itself. A negative value is rejected when the agent is built.
+     * @return the number of seconds given to the resolution of the MCP tool, 0 for no limit other than the
+     * timeouts of the MCP client itself, or -1, which is the default, for the default of an MCP client agent, which
+     * is no limit either. Any other negative value is rejected when the agent is built.
      * @since 1.24.0
      */
-    int resolutionTimeoutSeconds() default 0;
+    int resolutionTimeoutSeconds() default -1;
 }

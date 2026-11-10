@@ -698,9 +698,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public DefaultA2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
-        if (resolutionTimeout != null && (resolutionTimeout.isZero() || resolutionTimeout.isNegative())) {
+        if (resolutionTimeout != null && resolutionTimeout.isNegative()) {
             throw new IllegalArgumentException(
-                    "The resolution timeout of an A2A client agent must be positive: " + resolutionTimeout);
+                    "The resolution timeout of an A2A client agent must not be negative: " + resolutionTimeout);
         }
         this.resolutionTimeout = resolutionTimeout;
         return this;

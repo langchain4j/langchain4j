@@ -104,10 +104,10 @@ public interface McpClientBuilder<T> {
      * {@code DefaultMcpClient} has its own timeouts, which still apply to each of its steps when this one is set, so
      * that the resolution ends at the first of them that expires.
      *
-     * @param resolutionTimeout the time given to the resolution of the MCP tool, which must be positive, or
+     * @param resolutionTimeout the time given to the resolution of the MCP tool, or {@link Duration#ZERO} or
      *                          {@code null} for no such limit
      * @return this builder for method chaining
-     * @throws IllegalArgumentException if the time is zero or negative
+     * @throws IllegalArgumentException if the time is negative
      * @since 1.24.0
      */
     McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout);

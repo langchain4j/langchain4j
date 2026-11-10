@@ -333,9 +333,20 @@ class McpLazyToolTest {
         String process(@V("request") String request);
     }
 
+    public interface StoryAgentWithoutTimeout {
+
+        @McpClientAgent(toolName = "writer", outputKey = "story", resolutionTimeoutSeconds = 0)
+        String generateStory(@V("topic") String topic);
+
+        @McpClientSupplier
+        static Object mcpClient() {
+            return server.get();
+        }
+    }
+
     public interface StoryAgentWithNegativeTimeout {
 
-        @McpClientAgent(toolName = "writer", outputKey = "story", resolutionTimeoutSeconds = -1)
+        @McpClientAgent(toolName = "writer", outputKey = "story", resolutionTimeoutSeconds = -2)
         String generateStory(@V("topic") String topic);
 
         @McpClientSupplier
@@ -652,20 +663,35 @@ class McpLazyToolTest {
     }
 
     @Test
-    void the_resolution_timeout_must_be_positive() {
+    void the_resolution_timeout_cannot_be_negative() {
         var builder = McpAgent.builder(server, Writer.class);
 
-        assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ZERO))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
         assertThatThrownBy(() -> builder.resolutionTimeout(Duration.ofSeconds(-1)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
+                .hasMessageContaining("must not be negative");
         assertThat(builder.resolutionTimeout(null)).isSameAs(builder);
+        assertThat(builder.resolutionTimeout(Duration.ZERO)).isSameAs(builder);
         assertThatThrownBy(() ->
                         AgenticServices.createAgenticSystem(StoryAgentWithNegativeTimeout.class, (ChatModel) null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must be positive");
+                .hasMessageContaining("must not be negative");
+    }
+
+    @Test
+    void a_zero_resolution_timeout_removes_the_limit() {
+        server.delayMillis = 300;
+
+        // no deadline at all, and not one that has already passed, on the builder and on the annotation
+        Writer writer = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ZERO)
+                .outputKey("story")
+                .build();
+        assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
+
+        StoryAgentWithoutTimeout declared =
+                AgenticServices.createAgenticSystem(StoryAgentWithoutTimeout.class, (ChatModel) null);
+        assertThat(declared.generateStory("dragons")).isEqualTo("a story about dragons");
     }
 
     @Test

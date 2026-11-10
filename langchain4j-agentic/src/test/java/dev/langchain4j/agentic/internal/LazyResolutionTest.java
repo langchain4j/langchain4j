@@ -419,6 +419,20 @@ class LazyResolutionTest {
     }
 
     @Test
+    void a_zero_timeout_is_no_limit_and_not_a_deadline_already_passed() throws Exception {
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(e);
+            }
+            return "value";
+        });
+
+        assertThat(resolution.get(Duration.ZERO)).isEqualTo("value");
+    }
+
+    @Test
     void a_timeout_too_long_to_fit_in_nanoseconds_is_accepted() throws Exception {
         LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> "value");
 

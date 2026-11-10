@@ -102,9 +102,9 @@ public @interface A2AClientAgent {
      * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}.
      * Concurrent first invocations wait on the same fetch, so none of them waits longer than this time.
      *
-     * @return the number of seconds given to the fetch of the agent card, or 0 for the default of 30 seconds. A
-     * negative value is rejected when the agent is built.
+     * @return the number of seconds given to the fetch of the agent card, 0 for no limit, or -1, which is the
+     * default, for the default of 30 seconds. Any other negative value is rejected when the agent is built.
      * @since 1.24.0
      */
-    int resolutionTimeoutSeconds() default 0;
+    int resolutionTimeoutSeconds() default -1;
 }
