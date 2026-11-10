@@ -188,7 +188,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     /**
      * Returns the agent card, fetching it from the A2A server the first time, on a thread of the LangChain4j
-     * executor and within the resolution timeout. Concurrent first invocations wait on a single fetch and all fail
+     * executor and within the resolution timeout, or on the thread of the first invocation needing it when that
+     * timeout is zero. Concurrent first invocations wait on a single fetch and all fail
      * when it fails, while a failed fetch is not cached, so that the next invocation retries it.
      */
     private AgentCard resolveAgentCard() {

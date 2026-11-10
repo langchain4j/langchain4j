@@ -242,7 +242,8 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     /**
      * Returns the tool specification, creating the MCP client and listing the tools of the server the first time, on
-     * a thread of the LangChain4j executor and within the resolution timeout, when one is set. Concurrent first
+     * the thread of the first invocation needing it, or, when a resolution timeout is set, on a thread of the
+     * LangChain4j executor and within that time. Concurrent first
      * invocations wait on a single resolution and all fail when it fails, while a failed resolution is not cached,
      * so that the next invocation retries it.
      */

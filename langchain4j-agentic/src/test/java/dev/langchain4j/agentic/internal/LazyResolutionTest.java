@@ -33,6 +33,9 @@ class LazyResolutionTest {
 
     private static final Duration SHORT = Duration.ofMillis(200);
 
+    /** A timeout that never elapses during a test: with it the value is resolved on the executor, as with any other. */
+    private static final Duration LONG = Duration.ofMinutes(1);
+
     private static final Supplier<String> WHAT = () -> "the value of the test";
 
     /** A platform thread calling the resolution, keeping what the call returned or threw. */
@@ -103,7 +106,7 @@ class LazyResolutionTest {
         });
         assertThat(resolution.peek()).isNull();
 
-        List<Caller> callers = startCallers(8, () -> resolution.get(null));
+        List<Caller> callers = startCallers(8, () -> resolution.get(LONG));
         awaitWaiting(callers);
         release.countDown();
         joinAll(callers);
@@ -247,7 +250,7 @@ class LazyResolutionTest {
             return "value";
         });
 
-        List<Caller> callers = startCallers(3, () -> resolution.get(null));
+        List<Caller> callers = startCallers(3, () -> resolution.get(LONG));
         awaitWaiting(callers);
         Caller interruptedCaller = callers.remove(0);
         interruptedCaller.interrupt();
@@ -311,12 +314,12 @@ class LazyResolutionTest {
         ExecutorProvider previous = ExecutorProvider.get();
         ExecutorProvider.set(broken);
         try {
-            assertThatThrownBy(() -> resolution.get(null)).isInstanceOf(error);
+            assertThatThrownBy(() -> resolution.get(LONG)).isInstanceOf(error);
         } finally {
             ExecutorProvider.set(previous);
         }
 
-        // without a timeout, a call joining an attempt that was never ended would wait forever
+        // a call joining an attempt that was never ended would wait until its deadline
         List<Caller> callers = startCallers(1, () -> resolution.get(null));
         joinAll(callers);
         assertThat(callers.get(0).result).isEqualTo("value");
@@ -408,7 +411,7 @@ class LazyResolutionTest {
         });
         requestContext.set("user-1");
         try {
-            assertThat(resolution.get(null)).isEqualTo("value");
+            assertThat(resolution.get(LONG)).isEqualTo("value");
         } finally {
             requestContext.remove();
             ExecutorProvider.set(previous);
@@ -416,6 +419,93 @@ class LazyResolutionTest {
 
         assertThat(executed).hasValue(1);
         assertThat(contextSeen).hasValue("user-1");
+    }
+
+    @Test
+    void without_a_timeout_the_value_is_resolved_by_the_first_caller_itself_and_not_on_the_executor()
+            throws Exception {
+        AtomicReference<Thread> resolvingThread = new AtomicReference<>();
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            resolvingThread.set(Thread.currentThread());
+            return "value";
+        });
+        List<Runnable> submitted = new ArrayList<>();
+
+        // an executor with no thread left, like a bounded one whose threads are all callers waiting for this value
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(() -> submitted::add);
+        List<Caller> callers;
+        try {
+            callers = startCallers(1, () -> resolution.get(null));
+            joinAll(callers);
+        } finally {
+            ExecutorProvider.set(previous);
+        }
+
+        assertThat(callers.get(0).result).isEqualTo("value");
+        assertThat(resolvingThread).hasValue(callers.get(0));
+        assertThat(submitted).isEmpty();
+    }
+
+    @Test
+    void without_a_timeout_the_callers_arriving_meanwhile_wait_for_the_one_resolving_the_value() throws Exception {
+        AtomicInteger resolutions = new AtomicInteger();
+        AtomicReference<Thread> resolvingThread = new AtomicReference<>();
+        CountDownLatch release = new CountDownLatch(1);
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            resolutions.incrementAndGet();
+            resolvingThread.set(Thread.currentThread());
+            awaitUninterruptibly(release, new CountDownLatch(1));
+            return "value";
+        });
+
+        List<Caller> callers = startCallers(8, () -> resolution.get(null));
+        awaitWaiting(callers);
+        release.countDown();
+        joinAll(callers);
+
+        assertThat(callers).allSatisfy(caller -> assertThat(caller.result).isEqualTo("value"));
+        assertThat(resolutions).hasValue(1);
+        assertThat(callers).anyMatch(caller -> caller == resolvingThread.get());
+    }
+
+    @Test
+    void without_a_timeout_the_interruption_of_the_caller_resolving_the_value_fails_the_ones_waiting_too()
+            throws Exception {
+        AtomicInteger resolutions = new AtomicInteger();
+        CountDownLatch resolving = new CountDownLatch(1);
+        LazyResolution<String> resolution = new LazyResolution<>(WHAT, () -> {
+            resolutions.incrementAndGet();
+            resolving.countDown();
+            try {
+                new CountDownLatch(1).await();
+                return "never";
+            } catch (InterruptedException e) {
+                throw new IllegalStateException("interrupted", e);
+            }
+        });
+
+        Caller first = startCallers(1, () -> resolution.get(null)).get(0);
+        assertThat(resolving.await(10, TimeUnit.SECONDS)).isTrue();
+        List<Caller> waiting = startCallers(3, () -> resolution.get(null));
+        awaitWaiting(waiting);
+
+        // a caller that only waits fails alone
+        Caller interruptedWaiter = waiting.remove(0);
+        interruptedWaiter.interrupt();
+        joinAll(List.of(interruptedWaiter));
+        assertThat(interruptedWaiter.failure).isInstanceOf(InterruptedException.class);
+        assertThat(first.isAlive()).isTrue();
+
+        // the caller resolving the value is interrupted while doing it, so the attempt fails for everybody
+        first.interrupt();
+        joinAll(List.of(first));
+        joinAll(waiting);
+        assertThat(first.failure)
+                .isInstanceOf(IllegalStateException.class)
+                .hasCauseInstanceOf(InterruptedException.class);
+        assertThat(waiting).allSatisfy(caller -> assertThat(caller.failure).isSameAs(first.failure));
+        assertThat(resolutions).hasValue(1);
     }
 
     @Test

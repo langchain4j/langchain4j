@@ -638,13 +638,24 @@ class McpLazyToolTest {
     }
 
     @Test
-    void the_client_supplier_runs_on_a_thread_of_the_executor() {
+    void the_client_supplier_runs_on_the_invoking_thread_unless_a_resolution_timeout_is_set() {
         Writer writer = McpAgent.builder(server, Writer.class)
                 .toolName("writer")
                 .outputKey("story")
                 .build();
 
         assertThat(writer.write("dragons")).isEqualTo("a story about dragons");
+
+        assertThat(server.supplyingThread).isSameAs(Thread.currentThread());
+
+        // with a timeout the resolution must be abandoned at its deadline, so it runs on a thread of the executor
+        Writer limitedWriter = McpAgent.builder(server, Writer.class)
+                .toolName("writer")
+                .resolutionTimeout(Duration.ofSeconds(10))
+                .outputKey("story")
+                .build();
+
+        assertThat(limitedWriter.write("dragons")).isEqualTo("a story about dragons");
 
         assertThat(server.supplyingThread).isNotNull().isNotSameAs(Thread.currentThread());
     }

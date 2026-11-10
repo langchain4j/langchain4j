@@ -21,15 +21,21 @@ import org.slf4j.LoggerFactory;
  * A value resolved lazily, the first time it is needed, from something that may be unavailable or slow, like the
  * server of a remote agent.
  * <p>
- * The value is resolved by one attempt at a time, running on a thread of the LangChain4j executor, and every caller
- * needing the value meanwhile waits on that attempt instead of making its own. When the attempt fails, the callers
- * waiting on it all fail with its failure, and the failure is not cached: the next call starts a new attempt.
+ * The value is resolved by one attempt at a time, and every caller needing the value meanwhile waits on that
+ * attempt instead of making its own. When the attempt fails, the callers waiting on it all fail with its failure,
+ * and the failure is not cached: the next call starts a new attempt.
  * <p>
- * An attempt can be given a timeout, counted from its start. At that deadline the callers waiting on it fail with a
- * {@link TimeoutException} and the thread resolving the value is interrupted. The attempt stays the current one
- * until that thread really ends: a call arriving in the meantime fails at once with a {@link StillRunningException},
- * so that the value is never resolved twice at the same time, and a value resolved after the deadline is kept for
- * the next call. A warning is logged at the deadline, and when a value resolved after it is kept.
+ * Without a timeout, the caller starting the attempt resolves the value itself, on its own thread: no thread of the
+ * LangChain4j executor is needed, which a bounded one may not have left when its threads are the callers waiting
+ * for this value. Interrupting that caller interrupts the resolution, so the callers waiting on it fail with it.
+ * <p>
+ * An attempt given a timeout, counted from its start, runs instead on a thread of the LangChain4j executor, with
+ * the context of the caller starting it, so that it can be abandoned. At that deadline the callers waiting on it
+ * fail with a {@link TimeoutException} and the thread resolving the value is interrupted. The attempt stays the
+ * current one until that thread really ends: a call arriving in the meantime fails at once with a
+ * {@link StillRunningException}, so that the value is never resolved twice at the same time, and a value resolved
+ * after the deadline is kept for the next call. A warning is logged at the deadline, and when a value resolved
+ * after it is kept.
  *
  * @param <T> the type of the resolved value
  */
@@ -60,8 +66,9 @@ public final class LazyResolution<T> {
     /**
      * @param description says what is resolved in the warnings logged for an attempt that outlives its timeout, like
      *                    "the agent card of A2A agent 'x'": it is asked only when such a warning is logged
-     * @param resolver resolves the value, on a thread of the LangChain4j executor: it returns a non-null value or
-     *                 throws an unchecked exception, and it is released once the value is resolved
+     * @param resolver resolves the value, on a thread of the LangChain4j executor when the attempt has a timeout
+     *                 and on the one of the caller starting it otherwise: it returns a non-null value or throws an
+     *                 unchecked exception, and it is released once the value is resolved
      */
     public LazyResolution(Supplier<String> description, Supplier<T> resolver) {
         this.description = ensureNotNull(description, "description");
@@ -98,7 +105,8 @@ public final class LazyResolution<T> {
      *                          {@link StillRunningException} when it did not before this call, and its thread has
      *                          not ended yet
      * @throws InterruptedException when the calling thread is interrupted while waiting, which does not stop the
-     *                              attempt
+     *                              attempt: only the caller resolving the value itself, when there is no timeout,
+     *                              has the resolution interrupted with it
      */
     public T get(Duration timeout) throws InterruptedException, TimeoutException {
         T resolved = value;
@@ -175,11 +183,16 @@ public final class LazyResolution<T> {
         }
 
         void start() {
+            if (timeout == null) {
+                // Without a deadline there is nothing to abandon, so the caller starting the attempt resolves the
+                // value itself instead of waiting for a thread of the executor to do it: a bounded executor whose
+                // threads are all callers waiting for this value would never run a worker queued behind them
+                resolve();
+                return;
+            }
             try {
-                if (timeout != null) {
-                    // completes the outcome on the JDK thread scheduling delays, also when nobody waits on it any more
-                    outcome.orTimeout(TimeUnit.NANOSECONDS.convert(timeout), TimeUnit.NANOSECONDS);
-                }
+                // completes the outcome on the JDK thread scheduling delays, also when nobody waits on it any more
+                outcome.orTimeout(TimeUnit.NANOSECONDS.convert(timeout), TimeUnit.NANOSECONDS);
                 outcome.whenComplete((resolved, failure) -> {
                     if (failure instanceof TimeoutException) {
                         expire();
@@ -190,7 +203,7 @@ public final class LazyResolution<T> {
             } catch (Throwable notStarted) {
                 // Whatever prevents the worker from starting, an Error included, like a provider of the executor that
                 // cannot be loaded or a thread that cannot be created: an attempt left in place would block every
-                // later caller, forever when there is no timeout
+                // later caller until its deadline
                 if (claimed.compareAndSet(false, true)) {
                     end(this, null);
                     outcome.completeExceptionally(notStarted);

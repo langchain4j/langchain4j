@@ -720,6 +720,8 @@ class A2ALazyAgentCardTest {
 
         // no deadline at all, and not one that has already passed
         assertThat(fixer.fix("a broken build")).isEqualTo("fixed");
+        // without a deadline at which to abandon it, the fetch is made by the invocation itself
+        assertThat(cardSource.fetchingThread).isSameAs(Thread.currentThread());
     }
 
     @Test
