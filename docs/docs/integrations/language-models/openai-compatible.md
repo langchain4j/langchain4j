@@ -45,12 +45,13 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, UberLLM, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
+- [UberLLM](#uberllm)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -118,6 +119,25 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+## UberLLM
+
+**Deployment:** SaaS (key required)
+
+**Description:** [UberLLM](https://uberllm.dev) is an OpenAI-compatible API where one key reaches models from DeepSeek, Google, Anthropic, OpenAI, Qwen, Moonshot and others. Requests are billed from prepaid credit at the price of the provider that served them, often below list price.
+
+**Setup:**
+To use UberLLM, create an API key in the [UberLLM dashboard](https://uberllm.dev/dashboard/keys).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.uberllm.dev/v1")
+        .apiKey(System.getenv("UBERLLM_API_KEY"))
+        .modelName("deepseek/deepseek-v4.1-flash") // Or any other model id from GET /v1/models
+        .build();
+```
+You can find available model names on the [UberLLM models page](https://uberllm.dev/models) or with `GET https://api.uberllm.dev/v1/models`.
 
 ## Groq
 
