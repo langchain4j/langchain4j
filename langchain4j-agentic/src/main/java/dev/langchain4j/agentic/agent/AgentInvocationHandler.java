@@ -3,8 +3,10 @@ package dev.langchain4j.agentic.agent;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentToolExecution;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentToolExecution;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgentAiServiceEvent;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
@@ -12,10 +14,8 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.internal.AgentModelResponse;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -292,10 +292,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 && parentListener.inheritedBySubagents()
                 && isNewListener(agentListener, parentListener)) {
             agentListener = composeWithInherited(agentListener, parentListener);
-            context.toolService.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
-            context.toolService.afterToolExecution(toolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(this, toolExecution)));
+            context.toolService.beforeToolExecution(
+                    beforeToolExecution -> beforeAgentToolExecution(agentListener, this, beforeToolExecution));
+            context.toolService.afterToolExecution(
+                    toolExecution -> afterAgentToolExecution(agentListener, this, toolExecution));
         }
     }
 

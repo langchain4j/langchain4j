@@ -5,6 +5,8 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentToolExecution;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentToolExecution;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
@@ -17,10 +19,8 @@ import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -265,10 +265,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         if (agentListener != null) {
-            aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
-            aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+            aiServices.beforeToolExecution(
+                    beforeToolExecution -> beforeAgentToolExecution(agentListener, agent, beforeToolExecution));
+            aiServices.afterToolExecution(
+                    afterToolExecution -> afterAgentToolExecution(agentListener, agent, afterToolExecution));
         }
 
         if (compensateOnError) {
