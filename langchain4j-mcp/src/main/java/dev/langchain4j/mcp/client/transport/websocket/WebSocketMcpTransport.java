@@ -189,13 +189,18 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     /**
-     * Closes the connection, if any, and forgets the initialize request a reconnection would replay, without closing
+     * Aborts the connection, if any, and forgets the initialize request a reconnection would replay, without closing
      * the HTTP client: the next {@link #start} opens a new connection.
      */
     @Override
     public void stop() {
         initializeRequest = null;
-        closeWebSocket(webSocketRef.getAndSet(null));
+        CompletableFuture<WebSocket> current = webSocketRef.getAndSet(null);
+        if (current != null) {
+            // Not sendClose(): a server that does not answer would keep the connection open, and a late answer
+            // would reach the close callback, which would then forget the connection of the next start().
+            current.thenAccept(WebSocket::abort);
+        }
     }
 
     @Override
