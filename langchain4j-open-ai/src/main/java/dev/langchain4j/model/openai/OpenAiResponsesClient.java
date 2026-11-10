@@ -113,6 +113,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_ID = "id";
     private static final String FIELD_CALL_ID = "call_id";
     private static final String FIELD_ITEM_ID = "item_id";
+    private static final String FIELD_PHASE = "phase";
     private static final String FIELD_OUTPUT_INDEX = "output_index";
     private static final String FIELD_RESPONSE = "response";
     private static final String FIELD_ERROR = "error";
@@ -182,6 +183,7 @@ class OpenAiResponsesClient {
     private static final String TYPE_MESSAGE = "message";
     private static final String TYPE_REASONING = "reasoning";
     private static final String TYPE_OUTPUT_TEXT = "output_text";
+    private static final String MESSAGE_PHASE_FINAL_ANSWER = "final_answer";
     private static final String TYPE_OBJECT = "object";
     private static final String TYPE_INPUT_TEXT = "input_text";
     private static final String TYPE_INPUT_IMAGE = "input_image";
@@ -566,14 +568,39 @@ class OpenAiResponsesClient {
         return at(node, field) != null;
     }
 
+    /**
+     * Assembles the assistant reply from the {@code message} items of a completed
+     * response. Reasoning models can emit more than one message item per turn
+     * (e.g. a {@code commentary} preamble plus the {@code final_answer} reply);
+     * only the final-answer items then carry the reply, and concatenating every
+     * item would duplicate or prefix it. Responses whose message items carry no
+     * {@code phase} keep the legacy behavior of concatenating every message item.
+     */
     private static String extractText(Object output) {
-        StringBuilder textBuilder = new StringBuilder();
+        List<Object> finalAnswerItems = new ArrayList<>();
+        List<Object> phaselessItems = new ArrayList<>();
+        List<Object> otherPhaseItems = new ArrayList<>();
         for (Object item : arr(output)) {
-            if (TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE)))) {
-                for (Object c : arr(at(item, FIELD_CONTENT))) {
-                    if (TYPE_OUTPUT_TEXT.equals(str(at(c, FIELD_TYPE)))) {
-                        textBuilder.append(str(at(c, FIELD_TEXT)));
-                    }
+            if (!TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE)))) {
+                continue;
+            }
+            Object phase = at(item, FIELD_PHASE);
+            if (phase == null) {
+                phaselessItems.add(item);
+            } else if (MESSAGE_PHASE_FINAL_ANSWER.equals(str(phase))) {
+                finalAnswerItems.add(item);
+            } else {
+                otherPhaseItems.add(item);
+            }
+        }
+        List<Object> messageItems = !finalAnswerItems.isEmpty()
+                ? finalAnswerItems
+                : !phaselessItems.isEmpty() ? phaselessItems : otherPhaseItems;
+        StringBuilder textBuilder = new StringBuilder();
+        for (Object item : messageItems) {
+            for (Object c : arr(at(item, FIELD_CONTENT))) {
+                if (TYPE_OUTPUT_TEXT.equals(str(at(c, FIELD_TYPE)))) {
+                    textBuilder.append(str(at(c, FIELD_TEXT)));
                 }
             }
         }
