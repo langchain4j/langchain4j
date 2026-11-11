@@ -62,6 +62,9 @@ class ToolSpecificationHelper {
             if (tool.containsKey("title")) {
                 builder.addMetadata(TITLE, string(tool.get("title")));
             }
+            if (tool.containsKey("inputSchema")) {
+                builder.addMetadata(INPUT_SCHEMA, tool.get("inputSchema"));
+            }
             if (tool.containsKey("outputSchema")) {
                 builder.addMetadata(OUTPUT_SCHEMA, tool.get("outputSchema"));
             }

@@ -420,6 +420,12 @@ that is retrieved from annotations - that one is exposed under the `McpToolMetad
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
 
+The original `inputSchema` and `outputSchema` are available under
+`McpToolMetadataKeys.INPUT_SCHEMA` and `McpToolMetadataKeys.OUTPUT_SCHEMA`, respectively,
+as nested maps. Applications that re-serve upstream MCP tools can use the original input schema
+to retain keywords that `ToolSpecification.parameters()` cannot represent. AI Services continue
+to use the converted `parameters()` schema.
+
 ### MCP tool result metadata
 
 Besides the actual result, an MCP server can attach a `_meta` object to the response of a tool call.

@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.INPUT_SCHEMA;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.MCP_PARAM_HEADERS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
@@ -31,6 +32,41 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ToolSpecificationHelperTest {
+
+    @Test
+    void preservesRawInputSchemaForForwarding() {
+        Map<String, Object> schema = Map.of(
+                "type", "object",
+                "properties",
+                        Map.of(
+                                "name", Map.of("type", "string", "minLength", 3),
+                                "choice", Map.of("oneOf", List.of(Map.of("const", "a"), Map.of("const", "b")))),
+                "required", List.of("name"),
+                "unevaluatedProperties", false,
+                "x-upstream", Map.of("revision", 2));
+        Map<String, Object> tool = Map.of(
+                "name", "forwarded", "inputSchema", schema, "_meta", Map.of("inputSchema", Map.of("spoofed", true)));
+
+        ToolSpecification specification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(List.of(tool))
+                .get(0);
+
+        assertThat(specification.metadata().get(INPUT_SCHEMA)).isEqualTo(schema);
+        assertThat(specification.parameters().properties().get("name")).isInstanceOf(JsonStringSchema.class);
+        assertThat(specification.parameters().required()).containsExactly("name");
+        assertThat(McpJson.deserialize(
+                        McpJson.serialize(specification.metadata().get(INPUT_SCHEMA)), Map.class))
+                .isEqualTo(schema);
+    }
+
+    @Test
+    void doesNotInventRawInputSchemaWhenAbsent() {
+        ToolSpecification specification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                        List.of(Map.of("name", "without-schema")))
+                .get(0);
+
+        assertThat(specification.metadata()).doesNotContainKey(INPUT_SCHEMA);
+        assertThat(specification.parameters().properties()).isEmpty();
+    }
 
     @Test
     void toolWithSimpleParams() throws JsonProcessingException {
