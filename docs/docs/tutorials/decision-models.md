@@ -400,9 +400,11 @@ to the agent listeners and counted by the `AgentMonitor`.
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
 with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component), for the
-chat model router, with `question(...)`, and for the decision scheduler, with `goalQuestionTemplate(...)` and
-`usefulnessQuestionTemplate(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants
-(`DEFAULT_QUESTION` for the chat model router, `DEFAULT_GOAL_QUESTION_TEMPLATE` and
+chat model router and the confidence cascade, with `question(...)`, for the decision router, with `choiceQuestion(...)`
+and `relevanceQuestionTemplate(...)`, and for the decision scheduler, with `goalQuestionTemplate(...)` and
+`usefulnessQuestionTemplate(...)`. The defaults are available as `DEFAULT_QUESTION_TEMPLATE` constants
+(`DEFAULT_QUESTION` for the chat model router and the confidence cascade, `DEFAULT_CHOICE_QUESTION` and
+`DEFAULT_RELEVANCE_QUESTION_TEMPLATE` for the decision router, `DEFAULT_GOAL_QUESTION_TEMPLATE` and
 `DEFAULT_USEFULNESS_QUESTION_TEMPLATE` for the decision scheduler).
 For example:
 
