@@ -253,7 +253,10 @@ class DecisionSchedulerPlannerTest {
     void shouldAskTheModelEvenWhenASingleSubagentCanRun() {
         DecisionModelMock model = model(0.1, Map.of("writer", 0.2));
 
-        assertThat(scheduler(model, writer()).handle(TICKET)).isNull();
+        // the only candidate is not invoked blindly: the model finds it not useful enough
+        assertThatThrownBy(() -> scheduler(model, writer()).handle(TICKET))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no subagent is useful enough");
         assertThat(invoked).isEmpty();
         assertThat(model.request().questions()).containsOnlyKeys("writer");
     }
@@ -279,22 +282,50 @@ class DecisionSchedulerPlannerTest {
     }
 
     @Test
-    void shouldStopWhenNoSubagentReachesTheActivationThreshold() {
+    void shouldStopWithTheResultWhenNoSubagentReachesTheActivationThreshold() {
+        DecisionModelMock model = model(0.1, Map.of("writer", 0.9, "tracker", 0.49));
+
+        // the goal is not reached, but the reply exists and is what the caller gets
+        assertThat(scheduler(model, writer(), tracker()).handle(TICKET)).isEqualTo("reply using nothing and nothing");
+        assertThat(invoked).containsExactly("writer");
+        assertThat(model.requests()).hasSize(2);
+    }
+
+    @Test
+    void shouldFailWhenNoSubagentReachesTheActivationThresholdBeforeTheResultExists() {
         DecisionModelMock model = model(0.1, Map.of("tracker", 0.9, "advisor", 0.49, "writer", 0.49));
 
-        assertThat(scheduler(model, tracker(), advisor(), writer()).handle(TICKET))
-                .isNull();
+        assertThatThrownBy(() -> scheduler(model, tracker(), advisor(), writer()).handle(TICKET))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("stopped after 1 invocation(s)")
+                .hasMessageContaining("output key 'reply'")
+                .hasMessageContaining("no subagent is useful enough")
+                .hasMessageContaining("{advisor=0.49, writer=0.49}")
+                .hasMessageContaining("activation threshold 0.5");
         assertThat(invoked).containsExactly("tracker");
         assertThat(model.requests()).hasSize(2);
     }
 
     @Test
-    void shouldStopWithoutAskingTheModelWhenNoSubagentCanRun() {
+    void shouldStopWithTheResultWithoutAskingTheModelWhenNoSubagentCanRun() {
+        DecisionModelMock model = model(0.1, Map.of("writer", 0.9));
+
+        // once the writer ran none of its arguments changes, so nothing can run and the model is not asked again
+        assertThat(scheduler(model, writer()).handle(TICKET)).isEqualTo("reply using nothing and nothing");
+        assertThat(invoked).containsExactly("writer");
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void shouldFailWithoutAskingTheModelWhenNoSubagentCanRunBeforeTheResultExists() {
         DecisionModelMock model = model(0.1, Map.of("summarizer", 0.9));
 
-        assertThat(scheduler(model, agent("summarizer", "reply", input("orderStatus")).build())
+        assertThatThrownBy(() -> scheduler(model, agent("summarizer", "reply", input("orderStatus")).build())
                         .handle(TICKET))
-                .isNull();
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("stopped after 0 invocation(s)")
+                .hasMessageContaining("output key 'reply'")
+                .hasMessageContaining("no subagent can run");
         assertThat(invoked).isEmpty();
         assertThat(model.requests()).isEmpty();
     }
@@ -306,28 +337,33 @@ class DecisionSchedulerPlannerTest {
     }
 
     @Test
-    void shouldStopAtTheMaximumNumberOfInvocationsAskingOnlyForTheGoal() {
+    void shouldStopWithTheResultAtTheMaximumNumberOfInvocationsWithoutAskingTheModelAgain() {
         DecisionModelMock model = model(0.1, Map.of("rewriter", 0.9));
 
         String reply = scheduler(
                         SupportDesk.class, () -> planner(model).maxInvocations(3).build(), rewriter())
                 .handle(TICKET);
 
+        // one decision for each invocation, and none after the last one
         assertThat(reply).isEqualTo("rewriter output");
         assertThat(invoked).containsExactly("rewriter", "rewriter", "rewriter");
-        assertThat(model.requests()).hasSize(4);
-        assertThat(model.requests().get(3).questions()).containsOnlyKeys(GOAL_QUESTION_NAME);
+        assertThat(model.requests()).hasSize(3);
     }
 
     @Test
-    void shouldStopAtTheMaximumNumberOfInvocationsWithoutAskingWhenTheResultIsMissing() {
+    void shouldFailAtTheMaximumNumberOfInvocationsBeforeTheResultExists() {
         DecisionModelMock model = model(0.1, Map.of("tracker", 0.9, "writer", 0.8));
 
-        String reply = scheduler(
-                        SupportDesk.class, () -> planner(model).maxInvocations(1).build(), tracker(), writer())
-                .handle(TICKET);
-
-        assertThat(reply).isNull();
+        assertThatThrownBy(() -> scheduler(
+                                SupportDesk.class,
+                                () -> planner(model).maxInvocations(1).build(),
+                                tracker(),
+                                writer())
+                        .handle(TICKET))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("stopped after 1 invocation(s)")
+                .hasMessageContaining("output key 'reply'")
+                .hasMessageContaining("the maximum number of invocations was reached");
         assertThat(invoked).containsExactly("tracker");
         assertThat(model.requests()).hasSize(1);
     }
@@ -513,7 +549,9 @@ class DecisionSchedulerPlannerTest {
         AgentInstance remote = remoteAgent("remote");
 
         // without the ticket in the scope no subagent can run
-        assertThat(firstActionWith(model, remote).isDone()).isTrue();
+        assertThatThrownBy(() -> firstActionWith(model, remote))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no subagent can run");
         verify(remote, never()).description();
         assertThat(model.requests()).isEmpty();
     }
@@ -576,8 +614,9 @@ class DecisionSchedulerPlannerTest {
     void shouldAskForTheGoalAtEveryStepWhenNoSubagentWritesTheOutputKey() {
         DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
 
-        // the output key of the scheduler is "reply", which the tracker doesn't write
-        scheduler(model, tracker()).handle(TICKET);
+        // the output key of the scheduler is "reply", which the tracker doesn't write: no subagent is expected to
+        // produce the result, so stopping without it is not a failure
+        assertThat(scheduler(model, tracker()).handle(TICKET)).isNull();
 
         assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME, "tracker");
         assertThat(invoked).containsExactly("tracker");

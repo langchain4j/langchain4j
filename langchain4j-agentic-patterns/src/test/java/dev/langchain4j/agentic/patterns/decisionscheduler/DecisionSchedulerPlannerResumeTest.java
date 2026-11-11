@@ -383,9 +383,9 @@ class DecisionSchedulerPlannerResumeTest {
         scope.writeState("reply", "rewriter output");
         Action action = resumed.nextAction(new PlanningContext(scope, invocation("rewriter", "rewriter output")));
 
-        // the limit of two invocations is reached, so only the goal is asked
+        // the limit of two invocations is reached, so the scheduler stops without asking the model
         assertThat(action.isDone()).isTrue();
-        assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME);
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test

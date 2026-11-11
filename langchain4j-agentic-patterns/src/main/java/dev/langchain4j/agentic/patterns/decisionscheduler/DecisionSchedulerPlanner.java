@@ -64,12 +64,13 @@ import org.slf4j.LoggerFactory;
  * <p>
  * If the probability that the goal has been reached is at least the goal threshold the planner stops. Otherwise it
  * invokes the candidate with the highest score, the first declared one when several have the same score, provided
- * that this score is at least the activation threshold. The planner also stops, without failing, when no subagent
- * can run, when no candidate reaches the activation threshold, and after the maximum number of invocations, where
- * only the goal question is asked and a warning is logged if the goal is not reached. In all cases the result is the
- * value found in the scope under the output key of the planner agent, which is {@code null} if no subagent wrote it.
- * When one of the subagents writes that output key, the goal question is not asked until the key is in the scope,
- * since the goal cannot be reached before the result exists.
+ * that this score is at least the activation threshold. The planner also stops when no subagent can run, when no
+ * candidate reaches the activation threshold, and after the maximum number of invocations, where the decision model
+ * is not asked again and a warning is logged. In all cases the result is the value found in the scope under the
+ * output key of the planner agent. When one of the subagents writes that output key, the goal question is not asked
+ * until the key is in the scope, since the goal cannot be reached before the result exists, and stopping in one of
+ * these three ways before then fails with an {@link IllegalStateException} saying why the planner stopped, so that
+ * giving up cannot be mistaken for an empty result: a caller that wants a fallback has to catch it.
  * <p>
  * The input of the decision is made of the arguments of the planner agent itself, read from the scope, plus the
  * outputs of the subagents that are in the scope, each under its output key. The arguments are sent as they are, so
@@ -358,24 +359,23 @@ public class DecisionSchedulerPlanner implements Planner {
 
     private Action decide(PlanningContext planningContext) {
         AgenticScope agenticScope = planningContext.agenticScope();
-        boolean limitReached = invocations >= maxInvocations;
-        List<Subagent> candidates = limitReached
-                ? List.of()
-                : subagents.values().stream()
-                        .filter(subagent -> isCandidate(subagent, planningContext))
-                        .toList();
-        boolean askGoal = resultKey == null || agenticScope.hasState(resultKey);
-
-        // at the limit only the goal is asked, to tell a goal reached with the last invocation from one missed
-        if (candidates.isEmpty() && !(limitReached && askGoal)) {
-            if (limitReached) {
-                LOG.warn("Stopping after the maximum of {} invocations, before the result was produced", invocations);
-            } else {
-                LOG.info("Stopping after {} invocations, since no subagent can run", invocations);
-            }
+        if (invocations >= maxInvocations) {
+            ensureResult(agenticScope, "the maximum number of invocations was reached");
+            LOG.warn(
+                    "Stopping after the maximum of {} invocations, without asking whether the goal has been reached",
+                    invocations);
+            return done();
+        }
+        List<Subagent> candidates = subagents.values().stream()
+                .filter(subagent -> isCandidate(subagent, planningContext))
+                .toList();
+        if (candidates.isEmpty()) {
+            ensureResult(agenticScope, "no subagent can run");
+            LOG.info("Stopping after {} invocations, since no subagent can run", invocations);
             return done();
         }
 
+        boolean askGoal = resultKey == null || agenticScope.hasState(resultKey);
         DecisionRequest.Builder request = DecisionRequest.builder().inputFields(state(agenticScope));
         if (askGoal) {
             request.question(GOAL_QUESTION_NAME, goalQuestion);
@@ -387,13 +387,6 @@ public class DecisionSchedulerPlanner implements Planner {
                 askGoal ? response.yesNo(GOAL_QUESTION_NAME).probability() : null;
         if (goalProbability != null && goalProbability >= goalThreshold) {
             LOG.info("Goal reached after {} invocations, with probability {}", invocations, goalProbability);
-            return done();
-        }
-        if (limitReached) {
-            LOG.warn(
-                    "Stopping after the maximum of {} invocations without reaching the goal, whose probability is {}",
-                    invocations,
-                    goalProbability);
             return done();
         }
 
@@ -408,6 +401,10 @@ public class DecisionSchedulerPlanner implements Planner {
             }
         }
         if (scores.get(best.key()) < activationThreshold) {
+            ensureResult(
+                    agenticScope,
+                    "no subagent is useful enough: the scores " + scores + " are below the activation threshold "
+                            + activationThreshold);
             LOG.info(
                     "Stopping after {} invocations, since no subagent is useful enough: scores {}, goal probability {}",
                     invocations,
@@ -426,6 +423,18 @@ public class DecisionSchedulerPlanner implements Planner {
                 scores,
                 goalProbability);
         return call(best.agent());
+    }
+
+    /**
+     * Fails when the planner is about to stop while the result that one of its subagents writes is not in the scope,
+     * so that giving up is not mistaken for an empty result.
+     */
+    private void ensureResult(AgenticScope agenticScope, String reason) {
+        if (resultKey != null && !agenticScope.hasState(resultKey)) {
+            throw new IllegalStateException("DecisionSchedulerPlanner stopped after " + invocations
+                    + " invocation(s) before any subagent wrote the result under the output key '" + resultKey
+                    + "', since " + reason);
+        }
     }
 
     private boolean isCandidate(Subagent subagent, PlanningContext planningContext) {
@@ -603,8 +612,8 @@ public class DecisionSchedulerPlanner implements Planner {
         }
 
         /**
-         * Sets the maximum number of subagent invocations, after which the planner only asks whether the goal has
-         * been reached, and stops, with a warning if it has not. At least 1.
+         * Sets the maximum number of subagent invocations, after which the planner stops with a warning, without
+         * asking the decision model again, or fails if the result has not been written yet. At least 1.
          * <p>
          * Default value is {@value DecisionSchedulerPlanner#DEFAULT_MAX_INVOCATIONS}.
          */
