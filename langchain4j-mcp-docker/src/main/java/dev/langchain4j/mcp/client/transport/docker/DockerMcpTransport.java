@@ -480,5 +480,4 @@ public class DockerMcpTransport implements McpTransport {
             return new DockerMcpTransport(this);
         }
     }
-
 }
