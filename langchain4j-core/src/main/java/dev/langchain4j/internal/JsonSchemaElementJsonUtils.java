@@ -39,7 +39,7 @@ public class JsonSchemaElementJsonUtils {
     // that cannot be represented by the corresponding JsonSchemaElement subtype.
     // When a map contains keys outside this set, fromMap() falls back to JsonRawSchema.
     // NOTE: When adding new JsonSchemaElement subtypes, update these sets accordingly.
-    private static final Set<String> STRING_KEYS = Set.of("type", "description");
+    private static final Set<String> STRING_KEYS = Set.of("type", "description", "format");
     private static final Set<String> INTEGER_KEYS = Set.of("type", "description");
     private static final Set<String> NUMBER_KEYS = Set.of("type", "description");
     private static final Set<String> BOOLEAN_KEYS = Set.of("type", "description");
@@ -74,7 +74,13 @@ public class JsonSchemaElementJsonUtils {
         }
 
         // Simple typed schemas: type + description
-        if (element instanceof JsonStringSchema s) return typedSchema("string", s.description());
+        if (element instanceof JsonStringSchema s) {
+            Map<String, Object> map = typedSchema("string", s.description());
+            if (s.format() != null) {
+                map.put("format", s.format());
+            }
+            return map;
+        }
         if (element instanceof JsonIntegerSchema i) return typedSchema("integer", i.description());
         if (element instanceof JsonNumberSchema n) return typedSchema("number", n.description());
         if (element instanceof JsonBooleanSchema b) return typedSchema("boolean", b.description());
@@ -162,8 +168,8 @@ public class JsonSchemaElementJsonUtils {
      * Converts a standard JSON Schema {@link Map} representation back to a {@link JsonSchemaElement}.
      * <p>
      * Only the subset of JSON Schema expressible by {@link JsonSchemaElement} subtypes is supported.
-     * When a map contains additional JSON Schema keywords (e.g., {@code format}, {@code pattern},
-     * {@code minimum}, schema-valued {@code additionalProperties}) that cannot be represented by
+     * When a map contains additional JSON Schema keywords (e.g., {@code pattern}, {@code minimum},
+     * schema-valued {@code additionalProperties}) that cannot be represented by
      * the corresponding typed schema, the entire node falls back to {@link JsonRawSchema} to
      * preserve round-trip fidelity. The fallback granularity is per-node: a parent
      * {@link JsonObjectSchema} can still be typed even if a child property falls back to raw.
@@ -246,6 +252,7 @@ public class JsonSchemaElementJsonUtils {
                 isRepresentable(map, STRING_KEYS)
                         ? JsonStringSchema.builder()
                                 .description(optionalString(map, "description"))
+                                .format(optionalString(map, "format"))
                                 .build()
                         : rawFallback(map);
             case "integer" ->
