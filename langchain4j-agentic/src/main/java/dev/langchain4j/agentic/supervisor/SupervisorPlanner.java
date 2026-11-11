@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
@@ -168,10 +169,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     /**
-     * A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server
+     * A subagent that is unavailable, like an A2A or MCP agent whose description cannot be read because its server
      * is down, is left out of the agents offered to the model for the rest of this invocation, with a warning, so
      * that a remote agent that is down only affects the invocations that actually reach it. The planner is created
-     * for each invocation of the supervisor, so the next one tries that subagent again.
+     * for each invocation of the supervisor, so the next one tries that subagent again. Only an
+     * {@link AgentUnavailableException} means that: any other failure of the description, like a configuration
+     * error of an MCP agent whose tool does not exist on its server, propagates and fails the invocation, instead of
+     * being hidden behind a warning at every invocation.
      */
     private boolean isAvailable(AgentInstance agent) {
         if (unavailableSubagents.contains(agent.agentId())) {
@@ -180,11 +184,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         try {
             agent.description();
             return true;
-        } catch (RuntimeException e) {
+        } catch (AgentUnavailableException e) {
             unavailableSubagents.add(agent.agentId());
             LOG.warn(
-                    "The subagent '{}' of the supervisor '{}' is left out of this invocation, because its description"
-                            + " cannot be read",
+                    "The subagent '{}' of the supervisor '{}' is left out of this invocation, because it is"
+                            + " unavailable and its description cannot be read",
                     agent.agentId(),
                     supervisorName,
                     e);

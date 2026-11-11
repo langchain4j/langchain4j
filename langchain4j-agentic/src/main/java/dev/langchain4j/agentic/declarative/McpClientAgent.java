@@ -8,23 +8,28 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.util.concurrent.TimeoutException;
 
 /**
- * Marks a method as an MCP client agent that wraps a single MCP tool as a non-AI agent.
+ * Marks a method as an MCP client agent that wraps a single MCP tool as a non-AI agent. The MCP client is obtained
+ * from the {@link McpClientSupplier} method and the tool is looked up on the MCP server the first time they are
+ * needed, which is normally the first invocation of the agent, never when the agentic system is built.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface McpClientAgent {
 
     /**
-     * Name of the MCP tool to bind and invoke as non-AI agent.
+     * Name of the MCP tool to bind and invoke as non-AI agent. If not provided, the single tool exposed by the MCP
+     * server is bound, and the first invocation of the agent fails when the server exposes more than one.
      *
      * @return name of the MCP tool.
      */
     String toolName() default "";
 
     /**
-     * Name of the agent. If not provided, method name will be used.
+     * Name of the agent. If not provided, method name will be used. The name is known without contacting the MCP
+     * server and never changes, not even after the tool has been resolved.
      *
      * @return name of the agent.
      */
@@ -33,6 +38,8 @@ public @interface McpClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code description} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description of the MCP tool is used, which is read from the MCP server the first time the
+     * description is requested.
      *
      * @return description of the agent.
      */
@@ -41,6 +48,8 @@ public @interface McpClientAgent {
     /**
      * Description of the agent. This is an alias of the {@code value} attribute, and it is possible to use either.
      * It should be clear and descriptive to allow language model to understand the agent's purpose and its intended use.
+     * If not provided, the description of the MCP tool is used, which is read from the MCP server the first time the
+     * description is requested.
      *
      * @return description of the agent.
      */
@@ -74,4 +83,19 @@ public @interface McpClientAgent {
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * Number of seconds given to the resolution of the MCP tool, that is the creation of the MCP client by the
+     * {@link McpClientSupplier} method and the listing of the tools of the MCP server, which happens the first time
+     * the tool is needed, normally on the first invocation of the agent. When the tool is not resolved within this
+     * time the invocation fails with an {@code McpToolResolutionException} caused by a
+     * {@link TimeoutException}. Concurrent first invocations wait on the same resolution, so
+     * none of them waits longer than this time.
+     *
+     * @return the number of seconds given to the resolution of the MCP tool, 0 for no limit other than the
+     * timeouts of the MCP client itself, or -1, which is the default, for the default of an MCP client agent, which
+     * is no limit either. Any other negative value is rejected when the agent is built.
+     * @since 1.24.0
+     */
+    int resolutionTimeoutSeconds() default -1;
 }

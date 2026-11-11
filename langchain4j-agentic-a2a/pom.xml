@@ -20,7 +20,7 @@
     </developers>
 
     <properties>
-        <a2a-java-sdk-version>1.4.0.Final</a2a-java-sdk-version>
+        <a2a-java-sdk-version>1.5.1.Final</a2a-java-sdk-version>
     </properties>
 
     <dependencyManagement>
@@ -38,7 +38,7 @@
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>4.35.0</version>
+                <version>4.36.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -79,9 +79,11 @@ import dev.langchain4j.agentic.workflow.impl.SequentialAgentServiceImpl;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -588,6 +590,12 @@ public class AgenticServices {
                         agentServiceClass, a2aClientMethod.get(), helpers(agentServiceClass, agentConfigurator));
             }
 
+            Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
+            if (mcpClientMethod.isPresent()) {
+                return createMcpClient(
+                        agentServiceClass, mcpClientMethod.get(), helpers(agentServiceClass, agentConfigurator));
+            }
+
             if (isDecisionAgent(agentServiceClass)) {
                 return createDecisionAgent(agentServiceClass, agentConfigurator);
             }
@@ -1055,6 +1063,9 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+        if (a2aClient.resolutionTimeoutSeconds() != -1) {
+            a2aClientBuilder.resolutionTimeout(Duration.ofSeconds(a2aClient.resolutionTimeoutSeconds()));
+        }
         AgentCondition a2aActivationCondition = activationCondition(helpers);
         if (a2aActivationCondition != null) {
             a2aClientBuilder.activationCondition(
@@ -1091,25 +1102,40 @@ public class AgenticServices {
 
     private static AgentExecutor createMcpClientAgent(
             Class<?> agentServiceClass, Method mcpMethod, AgentHelpers helpers) {
+        return agentToExecutor(createMcpClient(agentServiceClass, mcpMethod, helpers));
+    }
+
+    private static <T> T createMcpClient(Class<T> agentServiceClass, Method mcpMethod, AgentHelpers helpers) {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
-        Object mcpClient = helpers.select(McpClientSupplier.class)
-                .map(helper -> {
-                    checkReturnType(helper.method(), Object.class);
-                    return invokeSupplierWithResolvers(agentServiceClass, helper, Object.class);
-                })
+        HelperMethod mcpClientSupplierMethod = helpers.select(McpClientSupplier.class)
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+        // A void or primitive return type is rejected here, like for every other helper method, while the declared
+        // type is checked against McpClient, which this module cannot see, by the MCP service when the agent is built
+        checkReturnType(mcpClientSupplierMethod.method(), Object.class);
+        // The method is invoked when the MCP client is first needed, on the first invocation of the agent, because
+        // creating the client normally connects to the MCP server, while its resolved parameters are resolved now,
+        // like those of the other supplier methods
+        ResolvedParameters mcpClientSupplier = ResolvedParameters.of(agentServiceClass, mcpClientSupplierMethod)
+                .checkAllResolved()
+                .resolvedNow();
 
         var mcpClientBuilder = McpService.get()
-                .mcpBuilder(mcpClient, agentServiceClass)
+                .mcpBuilder(
+                        () -> invokeMcpClientSupplier(mcpClientSupplier),
+                        mcpClientSupplierMethod.method().getReturnType(),
+                        agentServiceClass)
                 .toolName(mcpAgent.toolName())
                 .inputKeys(Stream.of(mcpMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
+        if (mcpAgent.resolutionTimeoutSeconds() != -1) {
+            mcpClientBuilder.resolutionTimeout(Duration.ofSeconds(mcpAgent.resolutionTimeoutSeconds()));
+        }
         AgentCondition mcpActivationCondition = activationCondition(helpers);
         if (mcpActivationCondition != null) {
             mcpClientBuilder.activationCondition(
@@ -1118,7 +1144,24 @@ public class AgenticServices {
 
         buildListener(helpers, mcpClientBuilder::listener);
 
-        return agentToExecutor(mcpClientBuilder.build());
+        return mcpClientBuilder.build();
+    }
+
+    /**
+     * Invokes the MCP client supplier, reporting a failure of the method itself, which normally means that the MCP
+     * server is unreachable, as it is, without the reflection wrappers, so that it is the cause of the exception
+     * reaching the caller and the error handler.
+     */
+    private static Object invokeMcpClientSupplier(ResolvedParameters mcpClientSupplier) {
+        try {
+            return mcpClientSupplier.invoke();
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InvocationTargetException invocationFailure
+                    && invocationFailure.getCause() instanceof RuntimeException failure) {
+                throw failure;
+            }
+            throw e;
+        }
     }
 
     private static Method nonAiAgentMethod(Class<?> agentServiceClass) {

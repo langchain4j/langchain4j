@@ -7,7 +7,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.test.internal.ChatMessageTexts;
-import dev.langchain4j.test.model.ChatRequestAssert;
+import dev.langchain4j.test.service.AiServiceCapture;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -54,15 +54,14 @@ public final class JudgedTextAssert extends AbstractAssert<JudgedTextAssert, Str
      * Gives the judge the conversation that the text answers, so that it understands criteria that refer to it, for
      * example "uses only facts from the tool results". For the answer of an AI Service, these are the messages of the
      * last request it sent to the chat model: the system message, the messages from the chat memory, the user message
-     * with the retrieved contents, and the tool calls and their results.
-     * The requests can be collected by a {@code ChatModelListener} on the chat model of the AI Service (see
-     * {@link ChatRequestAssert}):
+     * with the retrieved contents, and the tool calls and their results. {@link AiServiceCapture} gives you these
+     * messages:
      * <pre>{@code
-     * String answer = assistant.chat("Cancel booking MS-777");
+     * AiServiceCapture capture = capture(() -> assistant.chat("Cancel booking MS-777"));
      *
      * Judge.from(judgeModel)
-     *         .assertThat(answer)
-     *         .given(requests.get(requests.size() - 1).messages())
+     *         .assertThat(capture.outputText())
+     *         .given(capture.lastRequest().messages())
      *         .satisfies("confirms what the cancellation tool returned");
      * }</pre>
      * Only the text is judged. Images and other media of the conversation (audio, video, PDF files) are sent to the

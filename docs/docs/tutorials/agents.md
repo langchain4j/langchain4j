@@ -1174,7 +1174,21 @@ This last method also supports filtering by memory id, for instance `HtmlReportG
 
 An agent skipped because of its [activation condition](#activation-conditions), or because it is optional and an argument is missing, is recorded by the `AgentMonitor` as a finished invocation with no duration, placed under its parent where it would have run, and with the right iteration index inside a loop. Its `skipped()` method returns `true` and `skipReason()` tells why it was skipped. The HTML report shows it in the execution history with a "skipped" badge and the reason, without any timeline bar, while the topology labels each agent having an activation condition with "if:" followed by the description of the condition, in addition to the "when:" labels of the branches of a conditional workflow.
 
-By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+When the agentic system is [suspended](#agenticscope-and-agentic-systems-recoverability), for instance by a human-in-the-loop step returning a `SuspendedResponse`, its execution stays among the ongoing ones of the `AgentMonitor`, and the invocations of the root agent and of the workflows containing the suspended step stay in progress, marked as suspended: their `suspended()` method returns `true`, like the `suspended()` method of the `MonitoredExecution`. The invocation of the step waiting for the human is recorded as finished, and an agent still running in another branch of a parallel workflow is reported as suspended too, until it completes. Since the system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of starting new ones, so once they finish their `duration()` spans the wait, which `suspendedDuration()` tells apart from the time spent running; a loop containing the step waiting for a human is suspended once per iteration. An invocation still in progress throws an `IllegalStateException` from `duration()` and `output()`, while `suspendedDuration()` can be called at any time. The HTML report labels a suspended execution as "suspended" instead of "running".
+
+You can find out which sessions are waiting and for what:
+
+```java
+MonitoredExecution execution = monitor.ongoingExecutionFor("order-12345");
+if (execution != null && execution.suspended()) {
+    Set<String> waitingFor = execution.agenticScope().pendingResponseIds();
+    Duration waited = execution.topLevelInvocations().suspendedDuration();
+}
+```
+
+An invocation that the resumed run does not continue, like a branch of a router whose condition changed, stays unfinished, and the execution ends with its root agent. The same happens to an asynchronous agent that suspends the system after the root call returned: the execution is recorded as finished and the root call resuming it as a new one. A monitor created after the suspension, for instance after a crash and a restart, has no record of it and records the resumed call as a new execution.
+
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth from finished sessions. The limit does not apply to ongoing executions: an execution that stays suspended, because it is never resumed, is kept until its scope is evicted with `evictAgenticScope`, when the monitor drops it, since nothing can resume it anymore, and a later call on that memory id starts a new execution.
 
 The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
 
@@ -1653,7 +1667,7 @@ SupervisorAgent bankSupervisor = AgenticServices
 
 Note that the subagents can also be complex agents implementing a workflow, that will be seen as a single agent by the supervisor.
 
-The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent whose description cannot be read, like an A2A agent whose card cannot be fetched because its server is down, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again.
+The supervisor relies on the descriptions of its subagents to decide which one to invoke, so every subagent should have one. A subagent without a description does not stop the supervisor: its model is explicitly told that no description was provided and asked to infer the purpose of the agent from its id and arguments, and a warning naming the subagents without a description is logged at the first invocation of the supervisor. The description of a remote A2A agent is read from its agent card when it isn't set explicitly, so in that case the first invocation of the supervisor also fetches the card, as explained in the [agent card resolution](#agent-card-resolution) section. A subagent that is unavailable, like an A2A or MCP agent whose description cannot be read because its server is down, which is reported with an `AgentUnavailableException`, is left out of the agents offered to the model for the rest of that invocation, with a warning, and the next invocation of the supervisor tries it again. Any other failure while reading a description, like a configuration error of an MCP agent whose tool does not exist on its server, fails the invocation of the supervisor instead, so that it does not go unnoticed.
 
 The resulting `SupervisorAgent` typically takes a user request as input and produces a response, so its signature is simply as follows:
 
@@ -3632,6 +3646,8 @@ String result = workflow.processOrder("order-12345", "1000 widgets");
 
 Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
 
+An `AgentMonitor` that was listening when the system was suspended continues the recorded invocations on resume, as explained in the [monitoring](#monitoring) section. A monitor created later, for instance after a restart, records the resumed call as a new execution.
+
 ## Agents Registry
 
 The `langchain4j-agentic` module provides an SPI (Service Provider Interface) for an `AgentsRegistry`, allowing external providers to register agents that can be discovered by name and wired into any agentic pattern. This is especially useful for integrating agents provided by external systems, such as remote A2A protocol agents, into locally defined agentic workflows.
@@ -3819,7 +3835,21 @@ The first invocation of the agent pays the latency of the card fetch. Calling th
 ```java
 AgentCard agentCard = ((A2AClientInstance) creativeWriter).agentCard();
 ```
- When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent:
+
+The card is fetched on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context), within a timeout of 30 seconds by default, since the HTTP client that the a2a-java SDK uses for it has none. This timeout only limits the fetch of the card, not the messages sent to the agent. The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@A2AClientAgent` annotation, changes it, and a value of zero removes the limit, in which case the card is fetched on the thread of the invocation that first needs it:
+
+```java
+UntypedAgent creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL)
+        .inputKeys("topic")
+        .outputKey("story")
+        .resolutionTimeout(Duration.ofSeconds(5))
+        .build();
+```
+
+When the card is not fetched within that time the fetch is interrupted, and the invocation fails as described below, with a `java.util.concurrent.TimeoutException` as cause. The invocations reaching the agent while its card is being fetched wait on that same fetch instead of making their own, so none of them waits longer than the timeout, and when the fetch fails they all fail, instead of trying again one after the other. A fetch that does not react to its interruption keeps running, and the card cannot be fetched a second time meanwhile: until it ends, the invocations fail at once, with a message saying that the previous fetch is still running after its timeout, and a card that it returns in the end is kept. A warning is logged when the timeout elapses and when such a late card is kept.
+
+When the card cannot be fetched the invocation fails with an `A2AAgentCardException`, carrying the name of the agent and the URL of the server, with the original error as cause. It extends `AgentUnavailableException`, the type common to every unavailable remote agent, A2A or MCP, which carries the name of the agent. The failure is not cached: the next invocation fetches the card again, so a remote agent that becomes available later works without rebuilding the agentic system. Being thrown during the invocation of the agent, this exception also reaches the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional remote agent, here recognized by its own type, or by `AgentUnavailableException` to treat an unavailable MCP agent in the same way:
 
 ```java
 UntypedAgent pipeline = AgenticServices.sequenceBuilder()
@@ -4103,13 +4133,13 @@ public interface DeclarativeA2AWithUrlSupplier {
 
 The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
 
-This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents, although that method is invoked later, when the MCP client is first needed.
 
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
 
-To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The builder queries the MCP server for the tool specification (name, description, input schema) and creates an agent that forwards invocations to that tool.
+To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The agent reads the tool specification (name, description, input schema) from the MCP server the first time it is needed, as explained in the [tool resolution](#tool-resolution) section, and forwards its invocations to that tool.
 
 For example, if an MCP server exposes a `generate_story` tool, it can be wrapped as an untyped agent:
 
@@ -4127,7 +4157,23 @@ UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
 String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
 ```
 
-The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters. They are mandatory for an untyped agent, which could not report any argument without them until its tool is resolved, so building one without them fails with an `IllegalArgumentException`; a typed agent takes them from the parameters of its method when they are not set.
+
+A `DefaultMcpClient` connects to its server when it is created. To defer that until the client is first needed, give the builder a `Supplier<McpClient>` instead of the client:
+
+```java
+UntypedAgent storyGenerator = McpAgent.builder(() -> new DefaultMcpClient.Builder()
+                .transport(new StreamableHttpMcpTransport.Builder()
+                        .url("http://localhost:8081/mcp")
+                        .build())
+                .build())
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+The supplier is invoked the first time the client is needed, on the thread of the invocation needing it, or, when the agent is given a resolution timeout as described below, on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context) (the thread-local context of that invocation is available there only if an `ExecutorProvider` implementing `captureContext()` is registered), and the client it returns is then used by every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of the current user. When it fails, the invocations waiting for the client fail, and it is invoked again the next time the client is needed, and a `DefaultMcpClient` that fails to connect stops its transport, releasing the subprocess, container or connection started for the attempt, so the supplier can create the transport inside, as in the example above, or reuse one it holds. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from the supplier.
 
 As with other agents, MCP tool agents can also be created with a typed interface:
 
@@ -4148,7 +4194,7 @@ String story = storyGenerator.generateStory("dragons and wizards");
 
 In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
 
-Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance.
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance. This method is invoked when the client is first needed, normally on the first invocation of the agent and on its thread, or on a thread of the LangChain4j executor when the agent has a resolution timeout, and not when the agentic system is built, so that creating a `DefaultMcpClient`, which connects to its server, does not require the server to be up at that time. As for the supplier given to `McpAgent.builder()`, the client it returns is used by every invocation of the agent, and the agent never closes it.
 
 ```java
 public interface DeclarativeMcpStoryGenerator {
@@ -4167,4 +4213,68 @@ public interface DeclarativeMcpStoryGenerator {
                 .build();
     }
 }
+```
+
+### Tool resolution
+
+Building an MCP tool agent, or an agentic system containing one, never contacts the MCP server: the tool is looked up, through the `listTools()` method of the `McpClient`, the first time it is needed, which is normally the first invocation of the agent. In this way an MCP server that is down or slow when the agentic system is built only affects the invocations that actually reach it, so for instance an MCP agent skipped by its [activation condition](#activation-conditions) never requires its server to be up. The `McpClient` given to `McpAgent.builder()` is created by the caller, so a `DefaultMcpClient`, which connects to its server when it is created, does so at that moment: to defer the connection too, give the builder a `Supplier<McpClient>` instead, as shown above, which is invoked when the client is first needed, as the `@McpClientSupplier` method of a declarative agent is.
+
+This has a few consequences for what is known about the agent before its first invocation.
+
+- **Name**: the name of an MCP agent is always known locally, without the tool. It is the one set through the `name` attribute of the `@McpClientAgent` annotation or the `name` method of the builder. When it isn't set, a typed agent takes the name of the `@Agent` annotation of its agent method or, when that is not set either, the name of the method itself, like any other agent, while an untyped one created with `McpAgent.builder(mcpClient)` takes its configured `toolName` or, without one, the placeholder `mcp-agent`, which logs a warning when the agent is built: at most one agent of an agentic system can be named with the placeholder, and building a system containing two of them fails with an `AgenticSystemConfigurationException`, since they could not be told apart in the events, the reports and the supervisor prompts. Setting a meaningful name is recommended for untyped agents anyway, especially when they are used by a supervisor, whose model sees the name of every subagent. The name, and the agent id derived from it, are used in the reports of the `AgentMonitor`, in the list of agents sent to a supervisor and in the `ErrorContext` received by the error handler, and they never change, not even after the tool has been resolved. The name of the tool itself is available through the `toolName()` method of the `McpClientInstance` interface, implemented by every MCP tool agent, which resolves the tool when no `toolName` is configured.
+- **Description**: when the description is set neither through the `description` (or `value`) attribute of the `@McpClientAgent` or `@Agent` annotation nor through the `description` method of the builder, it is the one of the tool, which is resolved the first time the description is requested. The agentic patterns that rely on the descriptions of their subagents, like the supervisor, read them when they are invoked, so in that case the first invocation of the supervisor resolves the tool. When the tool cannot be resolved because the MCP server is unavailable, the supervisor leaves the agent out of the subagents offered to its model for that invocation, with a warning, and tries again at the next one, while the HTML reports of the `HtmlReportGenerator` show the description of the agent as unavailable instead of failing. A configuration error, like a tool that does not exist on the server, fails the invocation of the supervisor and the generation of the report instead, so that it does not go unnoticed. Setting the description explicitly avoids all this, and also keeps the description of the tool, which is controlled by the MCP server, out of the prompt of the supervisor. The descriptions of the input parameters of the tool still reach that prompt once the tool is resolved.
+- **Arguments**: the arguments of the agent never contact the server, because every workflow reads them when it is built. Until the tool is resolved they are those of the agent method for a typed agent, and the `inputKeys`, without type information, for an untyped one, which is why they are mandatory for it: the planners that read the arguments at invocation, without resolving the tool, would otherwise find none. Once the tool is resolved, the arguments carry the descriptions of that schema and, for an untyped agent, also its types and optionality. A typed agent checks that its inputs are available before contacting the server, while an untyped one resolves the tool first, because its required inputs are only known from the schema.
+- **Client supplier**: the parameters of the `@McpClientSupplier` method provided by a `SupplierParameterResolver` are resolved when the agent is built, like those of the other supplier methods, while the method itself runs when the client is first needed, so a value resolved per request is the one of the thread building the agent and not the one of the first caller. The declared return type of the method is checked when the agent is built too: it must be `McpClient`, a subtype, or a supertype such as `Object`, in which case the instance it returns is checked when the client is created.
+
+The tool is resolved once: a later change of the tool on the MCP server is only seen after the agent is built again. The first invocation of the agent pays the latency of the tool resolution. Calling the `toolSpecification()` method of the `McpClientInstance` interface resolves the tool immediately, which can be used to warm up the agent or to fail fast, before its first invocation, when the tool cannot be resolved:
+
+```java
+ToolSpecification tool = ((McpClientInstance) storyGenerator).toolSpecification();
+```
+
+Inside a declarative agentic system the MCP agent is wrapped, so it is reached through the `as` method of the corresponding subagent, found by name among the `subagents()` of the `AgentInstance` of the system. For instance, for a sequence using the `DeclarativeMcpStoryGenerator` above, whose MCP agent is named after its `generateStory` method:
+
+```java
+public interface StoryPipeline {
+
+    @SequenceAgent(outputKey = "story", subAgents = DeclarativeMcpStoryGenerator.class)
+    String write(@V("topic") String topic);
+}
+
+StoryPipeline storyPipeline = AgenticServices.createAgenticSystem(StoryPipeline.class);
+AgentInstance mcpSubagent = ((AgentInstance) storyPipeline).subagents().stream()
+        .filter(subagent -> subagent.name().equals("generateStory"))
+        .findFirst()
+        .orElseThrow();
+ToolSpecification tool = mcpSubagent.as(McpClientInstance.class).toolSpecification();
+```
+
+The resolution, that is the creation of the client by its supplier and the listing of the tools, is made by the first invocation needing the tool, on its own thread. The invocations reaching the agent while its tool is being resolved wait on that same resolution instead of making their own, and when it fails they all fail, instead of trying again one after the other, which is also what happens when the thread making it is interrupted. By default the resolution takes as long as the MCP client allows: a `DefaultMcpClient` waits up to 30 seconds for the detection of the protocol version (`protocolDetectionTimeout`, skipped when `protocolVersion` is set), up to 30 seconds for its initialization (`initializationTimeout`) and up to 60 seconds for each request listing the tools (`toolExecutionTimeout`). The `resolutionTimeout` method of the builder, or the `resolutionTimeoutSeconds` attribute of the `@McpClientAgent` annotation, puts one limit on the whole resolution, whatever the client, and makes it run on a thread of the [LangChain4j executor](./non-blocking.md#controlling-the-executor-and-propagating-context) instead, so that it can be abandoned at that limit, while a value of zero means no such limit, as when it is not set. It does not limit the execution of the tool:
+
+```java
+UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .resolutionTimeout(Duration.ofSeconds(10))
+        .build();
+```
+
+When the tool is not resolved within that time the resolution is interrupted, which makes a `DefaultMcpClient` that is connecting stop its transport, and the invocation fails as described below, with a `java.util.concurrent.TimeoutException` as cause. The timeouts of the client still apply to each of its steps, so the resolution ends at the first one that expires. A resolution that does not react to its interruption keeps running, and the tool cannot be resolved a second time meanwhile: until it ends, the invocations fail at once, with a message saying that the previous resolution is still running after its timeout, and a tool that it finds in the end is kept. A warning is logged when the timeout elapses and when such a late tool is kept.
+
+When the MCP client cannot be created or the tools cannot be listed, the invocation fails with an `McpToolResolutionException`, carrying the name of the agent and the configured name of the tool, with the original error as cause. It extends `AgentUnavailableException`, like the `A2AAgentCardException` of the A2A agents, so an error handler can recognize an unavailable remote agent of either kind by that common type, as the one below does. The failure is not cached: the next invocation resolves the tool again, so an MCP server that becomes available later works without rebuilding the agentic system. A tool that is not found on the server, or a missing `toolName` when the server exposes more than one tool, is instead a configuration error, reported with an `AgenticSystemConfigurationException` at the first resolution. Being thrown during the invocation of the agent, these exceptions also reach the [error handler](#error-handling) of the agentic system, in the cause chain of the `AgentInvocationException` it receives, which makes it possible for instance to skip an optional MCP agent whose server is down. Here `storyGenerator` is one of the MCP tool agents created with `McpAgent.builder()` above, and `analyzer` any other agent writing the `topic` it needs:
+
+```java
+UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+        .subAgents(analyzer, storyGenerator)
+        .outputKey("story")
+        .errorHandler(errorContext -> {
+            for (Throwable cause = errorContext.exception(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof AgentUnavailableException unavailable) {
+                    return ErrorRecoveryResult.result("no story available, " + unavailable.agentName() + " is unreachable");
+                }
+            }
+            return ErrorRecoveryResult.throwException();
+        })
+        .build();
 ```

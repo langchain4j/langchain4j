@@ -188,34 +188,56 @@ public class WebSocketMcpTransport implements McpTransport {
         this.actionOnFailure = actionOnFailure;
     }
 
+    /**
+     * Aborts the connection, if any, and forgets the initialize request a reconnection would replay, without closing
+     * the HTTP client: the next {@link #start} opens a new connection.
+     */
+    @Override
+    public void stop() {
+        initializeRequest = null;
+        CompletableFuture<WebSocket> current = webSocketRef.getAndSet(null);
+        if (current != null) {
+            // Not sendClose(): a server that does not answer would keep the connection open, and a late answer
+            // would reach the close callback, which would then forget the connection of the next start().
+            current.thenAccept(WebSocket::abort);
+        }
+    }
+
     @Override
     public void close() throws IOException {
         this.closed = true;
-        CompletableFuture<WebSocket> future = webSocketRef.get();
-        if (future != null) {
-            if (future.isDone()) {
-                try {
-                    WebSocket webSocket = future.get();
-                    webSocket
-                            .sendClose(WebSocket.NORMAL_CLOSURE, "Client closing")
-                            .thenRun(() -> LOG.info("WebSocket connection closed"));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    if (e.getCause() != null && e.getCause() instanceof ConnectException) {
-                        // this means the connection was previously attempted but failed, so nothing to close
-                    } else {
-                        LOG.warn("Failed to close WebSocket connection", e);
-                    }
-                }
-            }
-        }
+        closeWebSocket(webSocketRef.get());
         // The httpClient.close() method only exists on JDK 21+, so invoke it only if we can.
         // Replace this with a normal method call when switching the base to JDK 21+.
         try {
             httpClient.getClass().getMethod("close").invoke(httpClient);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+        }
+    }
+
+    private void closeWebSocket(CompletableFuture<WebSocket> future) {
+        if (future == null) {
+            return;
+        }
+        if (!future.isDone()) {
+            // still connecting: close the connection once it is open, instead of leaving it behind
+            future.thenAccept(webSocket -> webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing"));
+            return;
+        }
+        try {
+            WebSocket webSocket = future.get();
+            webSocket
+                    .sendClose(WebSocket.NORMAL_CLOSURE, "Client closing")
+                    .thenRun(() -> LOG.info("WebSocket connection closed"));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            if (e.getCause() != null && e.getCause() instanceof ConnectException) {
+                // this means the connection was previously attempted but failed, so nothing to close
+            } else {
+                LOG.warn("Failed to close WebSocket connection", e);
+            }
         }
     }
 

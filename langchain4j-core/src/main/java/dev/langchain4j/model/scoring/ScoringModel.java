@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
@@ -92,7 +93,7 @@ public interface ScoringModel {
     @Experimental
     default ScoringResponse score(ScoringRequest request) {
         ScoringRequest finalRequest = withDefaultParameters(request);
-        List<ScoringModelListener> listeners = listeners();
+        List<ScoringModelListener> listeners = ObservabilityListeners.scoring(listeners());
         ModelProvider provider = provider();
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         UUID invocationId = CurrentInvocation.invocationId();
@@ -169,7 +170,7 @@ public interface ScoringModel {
         UUID invocationId = CurrentInvocation.invocationId();
         try {
             finalRequest = withDefaultParameters(request);
-            listeners = listeners();
+            listeners = ObservabilityListeners.scoring(listeners());
             provider = provider();
             attributes = new ConcurrentHashMap<>();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);

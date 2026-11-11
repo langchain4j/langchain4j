@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - milvus_image: milvusdb/milvus:v2.6.26
+          - milvus_image: milvusdb/milvus:v2.6.27
             # the Milvus Cloud tests run in one entry only, so that two runs do not share the same cloud collection
             run_cloud_tests: true
           - milvus_image: milvusdb/milvus:v3.0.5

@@ -14,7 +14,6 @@
 
     <properties>
         <milvus-sdk-java.version>2.6.27</milvus-sdk-java.version>
-        <jackson.version>2.22.4</jackson.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
     </properties>
 
@@ -29,7 +28,7 @@
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>3.25.8</version>
+                <version>3.25.9</version>
             </dependency>
             <!-- milvus-sdk-java brings org.jetbrains:annotations at 17.0.0 and via kotlin-stdlib at 13.0; pin to converge (23.0.0, as resolved before) -->
             <dependency>

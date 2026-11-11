@@ -219,7 +219,7 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
         }
         builder.method(request.method().name(), bodyPublisher);
 
-        if (readTimeout != null) {
+        if (readTimeout != null && !readTimeout.isZero()) {
             builder.timeout(readTimeout);
         }
 
