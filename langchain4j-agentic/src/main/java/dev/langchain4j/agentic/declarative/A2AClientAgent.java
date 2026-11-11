@@ -8,6 +8,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Marks a method as an A2A client agent.
@@ -94,4 +95,16 @@ public @interface A2AClientAgent {
      * @return the tenant identifier, or empty to auto-detect from the URL.
      */
     String tenant() default "";
+
+    /**
+     * Number of seconds given to the fetch of the agent card, which happens the first time the card is needed,
+     * normally on the first invocation of the agent. When the card is not fetched within this time the invocation
+     * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}.
+     * Concurrent first invocations wait on the same fetch, so none of them waits longer than this time.
+     *
+     * @return the number of seconds given to the fetch of the agent card, 0 for no limit, or -1, which is the
+     * default, for the default of 30 seconds. Any other negative value is rejected when the agent is built.
+     * @since 1.24.0
+     */
+    int resolutionTimeoutSeconds() default -1;
 }

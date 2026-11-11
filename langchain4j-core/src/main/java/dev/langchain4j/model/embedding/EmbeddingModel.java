@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -59,7 +60,7 @@ public interface EmbeddingModel {
 
         EmbeddingRequest finalRequest = validatedRequest(request);
 
-        List<EmbeddingModelListener> listeners = listeners();
+        List<EmbeddingModelListener> listeners = ObservabilityListeners.embedding(listeners());
         if (isNullOrEmpty(listeners)) {
             return doEmbed(finalRequest);
         }
@@ -135,7 +136,7 @@ public interface EmbeddingModel {
         List<EmbeddingModelListener> listeners;
         try {
             finalRequest = validatedRequest(request);
-            listeners = listeners();
+            listeners = ObservabilityListeners.embedding(listeners());
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }

@@ -345,6 +345,9 @@ Some things to be aware of:
   integration starts on its own (for example to read a streaming response), and the parallel and asynchronous agents
   of `langchain4j-agentic`. Combine `captureContext()` with a context-propagating executor if you need context
   there.
+- The lazy resolution of the A2A and MCP client agents of `langchain4j-agentic` (fetching the agent card, creating
+  the MCP client and listing its tools) runs with the context of the invocation that started it, also for the other
+  invocations waiting on it.
 - For methods returning `Flow.Publisher`, `Mono` or `Flux`, the context is captured when the method is called, not
   when the result is subscribed.
 - The captured context is kept for as long as the invocation, so offloaded work may run with it after the request
