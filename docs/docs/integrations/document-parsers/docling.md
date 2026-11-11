@@ -31,6 +31,8 @@ This module depends on `docling-serve-api` (the interface) and includes `docling
 </dependency>
 ```
 
+Use the same version as the `docling-serve-api` that `langchain4j-document-parser-docling` brings in (`mvn dependency:tree` shows it): mixing versions can make `DoclingServeApi.builder()` fail at runtime.
+
 Frameworks such as [Quarkus](https://quarkus.io) or [Spring Boot](https://spring.io/projects/spring-boot) provide their own integrations with Docling. See the [Docling Java Documentation](https://docling-project.github.io/docling-java/current/docling-serve/serve-client/#when-to-use-this-module) for how to wire in those specific implementations.
 
 
