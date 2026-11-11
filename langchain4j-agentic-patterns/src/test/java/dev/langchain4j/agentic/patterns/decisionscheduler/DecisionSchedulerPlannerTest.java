@@ -74,6 +74,12 @@ class DecisionSchedulerPlannerTest {
         ResultWithAgenticScope<String> handle(@V("ticket") String ticket);
     }
 
+    public interface StatusDesk {
+
+        @Agent
+        String handle(@V("ticket") String ticket, @V("orderStatus") String orderStatus);
+    }
+
     public interface ObjectDesk {
 
         @Agent
@@ -579,6 +585,43 @@ class DecisionSchedulerPlannerTest {
     }
 
     @Test
+    void shouldLeaveTheExcludedOutputKeysOutOfTheState() {
+        DecisionModelMock model =
+                modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6));
+
+        String reply = scheduler(
+                        SupportDesk.class,
+                        () -> planner(model).excludedOutputKeys("orderStatus").build(),
+                        tracker(),
+                        advisor(),
+                        writer())
+                .handle(TICKET);
+
+        // the writer still reads the output of the tracker, which the decision model never receives
+        assertThat(reply).isEqualTo("reply using tracker output and nothing");
+        assertThat(model.requests().get(1).input()).isEqualTo(FieldsInput.from(Map.of("ticket", TICKET)));
+        assertThat(model.requests().get(2).input())
+                .isEqualTo(FieldsInput.from(
+                        Map.of("ticket", TICKET, "reply", "reply using tracker output and nothing")));
+    }
+
+    @Test
+    void shouldLeaveOutAnExcludedOutputKeyThatIsAlsoAnArgumentOfTheScheduler() {
+        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+
+        String reply = scheduler(
+                        StatusDesk.class,
+                        () -> planner(model).excludedOutputKeys("orderStatus").build(),
+                        tracker(),
+                        writer())
+                .handle(TICKET, "known status");
+
+        // the order status is both an argument of the scheduler and the output of the tracker
+        assertThat(reply).isEqualTo("reply using known status and nothing");
+        assertThat(model.requests().get(0).input()).isEqualTo(FieldsInput.from(Map.of("ticket", TICKET)));
+    }
+
+    @Test
     void shouldAskOneScaleQuestionPerCandidateAndTheGoalOnceTheResultExists() {
         DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
         AgenticScopeFunction<String> undescribedTracker = AgenticServices.nonAiAgentBuilder(scope -> "status")
@@ -926,6 +969,40 @@ class DecisionSchedulerPlannerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("typed agent interface");
         assertThat(invoked).isEmpty();
+    }
+
+    @Test
+    void shouldRejectAnExcludedOutputKeyThatNoSubagentWrites() {
+        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+
+        assertThatThrownBy(() -> scheduler(
+                                SupportDesk.class,
+                                () -> planner(model).excludedOutputKeys("orderStats").build(),
+                                tracker(),
+                                writer())
+                        .handle(TICKET))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'orderStats'")
+                .hasMessageContaining("[orderStatus, reply]");
+        assertThat(invoked).isEmpty();
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectTheExclusionOfTheOutputKeyOfTheScheduler() {
+        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+
+        assertThatThrownBy(() -> scheduler(
+                                SupportDesk.class,
+                                () -> planner(model).excludedOutputKeys("reply").build(),
+                                tracker(),
+                                writer())
+                        .handle(TICKET))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'reply'")
+                .hasMessageContaining("output key of the planner agent");
+        assertThat(invoked).isEmpty();
+        assertThat(model.requests()).isEmpty();
     }
 
     /** A subagent named "tracker" whatever its label, under which its invocations are recorded. */

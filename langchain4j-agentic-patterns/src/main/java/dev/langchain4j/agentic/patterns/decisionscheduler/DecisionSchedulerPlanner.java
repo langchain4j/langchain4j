@@ -78,8 +78,11 @@ import org.slf4j.LoggerFactory;
  * type is rejected by the decision model with an error explaining which types are supported: the application decides
  * which of its objects are sent to the provider of the decision model. The outputs of the subagents are sent as they
  * are when they are such values, and converted to maps and lists through a JSON round trip otherwise, which
- * serializes all their fields, private ones included. The decision model sees this state only: it is not told which
- * subagents already ran, and the work of a subagent without an output key is invisible to it.
+ * serializes all their fields, private ones included. This state is sent at every step to the provider of the
+ * decision model, which can differ from the provider of the chat models of the subagents: the outputs that must not
+ * reach it can be left out of the input through {@link Builder#excludedOutputKeys(String...)}. The decision model
+ * sees this state only: it is not told which subagents already ran, and the work of a subagent without an output
+ * key, or whose output key is left out, is invisible to it.
  * <p>
  * A subagent whose description cannot be read because it is unavailable, like an A2A agent whose server is down, is
  * left out of the candidates for the rest of the invocation, with a warning. A failure of the decision model fails
@@ -94,7 +97,8 @@ import org.slf4j.LoggerFactory;
  * crash during a decision call makes the subagent that had just completed run again, and a crash before the first
  * subagent completes makes the planner decide again. A subagent whose output can be delayed, like a
  * human-in-the-loop or an asynchronous agent, must declare an output key, since the planner reads its answer from
- * the scope: the decision following an asynchronous subagent waits for its answer.
+ * the scope: the decision following an asynchronous subagent waits for its answer, unless its output key is left
+ * out of the input.
  * <p>
  * Each step is a greedy choice with no lookahead, so this planner fits the tasks where the most useful next step can
  * be told from the current state, not those that need a plan of several steps. The scores and the probabilities are
@@ -151,6 +155,7 @@ public class DecisionSchedulerPlanner implements Planner {
     private final double goalThreshold;
     private final double activationThreshold;
     private final int maxInvocations;
+    private final Set<String> excludedOutputKeys;
 
     private List<String> inputKeys;
     private final Map<String, Subagent> subagents = new LinkedHashMap<>();
@@ -209,6 +214,7 @@ public class DecisionSchedulerPlanner implements Planner {
         if (maxInvocations < 1) {
             throw illegalArgument("Max invocations must be at least 1, but is: %s", maxInvocations);
         }
+        this.excludedOutputKeys = Set.copyOf(getOrDefault(builder.excludedOutputKeys, List.of()));
     }
 
     private static YesNoQuestion goalQuestion(PromptTemplate template, String goal) {
@@ -283,11 +289,30 @@ public class DecisionSchedulerPlanner implements Planner {
             subagents.put(key, Subagent.of(key, agent));
         });
 
+        // a key that no subagent writes is likely misspelled, and the output meant to be left out would be sent
+        Set<String> outputKeys = subagents.values().stream()
+                .map(subagent -> subagent.agent().outputKey())
+                .filter(key -> !isNullOrBlank(key))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        excludedOutputKeys.stream()
+                .filter(key -> !outputKeys.contains(key))
+                .findFirst()
+                .ifPresent(key -> {
+                    throw new IllegalArgumentException("DecisionSchedulerPlanner cannot leave '" + key + "' out of "
+                            + "the input of the decision model, since it is not the output key of one of its "
+                            + "subagents, which are: " + outputKeys);
+                });
+
         String outputKey = plannerAgent.outputKey();
         boolean writtenByASubagent = !isNullOrBlank(outputKey)
                 && subagents.values().stream()
                         .anyMatch(subagent -> outputKey.equals(subagent.agent().outputKey()));
         this.resultKey = writtenByASubagent ? outputKey : null;
+        if (resultKey != null && excludedOutputKeys.contains(resultKey)) {
+            throw new IllegalArgumentException("DecisionSchedulerPlanner cannot leave '" + resultKey + "' out of the "
+                    + "input of the decision model, since it is the output key of the planner agent: the decision "
+                    + "model judges on this result whether the goal has been reached");
+        }
     }
 
     /** The key identifying a subagent: its name, or its id when that name is shared. */
@@ -483,14 +508,20 @@ public class DecisionSchedulerPlanner implements Planner {
 
     /**
      * The state sent to the decision model: the arguments of the planner agent as they are, and the outputs of the
-     * subagents that are in the scope, converted to values that the decision model accepts.
+     * subagents that are in the scope, converted to values that the decision model accepts. An excluded output key
+     * is left out, also when it is an argument of the planner agent too.
      */
     private Map<String, Object> state(AgenticScope agenticScope) {
         Map<String, Object> state = new LinkedHashMap<>();
-        inputKeys.forEach(key -> state.put(key, agenticScope.readState(key)));
+        inputKeys.stream()
+                .filter(key -> !excludedOutputKeys.contains(key))
+                .forEach(key -> state.put(key, agenticScope.readState(key)));
         for (Subagent subagent : subagents.values()) {
             String outputKey = subagent.agent().outputKey();
-            if (!isNullOrBlank(outputKey) && !state.containsKey(outputKey) && agenticScope.hasState(outputKey)) {
+            if (!isNullOrBlank(outputKey)
+                    && !excludedOutputKeys.contains(outputKey)
+                    && !state.containsKey(outputKey)
+                    && agenticScope.hasState(outputKey)) {
                 // reading the output of an asynchronous subagent waits for it
                 state.put(outputKey, plainValue(agenticScope.readState(outputKey)));
             }
@@ -572,6 +603,7 @@ public class DecisionSchedulerPlanner implements Planner {
         private PromptTemplate goalQuestionTemplate;
         private PromptTemplate usefulnessQuestionTemplate;
         private List<String> usefulnessLevels;
+        private List<String> excludedOutputKeys;
 
         private Builder() {}
 
@@ -657,8 +689,25 @@ public class DecisionSchedulerPlanner implements Planner {
         }
 
         /**
+         * Sets the output keys of the subagents to leave out of the input of the decision model, for instance because
+         * they hold data that must not be sent to its provider. The subagents still read these outputs from the
+         * scope, but the decision model scores the subagents and judges the goal without seeing them, so only the
+         * outputs that these decisions do not need should be left out. A key left out is not sent even when it is
+         * also an argument of the planner agent. The output key of the planner agent cannot be left out, since the
+         * goal is judged on the result.
+         * <p>
+         * By default no output key is left out.
+         */
+        public Builder excludedOutputKeys(String... excludedOutputKeys) {
+            this.excludedOutputKeys = excludedOutputKeys == null ? null : List.of(excludedOutputKeys);
+            return this;
+        }
+
+        /**
          * When the planner is initialized, at each invocation, it fails with an {@link IllegalArgumentException} if
-         * the planner agent is not a typed agent interface with at least one argument to send to the decision model.
+         * the planner agent is not a typed agent interface with at least one argument to send to the decision model,
+         * or if one of the output keys to leave out is not the output key of one of its subagents, or is the
+         * output key of the planner agent.
          *
          * @throws IllegalArgumentException if the decision model is {@code null}, if the goal is {@code null} or
          *         blank, if a threshold is not set or is not strictly between 0 and 1, if the maximum number of
