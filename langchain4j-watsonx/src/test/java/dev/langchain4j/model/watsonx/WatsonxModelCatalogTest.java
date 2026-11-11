@@ -4,6 +4,7 @@ import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -44,8 +45,10 @@ public class WatsonxModelCatalogTest {
         when(mockFoundationModelServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.timeout(any())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.version(any())).thenReturn(mockFoundationModelServiceBuilder);
-        when(mockFoundationModelServiceBuilder.logRequests(any())).thenReturn(mockFoundationModelServiceBuilder);
-        when(mockFoundationModelServiceBuilder.logResponses(any())).thenReturn(mockFoundationModelServiceBuilder);
+        when(mockFoundationModelServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockFoundationModelServiceBuilder);
+        when(mockFoundationModelServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.authenticator(any())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.apiKey(any())).thenReturn(mockFoundationModelServiceBuilder);
         when(mockFoundationModelServiceBuilder.httpClient(any())).thenReturn(mockFoundationModelServiceBuilder);
@@ -62,9 +65,7 @@ public class WatsonxModelCatalogTest {
         var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body())
-                .thenReturn(
-                        """
+        when(mockHttpResponse.body()).thenReturn("""
                     {
                         "total_count": 28,
                         "limit": 100,

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -67,8 +68,10 @@ public class WatsonxDeploymentChatModelTest {
         when(mockDeploymentServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.timeout(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.version(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logRequests(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logResponses(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.authenticator(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.apiKey(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.httpClient(any())).thenReturn(mockDeploymentServiceBuilder);

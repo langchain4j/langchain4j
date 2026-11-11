@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -79,9 +80,9 @@ public class WatsonxGatewayEmbeddingModelTest {
                 .thenReturn(mockModelGatewayEmbeddingServiceBuilder);
         when(mockModelGatewayEmbeddingServiceBuilder.version(any()))
                 .thenReturn(mockModelGatewayEmbeddingServiceBuilder);
-        when(mockModelGatewayEmbeddingServiceBuilder.logRequests(any()))
+        when(mockModelGatewayEmbeddingServiceBuilder.logRequests(nullable(Boolean.class)))
                 .thenReturn(mockModelGatewayEmbeddingServiceBuilder);
-        when(mockModelGatewayEmbeddingServiceBuilder.logResponses(any()))
+        when(mockModelGatewayEmbeddingServiceBuilder.logResponses(nullable(Boolean.class)))
                 .thenReturn(mockModelGatewayEmbeddingServiceBuilder);
         when(mockModelGatewayEmbeddingServiceBuilder.authenticator(any()))
                 .thenReturn(mockModelGatewayEmbeddingServiceBuilder);
@@ -324,7 +325,8 @@ public class WatsonxGatewayEmbeddingModelTest {
     void should_notify_the_listeners_when_embedding_with_the_gateway_parameters() {
 
         var data = List.of(new ModelGatewayEmbeddingResponse.Embedding("embedding", 0, List.of(0f, 1f), null));
-        var parameters = ModelGatewayEmbeddingParameters.builder().dimensions(256).build();
+        var parameters =
+                ModelGatewayEmbeddingParameters.builder().dimensions(256).build();
 
         when(mockModelGatewayEmbeddingService.embed(any(), parametersCaptor.capture()))
                 .thenReturn(

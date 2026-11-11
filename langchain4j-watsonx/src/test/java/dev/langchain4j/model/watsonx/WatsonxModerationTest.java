@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mockStatic;
@@ -59,8 +60,8 @@ public class WatsonxModerationTest {
         when(mockDetectionServiceBuilder.spaceId(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.timeout(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.version(any())).thenReturn(mockDetectionServiceBuilder);
-        when(mockDetectionServiceBuilder.logRequests(any())).thenReturn(mockDetectionServiceBuilder);
-        when(mockDetectionServiceBuilder.logResponses(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.apiKey(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.httpClient(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockDetectionServiceBuilder);
@@ -71,20 +72,24 @@ public class WatsonxModerationTest {
     @MockitoSettings(strictness = Strictness.LENIENT)
     void should_throw_an_illegal_argument_exception() {
 
-        var ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
-                .baseUrl("https://test.com")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .build());
+        var ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> WatsonxModerationModel.builder()
+                        .baseUrl("https://test.com")
+                        .apiKey("api-key-test")
+                        .projectId("project-id")
+                        .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
 
-        ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
-                .baseUrl("https://test.com")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .detectors(List.of())
-                .build());
+        ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> WatsonxModerationModel.builder()
+                        .baseUrl("https://test.com")
+                        .apiKey("api-key-test")
+                        .projectId("project-id")
+                        .detectors(List.of())
+                        .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
     }
