@@ -5,13 +5,14 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ContentsInput;
@@ -30,6 +31,7 @@ import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.typesafe.TypeSafeDecisionRequestParameters;
+import dev.langchain4j.model.typesafe.TypeSafeDecisionResponseMetadata;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +45,7 @@ import java.util.Map;
 public final class TypeSafeMapper {
 
     private static final double PROBABILITY_TOLERANCE = 1e-6;
+    private static final String REQUEST_ID_HEADER = "x-typesafe-request-id";
 
     private TypeSafeMapper() {}
 
@@ -75,11 +78,15 @@ public final class TypeSafeMapper {
         } else if (input instanceof FieldsInput fields) {
             // text contents are sent as their text, other contents (such as images) are not supported
             Map<String, Object> state = new LinkedHashMap<>();
-            fields.fields().forEach((name, value) -> state.put(
-                    name,
-                    value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
-                            ? text(value instanceof Content ? List.of(value) : (List<?>) value)
-                            : value));
+            fields.fields()
+                    .forEach((name, value) -> state.put(
+                            name,
+                            value instanceof Content
+                                            || value instanceof List<?> list
+                                                    && !list.isEmpty()
+                                                    && list.get(0) instanceof Content
+                                    ? text(value instanceof Content ? List.of(value) : (List<?>) value)
+                                    : value));
             return state;
         } else if (input instanceof ContentsInput contents) {
             return text(contents.contents());
@@ -96,17 +103,21 @@ public final class TypeSafeMapper {
                 }
             }
             // a conversation is sent as a transcript
-            return Map.of("messages", DecisionModelInputUtils.transcript(messages.messages(), "TypeSafe").messages());
+            return Map.of(
+                    "messages",
+                    DecisionModelInputUtils.transcript(messages.messages(), "TypeSafe")
+                            .messages());
         }
-        throw new UnsupportedFeatureException("TypeSafe does not support " + input.getClass().getName() + " as input");
+        throw new UnsupportedFeatureException(
+                "TypeSafe does not support " + input.getClass().getName() + " as input");
     }
 
     private static String text(List<?> contents) {
         StringBuilder text = new StringBuilder();
         for (Object content : contents) {
             if (!(content instanceof TextContent textContent)) {
-                throw new UnsupportedFeatureException("TypeSafe supports only text input, but the input contains "
-                        + ((Content) content).type());
+                throw new UnsupportedFeatureException(
+                        "TypeSafe supports only text input, but the input contains " + ((Content) content).type());
             }
             if (!text.isEmpty()) {
                 text.append("\n\n");
@@ -159,19 +170,31 @@ public final class TypeSafeMapper {
 
     public static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {
         Map<String, TypeSafeAnswer> answers = getOrDefault(response.answers, Map.of());
-        DecisionResponse.Builder builder = DecisionResponse.builder().modelName(response.model);
+        TypeSafeDecisionResponseMetadata.Builder metadata = TypeSafeDecisionResponseMetadata.builder()
+                .modelName(response.model)
+                .requestId(requestId(response.rawHttpResponse))
+                .rawHttpResponse(response.rawHttpResponse);
         if (response.usage != null) {
-            builder.tokenUsage(new TokenUsage(response.usage.inputTokens, response.usage.outputTokens));
+            metadata.tokenUsage(new TokenUsage(response.usage.inputTokens, response.usage.outputTokens));
         }
+        DecisionResponse.Builder builder = DecisionResponse.builder().metadata(metadata.build());
         request.questions().forEach((name, question) -> {
             TypeSafeAnswer answer = answers.get(name);
             if (answer == null) {
-                throw new InvalidDecisionResponseException("The response contains no answer to question '%s'"
-                        .formatted(name));
+                throw new InvalidDecisionResponseException(
+                        "The response contains no answer to question '%s'".formatted(name));
             }
             builder.answer(name, toAnswer(name, answer, question));
         });
         return builder.build();
+    }
+
+    private static String requestId(SuccessfulHttpResponse httpResponse) {
+        if (httpResponse == null) {
+            return null;
+        }
+        List<String> values = httpResponse.headers().get(REQUEST_ID_HEADER);
+        return isNullOrEmpty(values) ? null : values.get(0);
     }
 
     private static DecisionAnswer toAnswer(String name, TypeSafeAnswer answer, Question question) {
@@ -202,7 +225,8 @@ public final class TypeSafeMapper {
         if (answer.probabilities != null && !answer.probabilities.isEmpty()) {
             answer.probabilities.keySet().forEach(level -> {
                 if (!isLevelIndex(level, levels)) {
-                    throw invalid(name, "has a probability for level '%s', but the levels are 0 to %s", level, levels - 1);
+                    throw invalid(
+                            name, "has a probability for level '%s', but the levels are 0 to %s", level, levels - 1);
                 }
             });
             for (int level = 0; level < levels; level++) {

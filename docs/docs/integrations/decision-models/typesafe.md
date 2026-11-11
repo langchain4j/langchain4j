@@ -99,6 +99,23 @@ offered, a probability outside of 0 to 1, or a scale mean outside of the levels 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data
 processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).
 
+## Response metadata
+
+The metadata of a response is a `TypeSafeDecisionResponseMetadata`. In addition to the model name and the token usage,
+it contains the ID that the server assigned to the request (the `x-typesafe-request-id` response header), which
+identifies the request when contacting TypeSafe support, and the raw HTTP response:
+
+```java
+DecisionResponse response = decisionModel.decide(request);
+
+TypeSafeDecisionResponseMetadata metadata = (TypeSafeDecisionResponseMetadata) response.metadata();
+metadata.requestId();       // "req_01a15becf30a7f96b09e3a688369632e"
+metadata.rawHttpResponse(); // the status code, headers and body
+```
+
+`requestId()` is `null` if the server does not send the header, for example another server that implements the
+System One API.
+
 ## Custom parameters
 
 To send a parameter that `TypeSafeDecisionModel` does not support yet, set it with `customParameters(...)`. It is
