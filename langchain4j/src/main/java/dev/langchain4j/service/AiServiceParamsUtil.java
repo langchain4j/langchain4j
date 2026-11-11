@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -9,17 +11,12 @@ import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Optional;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 class AiServiceParamsUtil {
 
-    private AiServiceParamsUtil() { }
+    private AiServiceParamsUtil() {}
 
     static ChatRequestParameters chatRequestParameters(
-            Method method,
-            Object[] args,
-            ToolServiceContext toolServiceContext,
-            ResponseFormat responseFormat) {
+            Method method, Object[] args, ToolServiceContext toolServiceContext, ResponseFormat responseFormat) {
         ChatRequestParameters defaultParams = ChatRequestParameters.builder()
                 .toolSpecifications(toolServiceContext.effectiveTools())
                 .responseFormat(responseFormat)
@@ -45,8 +42,7 @@ class AiServiceParamsUtil {
     }
 
     static ChatRequestParameters chatRequestParameters(
-            List<? extends Object> args,
-            List<ToolSpecification> toolSpecifications) {
+            List<? extends Object> args, List<ToolSpecification> toolSpecifications) {
         ChatRequestParameters defaultParams = ChatRequestParameters.builder()
                 .toolSpecifications(toolSpecifications)
                 .build();

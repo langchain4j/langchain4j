@@ -1,13 +1,5 @@
 package dev.langchain4j.service.decision.internal;
 
-import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.service.decision.ThresholdProvider;
-import dev.langchain4j.service.decision.ThresholdContext;
-import dev.langchain4j.service.decision.DecisionServices;
-import dev.langchain4j.service.decision.DecisionResult;
-import dev.langchain4j.service.decision.Decide;
-import dev.langchain4j.service.decision.Choice;
-import dev.langchain4j.service.decision.Scale;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -19,6 +11,7 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -28,29 +21,36 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.internal.Json;
+import dev.langchain4j.service.decision.Choice;
+import dev.langchain4j.service.decision.Decide;
+import dev.langchain4j.service.decision.DecisionResult;
+import dev.langchain4j.service.decision.DecisionServices;
+import dev.langchain4j.service.decision.Scale;
+import dev.langchain4j.service.decision.ThresholdContext;
+import dev.langchain4j.service.decision.ThresholdProvider;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.WildcardType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Objects;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -247,7 +247,8 @@ public final class DecisionMethod {
             return value instanceof Content || value instanceof Image;
         }
         List<?> nonNull = items.stream().filter(Objects::nonNull).toList();
-        return !nonNull.isEmpty() && nonNull.stream().allMatch(item -> item instanceof Content || item instanceof Image);
+        return !nonNull.isEmpty()
+                && nonNull.stream().allMatch(item -> item instanceof Content || item instanceof Image);
     }
 
     /**
@@ -311,8 +312,8 @@ public final class DecisionMethod {
      */
     public Object toResult(DecisionResponse response, Function<String, Double> thresholds) {
         Map<String, Object> values = new LinkedHashMap<>();
-        mappings.forEach(
-                (name, mapping) -> values.put(name, mapping.value(response, () -> threshold(name, thresholds))));
+        mappings.forEach((name, mapping) ->
+                values.put(name, mapping.value(response, () -> threshold(name, thresholds))));
         Object content = resultFactory.apply(values);
         return withResponse
                 ? DecisionResult.builder().content(content).response(response).build()
@@ -371,7 +372,8 @@ public final class DecisionMethod {
             return questionName -> null;
         }
         String modelName = getOrDefault(
-                response.modelName(), () -> getOrDefault(request.modelName(), config.decisionModel().modelName()));
+                response.modelName(),
+                () -> getOrDefault(request.modelName(), config.decisionModel().modelName()));
         return questionName -> thresholdProvider.threshold(ThresholdContext.builder()
                 .serviceInterface(config.serviceInterface())
                 .method(method)
@@ -444,7 +446,9 @@ public final class DecisionMethod {
             return constructor.newInstance(arguments);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(
-                    "Cannot create an instance of " + constructor.getDeclaringClass().getName(), e);
+                    "Cannot create an instance of "
+                            + constructor.getDeclaringClass().getName(),
+                    e);
         }
     }
 
@@ -485,8 +489,7 @@ public final class DecisionMethod {
                 }
                 String name = ParameterNameResolver.name(parameter);
                 if (inputParameters.stream().anyMatch(p -> p.name().equals(name))) {
-                    throw illegalConfiguration(
-                            "Method '%s' has several parameters named '%s'", method.getName(), name);
+                    throw illegalConfiguration("Method '%s' has several parameters named '%s'", method.getName(), name);
                 }
                 inputParameters.add(new InputParameter(name, i, isContentType(parameter.getParameterizedType())));
             }
@@ -722,8 +725,9 @@ public final class DecisionMethod {
             try {
                 return Enum.valueOf((Class) enumType, option);
             } catch (IllegalArgumentException e) {
-                throw new InvalidDecisionResponseException("The model chose '%s' for '%s', which is not a constant of %s"
-                        .formatted(option, name, enumType.getSimpleName()));
+                throw new InvalidDecisionResponseException(
+                        "The model chose '%s' for '%s', which is not a constant of %s"
+                                .formatted(option, name, enumType.getSimpleName()));
             }
         }
 

@@ -21,6 +21,21 @@
           "code": "java.method.removed",
           "old": "method void dev.langchain4j.guardrails.JsonExtractorOutputGuardrail<T>::<init>(com.fasterxml.jackson.databind.ObjectMapper, com.fasterxml.jackson.core.type.TypeReference<T>)",
           "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: JsonExtractorOutputGuardrail(Class) or JsonExtractorOutputGuardrail(Type)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.GuardrailRequestParams",
+          "justification": "GuardrailRequestParams is a langchain4j-core type intentionally exposed by canary token guardrails for invocation-scoped state propagation; revapi cannot resolve it because checkDependencies=false"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.InputGuardrailRequest",
+          "justification": "InputGuardrailRequest is a langchain4j-core type required by the InputGuardrail SPI implemented here; revapi cannot resolve it because checkDependencies=false"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.OutputGuardrailRequest",
+          "justification": "OutputGuardrailRequest is a langchain4j-core type required by the OutputGuardrail SPI implemented here; revapi cannot resolve it because checkDependencies=false"
         }
       ]
     }

@@ -1,24 +1,24 @@
 package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.model.decision.request.MessagesInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.decision.response.RefusalAnswer;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.SearchBehavior;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.decision.request.MessagesInput;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import java.util.ArrayList;
-import dev.langchain4j.data.message.ChatMessage;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -32,11 +32,12 @@ class DecisionModelFilteringToolProviderTest {
             "create_invoice", 0.3);
 
     // answers each tool question with the relevance of the tool whose name is in the question
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
-            .filter(entry -> question.text().contains(entry.getKey()))
-            .mapToDouble(Map.Entry::getValue)
-            .findFirst()
-            .orElseThrow());
+    final DecisionModelMock decisionModel =
+            DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
+                    .filter(entry -> question.text().contains(entry.getKey()))
+                    .mapToDouble(Map.Entry::getValue)
+                    .findFirst()
+                    .orElseThrow());
 
     static final List<ToolSpecification> TOOLS = List.of(
             tool("send_email", "Sends an email"),
@@ -55,8 +56,9 @@ class DecisionModelFilteringToolProviderTest {
                 .build();
     }
 
-    final ToolProvider allTools = request -> new ToolProviderResult(
-            TOOLS.stream().map(DecisionModelFilteringToolProviderTest::aiServiceTool).toList());
+    final ToolProvider allTools = request -> new ToolProviderResult(TOOLS.stream()
+            .map(DecisionModelFilteringToolProviderTest::aiServiceTool)
+            .toList());
 
     static ToolProviderRequest providerRequest(UserMessage userMessage) {
         return ToolProviderRequest.builder()
@@ -118,7 +120,9 @@ class DecisionModelFilteringToolProviderTest {
 
         ToolProviderResult result = toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
 
-        assertThat(result.aiServiceTools()).extracting(AiServiceTool::name).containsExactly("send_email", "get_weather");
+        assertThat(result.aiServiceTools())
+                .extracting(AiServiceTool::name)
+                .containsExactly("send_email", "get_weather");
         assertThat(decisionModel.request().questions()).hasSize(1);
     }
 
@@ -130,7 +134,9 @@ class DecisionModelFilteringToolProviderTest {
                 .decisionModel(decisionModel)
                 .build();
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from(" "))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from(" ")))
+                        .aiServiceTools())
                 .hasSize(4);
         assertThat(decisionModel.requests()).isEmpty();
     }
@@ -161,10 +167,12 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_fall_back_to_all_tools_when_decision_model_fails() {
 
-        ToolProvider toolProvider = new DecisionModelFilteringToolProvider(
-                allTools, DecisionModelMock.thatAlwaysThrowsException());
+        ToolProvider toolProvider =
+                new DecisionModelFilteringToolProvider(allTools, DecisionModelMock.thatAlwaysThrowsException());
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from("Will it rain?")))
+                        .aiServiceTools())
                 .hasSize(4);
     }
 
@@ -174,7 +182,9 @@ class DecisionModelFilteringToolProviderTest {
         DecisionModelMock refusing = DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of());
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, refusing);
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from("Will it rain?")))
+                        .aiServiceTools())
                 .hasSize(4);
     }
 
@@ -193,7 +203,8 @@ class DecisionModelFilteringToolProviderTest {
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.FAIL)
                 .build();
 
-        assertThat(noTools.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+        assertThat(noTools.provideTools(providerRequest(UserMessage.from("Will it rain?")))
+                        .aiServiceTools())
                 .extracting(AiServiceTool::name)
                 .containsExactly("send_email");
         assertThatThrownBy(() -> failing.provideTools(providerRequest(UserMessage.from("Will it rain?"))))
@@ -209,7 +220,9 @@ class DecisionModelFilteringToolProviderTest {
                 .alwaysInclude("create_invoice")
                 .build();
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from("Will it rain?")))
+                        .aiServiceTools())
                 .extracting(AiServiceTool::name)
                 .containsExactly("get_weather", "create_invoice", "get_forecast");
         assertThat(decisionModel.request().questions()).hasSize(3);
@@ -230,11 +243,13 @@ class DecisionModelFilteringToolProviderTest {
                 .arguments("{\"city\":\"Paris\"}")
                 .build();
         UserMessage original = UserMessage.from("Will it rain in Paris?");
-        UserMessage augmented = UserMessage.from("Will it rain in Paris?\n\nAnswer using the following information:\n"
-                + "a long retrieved document");
+        UserMessage augmented = UserMessage.from(
+                "Will it rain in Paris?\n\nAnswer using the following information:\n" + "a long retrieved document");
 
         toolProvider.provideTools(ToolProviderRequest.builder()
-                .invocationContext(InvocationContext.builder().originalUserMessage(original).build())
+                .invocationContext(InvocationContext.builder()
+                        .originalUserMessage(original)
+                        .build())
                 .userMessage(augmented)
                 .messages(List.of(
                         SystemMessage.from("You are a weather assistant."),
@@ -270,7 +285,10 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("Will it rain in Paris?"),
+                        AiMessage.from("No rain in Paris today."),
+                        UserMessage.from("Do the same for Berlin"))));
     }
 
     @Test
@@ -303,7 +321,9 @@ class DecisionModelFilteringToolProviderTest {
                 .messageFilter(message -> false)
                 .build();
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("What's the weather?"))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from("What's the weather?")))
+                        .aiServiceTools())
                 .hasSize(4);
         assertThat(decisionModel.requests()).isEmpty();
     }
@@ -332,7 +352,10 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("Will it rain in Paris?"),
+                        AiMessage.from("No rain in Paris today."),
+                        UserMessage.from("Do the same for Berlin"))));
     }
 
     @Test
@@ -355,7 +378,10 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(MessagesInput.from(List.of(UserMessage.from("Will it rain in Paris?"), AiMessage.from("No rain in Paris today."), UserMessage.from("Do the same for Berlin"))));
+                .isEqualTo(MessagesInput.from(List.of(
+                        UserMessage.from("Will it rain in Paris?"),
+                        AiMessage.from("No rain in Paris today."),
+                        UserMessage.from("Do the same for Berlin"))));
     }
 
     @Test
@@ -394,7 +420,9 @@ class DecisionModelFilteringToolProviderTest {
                 .alwaysInclude("send_email", "get_weather", "create_invoice", "get_forecast")
                 .build();
 
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+        assertThat(toolProvider
+                        .provideTools(providerRequest(UserMessage.from("Will it rain?")))
+                        .aiServiceTools())
                 .hasSize(4);
         assertThat(decisionModel.requests()).isEmpty();
     }

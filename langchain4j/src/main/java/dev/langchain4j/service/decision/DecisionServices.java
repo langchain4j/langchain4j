@@ -1,14 +1,14 @@
 package dev.langchain4j.service.decision;
 
-import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.service.decision.internal.DecisionMethod;
-import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.service.decision.internal.DecisionMethod;
+import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import dev.langchain4j.spi.services.DecisionServicesFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

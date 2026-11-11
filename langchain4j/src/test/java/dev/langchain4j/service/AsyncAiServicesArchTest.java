@@ -63,8 +63,8 @@ import org.junit.jupiter.api.Test;
 class AsyncAiServicesArchTest {
 
     /** Return/parameter types that mark a method as part of the async pipeline. */
-    private static final Set<String> ASYNC_SIGNATURE_TYPES = Set.of(
-            CompletableFuture.class.getName(), CompletionStage.class.getName(), Flow.Publisher.class.getName());
+    private static final Set<String> ASYNC_SIGNATURE_TYPES =
+            Set.of(CompletableFuture.class.getName(), CompletionStage.class.getName(), Flow.Publisher.class.getName());
 
     /** Blocking calls, keyed by the (statically-typed) call-site owner. */
     private static final Map<String, Set<String>> BLOCKING_CALLS = Map.ofEntries(

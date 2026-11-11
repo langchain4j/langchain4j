@@ -49,14 +49,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
         try {
             if (isPolymorphic(type)) {
                 return extractAndParseJson(text, json -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> map = Json.fromJson(json, Map.class);
-                    if (map != null && map.size() == 1 && map.containsKey("value")) {
-                        return Json.fromJson(Json.toJson(map.get("value")), type);
-                    } else {
-                        return Json.fromJson(json, type);
-                    }
-                }).value();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = Json.fromJson(json, Map.class);
+                            if (map != null && map.size() == 1 && map.containsKey("value")) {
+                                return Json.fromJson(Json.toJson(map.get("value")), type);
+                            } else {
+                                return Json.fromJson(json, type);
+                            }
+                        })
+                        .value();
             } else {
                 return extractAndParseJson(text, type).value();
             }

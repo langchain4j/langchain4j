@@ -1,39 +1,32 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.observability.api.event.CompensationReason;
-import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
-import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
-import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
-import dev.langchain4j.rag.AugmentationRequest;
-import dev.langchain4j.rag.AugmentationResult;
-import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
+import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
+import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
-import dev.langchain4j.service.tool.ToolErrorHandlerResult;
-import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolProvider;
-import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.AiServiceStreamingEvent.AfterToolExecutionEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.BeforeToolExecutionEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
@@ -41,17 +34,24 @@ import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderResult;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -102,7 +102,8 @@ class AiServiceStreamingPublisherTest {
 
         @Tool
         CompletableFuture<String> currentTemperature(String city) {
-            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
+            return CompletableFuture.supplyAsync(
+                    () -> "42", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -115,7 +116,8 @@ class AiServiceStreamingPublisherTest {
 
         @Tool
         CompletableFuture<String> currentHumidity(String city) {
-            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
+            return CompletableFuture.supplyAsync(
+                    () -> "69", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -359,8 +361,8 @@ class AiServiceStreamingPublisherTest {
         assertThat(model.requests().get(1).messages())
                 .filteredOn(message -> message instanceof ToolExecutionResultMessage)
                 .singleElement()
-                .satisfies(message ->
-                        assertThat(((ToolExecutionResultMessage) message).text()).isEqualTo("42"));
+                .satisfies(message -> assertThat(((ToolExecutionResultMessage) message).text())
+                        .isEqualTo("42"));
     }
 
     @Test
@@ -424,8 +426,7 @@ class AiServiceStreamingPublisherTest {
     @Test
     void executes_multiple_tools_in_one_round_sequentially() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
-                AiMessage.from(temperatureRequest(), humidityRequest()),
-                AiMessage.from("42 degrees, 69 percent"));
+                AiMessage.from(temperatureRequest(), humidityRequest()), AiMessage.from("42 degrees, 69 percent"));
         MultipleTools tools = new MultipleTools();
 
         // A single-threaded executor runs the tools one at a time, in request order (still off the delivery
@@ -472,8 +473,7 @@ class AiServiceStreamingPublisherTest {
     @Test
     void executes_multiple_tools_concurrently() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
-                AiMessage.from(temperatureRequest(), humidityRequest()),
-                AiMessage.from("42 degrees, 69 percent"));
+                AiMessage.from(temperatureRequest(), humidityRequest()), AiMessage.from("42 degrees, 69 percent"));
         MultipleTools tools = new MultipleTools();
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -494,8 +494,7 @@ class AiServiceStreamingPublisherTest {
     @Test
     void executes_mixed_sync_and_async_tools_in_one_round() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
-                AiMessage.from(temperatureRequest(), humidityRequest()),
-                AiMessage.from("42 degrees, 69 percent"));
+                AiMessage.from(temperatureRequest(), humidityRequest()), AiMessage.from("42 degrees, 69 percent"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -550,7 +549,9 @@ class AiServiceStreamingPublisherTest {
 
         // even though the tool threw, its execution is still reported: every BeforeToolExecutionEvent is balanced
         // by an AfterToolExecutionEvent, flagged as failed, so an observer never sees a dangling "before".
-        assertThat(collected.items).filteredOn(e -> e instanceof BeforeToolExecutionEvent).hasSize(1);
+        assertThat(collected.items)
+                .filteredOn(e -> e instanceof BeforeToolExecutionEvent)
+                .hasSize(1);
         assertThat(afterToolExecutions(collected)).singleElement().satisfies(e -> {
             assertThat(e.toolExecution().request().name()).isEqualTo("currentTemperature");
             assertThat(e.toolExecution().hasFailed()).isTrue();
@@ -687,11 +688,15 @@ class AiServiceStreamingPublisherTest {
                 .build();
 
         Flow.Publisher<AiServiceStreamingEvent> publisher = assistant.chat("Hi");
-        assertThat(started).as("no AiServiceStarted event before subscribing to the cold publisher").hasValue(0);
+        assertThat(started)
+                .as("no AiServiceStarted event before subscribing to the cold publisher")
+                .hasValue(0);
 
         Collected<AiServiceStreamingEvent> collected = collect(publisher);
         assertThat(collected.error).isNull();
-        assertThat(started).as("exactly one AiServiceStarted event after a single subscription").hasValue(1);
+        assertThat(started)
+                .as("exactly one AiServiceStarted event after a single subscription")
+                .hasValue(1);
     }
 
     @Test
@@ -729,8 +734,9 @@ class AiServiceStreamingPublisherTest {
                         ToolExecutionResult.builder().resultText("42").build());
             }
         };
-        ToolProvider toolProvider =
-                request -> ToolProviderResult.builder().add(temperatureSpecification(), asyncExecutor).build();
+        ToolProvider toolProvider = request -> ToolProviderResult.builder()
+                .add(temperatureSpecification(), asyncExecutor)
+                .build();
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -754,8 +760,9 @@ class AiServiceStreamingPublisherTest {
 
         // a sync-only ToolExecutor (does not override executeAsync) is incompatible with the reactive path
         ToolExecutor syncOnlyExecutor = (request, memoryId) -> "42";
-        ToolProvider toolProvider =
-                request -> ToolProviderResult.builder().add(temperatureSpecification(), syncOnlyExecutor).build();
+        ToolProvider toolProvider = request -> ToolProviderResult.builder()
+                .add(temperatureSpecification(), syncOnlyExecutor)
+                .build();
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -780,7 +787,8 @@ class AiServiceStreamingPublisherTest {
         StreamingEventChatModelMock model =
                 StreamingEventChatModelMock.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
 
-        ToolArgumentsErrorHandler errorHandler = (error, context) -> ToolErrorHandlerResult.text("Invalid JSON, try again");
+        ToolArgumentsErrorHandler errorHandler =
+                (error, context) -> ToolErrorHandlerResult.text("Invalid JSON, try again");
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -1020,13 +1028,17 @@ class AiServiceStreamingPublisherTest {
             }
         });
 
-        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the tool is running").isTrue();
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS))
+                .as("the tool is running")
+                .isTrue();
         subscription.get().cancel();
         releaseTool.countDown(); // let the already-running tool finish
 
         Thread.sleep(200);
         // the tool is NOT interrupted; and after cancellation nothing more is emitted and no further round runs
-        assertThat(toolFinished).as("an already-started tool is not interrupted by cancellation").isTrue();
+        assertThat(toolFinished)
+                .as("an already-started tool is not interrupted by cancellation")
+                .isTrue();
         assertThat(model.requests()).hasSize(1);
         assertThat(items).noneMatch(e -> e instanceof FinalResponseEvent);
         assertThat(completed.get()).isFalse();
@@ -1099,7 +1111,9 @@ class AiServiceStreamingPublisherTest {
 
         // The compensable tool has started, and the publisher is now parked in getMemory().addAsync(aiMessage) — the
         // round is NOT yet assembled (inflightRound is unset). Cancel in exactly this window.
-        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the compensable tool is running").isTrue();
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS))
+                .as("the compensable tool is running")
+                .isTrue();
         assertThat(memory.addAsyncEntered.await(5, TimeUnit.SECONDS))
                 .as("round assembly reached the async memory add")
                 .isTrue();
@@ -1112,7 +1126,8 @@ class AiServiceStreamingPublisherTest {
             Thread.sleep(20);
         }
         // drain-then-rollback: the successful credit is compensated even though it was cancelled before its round was
-        // assembled (previously it was orphaned and never rolled back — the race this test now forces deterministically).
+        // assembled (previously it was orphaned and never rolled back — the race this test now forces
+        // deterministically).
         assertThat(calls).contains("credit", "uncredit");
         assertThat(compensatedEvents).singleElement().satisfies(event -> {
             assertThat(event.request().name()).isEqualTo("credit");
@@ -1318,9 +1333,13 @@ class AiServiceStreamingPublisherTest {
         while (!model.cancellationObserved() && System.nanoTime() < deadline) {
             Thread.sleep(10);
         }
-        assertThat(model.cancellationObserved()).as("model observed cancellation").isTrue();
+        assertThat(model.cancellationObserved())
+                .as("model observed cancellation")
+                .isTrue();
 
-        assertThat(completed.get()).as("stream did not complete after cancellation").isFalse();
+        assertThat(completed.get())
+                .as("stream did not complete after cancellation")
+                .isFalse();
         assertThat(error.get()).isNull();
         assertThat(items.size()).isLessThan(10);
     }
@@ -1519,7 +1538,9 @@ class AiServiceStreamingPublisherTest {
             }
         });
 
-        assertThat(latch.await(10, TimeUnit.SECONDS)).as("stream completed within 10s").isTrue();
+        assertThat(latch.await(10, TimeUnit.SECONDS))
+                .as("stream completed within 10s")
+                .isTrue();
         return new Collected<>(items, error.get());
     }
 

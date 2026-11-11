@@ -9,11 +9,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.input.PromptTemplate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -51,8 +51,8 @@ public final class DecisionModelToolSelector {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         this.questionTemplate = getOrDefault(questionTemplate, DEFAULT_QUESTION_TEMPLATE);
         if (!this.questionTemplate.template().contains("{{name}}")) {
-            throw new IllegalArgumentException("The question template must contain {{name}}, but was: "
-                    + this.questionTemplate.template());
+            throw new IllegalArgumentException(
+                    "The question template must contain {{name}}, but was: " + this.questionTemplate.template());
         }
         try {
             this.questionTemplate.apply(Map.of("name", "name", "description", "description"));

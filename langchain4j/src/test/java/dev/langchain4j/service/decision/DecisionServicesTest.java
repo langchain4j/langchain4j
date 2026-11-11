@@ -1,34 +1,34 @@
 package dev.langchain4j.service.decision;
 
-import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.decision.request.FieldsInput;
-import dev.langchain4j.model.decision.response.RefusalAnswer;
-import dev.langchain4j.service.decision.internal.DecisionMethod;
-import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.offset;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.response.ScaleAnswer;
-import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.decision.internal.DecisionMethod;
+import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -73,7 +73,9 @@ class DecisionServicesTest {
 
         @Override
         public DecisionRequestParameters defaultRequestParameters() {
-            return DecisionRequestParameters.builder().modelName("fake-default-model").build();
+            return DecisionRequestParameters.builder()
+                    .modelName("fake-default-model")
+                    .build();
         }
 
         DecisionRequest request() {
@@ -148,7 +150,8 @@ class DecisionServicesTest {
 
         assertThat(inspector.isDamaged(PHOTO, "Arrived like this")).isTrue();
 
-        assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("photo", PHOTO, "comment", "Arrived like this")));
+        assertThat(damaged.request().input())
+                .isEqualTo(FieldsInput.from(Map.of("photo", PHOTO, "comment", "Arrived like this")));
     }
 
     @Test
@@ -162,8 +165,10 @@ class DecisionServicesTest {
     @Test
     void should_send_images_of_collections_and_arrays_and_leave_out_nulls() {
 
-        Image first = Image.builder().base64Data("iVBORw0KGgo=").mimeType("image/png").build();
-        Image second = Image.builder().base64Data("R0lGODlh").mimeType("image/gif").build();
+        Image first =
+                Image.builder().base64Data("iVBORw0KGgo=").mimeType("image/png").build();
+        Image second =
+                Image.builder().base64Data("R0lGODlh").mimeType("image/gif").build();
         List<Image> withNull = new ArrayList<>(List.of(first));
         withNull.add(null);
         withNull.add(second);
@@ -213,8 +218,8 @@ class DecisionServicesTest {
     @Test
     void should_not_register_content_parameters_as_json_input_types() throws Exception {
 
-        DecisionMethod method = DecisionMethod.from(
-                DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
+        DecisionMethod method =
+                DecisionMethod.from(DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
 
         assertThat(method.inputTypes()).containsExactly(String.class);
     }
@@ -236,9 +241,7 @@ class DecisionServicesTest {
         assertThat(model.request().questions())
                 .isEqualTo(Map.of(
                         "isSpam",
-                        YesNoQuestion.builder()
-                                .text("Is this message spam?")
-                                .build()));
+                        YesNoQuestion.builder().text("Is this message spam?").build()));
     }
 
     @Test
@@ -292,7 +295,8 @@ class DecisionServicesTest {
 
         assertThatThrownBy(() -> spamFilter.isSpam("Hello"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The threshold for question 'isSpam' of method 'isSpam' must be between 0 and 1, but was 1.5");
+                .hasMessage(
+                        "The threshold for question 'isSpam' of method 'isSpam' must be between 0 and 1, but was 1.5");
     }
 
     @Test
@@ -402,7 +406,8 @@ class DecisionServicesTest {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(Map.of("route", BILLING_ANSWER));
-        Router router = DecisionServices.builder(Router.class).decisionModel(model).build();
+        Router router =
+                DecisionServices.builder(Router.class).decisionModel(model).build();
 
         // when
         Team team = router.route("I was charged twice");
@@ -536,8 +541,9 @@ class DecisionServicesTest {
                                 .build()));
         assertThat(severity.mean()).isEqualTo(1.3);
         assertThat(severity.mostLikely()).isEqualTo(Severity.MEDIUM);
-        assertThat(severity.probabilities()).containsExactly(
-                Map.entry(Severity.LOW, 0.1), Map.entry(Severity.MEDIUM, 0.5), Map.entry(Severity.HIGH, 0.4));
+        assertThat(severity.probabilities())
+                .containsExactly(
+                        Map.entry(Severity.LOW, 0.1), Map.entry(Severity.MEDIUM, 0.5), Map.entry(Severity.HIGH, 0.4));
         assertThat(severity.probabilityAtLeast(Severity.MEDIUM)).isCloseTo(0.9, offset(1e-9));
         assertThat(severity.confidence()).isEqualTo(0.6);
     }
@@ -548,7 +554,10 @@ class DecisionServicesTest {
         IncidentTriage triage = DecisionServices.builder(IncidentTriage.class)
                 .decisionModel(new FakeDecisionModel(Map.of(
                         "severity",
-                        ScaleAnswer.builder().mean(0.5).probabilities(List.of(0.5, 0.5)).build())))
+                        ScaleAnswer.builder()
+                                .mean(0.5)
+                                .probabilities(List.of(0.5, 0.5))
+                                .build())))
                 .build();
 
         assertThatThrownBy(() -> triage.severity("Checkout is slow"))
@@ -563,8 +572,7 @@ class DecisionServicesTest {
 
         assertThat(severity.mostLikely()).isEqualTo(Severity.HIGH);
         assertThat(severity.probabilities()).isEmpty();
-        assertThatThrownBy(() -> severity.probabilityAtLeast(Severity.HIGH))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> severity.probabilityAtLeast(Severity.HIGH)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> severity.probabilityOf(Severity.HIGH)).isInstanceOf(IllegalStateException.class);
     }
 
@@ -626,8 +634,8 @@ class DecisionServicesTest {
     void should_ask_one_question_per_field_in_a_single_call() {
 
         // given
-        FakeDecisionModel model = new FakeDecisionModel(
-                Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.9), "refund", yesNo(0.3)));
+        FakeDecisionModel model =
+                new FakeDecisionModel(Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.9), "refund", yesNo(0.3)));
         SupportDesk supportDesk =
                 DecisionServices.builder(SupportDesk.class).decisionModel(model).build();
 
@@ -640,7 +648,8 @@ class DecisionServicesTest {
         assertThat(triage.refund.probability()).isEqualTo(0.3);
 
         DecisionRequest request = model.request();
-        assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("ticket", "I was charged twice", "plan", "enterprise")));
+        assertThat(request.input())
+                .isEqualTo(FieldsInput.from(Map.of("ticket", "I was charged twice", "plan", "enterprise")));
         assertThat(request.questions()).containsOnlyKeys("team", "urgent", "refund");
         assertThat(request.questions().get("urgent"))
                 .isEqualTo(YesNoQuestion.builder()
@@ -656,8 +665,8 @@ class DecisionServicesTest {
     void should_support_records_with_thresholds_per_field() {
 
         // given
-        FakeDecisionModel model = new FakeDecisionModel(
-                Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.7), "refund", yesNo(0.7)));
+        FakeDecisionModel model =
+                new FakeDecisionModel(Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.7), "refund", yesNo(0.7)));
         SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
                 .decisionModel(model)
                 .thresholdProvider(context -> context.questionName().equals("urgent") ? 0.8 : null)
@@ -707,26 +716,29 @@ class DecisionServicesTest {
     void should_call_model_asynchronously() throws Exception {
 
         // given
-        FakeDecisionModel model = new FakeDecisionModel(
-                Map.of("routeAsync", BILLING_ANSWER, "routeAsyncWithDetails", BILLING_ANSWER)) {
+        FakeDecisionModel model =
+                new FakeDecisionModel(Map.of("routeAsync", BILLING_ANSWER, "routeAsyncWithDetails", BILLING_ANSWER)) {
 
-            @Override
-            public DecisionResponse doDecide(DecisionRequest request) {
-                throw new AssertionError("sync API must not be called");
-            }
+                    @Override
+                    public DecisionResponse doDecide(DecisionRequest request) {
+                        throw new AssertionError("sync API must not be called");
+                    }
 
-            @Override
-            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-                return CompletableFuture.completedFuture(super.doDecide(request));
-            }
-        };
+                    @Override
+                    public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                        return CompletableFuture.completedFuture(super.doDecide(request));
+                    }
+                };
         RouterWithDetails router = DecisionServices.builder(RouterWithDetails.class)
                 .decisionModel(model)
                 .build();
 
         // when-then
         assertThat(router.routeAsync("I was charged twice").get()).isEqualTo(Team.BILLING);
-        assertThat(router.routeAsyncWithDetails("I was charged twice").get().content().value())
+        assertThat(router.routeAsyncWithDetails("I was charged twice")
+                        .get()
+                        .content()
+                        .value())
                 .isEqualTo(Team.BILLING);
     }
 
@@ -821,14 +833,18 @@ class DecisionServicesTest {
     void should_send_objects_as_maps_with_java_field_names() {
 
         FakeDecisionModel model = new FakeDecisionModel(Map.of("urgent", yesNo(0.7)));
-        CustomerDesk desk = DecisionServices.builder(CustomerDesk.class).decisionModel(model).build();
+        CustomerDesk desk = DecisionServices.builder(CustomerDesk.class)
+                .decisionModel(model)
+                .build();
 
         desk.urgent("Payouts are failing", new Customer("enterprise", 3));
 
         assertThat(model.request().input())
                 .isEqualTo(FieldsInput.from(Map.of(
-                        "ticket", "Payouts are failing",
-                        "customer", Map.of("customerPlan", "enterprise", "openTickets", 3))));
+                        "ticket",
+                        "Payouts are failing",
+                        "customer",
+                        Map.of("customerPlan", "enterprise", "openTickets", 3))));
     }
 
     @Test
@@ -927,7 +943,8 @@ class DecisionServicesTest {
                 ExtendedDesk.class.getMethod("triage", String.class, DecisionRequestParameters.class));
 
         assertThat(method.questions()).containsOnlyKeys("team", "urgent");
-        assertThat(method.reflectiveTypes()).containsExactlyInAnyOrder(ExtendedTriage.class, BaseTriage.class, Team.class);
+        assertThat(method.reflectiveTypes())
+                .containsExactlyInAnyOrder(ExtendedTriage.class, BaseTriage.class, Team.class);
         assertThat(method.inputTypes()).containsExactly(String.class);
     }
 
@@ -945,13 +962,12 @@ class DecisionServicesTest {
         FakeDecisionModel model = new FakeDecisionModel(Map.of("route", BILLING_ANSWER));
 
         // when
-        CompletableFuture<Object> result =
-                method.invokeAsync(
-                        DecisionServiceConfig.builder()
-                                .serviceInterface(LazyRouter.class)
-                                .decisionModel(model)
-                                .build(),
-                        new Object[] {"I was charged twice"});
+        CompletableFuture<Object> result = method.invokeAsync(
+                DecisionServiceConfig.builder()
+                        .serviceInterface(LazyRouter.class)
+                        .decisionModel(model)
+                        .build(),
+                new Object[] {"I was charged twice"});
 
         // then
         assertThat(result.get()).isEqualTo(Team.BILLING);
@@ -1033,8 +1049,7 @@ class DecisionServicesTest {
 
     interface SeveralRequestParameters {
         @Decide("Is this message spam?")
-        boolean isSpam(
-                @V("message") String message, DecisionRequestParameters first, DecisionRequestParameters second);
+        boolean isSpam(@V("message") String message, DecisionRequestParameters first, DecisionRequestParameters second);
     }
 
     interface NoInput {

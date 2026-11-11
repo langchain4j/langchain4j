@@ -99,7 +99,8 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
-        this.toolExecutor = CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
+        this.toolExecutor =
+                CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
         this.completeResponseProcessingExecutor = CapturedContextSupport.restoringIn(
                 parameters.completeResponseProcessingExecutor(), parameters.invocationContext());
         this.retrievedContents = copy(parameters.retrievedContents());
@@ -290,7 +291,8 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
+        CurrentInvocation.runWith(
+                runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

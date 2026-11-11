@@ -96,8 +96,7 @@ class OutputGuardrailChatRequestTest {
         assertThat(guardrail.chatRequests).containsExactly(modelRequests.get(0), modelRequests.get(1));
     }
 
-    private static List<ChatRequest> chat(Mode mode, OutputGuardrail guardrail, AiMessage... answers)
-            throws Exception {
+    private static List<ChatRequest> chat(Mode mode, OutputGuardrail guardrail, AiMessage... answers) throws Exception {
         return switch (mode) {
             case SYNC -> {
                 var model = ChatModelMock.thatAlwaysResponds(answers);
@@ -134,7 +133,8 @@ class OutputGuardrailChatRequestTest {
                         .outputGuardrails(guardrail)
                         .build()
                         .chat("Look it up")
-                        .onCompleteResponse(response -> future.complete(response.aiMessage().text()))
+                        .onCompleteResponse(
+                                response -> future.complete(response.aiMessage().text()))
                         .onError(future::completeExceptionally)
                         .start();
                 assertThat(future.get(10, SECONDS)).isEqualTo("good");

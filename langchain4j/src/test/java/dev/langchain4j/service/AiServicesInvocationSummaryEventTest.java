@@ -303,7 +303,10 @@ class AiServicesInvocationSummaryEventTest {
 
         // Starting it again once fixed is a new invocation with its own summary
         var completed = new CountDownLatch(1);
-        tokenStream.onCompleteResponse(response -> completed.countDown()).ignoreErrors().start();
+        tokenStream
+                .onCompleteResponse(response -> completed.countDown())
+                .ignoreErrors()
+                .start();
         awaitLatch(completed);
 
         assertThat(summaries).hasSize(2);
@@ -559,8 +562,7 @@ class AiServicesInvocationSummaryEventTest {
 
     @ParameterizedTest
     @EnumSource(PartRunBeforeTheStartedEvent.class)
-    void invocationCalledBeforeTheStartedEventIsLinkedButNotNested(
-            PartRunBeforeTheStartedEvent part) {
+    void invocationCalledBeforeTheStartedEventIsLinkedButNotNested(PartRunBeforeTheStartedEvent part) {
         // These parts run before the AiServiceStartedEvent, so the child ends before the parent is tracked
         var children = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
         var parents = new CopyOnWriteArrayList<AiServiceInvocationSummaryEvent>();
@@ -639,17 +641,17 @@ class AiServicesInvocationSummaryEventTest {
                 .build();
 
         var publisher = assistant.chat("Hi");
-        List<RecordingSubscriber> subscribers = IntStream.range(0, 8)
-                .mapToObj(i -> new RecordingSubscriber())
-                .toList();
+        List<RecordingSubscriber> subscribers =
+                IntStream.range(0, 8).mapToObj(i -> new RecordingSubscriber()).toList();
         subscribers.parallelStream().forEach(publisher::subscribe);
         subscribers.forEach(subscriber -> awaitLatch(subscriber.done));
 
         assertThat(summaries)
                 .hasSize(8)
                 .allSatisfy(summary -> assertThat(summary.events())
-                        .allSatisfy(event -> assertThat(event.invocationContext().invocationId())
-                                .isEqualTo(summary.invocationContext().invocationId()))
+                        .allSatisfy(
+                                event -> assertThat(event.invocationContext().invocationId())
+                                        .isEqualTo(summary.invocationContext().invocationId()))
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .startsWith(AiServiceStartedEvent.class)
                         .endsWith(AiServiceCompletedEvent.class)

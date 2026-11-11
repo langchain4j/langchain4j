@@ -1,7 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,6 +8,8 @@ import static org.assertj.core.api.Assertions.fail;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -19,7 +19,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
@@ -35,8 +34,14 @@ class AsyncChatMemoryTest {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        chatMemory.addAsync(List.of(UserMessage.from("Hello"))).toCompletableFuture().get(5, SECONDS);
-        chatMemory.addAsync(List.of(AiMessage.from("Hi there"))).toCompletableFuture().get(5, SECONDS);
+        chatMemory
+                .addAsync(List.of(UserMessage.from("Hello")))
+                .toCompletableFuture()
+                .get(5, SECONDS);
+        chatMemory
+                .addAsync(List.of(AiMessage.from("Hi there")))
+                .toCompletableFuture()
+                .get(5, SECONDS);
 
         List<ChatMessage> messages =
                 chatMemory.messagesAsync().toCompletableFuture().get(5, SECONDS);
@@ -51,7 +56,8 @@ class AsyncChatMemoryTest {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        chatMemory.addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi there")))
+        chatMemory
+                .addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi there")))
                 .toCompletableFuture()
                 .get(5, SECONDS);
 

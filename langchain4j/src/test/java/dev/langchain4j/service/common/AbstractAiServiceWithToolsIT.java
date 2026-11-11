@@ -1086,7 +1086,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
-        checkMemoryWithImmediateTool(messages.subList(3, 6), "Now use the tool to add 47 to the previous result", "171");
+        checkMemoryWithImmediateTool(
+                messages.subList(3, 6), "Now use the tool to add 47 to the previous result", "171");
     }
 
     static void checkMemoryWithImmediateTool(List<ChatMessage> messages, String request, String response) {
@@ -1213,7 +1214,8 @@ public abstract class AbstractAiServiceWithToolsIT {
     protected Image catImage() {
         if (catImage == null) {
             String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-            catImage = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+            catImage =
+                    Image.builder().base64Data(base64Data).mimeType("image/png").build();
         }
         return catImage;
     }

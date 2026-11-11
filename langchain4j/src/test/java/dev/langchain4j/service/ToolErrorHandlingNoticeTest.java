@@ -6,9 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -53,8 +53,8 @@ class ToolErrorHandlingNoticeTest {
     @Test
     void should_name_the_service_and_recommend_the_behavior_the_defaults_are_planned_to_change_to() {
 
-        String message = ToolErrorHandlingNotice.message(
-                Assistant.class, List.of(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR));
+        String message =
+                ToolErrorHandlingNotice.message(Assistant.class, List.of(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR));
 
         assertThat(message).contains(Assistant.class.getName()).contains("are planned to change");
         assertThat(message)
@@ -116,8 +116,7 @@ class ToolErrorHandlingNoticeTest {
     void should_warn_when_only_a_tool_provider_is_configured() {
 
         AiServiceContext context = AiServiceContext.create(Assistant.class);
-        context.toolService.toolProvider(
-                request -> ToolProviderResult.builder().build());
+        context.toolService.toolProvider(request -> ToolProviderResult.builder().build());
 
         assertThat(unconfirmedDefaults(context))
                 .as("tools supplied by a ToolProvider are only known at invocation time, but the defaults still apply")
@@ -140,7 +139,8 @@ class ToolErrorHandlingNoticeTest {
     }
 
     private static List<ToolErrorHandlingNotice.Default> unconfirmedDefaults(AiServiceContext context) {
-        return ToolErrorHandlingNotice.unconfirmedDefaults(context, new DefaultAiServices<>(context)::hasBlockingMethod);
+        return ToolErrorHandlingNotice.unconfirmedDefaults(
+                context, new DefaultAiServices<>(context)::hasBlockingMethod);
     }
 
     private static AiServiceContext withTools(Class<?> aiServiceClass) {

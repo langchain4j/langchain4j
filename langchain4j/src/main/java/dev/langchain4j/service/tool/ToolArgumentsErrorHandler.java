@@ -48,7 +48,6 @@ public interface ToolArgumentsErrorHandler {
         };
     }
 
-
     /**
      * Returns a handler that sends the message of the error to the LLM as the result of the tool execution,
      * so that the LLM can correct the arguments and call the tool again. The AI Service invocation continues.

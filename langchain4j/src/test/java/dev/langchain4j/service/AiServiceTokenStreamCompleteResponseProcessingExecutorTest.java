@@ -154,7 +154,8 @@ class AiServiceTokenStreamCompleteResponseProcessingExecutorTest {
         try {
             tokenStream
                     .onCompleteResponse(response -> {
-                        completeResponseThreadName.complete(Thread.currentThread().getName());
+                        completeResponseThreadName.complete(
+                                Thread.currentThread().getName());
                         completeResponse.complete(response);
                     })
                     .onError(completeResponse::completeExceptionally)

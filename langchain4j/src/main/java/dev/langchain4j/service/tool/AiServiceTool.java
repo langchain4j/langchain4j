@@ -1,12 +1,11 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.agent.tool.ToolSpecification;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import java.util.Objects;
 
 /**
  * Represents a tool managed by an AI Service, combining:
@@ -73,11 +72,10 @@ public class AiServiceTool {
 
     @Override
     public String toString() {
-        return "AiServiceTool{" +
-                "toolSpecification=" + toolSpecification +
-                ", toolExecutor=" + toolExecutor +
-                ", returnBehavior=" + returnBehavior +
-                '}';
+        return "AiServiceTool{" + "toolSpecification="
+                + toolSpecification + ", toolExecutor="
+                + toolExecutor + ", returnBehavior="
+                + returnBehavior + '}';
     }
 
     public Builder toBuilder() {

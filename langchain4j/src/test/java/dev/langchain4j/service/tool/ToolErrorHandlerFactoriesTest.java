@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.invocation.InvocationContext;
@@ -94,8 +93,8 @@ class ToolErrorHandlerFactoriesTest {
 
         RuntimeException error = new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2");
 
-        assertThatThrownBy(() ->
-                        ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
+        assertThatThrownBy(() -> ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()
+                        .handle(error, CONTEXT))
                 .isSameAs(error);
     }
 
@@ -104,8 +103,8 @@ class ToolErrorHandlerFactoriesTest {
 
         RuntimeException error = new BlankMessageException();
 
-        assertThatThrownBy(() ->
-                        ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
+        assertThatThrownBy(() -> ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()
+                        .handle(error, CONTEXT))
                 .isSameAs(error);
     }
 
@@ -174,7 +173,8 @@ class ToolErrorHandlerFactoriesTest {
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText())
-                .as("the exception is wrapped in a ToolExecutionException and unwrapped again before the handler sees it")
+                .as(
+                        "the exception is wrapped in a ToolExecutionException and unwrapped again before the handler sees it")
                 .isEqualTo("There is no order with this ID.");
     }
 
@@ -188,7 +188,10 @@ class ToolErrorHandlerFactoriesTest {
         };
 
         ToolExecutionResult result = ToolService.executeWithErrorHandling(
-                ToolExecutionRequest.builder().name("activate_skill").arguments("{").build(),
+                ToolExecutionRequest.builder()
+                        .name("activate_skill")
+                        .arguments("{")
+                        .build(),
                 executor,
                 InvocationContext.builder().build(),
                 ToolArgumentsErrorHandler.failInvocation(),
@@ -209,16 +212,17 @@ class ToolErrorHandlerFactoriesTest {
         };
 
         ToolExecutionResult result = ToolService.executeWithErrorHandling(
-                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                ToolExecutionRequest.builder()
+                        .name("orderStatus")
+                        .arguments("{}")
+                        .build(),
                 executor,
                 InvocationContext.builder().build(),
                 ToolArgumentsErrorHandler.failInvocation(),
                 ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
 
         assertThat(result.resultText()).isEqualTo("The order service is temporarily unavailable.");
-        assertThat(result.resultText())
-                .as("the cause must never reach the LLM")
-                .doesNotContain("hunter2");
+        assertThat(result.resultText()).as("the cause must never reach the LLM").doesNotContain("hunter2");
     }
 
     @Test
@@ -231,7 +235,10 @@ class ToolErrorHandlerFactoriesTest {
         };
 
         ToolExecutionResult result = ToolService.executeWithErrorHandling(
-                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                ToolExecutionRequest.builder()
+                        .name("orderStatus")
+                        .arguments("{}")
+                        .build(),
                 executor,
                 InvocationContext.builder().build(),
                 ToolArgumentsErrorHandler.failInvocation(),
@@ -274,7 +281,10 @@ class ToolErrorHandlerFactoriesTest {
     private static ToolExecutionResult executeWithDefaultHandlers(ToolExecutor executor) {
         ToolService toolService = new ToolService();
         return ToolService.executeWithErrorHandling(
-                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                ToolExecutionRequest.builder()
+                        .name("orderStatus")
+                        .arguments("{}")
+                        .build(),
                 executor,
                 InvocationContext.builder().build(),
                 toolService.argumentsErrorHandler(),

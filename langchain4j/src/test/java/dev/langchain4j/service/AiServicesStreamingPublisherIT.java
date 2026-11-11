@@ -67,8 +67,9 @@ class AiServicesStreamingPublisherIT {
 
     @Test
     void streams_an_answer_without_tools() throws Exception {
-        StringStreamer assistant =
-                AiServices.builder(StringStreamer.class).streamingChatModel(model()).build();
+        StringStreamer assistant = AiServices.builder(StringStreamer.class)
+                .streamingChatModel(model())
+                .build();
 
         List<String> tokens = collect(assistant.chat("What is the capital of Germany? Answer with a single word."));
 
@@ -89,14 +90,18 @@ class AiServicesStreamingPublisherIT {
         assertThat(events)
                 .filteredOn(e -> e instanceof AfterToolExecutionEvent)
                 .isNotEmpty()
-                .allSatisfy(e -> assertThat(((AfterToolExecutionEvent) e).toolExecution().result())
+                .allSatisfy(e -> assertThat(
+                                ((AfterToolExecutionEvent) e).toolExecution().result())
                         .contains("42"));
 
         // exactly one final response, emitted last, carrying the answer
         assertThat(events)
                 .filteredOn(e -> e instanceof FinalResponseEvent)
                 .singleElement()
-                .satisfies(e -> assertThat(((FinalResponseEvent) e).chatResponse().aiMessage().text())
+                .satisfies(e -> assertThat(((FinalResponseEvent) e)
+                                .chatResponse()
+                                .aiMessage()
+                                .text())
                         .contains("42"));
         assertThat(events.get(events.size() - 1)).isInstanceOf(FinalResponseEvent.class);
     }
@@ -106,7 +111,10 @@ class AiServicesStreamingPublisherIT {
         ToolSpecification specification = ToolSpecification.builder()
                 .name("getWeather")
                 .description("returns the weather forecast for a given city")
-                .parameters(JsonObjectSchema.builder().addStringProperty("city").required("city").build())
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("city")
+                        .required("city")
+                        .build())
                 .build();
 
         // a tool provider supplying an async-capable executor (required by the reactive path)
@@ -119,12 +127,13 @@ class AiServicesStreamingPublisherIT {
             @Override
             public CompletableFuture<ToolExecutionResult> executeAsync(
                     ToolExecutionRequest request, InvocationContext context) {
-                return CompletableFuture.completedFuture(
-                        ToolExecutionResult.builder().resultText("It is 42 degrees and sunny").build());
+                return CompletableFuture.completedFuture(ToolExecutionResult.builder()
+                        .resultText("It is 42 degrees and sunny")
+                        .build());
             }
         };
-        ToolProvider toolProvider =
-                request -> ToolProviderResult.builder().add(specification, executor).build();
+        ToolProvider toolProvider = request ->
+                ToolProviderResult.builder().add(specification, executor).build();
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model())
@@ -138,7 +147,10 @@ class AiServicesStreamingPublisherIT {
         assertThat(events)
                 .filteredOn(e -> e instanceof FinalResponseEvent)
                 .singleElement()
-                .satisfies(e -> assertThat(((FinalResponseEvent) e).chatResponse().aiMessage().text())
+                .satisfies(e -> assertThat(((FinalResponseEvent) e)
+                                .chatResponse()
+                                .aiMessage()
+                                .text())
                         .contains("42"));
     }
 

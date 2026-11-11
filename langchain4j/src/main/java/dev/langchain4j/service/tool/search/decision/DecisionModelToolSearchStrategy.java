@@ -49,7 +49,6 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
      */
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = DecisionModelToolSelector.DEFAULT_QUESTION_TEMPLATE;
 
-
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools that can help with a task";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "query";

@@ -270,7 +270,10 @@ class AiServiceStreamingPublisherGuardrailTest {
     private static String intermediateText(Collected collected) {
         return collected.items.stream()
                 .filter(e -> e instanceof IntermediateResponseEvent)
-                .map(e -> ((IntermediateResponseEvent) e).chatResponse().aiMessage().text())
+                .map(e -> ((IntermediateResponseEvent) e)
+                        .chatResponse()
+                        .aiMessage()
+                        .text())
                 .findFirst()
                 .orElse(null);
     }

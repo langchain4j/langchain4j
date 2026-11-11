@@ -101,7 +101,9 @@ class OutputGuardrailWithoutChatMemoryTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @EnumSource(value = Mode.class, names = {"SYNC", "ASYNC"})
+    @EnumSource(
+            value = Mode.class,
+            names = {"SYNC", "ASYNC"})
     void without_chat_memory_a_reprompt_after_a_tool_call_carries_the_tool_round_trip(Mode mode) throws Exception {
         var toolCall = AiMessage.from(ToolExecutionRequest.builder()
                 .id("call-1")
@@ -124,19 +126,21 @@ class OutputGuardrailWithoutChatMemoryTest {
 
     private static String chat(Mode mode, ChatModelMock model, OutputGuardrail guardrail) throws Exception {
         return switch (mode) {
-            case SYNC -> AiServices.builder(SyncAssistant.class)
-                    .chatModel(model)
-                    .tools(new Tools())
-                    .outputGuardrails(guardrail)
-                    .build()
-                    .chat(USER);
-            case ASYNC -> AiServices.builder(AsyncAssistant.class)
-                    .chatModel(model)
-                    .tools(new Tools())
-                    .outputGuardrails(guardrail)
-                    .build()
-                    .chat(USER)
-                    .get(10, SECONDS);
+            case SYNC ->
+                AiServices.builder(SyncAssistant.class)
+                        .chatModel(model)
+                        .tools(new Tools())
+                        .outputGuardrails(guardrail)
+                        .build()
+                        .chat(USER);
+            case ASYNC ->
+                AiServices.builder(AsyncAssistant.class)
+                        .chatModel(model)
+                        .tools(new Tools())
+                        .outputGuardrails(guardrail)
+                        .build()
+                        .chat(USER)
+                        .get(10, SECONDS);
             default -> throw new IllegalArgumentException(mode.name());
         };
     }
