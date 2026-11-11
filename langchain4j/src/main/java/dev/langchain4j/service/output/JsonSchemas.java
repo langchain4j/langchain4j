@@ -1,28 +1,37 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-
-import java.lang.reflect.Type;
-import java.util.LinkedHashMap;
-import java.util.Optional;
-
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
+import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.service.output.ServiceOutputParser.isReturnedAsIs;
+
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.service.Result;
+import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
+import java.util.Optional;
 
 public class JsonSchemas {
 
     /**
      * Generates a {@link JsonSchema} for the given POJO type, for example to configure a {@link ResponseFormat}.
      *
-     * @param returnType the type to generate the JSON schema for
+     * @param returnType the type to generate the JSON schema for. A {@code Result<T>} is unwrapped to {@code T},
+     *                   because the model answers the payload and not the LangChain4j envelope.
      * @return the JSON schema, or an empty {@link Optional} if the type is not a POJO
      * (e.g. {@code String}, {@code Integer}, an enum, a {@code List}, or a LangChain4j type
      * such as {@code AiMessage} or {@code ChatResponse})
      */
     public static Optional<JsonSchema> jsonSchemaFrom(Type returnType) {
+
+        if (typeHasRawClass(returnType, Result.class)) {
+            // Result<T> is only an envelope around the value the model has to answer. Describing
+            // the envelope would ask the model to invent content, tokenUsage, sources and the rest.
+            returnType = resolveFirstGenericParameterType(returnType);
+        }
 
         if (!isPojo(returnType) || returnType == void.class) {
             return Optional.empty();
