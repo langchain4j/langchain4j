@@ -16,7 +16,7 @@ import dev.langchain4j.agentic.decision.DecisionAgents.TransactionGate;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.MemoryId;
@@ -32,7 +32,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class DecisionAgentBuilderTest {
 
-    private static final DecisionModelMock MODEL = DecisionMocks.choosing("LEGAL", 0.9);
+    private static final MockDecisionModel MODEL = DecisionMocks.choosing("LEGAL", 0.9);
 
     @Test
     void should_fail_without_decision_model() {
@@ -84,7 +84,7 @@ class DecisionAgentBuilderTest {
         // a class is accepted, for the integrations implementing its agent method through an agentInstanceFactory,
         // but it cannot be implemented by a proxy
         assertThatThrownBy(() -> AgenticServices.decisionAgentBuilder(RouterClass.class)
-                        .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                        .decisionModel(MockDecisionModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception")))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("A decision agent must be defined by an interface, but " + RouterClass.class.getName()

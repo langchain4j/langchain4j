@@ -34,13 +34,4 @@ final class RecordedRequests<T> {
         }
         return requests.get(0);
     }
-
-    /**
-     * The value for the request with the given number: the values are used in order, and the last one is repeated.
-     *
-     * @return {@code null} if there are no values
-     */
-    static <V> V forRequest(List<V> values, int requestNumber) {
-        return values.isEmpty() ? null : values.get(Math.min(requestNumber, values.size()) - 1);
-    }
 }

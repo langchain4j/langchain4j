@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.observability;
 
-import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
-import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
+import static dev.langchain4j.test.mock.MockChatModel.thatResponds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.Tool;

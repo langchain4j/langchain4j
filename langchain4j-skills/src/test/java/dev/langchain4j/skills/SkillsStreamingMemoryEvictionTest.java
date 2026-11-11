@@ -7,7 +7,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -40,7 +40,7 @@ class SkillsStreamingMemoryEvictionTest {
 
         Skills skills = Skills.from(skill);
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"inventory-management\"}")

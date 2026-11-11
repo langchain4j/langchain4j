@@ -7,11 +7,11 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailResult;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceInvocation;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -43,13 +43,18 @@ class GuardrailsTest {
 
     @Test
     void should_count_the_model_call_repeated_by_the_reprompting_output_guardrail() {
-        AtomicInteger calls = new AtomicInteger();
-        ChatModelMock model = ChatModelMock.thatResponds(request -> AiMessage.from(
-                        calls.incrementAndGet() == 1 ? "Sure dude, it's gonna be cancelled" : "Your booking is cancelled."))
-                .withTokenUsages(new TokenUsage(50, 10), new TokenUsage(80, 8))
-                .withFinishReason(FinishReason.STOP);
+        MockChatModel model = MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Sure dude, it's gonna be cancelled"))
+                        .tokenUsage(new TokenUsage(50, 10))
+                        .finishReason(FinishReason.STOP)
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Your booking is cancelled."))
+                        .tokenUsage(new TokenUsage(80, 8))
+                        .finishReason(FinishReason.STOP)
+                        .build());
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Cancel MS-777")).invocation();
 

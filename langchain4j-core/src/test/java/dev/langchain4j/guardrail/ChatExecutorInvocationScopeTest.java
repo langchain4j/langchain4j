@@ -8,8 +8,8 @@ import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +37,7 @@ class ChatExecutorInvocationScopeTest {
     @Test
     void chat_executor_should_call_the_model_as_work_of_the_invocation() {
         ChatExecutor executor = ChatExecutor.builder(
-                        ChatModelMock.thatResponds("answer").withListeners(listener))
+                        MockChatModel.thatResponds("answer").thenRepeats().withListeners(listener))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)
                 .build();
@@ -51,8 +51,7 @@ class ChatExecutorInvocationScopeTest {
 
     @Test
     void streaming_chat_executor_should_call_the_model_as_work_of_the_invocation() {
-        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatStreams("answer")
-                        .streamingOnCallingThread()
+        ChatExecutor executor = ChatExecutor.builder(MockStreamingChatModel.thatStreams("answer").thenRepeats()
                         .withListeners(listener))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)
@@ -68,7 +67,7 @@ class ChatExecutorInvocationScopeTest {
     @Test
     void streaming_chat_executor_should_call_the_error_handler_outside_of_the_invocation() {
         AtomicReference<UUID> currentInErrorHandler = new AtomicReference<>(UUID.randomUUID());
-        ChatExecutor executor = ChatExecutor.builder(StreamingChatModelMock.thatThrows(new IllegalStateException("failed")))
+        ChatExecutor executor = ChatExecutor.builder(MockStreamingChatModel.thatFails(new IllegalStateException("failed")))
                 .errorHandler(error -> currentInErrorHandler.set(CurrentInvocation.invocationId()))
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(invocationContext)

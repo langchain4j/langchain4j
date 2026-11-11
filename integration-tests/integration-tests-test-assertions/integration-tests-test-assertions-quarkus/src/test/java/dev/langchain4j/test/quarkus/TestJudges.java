@@ -1,6 +1,6 @@
 package dev.langchain4j.test.quarkus;
 
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.test.judge.DecisionModelJudge;
 import dev.langchain4j.test.judge.Judge;
@@ -16,15 +16,15 @@ public class TestJudges {
 
     @Produces
     @Singleton
-    DecisionModelMock judgeModel() {
+    MockDecisionModel judgeModel() {
         // "yes" unless the criterion asks for something the support answers never do
-        return DecisionModelMock.thatAnswersYesNoQuestions(
+        return MockDecisionModel.thatAnswersYesNoQuestions(
                 question -> question.text().contains("free return shipping") ? 0.2 : 0.95);
     }
 
     @Produces
     @Singleton
-    DecisionModelJudge supportJudge(DecisionModelMock judgeModel) {
+    DecisionModelJudge supportJudge(MockDecisionModel judgeModel) {
         return Judge.from(judgeModel)
                 .withQuestion(criterion -> YesNoQuestion.builder()
                         .text(QUESTION_PREFIX + criterion.text())

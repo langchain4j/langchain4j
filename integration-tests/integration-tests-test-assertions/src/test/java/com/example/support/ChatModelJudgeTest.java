@@ -5,7 +5,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.test.judge.Judge;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Timeout;
 
 /**
  * Judge assertions on what the AI Services of the application produced, with a chat model as the judge (mocked with
- * ChatModelMock). The judges themselves are tested in langchain4j-test.
+ * MockChatModel). The judges themselves are tested in langchain4j-test.
  */
 @Timeout(30)
 class ChatModelJudgeTest {
@@ -40,10 +40,10 @@ class ChatModelJudgeTest {
     @Test
     void should_pass_when_the_judge_says_all_criteria_are_satisfied() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                ChatModelMock.thatResponds(ANSWER),
+                MockChatModel.thatResponds(ANSWER),
                 bookings(),
-                CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
-        ChatModelMock judgeModel = ChatModelMock.thatResponds(assessments("SATISFIED", "SATISFIED"));
+                CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
+        MockChatModel judgeModel = MockChatModel.thatResponds(assessments("SATISFIED", "SATISFIED"));
 
         String answer = capture(() -> agent.chat("klaus", "Show MS-999")).outputText();
 
@@ -63,8 +63,8 @@ class ChatModelJudgeTest {
     @Test
     void should_give_the_judge_the_sources_retrieved_by_the_ai_service() {
         PolicyExpert expert = CustomerSupport.policyExpert(
-                ChatModelMock.thatResponds("You can cancel for free up to 7 days before the start date."));
-        ChatModelMock judgeModel = ChatModelMock.thatResponds(assessments("SATISFIED"));
+                MockChatModel.thatResponds("You can cancel for free up to 7 days before the start date."));
+        MockChatModel judgeModel = MockChatModel.thatResponds(assessments("SATISFIED"));
 
         Result<String> result = expert.answerWithSources("Can I cancel for free?");
 

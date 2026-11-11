@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +74,7 @@ final class SupportScript {
     }
 
     private static ToolExecutionRequest toolCall(String name, String bookingNumber) {
-        return ChatModelMock.toolCall(name, Map.of("bookingNumber", bookingNumber));
+        return MockChatModel.toolCall(name, Map.of("bookingNumber", bookingNumber));
     }
 
     private static String earlierName(List<ChatMessage> messages) {

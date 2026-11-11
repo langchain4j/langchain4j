@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -91,7 +91,7 @@ class SkillsTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"using-process-tool\"}")
@@ -174,7 +174,7 @@ class SkillsTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"using-process-tool\"}")
@@ -241,7 +241,7 @@ class SkillsTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"using-poll-tool\"}")
@@ -370,7 +370,7 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory-management\"}")
@@ -427,7 +427,7 @@ class SkillsTest {
     private void verifyToolsHiddenBeforeActivationAndVisibleAfter(Skill skill) {
         Skills skills = Skills.from(skill);
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory-management\"}")
@@ -521,7 +521,7 @@ class SkillsTest {
 
         Skills skills = Skills.from(weatherSkill, timeSkill);
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"weather\"}")
@@ -592,7 +592,7 @@ class SkillsTest {
 
         Tools spyTools = spy(new Tools());
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory-management\"}")
@@ -688,7 +688,7 @@ class SkillsTest {
 
         Skills skills = Skills.from(inventorySkill, reportingSkill);
 
-        ChatModelMock chatModelMock = ChatModelMock.thatResponds(
+        MockChatModel chatModelMock = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder()
                                 .name("activate_skill")
@@ -785,7 +785,7 @@ class SkillsTest {
 
         Skills skills = Skills.from(skill);
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory\"}")
@@ -796,7 +796,7 @@ class SkillsTest {
                         .build()),
                 AiMessage.from("Done.")
         );
-        ChatModelMock spyChatModel = spy(chatModel);
+        MockChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
@@ -845,14 +845,14 @@ class SkillsTest {
                         .build()
         );
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"non-existent\"}")
                         .build()),
                 AiMessage.from("Sorry, that skill doesn't exist.")
         );
-        ChatModelMock spyChatModel = spy(chatModel);
+        MockChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)

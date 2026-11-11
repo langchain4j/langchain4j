@@ -17,8 +17,8 @@ import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -757,19 +757,19 @@ class AiServicesObservabilityTests {
                 if (streaming) {
                     builder.executeToolsConcurrently()
                             .streamingChatModel(
-                                    StreamingChatModelMock.thatStreams(toolRequestMessage, toolResponseMessage))
+                                    MockStreamingChatModel.thatStreams(toolRequestMessage, toolResponseMessage))
                             .tools(new Calculator());
                 } else {
-                    builder.chatModel(ChatModelMock.thatResponds(toolRequestMessage, toolResponseMessage))
+                    builder.chatModel(MockChatModel.thatResponds(toolRequestMessage, toolResponseMessage))
                             .tools(new Calculator());
                 }
             } else {
                 if (streaming) {
                     builder.executeToolsConcurrently()
-                            .streamingChatModel(StreamingChatModelMock.thatStreams(
+                            .streamingChatModel(MockStreamingChatModel.thatStreams(
                                     AiMessage.from(DEFAULT_EXPECTED_RESPONSE)));
                 } else {
-                    builder.chatModel(ChatModelMock.thatResponds(DEFAULT_EXPECTED_RESPONSE));
+                    builder.chatModel(MockChatModel.thatResponds(DEFAULT_EXPECTED_RESPONSE));
                 }
             }
 
@@ -785,10 +785,10 @@ class AiServicesObservabilityTests {
             var builder = AiServices.builder(Assistant.class).registerListeners(listeners);
 
             return streaming
-                    ? builder.streamingChatModel(StreamingChatModelMock.thatThrows(new RuntimeException(
+                    ? builder.streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException(
                                     "LLM invocation failed")))
                             .build()
-                    : builder.chatModel(ChatModelMock.thatThrows(new RuntimeException("LLM invocation failed")))
+                    : builder.chatModel(MockChatModel.thatFails(new RuntimeException("LLM invocation failed")))
                             .build();
         }
     }

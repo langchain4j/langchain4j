@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.observability;
 
-import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
-import static dev.langchain4j.test.mock.ChatModelMock.thatResponds;
+import static dev.langchain4j.test.mock.MockChatModel.thatResponds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,8 +22,8 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.DefaultAiServiceListenerRegistrar;
@@ -374,7 +373,7 @@ class AgentAiServiceEventTest {
         List<AgentAiServiceEvent> localEvents = new CopyOnWriteArrayList<>();
         List<AgentAiServiceEvent> inheritedEvents = new CopyOnWriteArrayList<>();
         Writer writer = AgenticServices.agentBuilder(Writer.class)
-                .chatModel(thatResponds("draft"))
+                .chatModel(thatResponds("draft").thenRepeats())
                 .context(agenticScope -> "Be brief.")
                 .listener(eventRecorder(localEvents, false))
                 .build();
@@ -422,7 +421,7 @@ class AgentAiServiceEventTest {
     void ai_service_events_of_a_streaming_agent_are_notified() throws Exception {
         List<String> calls = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatStreams(weatherCall(), AiMessage.from("sunny")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(weatherCall(), AiMessage.from("sunny")))
                 .tools(new WeatherTools())
                 .listener(recorder(calls, false))
                 .build();
@@ -451,7 +450,7 @@ class AgentAiServiceEventTest {
     void cancellation_of_a_streaming_agent_is_notified() throws Exception {
         CompletableFuture<AgentAiServiceEvent> cancellation = new CompletableFuture<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatStreams("a", "b", "c"))
+                .streamingChatModel(MockStreamingChatModel.thatStreamsTokens("a", "b", "c"))
                 .listener(new AgentListener() {
                     @Override
                     public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
@@ -476,7 +475,7 @@ class AgentAiServiceEventTest {
     void ai_service_error_is_notified_before_the_agent_invocation_error() {
         List<String> calls = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatThrows(new RuntimeException("model failure")))
+                .chatModel(MockChatModel.thatFails(new RuntimeException("model failure")))
                 .listener(recorder(calls, false))
                 .build();
 
@@ -782,11 +781,11 @@ class AgentAiServiceEventTest {
         String chat(String message);
     }
 
-    private static Writer writer(ChatModelMock model) {
+    private static Writer writer(MockChatModel model) {
         return AgenticServices.agentBuilder(Writer.class).chatModel(model).build();
     }
 
-    private static Reviewer reviewer(ChatModelMock model) {
+    private static Reviewer reviewer(MockChatModel model) {
         return AgenticServices.agentBuilder(Reviewer.class).chatModel(model).build();
     }
 

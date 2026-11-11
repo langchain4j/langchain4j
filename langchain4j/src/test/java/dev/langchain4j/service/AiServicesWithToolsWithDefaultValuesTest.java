@@ -16,7 +16,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
     }
 
     private static ChatModel mockReturningToolCallWithArgs(String toolName, String arguments) {
-        return ChatModelMock.thatResponds(
+        return MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name(toolName)
@@ -620,7 +620,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
      * Helper: two consecutive tool calls, both omitting the argument.
      */
     private static ChatModel mockReturningTwoToolCalls(String toolName) {
-        return ChatModelMock.thatResponds(
+        return MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name(toolName)

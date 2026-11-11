@@ -81,6 +81,13 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <!-- the model mocks copied below are published only in langchain4j-test: a module that uses -->
+                            <!-- test classes of this test-jar which need the mocks must also depend on langchain4j-test -->
+                            <excludes>
+                                <exclude>dev/langchain4j/test/mock/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -90,7 +97,7 @@
             <!-- The langchain4j-test module depends on this module -->
             <!-- So instead we will just add the source of that module to the test source of this module -->
             <!-- Core tests only need the guardrail assertions and the model mocks, so only those packages are copied (keeping their folders) -->
-            <!-- The mocks also reach other modules through the test-jar of this module: langchain4j-test depends on langchain4j, so langchain4j cannot depend on it -->
+            <!-- The test-jar of this module leaves the mocks out (see maven-jar-plugin), so they are published only in langchain4j-test: other modules depend on langchain4j-test, and langchain4j, which langchain4j-test depends on, copies them the same way -->
             <!-- Maven does not see this copy as a dependency, so a change in the mocks alone does not select these modules in incremental builds -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -147,6 +154,12 @@
                             <!-- For getting test source -->
                             <goal>test-jar-no-fork</goal>
                         </goals>
+                        <configuration>
+                            <!-- The copied mock sources are published only in langchain4j-test -->
+                            <excludes>
+                                <exclude>dev/langchain4j/test/mock/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

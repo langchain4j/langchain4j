@@ -46,7 +46,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
@@ -173,8 +173,8 @@ class HelperMethodParameterResolverTest {
     record ExchangeRates(double eurToUsd) {}
 
     /** Replies with the system message and the last user message it receives. */
-    static ChatModelMock echoModel() {
-        return ChatModelMock.thatResponds(chatRequest -> {
+    static MockChatModel echoModel() {
+        return MockChatModel.thatResponds(chatRequest -> {
             String system = chatRequest.messages().stream()
                     .filter(SystemMessage.class::isInstance)
                     .map(message -> ((SystemMessage) message).text())
@@ -183,16 +183,16 @@ class HelperMethodParameterResolverTest {
             ChatMessage last = chatRequest.messages().get(chatRequest.messages().size() - 1);
             String user = last instanceof UserMessage userMessage ? userMessage.singleText() : "";
             return AiMessage.from(system + " | " + user);
-        });
+        }).thenRepeats();
     }
 
     /** Replies with the given responses in order. */
-    static ChatModelMock scriptedModel(String... responses) {
+    static MockChatModel scriptedModel(String... responses) {
         Iterator<String> iterator = List.of(responses).iterator();
-        return ChatModelMock.thatResponds(chatRequest -> AiMessage.from(iterator.next()));
+        return MockChatModel.thatResponds(chatRequest -> AiMessage.from(iterator.next())).thenRepeats();
     }
 
-    static String receivedTexts(ChatModelMock model) {
+    static String receivedTexts(MockChatModel model) {
         return model.requests().stream()
                 .flatMap(request -> request.messages().stream())
                 .map(message -> message instanceof SystemMessage systemMessage
@@ -584,7 +584,7 @@ class HelperMethodParameterResolverTest {
         String ask(@MemoryId String memoryId, @V("question") String question);
 
         @ChatModelSupplier
-        static ChatModel chatModel(@Injected ChatModelMock model) {
+        static ChatModel chatModel(@Injected MockChatModel model) {
             return model;
         }
     }
@@ -593,7 +593,7 @@ class HelperMethodParameterResolverTest {
     void memory_id_suppliers_and_root_chat_model_parameters_are_resolved() {
         register(Persona.class, new Persona("Butler"));
         MemoryStore store = register(MemoryStore.class, new MemoryStore());
-        register(ChatModelMock.class, echoModel());
+        register(MockChatModel.class, echoModel());
 
         AssistantSequence assistant = AgenticServices.createAgenticSystem(AssistantSequence.class);
 
@@ -610,7 +610,7 @@ class HelperMethodParameterResolverTest {
         String translate(@V("text") String text);
 
         @ChatModelSupplier
-        static ChatModel chatModel(@Injected ChatModelMock model) {
+        static ChatModel chatModel(@Injected MockChatModel model) {
             return model;
         }
     }
@@ -623,7 +623,7 @@ class HelperMethodParameterResolverTest {
 
     @Test
     void chat_model_supplier_with_only_resolved_parameters_is_invoked_once_when_the_agent_is_built() {
-        ChatModelMock model = register(ChatModelMock.class, echoModel());
+        MockChatModel model = register(MockChatModel.class, echoModel());
 
         ResolvedModelTranslation translation = AgenticServices.createAgenticSystem(ResolvedModelTranslation.class);
         translation.run("ciao");
@@ -686,7 +686,7 @@ class HelperMethodParameterResolverTest {
     void supervisor_request_parameter_is_resolved_and_not_described_to_the_supervisor() {
         register(Persona.class, new Persona("banker"));
         register(ExchangeRates.class, new ExchangeRates(1.15));
-        ChatModelMock plannerModel = scriptedModel("""
+        MockChatModel plannerModel = scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
                     {"agentName": "done", "arguments": {"response": "100 EUR are 115 USD"}}

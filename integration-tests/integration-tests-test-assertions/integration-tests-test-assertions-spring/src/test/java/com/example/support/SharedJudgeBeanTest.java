@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.support.assistant.SupportAssistant;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.Question;
@@ -29,7 +29,7 @@ class SharedJudgeBeanTest {
     DecisionModelJudge supportLeadJudge;
 
     @Autowired
-    DecisionModelMock judgeModel;
+    MockDecisionModel judgeModel;
 
     @Test
     void judges_with_the_question_of_the_injected_judge() {

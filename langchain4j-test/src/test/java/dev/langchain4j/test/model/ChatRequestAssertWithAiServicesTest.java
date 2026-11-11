@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
@@ -39,7 +39,7 @@ class ChatRequestAssertWithAiServicesTest {
 
     @Test
     void should_check_the_requests_of_a_chat_model_mock() {
-        ChatModelMock model = ChatModelMock.thatResponds(request -> request.messages()
+        MockChatModel model = MockChatModel.thatResponds(request -> request.messages()
                         .get(request.messages().size() - 1)
                         instanceof ToolExecutionResultMessage
                 ? AiMessage.from("Booking MS-777 is cancelled.")
@@ -47,7 +47,7 @@ class ChatRequestAssertWithAiServicesTest {
                         .id("1")
                         .name("cancelBooking")
                         .arguments("{\"bookingNumber\":\"MS-777\"}")
-                        .build()));
+                        .build())).thenRepeats();
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new BookingTools())
@@ -61,7 +61,7 @@ class ChatRequestAssertWithAiServicesTest {
                 .hasToolSpecification("cancelBooking");
         assertThat(model.requests().get(1)).hasUserMessageContaining("MS-777");
 
-        ChatModelMock singleRequestModel = ChatModelMock.thatResponds("Hello");
+        MockChatModel singleRequestModel = MockChatModel.thatResponds("Hello");
         singleRequestModel.chat(ChatRequestAssertTest.REQUEST);
         assertThat(singleRequestModel.request()).hasSystemMessageContaining("support agent");
     }
@@ -77,7 +77,7 @@ class ChatRequestAssertWithAiServicesTest {
             }
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds("Your booking is cancelled.")
+                .chatModel(MockChatModel.thatResponds("Your booking is cancelled.")
                         .withListeners(requestCollector))
                 .tools(new BookingTools())
                 .build();

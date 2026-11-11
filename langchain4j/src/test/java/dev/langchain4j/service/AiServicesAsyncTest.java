@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -38,7 +39,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -94,7 +95,7 @@ class AiServicesAsyncTest {
     @Test
     void should_reject_raw_completion_stage_return_type_at_build_time() {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
+        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
         assertThatThrownBy(() -> AiServices.builder(RawCompletionStageAssistant.class)
                         .chatModel(chatModel)
@@ -106,7 +107,7 @@ class AiServicesAsyncTest {
     @Test
     void should_accept_parameterized_completion_stage_return_type() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin"));
 
         CompletionStageAssistant assistant = AiServices.builder(CompletionStageAssistant.class)
                 .chatModel(chatModel)
@@ -122,7 +123,7 @@ class AiServicesAsyncTest {
     @Test
     void should_augment_user_message_via_non_blocking_rag_for_completable_future_return_type() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin"));
 
         // A genuinely async content retriever (overrides retrieveAsync): the async RAG path stays non-blocking
         ContentRetriever asyncRetriever = new ContentRetriever() {
@@ -157,7 +158,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_loudly_for_a_blocking_content_retriever_on_the_async_path() {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
+        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
         // A blocking content retriever (no retrieveAsync) wired via the contentRetriever(...) convenience: the async
         // call fails loudly. To offload it, build the augmentor explicitly with offloadBlocking(true) (see the next
@@ -178,7 +179,7 @@ class AiServicesAsyncTest {
     void explicit_augmentor_with_offloadBlocking_offloads_a_blocking_content_retriever() throws Exception {
         // The way to offload a blocking retriever: build the DefaultRetrievalAugmentor explicitly with
         // offloadBlocking(true) and pass it via retrievalAugmentor(...). The blocking work lives with the augmentor.
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -198,7 +199,7 @@ class AiServicesAsyncTest {
     @Test
     void custom_augmentor_implementing_augmentAsync_runs_on_the_async_path() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin"));
 
         // A custom RetrievalAugmentor becomes async by implementing augmentAsync (here it offloads its own blocking
         // augment() to a virtual thread) - the component owns the decision, not the AI Service.
@@ -236,7 +237,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_loudly_for_a_blocking_custom_augmentor_on_the_async_path() {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
+        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
         // A blocking custom augmentor (only implements augment(), so augmentAsync throws): the async call must fail
         // with a clear, actionable error rather than silently offloading. To be async, implement augmentAsync.
@@ -261,7 +262,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_completable_future_without_invoking_blocking_chat() throws Exception {
 
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds("Berlin"));
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -322,7 +323,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds(
+        MockChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees")));
         Tools tools = new Tools();
 
@@ -374,7 +375,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = spy(ChatModelMock.thatResponds(
+        MockChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent")));
         ConcurrentTools tools = new ConcurrentTools();
 
@@ -398,8 +399,8 @@ class AiServicesAsyncTest {
     @Test
     void should_use_chat_memory() throws Exception {
 
-        ChatModelMock chatModel =
-                ChatModelMock.thatResponds(AiMessage.from("first answer"), AiMessage.from("second answer"));
+        MockChatModel chatModel =
+                MockChatModel.thatResponds(AiMessage.from("first answer"), AiMessage.from("second answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -423,7 +424,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_result() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
+        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatModel(chatModel)
@@ -443,7 +444,7 @@ class AiServicesAsyncTest {
     @Test
     void should_not_append_output_format_instructions_when_returning_chat_response() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin");
+        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
         AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
                 .chatModel(chatModel)
@@ -460,8 +461,8 @@ class AiServicesAsyncTest {
     @Test
     void should_not_send_json_schema_when_returning_chat_response() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("Berlin")
-                .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+        MockChatModel chatModel = spy(MockChatModel.thatResponds("Berlin")); // supports JSON schemas
+        doReturn(Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA)).when(chatModel).supportedCapabilities();
 
         AssistantReturningChatResponse assistant = AiServices.builder(AssistantReturningChatResponse.class)
                 .chatModel(chatModel)
@@ -489,7 +490,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_pojo() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("{\"name\": \"Klaus\"}");
+        MockChatModel chatModel = MockChatModel.thatResponds("{\"name\": \"Klaus\"}");
 
         AssistantReturningPojo assistant = AiServices.builder(AssistantReturningPojo.class)
                 .chatModel(chatModel)
@@ -508,7 +509,7 @@ class AiServicesAsyncTest {
     @Test
     void should_return_result_with_pojo() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("{\"name\": \"Klaus\"}");
+        MockChatModel chatModel = MockChatModel.thatResponds("{\"name\": \"Klaus\"}");
 
         AssistantReturningResultWithPojo assistant = AiServices.builder(AssistantReturningResultWithPojo.class)
                 .chatModel(chatModel)
@@ -528,7 +529,7 @@ class AiServicesAsyncTest {
 
     /**
      * A model that reports JSON-schema support and completes off-thread. Needed for return types whose output
-     * parser only supports a JSON schema (e.g. a list of POJOs), where {@link ChatModelMock} (no declared
+     * parser only supports a JSON schema (e.g. a list of POJOs), where {@link MockChatModel} (no declared
      * capabilities) would fall back to text format instructions that such a parser does not provide.
      */
     static class JsonSchemaCapableModel implements ChatModel {
@@ -583,7 +584,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_enum__async() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("POSITIVE");
+        MockChatModel chatModel = MockChatModel.thatResponds("POSITIVE");
 
         AssistantReturningEnum assistant = AiServices.builder(AssistantReturningEnum.class)
                 .chatModel(chatModel)
@@ -600,7 +601,7 @@ class AiServicesAsyncTest {
     @Test
     void should_parse_boolean__async() throws Exception {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("true");
+        MockChatModel chatModel = MockChatModel.thatResponds("true");
 
         AssistantReturningBoolean assistant = AiServices.builder(AssistantReturningBoolean.class)
                 .chatModel(chatModel)
@@ -617,7 +618,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
@@ -641,7 +642,7 @@ class AiServicesAsyncTest {
     @Test
     void should_fail_future_when_model_fails() {
 
-        ChatModelMock chatModel = ChatModelMock.thatThrows(new RuntimeException("boom"));
+        MockChatModel chatModel = MockChatModel.thatFails(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -667,7 +668,7 @@ class AiServicesAsyncTest {
     @Test
     void model_error_propagates_original_cause_without_completion_exception() {
 
-        ChatModelMock chatModel = ChatModelMock.thatThrows(new RuntimeException("boom"));
+        MockChatModel chatModel = MockChatModel.thatFails(new RuntimeException("boom"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -703,8 +704,8 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel =
-                ChatModelMock.thatResponds(AiMessage.from(toolExecutionRequest), AiMessage.from("ignored"));
+        MockChatModel chatModel =
+                MockChatModel.thatResponds(AiMessage.from(toolExecutionRequest), AiMessage.from("ignored"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -743,7 +744,7 @@ class AiServicesAsyncTest {
     void output_guardrail_error_propagates_original_cause_without_completion_exception() {
 
         OutputGuardedAssistant assistant = AiServices.builder(OutputGuardedAssistant.class)
-                .chatModel(ChatModelMock.thatResponds("Berlin"))
+                .chatModel(MockChatModel.thatResponds("Berlin"))
                 .build();
 
         CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
@@ -795,7 +796,7 @@ class AiServicesAsyncTest {
         // tool-aware reprompt executor must resolve that tool (via the async tool loop) so the guardrail only ever
         // sees the final textual answer, not the intermediate tool-calling message.
         RepromptWeatherTool tool = new RepromptWeatherTool();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from("bad answer"),
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -1005,7 +1006,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(firstRequest), AiMessage.from(secondRequest), AiMessage.from("It is 42 degrees"));
         Tools tools = new Tools();
 
@@ -1033,7 +1034,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(ignored -> AiMessage.from(toolExecutionRequest));
+        MockChatModel chatModel = MockChatModel.thatResponds(ignored -> AiMessage.from(toolExecutionRequest)).thenRepeats();
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1058,7 +1059,7 @@ class AiServicesAsyncTest {
                 .name("unknownTool")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(AiMessage.from(hallucinatedRequest));
+        MockChatModel chatModel = MockChatModel.thatResponds(AiMessage.from(hallucinatedRequest));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1139,7 +1140,7 @@ class AiServicesAsyncTest {
         // non-blocking), so a violation is delivered via the returned future rather than thrown synchronously
         // from the AI Service method.
         AssistantWithInputGuardrail assistant = AiServices.builder(AssistantWithInputGuardrail.class)
-                .chatModel(ChatModelMock.thatResponds("Berlin"))
+                .chatModel(MockChatModel.thatResponds("Berlin"))
                 .build();
 
         CompletableFuture<String> future = assistant.chat("Hi");
@@ -1170,7 +1171,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         AsyncTools tools = new AsyncTools();
 
@@ -1243,7 +1244,7 @@ class AiServicesAsyncTest {
                     .name("currentHumidity")
                     .arguments("{}")
                     .build();
-            ChatModelMock chatModel = ChatModelMock.thatResponds(
+            MockChatModel chatModel = MockChatModel.thatResponds(
                     AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
             ConcurrentAsyncTools tools = new ConcurrentAsyncTools(toolPool);
 
@@ -1296,7 +1297,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         MixedTools tools = new MixedTools();
 
@@ -1347,7 +1348,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         SequentialAsyncTools tools = new SequentialAsyncTools();
 
@@ -1385,7 +1386,7 @@ class AiServicesAsyncTest {
                 .arguments("{}")
                 .build();
         // each round the LLM calls a single async tool, then answers
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(firstRoundRequest),
                 AiMessage.from(secondRoundRequest),
                 AiMessage.from("42 degrees, 69 percent"));
@@ -1433,7 +1434,7 @@ class AiServicesAsyncTest {
                 .name("currentHumidity")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("It is 69 percent humidity"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1477,7 +1478,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
         AsyncTools tools = new AsyncTools();
 
@@ -1510,8 +1511,8 @@ class AiServicesAsyncTest {
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
-        ChatModelMock chatModel =
-                ChatModelMock.thatResponds(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+        MockChatModel chatModel =
+                MockChatModel.thatResponds(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1551,7 +1552,7 @@ class AiServicesAsyncTest {
         ToolProvider toolProvider =
                 request -> ToolProviderResult.builder().add(toolSpecification, toolExecutor).build();
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1594,7 +1595,7 @@ class AiServicesAsyncTest {
                         CompletableFuture.delayedExecutor(50, MILLISECONDS));
             }
         };
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1626,7 +1627,7 @@ class AiServicesAsyncTest {
                 .build();
         ToolExecutor syncOnlyToolExecutor = (request, memoryId) -> "42";
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("currentTemperature")
@@ -1668,7 +1669,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the temperature"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1704,7 +1705,7 @@ class AiServicesAsyncTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the temperature"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1733,7 +1734,7 @@ class AiServicesAsyncTest {
     void should_fail_when_completable_future_is_not_parameterized() {
 
         assertThatThrownBy(() -> AiServices.builder(AssistantReturningRawFuture.class)
-                        .chatModel(ChatModelMock.thatResponds("Berlin"))
+                        .chatModel(MockChatModel.thatResponds("Berlin"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be parameterized with a concrete type");
@@ -1748,7 +1749,7 @@ class AiServicesAsyncTest {
     void should_fail_when_completable_future_is_parameterized_with_wildcard() {
 
         assertThatThrownBy(() -> AiServices.builder(AssistantReturningWildcardFuture.class)
-                        .chatModel(ChatModelMock.thatResponds("Berlin"))
+                        .chatModel(MockChatModel.thatResponds("Berlin"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must be parameterized with a concrete type");

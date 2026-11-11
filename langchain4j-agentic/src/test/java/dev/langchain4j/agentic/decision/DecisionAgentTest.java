@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.decision.DecisionMocks.answeringYes;
 import static dev.langchain4j.agentic.decision.DecisionMocks.choosing;
 import static dev.langchain4j.agentic.decision.DecisionMocks.scaling;
 import static dev.langchain4j.agentic.decision.DecisionMocks.triaging;
+import static dev.langchain4j.agentic.decision.DecisionMocks.withTokenUsage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.offset;
@@ -42,7 +43,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -139,7 +140,7 @@ class DecisionAgentTest {
 
     @Test
     void should_answer_an_enum() {
-        DecisionModelMock model = choosing("LEGAL", 0.9);
+        MockDecisionModel model = choosing("LEGAL", 0.9);
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(model)
                 .build();
@@ -194,7 +195,7 @@ class DecisionAgentTest {
 
     @Test
     void should_answer_the_questions_of_a_record_in_one_call() {
-        DecisionModelMock model = triaging("BILLING", 0.8, "ANGRY");
+        MockDecisionModel model = triaging("BILLING", 0.8, "ANGRY");
         TicketTriage triage = AgenticServices.decisionAgentBuilder(TicketTriage.class)
                 .decisionModel(model)
                 .build();
@@ -209,7 +210,7 @@ class DecisionAgentTest {
     @Test
     void should_answer_a_decision_result_with_the_response_of_the_model() {
         AuditedCategoryRouter router = AgenticServices.decisionAgentBuilder(AuditedCategoryRouter.class)
-                .decisionModel(choosing("LEGAL", 0.9).withTokenUsage(new TokenUsage(40, 2)))
+                .decisionModel(withTokenUsage(choosing("LEGAL", 0.9), new TokenUsage(40, 2)))
                 .build();
 
         Object result = sequenceOf(router, "category").invoke(Map.of("request", LEGAL_REQUEST));
@@ -222,7 +223,7 @@ class DecisionAgentTest {
 
     @Test
     void should_convert_the_arguments_read_from_the_scope_to_the_declared_types() {
-        DecisionModelMock model = answeringYes(0.9);
+        MockDecisionModel model = answeringYes(0.9);
         CreditEligibility eligibility = AgenticServices.decisionAgentBuilder(CreditEligibility.class)
                 .decisionModel(model)
                 .build();
@@ -246,7 +247,7 @@ class DecisionAgentTest {
 
     @Test
     void should_skip_an_optional_agent_when_an_argument_is_missing() {
-        DecisionModelMock model = choosing("LEGAL", 0.9);
+        MockDecisionModel model = choosing("LEGAL", 0.9);
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(model)
                 .optional(true)
@@ -260,7 +261,7 @@ class DecisionAgentTest {
 
     @Test
     void should_skip_the_agent_when_its_activation_condition_is_false() {
-        DecisionModelMock model = choosing("LEGAL", 0.9);
+        MockDecisionModel model = choosing("LEGAL", 0.9);
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(model)
                 .activationCondition(
@@ -314,7 +315,7 @@ class DecisionAgentTest {
     void should_propagate_the_failure_of_the_decision_model() {
         RuntimeException failure = new RuntimeException("rate limit exceeded");
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAnswers(request -> {
+                .decisionModel(MockDecisionModel.thatAnswers(request -> {
                     throw failure;
                 }))
                 .build();
@@ -328,7 +329,7 @@ class DecisionAgentTest {
     @Test
     void should_propagate_a_refusal_as_a_failure_without_writing_the_output_key() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAnswers(Map.of("classify", RefusalAnswer.of())))
+                .decisionModel(MockDecisionModel.thatAnswers(Map.of("classify", RefusalAnswer.of())))
                 .build();
         AgentMonitor monitor = new AgentMonitor();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
@@ -350,7 +351,7 @@ class DecisionAgentTest {
     void should_retry_the_decision_when_the_error_handler_asks_for_it() {
         AtomicInteger calls = new AtomicInteger();
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatAnswers(request -> {
+                .decisionModel(MockDecisionModel.thatAnswers(request -> {
                     if (calls.incrementAndGet() == 1) {
                         throw new RuntimeException("transient failure");
                     }
@@ -373,7 +374,7 @@ class DecisionAgentTest {
     @Test
     void should_write_the_substitute_result_of_the_error_handler() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                .decisionModel(MockDecisionModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .build();
         UntypedAgent sequence = AgenticServices.sequenceBuilder()
                 .subAgents(router)
@@ -389,7 +390,7 @@ class DecisionAgentTest {
         List<AgentResponse> responses = new ArrayList<>();
         AgentMonitor monitor = new AgentMonitor();
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(choosing("LEGAL", 0.9).withTokenUsage(new TokenUsage(40, 2)))
+                .decisionModel(withTokenUsage(choosing("LEGAL", 0.9), new TokenUsage(40, 2)))
                 .listener(new AgentListener() {
                     @Override
                     public void afterAgentInvocation(AgentResponse agentResponse) {
@@ -450,8 +451,8 @@ class DecisionAgentTest {
 
     @Test
     void should_pick_the_decision_model_from_the_scope_at_every_invocation() {
-        DecisionModelMock legalModel = choosing("LEGAL", 0.9);
-        DecisionModelMock medicalModel = choosing("MEDICAL", 0.9);
+        MockDecisionModel legalModel = choosing("LEGAL", 0.9);
+        MockDecisionModel medicalModel = choosing("MEDICAL", 0.9);
         AtomicInteger resolutions = new AtomicInteger();
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModelProvider(scope -> {
@@ -470,7 +471,7 @@ class DecisionAgentTest {
 
     @Test
     void should_apply_the_request_parameters_of_the_builder() {
-        DecisionModelMock model = choosing("LEGAL", 0.9);
+        MockDecisionModel model = choosing("LEGAL", 0.9);
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
                 .decisionModel(model)
                 .requestParameters(DecisionRequestParameters.builder()
@@ -505,7 +506,7 @@ class DecisionAgentTest {
     @Test
     void should_wrap_a_failure_outside_an_agentic_system() {
         CategoryRouter router = AgenticServices.decisionAgentBuilder(CategoryRouter.class)
-                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
+                .decisionModel(MockDecisionModel.thatFails(new RuntimeException("down")))
                 .build();
 
         assertThatThrownBy(() -> router.classify(LEGAL_REQUEST))

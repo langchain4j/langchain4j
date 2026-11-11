@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
@@ -50,9 +50,9 @@ class SkillsWithToolSearchStreamingTest {
         );
 
         // LLM call 1: sees activate_skill + tool_search_tool, responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 AiMessage.from("I don't need any skill."));
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -100,14 +100,14 @@ class SkillsWithToolSearchStreamingTest {
 
         // LLM call 1: calls tool_search_tool to search for "inventory"
         // LLM call 2: gets search result, responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("tool_search_tool")
                         .arguments("{\"terms\": [\"inventory\"]}")
                         .build()),
                 AiMessage.from("No inventory tool found via search.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -167,7 +167,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 1: calls activate_skill
         // LLM call 2: calls query_inventory (now visible after activation)
         // LLM call 3: responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -181,7 +181,7 @@ class SkillsWithToolSearchStreamingTest {
                 // second invocation
                 AiMessage.from("Still 47 units in stock.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -255,7 +255,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 2: calls tool_search_tool to find weather tool
         // LLM call 3: calls getWeather (now found via search)
         // LLM call 4: responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -273,7 +273,7 @@ class SkillsWithToolSearchStreamingTest {
                 // second invocation: getWeather already effective from first invocation
                 AiMessage.from("Still sunny.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -366,7 +366,7 @@ class SkillsWithToolSearchStreamingTest {
         // LLM call 1: activates weather skill only
         // LLM call 2: calls get_weather
         // LLM call 3: responds with text
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -380,7 +380,7 @@ class SkillsWithToolSearchStreamingTest {
                 // second invocation
                 AiMessage.from("Still sunny.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)

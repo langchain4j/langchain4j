@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -46,7 +46,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_a_multimodal_user_message() {
-        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel model = MockChatModel.thatResponds("Three llamas.");
         ImageDescriber describer = AgenticServices.agentBuilder(ImageDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -66,7 +66,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_a_user_message_without_text() {
-        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel model = MockChatModel.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -84,7 +84,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_leave_a_user_message_without_text_unchanged_when_the_context_is_empty() {
-        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel model = MockChatModel.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .chatModel(model)
                 .context(scope -> "")
@@ -101,7 +101,7 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_add_the_context_to_all_the_text_of_a_user_message_with_several_text_contents() {
-        ChatModelMock model = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel model = MockChatModel.thatResponds("Three llamas.");
         ContentsDescriber describer = AgenticServices.agentBuilder(ContentsDescriber.class)
                 .chatModel(model)
                 .context(scope -> "The user loves llamas.")
@@ -123,16 +123,16 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_mention_the_contents_of_a_user_message_without_text_in_the_summarized_context() {
-        ChatModelMock describerModel = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel describerModel = MockChatModel.thatResponds("Three llamas.");
         ImageOnlyDescriber describer = AgenticServices.agentBuilder(ImageOnlyDescriber.class)
                 .name("describer")
                 .chatModel(describerModel)
                 .build();
 
-        ChatModelMock writerModel = ChatModelMock.thatResponds(request -> AiMessage.from(
+        MockChatModel writerModel = MockChatModel.thatResponds(request -> AiMessage.from(
                 userMessage(request).singleText().startsWith("Create a short summary")
                         ? "The describer saw three llamas."
-                        : "A poem about llamas."));
+                        : "A poem about llamas.")).thenRepeats();
         PoemWriter writer = AgenticServices.agentBuilder(PoemWriter.class)
                 .name("writer")
                 .chatModel(writerModel)
@@ -153,16 +153,16 @@ class MultimodalAgentContextTest {
 
     @Test
     void should_summarize_a_context_containing_a_multimodal_user_message() {
-        ChatModelMock describerModel = ChatModelMock.thatResponds("Three llamas.");
+        MockChatModel describerModel = MockChatModel.thatResponds("Three llamas.");
         ImageDescriber describer = AgenticServices.agentBuilder(ImageDescriber.class)
                 .name("describer")
                 .chatModel(describerModel)
                 .build();
 
-        ChatModelMock writerModel = ChatModelMock.thatResponds(request -> AiMessage.from(
+        MockChatModel writerModel = MockChatModel.thatResponds(request -> AiMessage.from(
                 userMessage(request).singleText().startsWith("Create a short summary")
                         ? "The describer saw three llamas."
-                        : "A poem about llamas."));
+                        : "A poem about llamas.")).thenRepeats();
         PoemWriter writer = AgenticServices.agentBuilder(PoemWriter.class)
                 .name("writer")
                 .chatModel(writerModel)

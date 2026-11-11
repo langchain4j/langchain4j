@@ -1,14 +1,11 @@
-package dev.langchain4j.test.mock;
+package dev.langchain4j.model.decision.mock;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.Internal;
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -16,6 +13,8 @@ import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.test.mock.MockDecisionModel;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,23 +23,31 @@ import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 
 /**
- * A {@link DecisionModel} for tests: it needs no network, answers with fixed or computed answers, and records the
- * requests it receives. It supports both {@link #decide(DecisionRequest)} and {@link #decideAsync(DecisionRequest)} (the
- * future is already completed when returned).
+ * A {@link DecisionModel} for tests: it answers with fixed or computed answers and records the requests it receives.
+ * It supports both {@link #decide(DecisionRequest)} and {@link #decideAsync(DecisionRequest)} (the future is already
+ * completed when returned), unless created with {@link #withoutAsyncSupport()}.
+ *
+ * @deprecated use {@link MockDecisionModel} from the {@code langchain4j-test} module. {@code requests()} and
+ * {@code request()} have the same names. {@code withTokenUsage(...)}, {@code withoutAsyncSupport()} and
+ * {@code withAsyncResponse(...)} have no replacement, and asynchronous calls complete on another thread. Another
+ * difference: {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} takes a {@code ToDoubleFunction},
+ * so a lambda compiles unchanged, but a variable of type {@code Function<YesNoQuestion, Double>} does not.
  */
 @Experimental
+@Deprecated(since = "1.24.0", forRemoval = true)
 public class DecisionModelMock implements DecisionModel {
 
     private final Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers;
-    private final RecordedRequests<DecisionRequest> requests = new RecordedRequests<>("decision");
+    private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
     private TokenUsage tokenUsage;
-    private String modelName;
-    private ModelProvider provider = ModelProvider.OTHER;
     private boolean asyncSupported = true;
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
-    private List<DecisionModelListener> listeners = List.of();
 
-    private DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
+    /**
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)}
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
         this.answers = ensureNotNull(answers, "answers");
     }
 
@@ -53,32 +60,10 @@ public class DecisionModelMock implements DecisionModel {
     }
 
     /**
-     * Reports the given model name in every response.
-     */
-    public DecisionModelMock withModelName(String modelName) {
-        this.modelName = modelName;
-        return this;
-    }
-
-    /**
-     * Returns the given provider from {@link #provider()}.
-     */
-    public DecisionModelMock withProvider(ModelProvider provider) {
-        this.provider = ensureNotNull(provider, "provider");
-        return this;
-    }
-
-    @Override
-    public ModelProvider provider() {
-        return provider;
-    }
-
-    /**
      * Makes {@link #decideAsync(DecisionRequest)} fail with an
-     * {@link AsyncNotSupportedException}, like a decision model without asynchronous
+     * {@link dev.langchain4j.exception.AsyncNotSupportedException}, like a decision model without asynchronous
      * support.
      */
-    @Internal
     public DecisionModelMock withoutAsyncSupport() {
         this.asyncSupported = false;
         return this;
@@ -88,7 +73,6 @@ public class DecisionModelMock implements DecisionModel {
      * Makes {@link #decideAsync(DecisionRequest)} return the future given by the function instead of answering, for
      * example a future that is never completed, to test cancellation.
      */
-    @Internal
     public DecisionModelMock withAsyncResponse(Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse) {
         this.asyncResponse = asyncResponse;
         return this;
@@ -119,16 +103,12 @@ public class DecisionModelMock implements DecisionModel {
     private DecisionResponse respond(DecisionRequest request) {
         return DecisionResponse.builder()
                 .answers(answers.apply(request))
-                .modelName(modelName)
                 .tokenUsage(tokenUsage)
                 .build();
     }
 
-    /**
-     * A copy of the requests received so far, in the order they arrived.
-     */
     public List<DecisionRequest> requests() {
-        return requests.all();
+        return new ArrayList<>(requests);
     }
 
     /**
@@ -137,20 +117,30 @@ public class DecisionModelMock implements DecisionModel {
      * @throws IllegalStateException if the mock received no request or several requests.
      */
     public DecisionRequest request() {
-        return requests.only();
+        List<DecisionRequest> requests = requests();
+        if (requests.size() != 1) {
+            throw new IllegalStateException("Expected exactly 1 request, but received " + requests.size());
+        }
+        return requests.get(0);
     }
 
     /**
-     * Answers every request with the given answers, keyed by question name.
+     * Always answers with the given answers, keyed by question name.
+     *
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Map)}
      */
-    public static DecisionModelMock thatAnswers(Map<String, ? extends DecisionAnswer> answers) {
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public static DecisionModelMock thatAlwaysAnswers(Map<String, ? extends DecisionAnswer> answers) {
         ensureNotNull(answers, "answers");
         return new DecisionModelMock(request -> answers);
     }
 
     /**
      * Answers with the answers computed from each request, keyed by question name.
+     *
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)}
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswers(
             Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
         return new DecisionModelMock(answers);
@@ -158,7 +148,10 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * Answers every question of each request with the answer computed from the question.
+     *
+     * @deprecated use {@link MockDecisionModel#thatAnswersQuestions(Function)}
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswersQuestions(Function<Question, ? extends DecisionAnswer> answer) {
         ensureNotNull(answer, "answer");
         return new DecisionModelMock(request -> {
@@ -172,37 +165,35 @@ public class DecisionModelMock implements DecisionModel {
      * Answers every yes/no question of each request with the probability computed from the question.
      *
      * @throws IllegalStateException when a request contains a question that is not a yes/no question.
+     *
+     * @deprecated use {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)}
      */
-    public static DecisionModelMock thatAnswersYesNoQuestions(ToDoubleFunction<YesNoQuestion> probability) {
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public static DecisionModelMock thatAnswersYesNoQuestions(Function<YesNoQuestion, Double> probability) {
         ensureNotNull(probability, "probability");
         return thatAnswersQuestions(question -> {
             if (!(question instanceof YesNoQuestion yesNoQuestion)) {
                 throw new IllegalStateException("Expected a yes/no question, but got " + question);
             }
-            return YesNoAnswer.from(probability.applyAsDouble(yesNoQuestion));
+            return YesNoAnswer.from(probability.apply(yesNoQuestion));
         });
     }
 
     /**
-     * A model whose requests all fail with the given exception.
+     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)}
      */
-    public static DecisionModelMock thatThrows(RuntimeException exception) {
-        ensureNotNull(exception, "exception");
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public static DecisionModelMock thatAlwaysThrowsException() {
+        return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
+    }
+
+    /**
+     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)}
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public static DecisionModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new DecisionModelMock(request -> {
-            throw exception;
+            throw new RuntimeException(message);
         });
-    }
-
-    /**
-     * Notifies the given listeners of each call, like a real model does.
-     */
-    public DecisionModelMock withListeners(DecisionModelListener... listeners) {
-        this.listeners = List.of(listeners);
-        return this;
-    }
-
-    @Override
-    public List<DecisionModelListener> listeners() {
-        return listeners;
     }
 }

@@ -8,8 +8,8 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -29,14 +29,14 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class CaptureReturnTypesTest {
 
-    PolicyExpert policyExpert = CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused"));
+    PolicyExpert policyExpert = CustomerSupport.policyExpert(MockChatModel.thatResponds("unused"));
 
     @Test
     void should_capture_ai_service_returning_string() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                ChatModelMock.thatResponds(callToolsThenAnswer(
+                MockChatModel.thatResponds(callToolsThenAnswer(
                         "Your booking MS-777 starts on 2026-11-02.",
-                        toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"))),
+                        toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"))).thenRepeats(),
                 bookings(),
                 policyExpert);
 
@@ -60,8 +60,8 @@ class CaptureReturnTypesTest {
     @Test
     void should_capture_ai_service_returning_result() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                ChatModelMock.thatResponds(callToolsThenAnswer(
-                        "Booking MS-777 cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))),
+                MockChatModel.thatResponds(callToolsThenAnswer(
+                        "Booking MS-777 cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))).thenRepeats(),
                 bookings(),
                 policyExpert);
 
@@ -77,8 +77,8 @@ class CaptureReturnTypesTest {
     @Test
     void should_assert_on_result_without_capture() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                ChatModelMock.thatResponds(callToolsThenAnswer(
-                        "Booking MS-777 cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))),
+                MockChatModel.thatResponds(callToolsThenAnswer(
+                        "Booking MS-777 cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))).thenRepeats(),
                 bookings(),
                 policyExpert);
 
@@ -94,7 +94,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_capture_token_stream_started_in_the_lambda() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams(
+                MockStreamingChatModel.thatStreams(
                         toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-888\"}"),
                         AiMessage.from("It ends on 2026-12-27.")),
                 bookings());
@@ -114,7 +114,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_wait_for_token_stream_started_by_captured_code() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams("Hello", ", how can I help?"), bookings());
+                MockStreamingChatModel.thatStreamsTokens("Hello", ", how can I help?"), bookings());
         List<String> tokens = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = capture(() -> agent.chat("Hi")
@@ -130,7 +130,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_capture_token_stream_started_with_the_handlers_it_was_given() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams("Hi there"), bookings());
+                MockStreamingChatModel.thatStreams("Hi there"), bookings());
         List<String> tokens = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = capture(() -> agent.chat("Hi")
@@ -146,7 +146,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_fail_fast_when_the_returned_token_stream_was_not_started() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams("Hi there"), bookings());
+                MockStreamingChatModel.thatStreams("Hi there"), bookings());
         List<String> tokens = new CopyOnWriteArrayList<>();
 
         assertThatThrownBy(() -> capture(() -> agent.chat("Hi").onPartialResponse(tokens::add).ignoreErrors()))
@@ -159,8 +159,8 @@ class CaptureReturnTypesTest {
     @Test
     void should_wait_for_returned_completable_future() {
         AsyncCustomerSupportAgent agent = CustomerSupport.asyncCustomerSupportAgent(
-                ChatModelMock.thatResponds(callToolsThenAnswer(
-                        "Cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))),
+                MockChatModel.thatResponds(callToolsThenAnswer(
+                        "Cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))).thenRepeats(),
                 bookings());
         AtomicReference<CompletableFuture<String>> future = new AtomicReference<>();
 
@@ -178,7 +178,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_wait_for_completable_future_that_is_not_returned() {
         AsyncCustomerSupportAgent agent = CustomerSupport.asyncCustomerSupportAgent(
-                ChatModelMock.thatResponds("Hello!"), bookings());
+                MockChatModel.thatResponds("Hello!"), bookings());
 
         AiServiceInvocation invocation = capture(() -> {
                     agent.chat("Hi");
@@ -191,7 +191,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_subscribe_to_returned_publisher_and_wait_for_it() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams(
+                MockStreamingChatModel.thatStreams(
                         toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"), AiMessage.from("Done.")),
                 bookings());
 
@@ -204,7 +204,7 @@ class CaptureReturnTypesTest {
     @Test
     void should_wait_for_publisher_subscribed_to_by_captured_code() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams("Good ", "morning"), bookings());
+                MockStreamingChatModel.thatStreamsTokens("Good ", "morning"), bookings());
         List<String> items = new CopyOnWriteArrayList<>();
 
         AiServiceInvocation invocation = capture(() -> agent.chatReactive("Hi").subscribe(new Flow.Subscriber<>() {
@@ -232,7 +232,7 @@ class CaptureReturnTypesTest {
 
     @Test
     void should_capture_structured_output() {
-        BookingRequestExtractor extractor = CustomerSupport.bookingRequestExtractor(ChatModelMock.thatResponds(
+        BookingRequestExtractor extractor = CustomerSupport.bookingRequestExtractor(MockChatModel.thatResponds(
                 "{\"bookingNumber\":\"MS-777\",\"action\":\"cancel\",\"numberOfGuests\":2}"));
 
         AiServiceInvocation invocation = capture(() -> extractor.extract(

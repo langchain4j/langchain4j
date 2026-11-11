@@ -7,9 +7,9 @@ import static dev.langchain4j.test.quarkus.Models.useStreamingChatModel;
 
 import com.example.support.CustomerSupportAssistant;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -35,7 +35,7 @@ class JudgeTest {
     DecisionModelJudge supportJudge;
 
     @Inject
-    DecisionModelMock supportJudgeModel;
+    MockDecisionModel supportJudgeModel;
 
     private AiServiceInvocation askAboutReturns() {
         useChatModelResponding(AiMessage.from(ANSWER));
@@ -45,7 +45,7 @@ class JudgeTest {
     @Test
     void chat_model_judge_passes_satisfied_criteria() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatResponds(
+        MockChatModel judgeModel = MockChatModel.thatResponds(
                 """
                 {"assessments":[
                   {"conditionNumber":1,"reasoning":"It says 30 days.","result":"SATISFIED"},
@@ -65,7 +65,7 @@ class JudgeTest {
     @Test
     void chat_model_judge_fails_with_reasoning_of_unsatisfied_criterion() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatResponds(
+        MockChatModel judgeModel = MockChatModel.thatResponds(
                 """
                 {"assessments":[
                   {"conditionNumber":1,"reasoning":"The answer does not offer an exchange.","result":"NOT_SATISFIED"}]}
@@ -83,10 +83,10 @@ class JudgeTest {
     @Test
     void chat_model_judge_with_one_call_per_criterion() {
         AiServiceInvocation invocation = askAboutReturns();
-        ChatModelMock judgeModel = ChatModelMock.thatResponds(
+        MockChatModel judgeModel = MockChatModel.thatResponds(
                 """
                 {"assessments":[{"conditionNumber":1,"reasoning":"ok","result":"SATISFIED"}]}
-                """);
+                """).thenRepeats();
 
         Judge.from(judgeModel)
                 .withOneRequestPerCriterion()
@@ -99,7 +99,7 @@ class JudgeTest {
     @Test
     void decision_model_judge_passes_above_threshold() {
         AiServiceInvocation invocation = askAboutReturns();
-        DecisionModelMock judgeModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
+        MockDecisionModel judgeModel = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judgeModel)
                 .withThreshold(0.8)
@@ -114,7 +114,7 @@ class JudgeTest {
     @Test
     void decision_model_judge_fails_below_threshold_with_probability() {
         AiServiceInvocation invocation = askAboutReturns();
-        DecisionModelMock judgeModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.3);
+        MockDecisionModel judgeModel = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.3);
 
         assertThatThrownBy(() -> Judge.from(judgeModel)
                         .assertThat(invocation.outputText())
@@ -126,11 +126,11 @@ class JudgeTest {
 
     @Test
     void judges_streamed_answer() {
-        useStreamingChatModel(StreamingChatModelMock.thatStreams("Returns ", "are ", "free."));
+        useStreamingChatModel(MockStreamingChatModel.thatStreamsTokens("Returns ", "are ", "free."));
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> assistant.chatStream(QUESTION))
                 .invocation();
 
-        Judge.from(DecisionModelMock.thatAnswersYesNoQuestions(question -> 1.0))
+        Judge.from(MockDecisionModel.thatAnswersYesNoQuestions(question -> 1.0))
                 .assertThat(invocation.outputText())
                 .basedOnContents(invocation.sources())
                 .satisfies("says that returns are free");
@@ -186,7 +186,7 @@ class JudgeTest {
                 .startsWith(TestJudges.QUESTION_PREFIX);
     }
 
-    private static DecisionRequest last(DecisionModelMock model) {
+    private static DecisionRequest last(MockDecisionModel model) {
         return model.requests().get(model.requests().size() - 1);
     }
 }

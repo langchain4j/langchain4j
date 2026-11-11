@@ -13,7 +13,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.test.service.AiServiceCapture;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -31,12 +31,12 @@ class LangChain4jAssertionsTest {
     BookingRepository bookings = bookings();
 
     CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-            ChatModelMock.thatResponds(callToolsThenAnswer(
+            MockChatModel.thatResponds(callToolsThenAnswer(
                     results -> "Cancelled, you get " + results.get(1) + " EUR back.",
                     toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"),
-                    toolCall("calculateRefund", "{\"bookingNumber\":\"MS-777\",\"days\":2}"))),
+                    toolCall("calculateRefund", "{\"bookingNumber\":\"MS-777\",\"days\":2}"))).thenRepeats(),
             bookings,
-            CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
+            CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
 
     @Test
     void should_mix_langchain4j_and_assertj_assertions() {

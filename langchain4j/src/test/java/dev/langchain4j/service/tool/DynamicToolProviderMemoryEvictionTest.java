@@ -6,8 +6,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -53,7 +53,7 @@ class DynamicToolProviderMemoryEvictionTest {
     @Test
     void blocking_tool_loop_survives_user_message_eviction() {
 
-        ChatModelMock model = ChatModelMock.thatResponds(callTime(), callTime(), AiMessage.from("It is 12:00."));
+        MockChatModel model = MockChatModel.thatResponds(callTime(), callTime(), AiMessage.from("It is 12:00."));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
@@ -67,8 +67,8 @@ class DynamicToolProviderMemoryEvictionTest {
     @Test
     void streaming_tool_loop_survives_user_message_eviction() throws Exception {
 
-        StreamingChatModelMock model =
-                StreamingChatModelMock.thatStreams(callTime(), callTime(), AiMessage.from("It is 12:00."));
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatStreams(callTime(), callTime(), AiMessage.from("It is 12:00."));
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)

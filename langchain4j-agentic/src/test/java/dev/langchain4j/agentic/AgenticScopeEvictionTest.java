@@ -24,7 +24,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -84,10 +84,10 @@ class AgenticScopeEvictionTest {
 
     /** Replies with the last user message it receives. */
     static ChatModel echoModel() {
-        return ChatModelMock.thatResponds(chatRequest -> {
+        return MockChatModel.thatResponds(chatRequest -> {
             ChatMessage last = chatRequest.messages().get(chatRequest.messages().size() - 1);
             return AiMessage.from(last instanceof UserMessage userMessage ? userMessage.singleText() : "");
-        });
+        }).thenRepeats();
     }
 
     public interface Greeter {
@@ -134,9 +134,9 @@ class AgenticScopeEvictionTest {
 
         @ChatModelSupplier
         static ChatModel plannerModel() {
-            return ChatModelMock.thatResponds("""
+            return MockChatModel.thatResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to do"}}
-                """);
+                """).thenRepeats();
         }
 
         @ChatMemoryProviderSupplier

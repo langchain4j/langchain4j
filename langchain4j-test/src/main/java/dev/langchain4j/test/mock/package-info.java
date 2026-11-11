@@ -2,9 +2,26 @@
  * Model mocks for tests: they need no network, answer the way a test tells them to, and record the requests they
  * receive. Add {@code dev.langchain4j:langchain4j-test} with test scope to use them.
  * <p>
- * A mock remembers which of its steps were taken and which requests it received, so create a new one for each test.
- * Do not share a mock with steps between tests, for example as a bean in a cached Spring application context. A mock
- * that computes its answers from the request, such as {@code ChatModelMock.thatResponds(request -> answer)}, can be
- * shared.
+ * {@link MockChatModel} and {@link MockStreamingChatModel} follow a script: every {@code that...} method creates a mock
+ * with its first step (one step per message for the message-list forms), every {@code then...} method adds a step,
+ * each step answers one request, a request after the last step fails, and {@code thenRepeats()} at the end of the
+ * script answers every further request with the last step. A step can also compute its answer from the request, for
+ * example {@code MockChatModel.thatResponds(request -> answer)}.
+ * The other mocks have no script: they answer every request the same way, and their {@code thatFails(...)} fails every
+ * request.
+ * <p>
+ * A mock remembers which steps were taken and which requests it received, so create a new one for each test, for
+ * example by replacing the model bean for each test. In Quarkus, {@code QuarkusMock.installMockForType(...)} does that.
+ * In Spring, {@code @TestBean} replaces the bean once per cached Spring context, which is usually per test class; for a
+ * new mock per test, build the context in the test, for example with {@code ApplicationContextRunner}. A script that
+ * ends with {@code thenRepeats()}, or a mock without a script, can be shared between tests, but its {@code requests()}
+ * then hold the requests of every test that used it. A script without {@code thenRepeats()} that is shared between
+ * tests fails as soon as it runs out. A mock keeps every request it receives, so it is not meant for load tests or
+ * other long runs.
+ * <p>
+ * A mock can be called from several threads at once. The steps of a script are taken in the order the requests arrive,
+ * so to answer concurrent requests, compute the answer from the request, for example
+ * {@code MockChatModel.thatResponds(request -> answer).thenRepeats()}. Set the listeners with {@code withListeners(...)}
+ * before the first request.
  */
 package dev.langchain4j.test.mock;

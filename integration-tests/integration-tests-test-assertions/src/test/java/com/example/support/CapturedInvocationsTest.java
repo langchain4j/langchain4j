@@ -8,7 +8,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
 import java.util.List;
@@ -27,11 +27,11 @@ class CapturedInvocationsTest {
 
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    ChatModelMock model = ChatModelMock.thatResponds(
-            request -> AiMessage.from("You said: " + ModelScripts.lastUserMessage(request)));
+    MockChatModel model = MockChatModel.thatResponds(
+            request -> AiMessage.from("You said: " + ModelScripts.lastUserMessage(request))).thenRepeats();
 
     CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-            model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
+            model, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
 
     @AfterEach
     void shutdown() {

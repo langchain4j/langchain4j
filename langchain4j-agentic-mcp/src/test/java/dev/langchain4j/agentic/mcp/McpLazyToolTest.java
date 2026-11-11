@@ -35,7 +35,7 @@ import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.V;
@@ -134,13 +134,13 @@ class McpLazyToolTest {
     }
 
     /** A planner model that immediately reports the task as done. */
-    private static ChatModelMock donePlannerModel() {
-        return ChatModelMock.thatResponds("""
+    private static MockChatModel donePlannerModel() {
+        return MockChatModel.thatResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to write"}}
-                """);
+                """).thenRepeats();
     }
 
-    private static String systemMessage(ChatModelMock plannerModel, int request) {
+    private static String systemMessage(MockChatModel plannerModel, int request) {
         return plannerModel.requests().get(request).messages().stream()
                 .filter(SystemMessage.class::isInstance)
                 .map(message -> ((SystemMessage) message).text())
@@ -585,7 +585,7 @@ class McpLazyToolTest {
                 .toolName("writer")
                 .outputKey("story")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -605,7 +605,7 @@ class McpLazyToolTest {
                 .description("Tells a story about the topic")
                 .outputKey("story")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -629,7 +629,7 @@ class McpLazyToolTest {
                 .description("Analyzes the request")
                 .outputKey("topic")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -663,7 +663,7 @@ class McpLazyToolTest {
                 .description("Analyzes the request")
                 .outputKey("topic")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)

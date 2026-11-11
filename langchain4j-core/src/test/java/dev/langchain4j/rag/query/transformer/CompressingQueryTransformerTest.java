@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.transformer;
 
+import static dev.langchain4j.rag.query.transformer.TransformerTestModels.userMessageText;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -13,7 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
@@ -45,7 +46,7 @@ class CompressingQueryTransformerTest {
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
 
-        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
+        MockChatModel model = MockChatModel.thatResponds(expectedCompressedQuery);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         // when
@@ -54,7 +55,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText())
+        assertThat(userMessageText(model))
                 .isEqualTo(
                         """
                 Read and understand the conversation between the User and the AI. \
@@ -84,7 +85,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
+        MockChatModel model = MockChatModel.thatResponds(expectedCompressedQuery);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
@@ -166,7 +167,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
+        MockChatModel model = MockChatModel.thatResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model, promptTemplate);
 
@@ -176,7 +177,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText())
+        assertThat(userMessageText(model))
                 .isEqualTo(
                         """
                 Given the following conversation: \
@@ -200,7 +201,7 @@ class CompressingQueryTransformerTest {
         Query query = Query.from(userMessage.singleText(), metadata);
 
         String expectedCompressedQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatResponds(expectedCompressedQuery);
+        MockChatModel model = MockChatModel.thatResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = CompressingQueryTransformer.builder()
                 .chatModel(model)
@@ -213,7 +214,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText())
+        assertThat(userMessageText(model))
                 .isEqualTo(
                         """
                 Given the following conversation: \

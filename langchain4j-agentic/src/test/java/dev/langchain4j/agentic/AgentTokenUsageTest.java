@@ -11,11 +11,10 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -138,15 +137,20 @@ class AgentTokenUsageTest {
     }
 
     private static Assistant assistantWithToolUsingModels(String toolCallingModel, String answeringModel) {
-        ChatModelMock model = ChatModelMock.thatResponds(
-                        AiMessage.from(ToolExecutionRequest.builder()
+        MockChatModel model = MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("time")
                                 .arguments("{}")
-                                .build()),
-                        AiMessage.from("It is noon"))
-                .withModelNames(toolCallingModel, answeringModel)
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+                                .build()))
+                        .modelName(toolCallingModel)
+                        .tokenUsage(new TokenUsage(100, 20))
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("It is noon"))
+                        .modelName(answeringModel)
+                        .tokenUsage(new TokenUsage(30, 5))
+                        .build());
         return AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
                 .tools(new Clock())
@@ -302,19 +306,25 @@ class AgentTokenUsageTest {
     @Test
     void agent_called_from_a_tool_does_not_add_its_model_calls_to_the_calling_agent() {
         Assistant clock = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds("It is noon").withTokenUsage(new TokenUsage(7, 1)))
+                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("It is noon"))
+                        .tokenUsage(new TokenUsage(7, 1))
+                        .build()))
                 .build();
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(chatRequest -> chatRequest.messages().stream()
-                                        .anyMatch(ToolExecutionResultMessage.class::isInstance)
-                                ? AiMessage.from("The clock says it is noon")
-                                : AiMessage.from(ToolExecutionRequest.builder()
+                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
                                         .arguments("{}")
                                         .build()))
-                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
+                                .tokenUsage(new TokenUsage(100, 20))
+                                .build())
+                        .thenResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from("The clock says it is noon"))
+                                .tokenUsage(new TokenUsage(30, 5))
+                                .build()))
                 .tools(new ClockAgentTool(clock))
                 .listener(new AgentListener() {
                     @Override

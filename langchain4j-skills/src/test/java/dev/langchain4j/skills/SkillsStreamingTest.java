@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
@@ -90,7 +90,7 @@ class SkillsStreamingTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"using-process-tool\"}")
@@ -173,7 +173,7 @@ class SkillsStreamingTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"using-process-tool\"}")
@@ -240,7 +240,7 @@ class SkillsStreamingTest {
         // given
         Tools spyTools = spy(new Tools());
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"using-poll-tool\"}")
@@ -369,14 +369,14 @@ class SkillsStreamingTest {
 
         Skills skills = Skills.from(skill);
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"inventory-management\"}")
                         .build()),
                 AiMessage.from("Inventory management skill activated. Both query_inventory and update_inventory are now available.")
         );
-        StreamingChatModelMock spyChatModel = spy(streamingChatModelMock);
+        MockStreamingChatModel spyChatModel = spy(streamingChatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -422,7 +422,7 @@ class SkillsStreamingTest {
     private void verifyToolsHiddenBeforeActivationAndVisibleAfter(Skill skill) throws Exception {
         Skills skills = Skills.from(skill);
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -436,7 +436,7 @@ class SkillsStreamingTest {
                 // second invocation
                 AiMessage.from("Still 47 units in stock.")
         );
-        StreamingChatModelMock spyChatModel = spy(streamingChatModelMock);
+        MockStreamingChatModel spyChatModel = spy(streamingChatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -514,7 +514,7 @@ class SkillsStreamingTest {
 
         Skills skills = Skills.from(weatherSkill, timeSkill);
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"weather\"}")
@@ -525,7 +525,7 @@ class SkillsStreamingTest {
                         .build()),
                 AiMessage.from("It is sunny.")
         );
-        StreamingChatModelMock spyChatModel = spy(streamingChatModelMock);
+        MockStreamingChatModel spyChatModel = spy(streamingChatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -585,7 +585,7 @@ class SkillsStreamingTest {
 
         Tools spyTools = spy(new Tools());
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\":\"inventory-management\"}")
@@ -596,7 +596,7 @@ class SkillsStreamingTest {
                         .build()),
                 AiMessage.from("There are 47 units in stock.")
         );
-        StreamingChatModelMock spyChatModel = spy(streamingChatModelMock);
+        MockStreamingChatModel spyChatModel = spy(streamingChatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -691,7 +691,7 @@ class SkillsStreamingTest {
 
         Skills skills = Skills.from(inventorySkill, reportingSkill);
 
-        StreamingChatModelMock streamingChatModelMock = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel streamingChatModelMock = MockStreamingChatModel.thatStreams(
                 // first invocation
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
@@ -709,7 +709,7 @@ class SkillsStreamingTest {
                 // second invocation
                 AiMessage.from("Report generated.")
         );
-        StreamingChatModelMock spyChatModel = spy(streamingChatModelMock);
+        MockStreamingChatModel spyChatModel = spy(streamingChatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -793,7 +793,7 @@ class SkillsStreamingTest {
 
         Skills skills = Skills.from(skill);
 
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory\"}")
@@ -804,7 +804,7 @@ class SkillsStreamingTest {
                         .build()),
                 AiMessage.from("Done.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)
@@ -853,14 +853,14 @@ class SkillsStreamingTest {
                         .build()
         );
 
-        StreamingChatModelMock chatModel = StreamingChatModelMock.thatStreams(
+        MockStreamingChatModel chatModel = MockStreamingChatModel.thatStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"non-existent\"}")
                         .build()),
                 AiMessage.from("Sorry, that skill doesn't exist.")
         );
-        StreamingChatModelMock spyChatModel = spy(chatModel);
+        MockStreamingChatModel spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(spyChatModel)

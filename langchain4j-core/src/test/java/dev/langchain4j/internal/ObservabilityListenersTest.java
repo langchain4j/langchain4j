@@ -12,27 +12,27 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
-import dev.langchain4j.test.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.MockEmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.moderation.listener.ModerationModelRequestContext;
-import dev.langchain4j.test.mock.ModerationModelMock;
+import dev.langchain4j.test.mock.MockModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
-import dev.langchain4j.test.mock.ScoringModelMock;
+import dev.langchain4j.test.mock.MockScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.DefaultAiServiceListenerRegistrar;
@@ -155,7 +155,7 @@ class ObservabilityListenersTest {
         withProviders(
                 () -> {
                     AiServiceListenerRegistrar.newInstance().fireEvent(startedEvent());
-                    assertThat(ChatModelMock.thatResponds("Hi")
+                    assertThat(MockChatModel.thatResponds("Hi")
                                     .chat(CHAT_REQUEST)
                                     .aiMessage()
                                     .text())
@@ -167,7 +167,7 @@ class ObservabilityListenersTest {
     @Test
     void should_notify_provided_chat_model_listeners_in_addition_to_the_model_listeners() throws Exception {
         List<ChatModelRequestContext> ownRequests = new ArrayList<>();
-        ChatModelMock model = ChatModelMock.thatResponds("Hi").withListeners(new ChatModelListener() {
+        MockChatModel model = MockChatModel.thatResponds("Hi").withListeners(new ChatModelListener() {
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
                 ownRequests.add(requestContext);
@@ -183,7 +183,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_scoring_model_listeners() throws Exception {
-        ScoringModelMock model = ScoringModelMock.thatScores(document -> 0.5);
+        MockScoringModel model = MockScoringModel.thatScores(document -> 0.5);
 
         withProviders(
                 () -> model.score(ScoringRequest.builder()
@@ -197,7 +197,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_an_async_chat() throws Exception {
-        ChatModelMock model = ChatModelMock.thatResponds("Hi");
+        MockChatModel model = MockChatModel.thatResponds("Hi");
 
         withProviders(() -> assertThat(model.chatAsync(CHAT_REQUEST)).succeedsWithin(5, SECONDS), recording());
 
@@ -206,7 +206,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_a_streaming_chat() throws Exception {
-        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo");
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
 
         withProviders(() -> model.chat(CHAT_REQUEST, handler), recording());
@@ -217,7 +217,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_chat_model_listeners_of_a_streaming_chat_publisher() throws Exception {
-        StreamingChatModelMock model = StreamingChatModelMock.thatStreams("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo");
         List<Flow.Publisher<ChatModelStreamingEvent>> publishers = new ArrayList<>();
 
         withProviders(() -> publishers.add(model.chat(CHAT_REQUEST)), recording());
@@ -228,7 +228,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners() throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f, 2f, 3f);
 
         withProviders(() -> model.embed("hello"), recording());
 
@@ -237,7 +237,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_embedding_model_listeners_of_an_async_embedding() throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f, 2f, 3f);
 
         withProviders(
                 () -> assertThat(model.embedAsync(EmbeddingRequest.builder().input("hello").build()))
@@ -250,7 +250,7 @@ class ObservabilityListenersTest {
     @Test
     void should_notify_provided_embedding_model_listeners_of_a_model_that_notifies_its_listeners_itself()
             throws Exception {
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f, 2f, 3f);
         List<TextSegment> segments = List.of(TextSegment.from("hello"));
 
         withProviders(
@@ -263,7 +263,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_moderation_model_listeners() throws Exception {
-        ModerationModelMock model = ModerationModelMock.thatNeverFlags();
+        MockModerationModel model = MockModerationModel.thatNeverFlags();
 
         withProviders(() -> model.moderate("hello"), recording());
 
@@ -272,7 +272,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_scoring_model_listeners_of_an_async_scoring() throws Exception {
-        ScoringModelMock model = ScoringModelMock.thatScores(document -> 0.5);
+        MockScoringModel model = MockScoringModel.thatScores(document -> 0.5);
 
         withProviders(
                 () -> assertThat(model.scoreAsync(ScoringRequest.builder()
@@ -287,7 +287,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_decision_model_listeners() throws Exception {
-        DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
 
         withProviders(() -> model.decide(DECISION_REQUEST), recording());
 
@@ -296,7 +296,7 @@ class ObservabilityListenersTest {
 
     @Test
     void should_notify_provided_decision_model_listeners_of_an_async_decision() throws Exception {
-        DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
 
         withProviders(() -> assertThat(model.decideAsync(DECISION_REQUEST)).succeedsWithin(5, SECONDS), recording());
 
@@ -362,7 +362,7 @@ class ObservabilityListenersTest {
             thread.setContextClassLoader(classLoader);
 
             AiServiceListenerRegistrar.newInstance().fireEvent(event);
-            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
+            MockChatModel.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             thread.setContextClassLoader(original);
         }
@@ -377,7 +377,7 @@ class ObservabilityListenersTest {
             ObservabilityListeners.useFrameworkProviders(loadedBy(classLoader));
 
             AiServiceListenerRegistrar.newInstance().fireEvent(event);
-            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
+            MockChatModel.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             ObservabilityListeners.useFrameworkProviders(List.of());
         }
@@ -394,7 +394,7 @@ class ObservabilityListenersTest {
             ObservabilityListeners.useFrameworkProviders(List.of());
 
             AiServiceListenerRegistrar.newInstance().fireEvent(startedEvent());
-            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
+            MockChatModel.thatResponds("Hi").chat(CHAT_REQUEST);
         }
 
         assertThat(RECEIVED).isEmpty();
@@ -407,7 +407,7 @@ class ObservabilityListenersTest {
         try {
             ObservabilityListeners.useFrameworkProviders(own);
 
-            ChatModelMock.thatResponds("Hi").chat(CHAT_REQUEST);
+            MockChatModel.thatResponds("Hi").chat(CHAT_REQUEST);
         } finally {
             ObservabilityListeners.useFrameworkProviders(List.of());
             TestObservabilityListenersProviders.active = List.of();

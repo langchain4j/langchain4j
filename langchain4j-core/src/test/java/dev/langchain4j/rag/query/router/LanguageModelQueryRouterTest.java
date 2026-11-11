@@ -6,8 +6,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -49,7 +50,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatResponds("2");
+        MockChatModel model = MockChatModel.thatResponds("2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -59,7 +60,7 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(userMessageText(model)).isEqualTo("""
                 Based on the user query, determine the most suitable data source(s) \
                 to retrieve relevant information from the following options:
                 1: articles about cats
@@ -75,7 +76,7 @@ class LanguageModelQueryRouterTest {
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
-        ChatModelMock model = ChatModelMock.thatResponds("2");
+        MockChatModel model = MockChatModel.thatResponds("2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -88,7 +89,7 @@ class LanguageModelQueryRouterTest {
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
-        ChatModelMock model = ChatModelMock.thatResponds("not a number"); // parse fails
+        MockChatModel model = MockChatModel.thatResponds("not a number"); // parse fails
 
         QueryRouter router = new LanguageModelQueryRouter(
                 model, retrieverToDescription, LanguageModelQueryRouter.DEFAULT_PROMPT_TEMPLATE, ROUTE_TO_ALL);
@@ -163,7 +164,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatResponds("2");
+        MockChatModel model = MockChatModel.thatResponds("2");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatModel(model)
@@ -176,7 +177,7 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(userMessageText(model)).isEqualTo("""
                 Based on the user query, determine the most suitable data source(s) \
                 to retrieve relevant information from the following options:
                 1: articles about cats
@@ -196,7 +197,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatResponds("1, 2");
+        MockChatModel model = MockChatModel.thatResponds("1, 2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -221,7 +222,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.thatResponds("1, 2");
+        MockChatModel model = MockChatModel.thatResponds("1, 2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate, FAIL);
 
@@ -231,7 +232,7 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(userMessageText(model)).isEqualTo("""
                 Which source should I use to get answer for \
                 'Which animal is the fluffiest?'? \
                 Options: \
@@ -245,7 +246,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
+        MockChatModel model = MockChatModel.thatResponds("Sorry, I don't know");
 
         final var retrieverToDescription = Map.of(
                 catArticlesRetriever, "articles about cats",
@@ -266,7 +267,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
+        MockChatModel model = MockChatModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception"));
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -286,7 +287,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
+        MockChatModel model = MockChatModel.thatResponds("Sorry, I don't know");
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -311,7 +312,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception"));
+        MockChatModel model = MockChatModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception"));
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -336,7 +337,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatResponds("Sorry, I don't know");
+        MockChatModel model = MockChatModel.thatResponds("Sorry, I don't know");
         FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -358,7 +359,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatThrows(new RuntimeException("Something went wrong"));
+        MockChatModel model = MockChatModel.thatFails(new RuntimeException("Something went wrong"));
         FallbackStrategy fallbackStrategy = FAIL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
@@ -384,7 +385,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatResponds("4");
+        MockChatModel model = MockChatModel.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -407,7 +408,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatResponds("4");
+        MockChatModel model = MockChatModel.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -435,7 +436,7 @@ class LanguageModelQueryRouterTest {
         Query query = Query.from("Hey what's up?");
 
         // LLM hallucinates an id that is out of range: only ids 1-3 are available
-        ChatModelMock model = ChatModelMock.thatResponds("4");
+        MockChatModel model = MockChatModel.thatResponds("4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -463,7 +464,7 @@ class LanguageModelQueryRouterTest {
 
         // "1" is a valid id, but "4" is out of range: the fallback strategy should be applied
         // instead of routing to a partial list of retrievers
-        ChatModelMock model = ChatModelMock.thatResponds("1, 4");
+        MockChatModel model = MockChatModel.thatResponds("1, 4");
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
@@ -477,5 +478,10 @@ class LanguageModelQueryRouterTest {
 
         // then
         assertThat(retrievers).isEmpty();
+    }
+
+    private static String userMessageText(MockChatModel model) {
+        assertThat(model.request().messages()).hasSize(1);
+        return ((UserMessage) model.request().messages().get(0)).singleText();
     }
 }

@@ -6,21 +6,27 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.Test;
 
-class EmbeddingModelMockTest {
+class MockEmbeddingModelTest {
 
     @Test
     void should_always_embed_with_the_given_vector() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f, 2f, 3f);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f, 2f, 3f);
 
         assertThat(vector(model, "one")).containsExactly(1f, 2f, 3f);
         assertThat(vector(model, "two")).containsExactly(1f, 2f, 3f);
@@ -29,7 +35,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_compute_the_vector_from_the_text() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(text -> new float[] {text.length()});
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> new float[] {text.length()});
 
         assertThat(vector(model, "one")).containsExactly(3f);
         assertThat(vector(model, "three")).containsExactly(5f);
@@ -38,7 +44,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_record_the_requests() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f);
 
         model.embed("first");
 
@@ -53,7 +59,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_embed_by_words_with_384_dimensions_and_unit_length() {
 
-        float[] vector = vector(EmbeddingModelMock.thatEmbedsByWords(), "cancel my booking");
+        float[] vector = vector(MockEmbeddingModel.thatEmbedsByWords(), "cancel my booking");
 
         assertThat(vector).hasSize(384);
         double length = 0;
@@ -66,14 +72,14 @@ class EmbeddingModelMockTest {
     @Test
     void should_embed_by_words_with_the_given_dimension() {
 
-        assertThat(vector(EmbeddingModelMock.thatEmbedsByWords(50), "cancel my booking"))
+        assertThat(vector(MockEmbeddingModel.thatEmbedsByWords(50), "cancel my booking"))
                 .hasSize(50);
     }
 
     @Test
     void should_not_accept_a_dimension_that_is_not_positive() {
 
-        assertThatThrownBy(() -> EmbeddingModelMock.thatEmbedsByWords(0))
+        assertThatThrownBy(() -> MockEmbeddingModel.thatEmbedsByWords(0))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("dimension");
     }
@@ -81,7 +87,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_embed_the_same_words_with_the_same_vector_ignoring_case_and_punctuation() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
 
         assertThat(vector(model, "Cancel, my BOOKING!")).containsExactly(vector(model, "cancel my booking"));
     }
@@ -89,7 +95,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_make_texts_closer_the_more_words_they_share() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
         String query = "cancel my booking";
 
         double twoSharedWords = similarity(model, query, "cancel a booking today");
@@ -104,13 +110,13 @@ class EmbeddingModelMockTest {
     @Test
     void should_return_a_zero_vector_for_a_text_without_words() {
 
-        assertThat(vector(EmbeddingModelMock.thatEmbedsByWords(3), "?!")).containsExactly(0f, 0f, 0f);
+        assertThat(vector(MockEmbeddingModel.thatEmbedsByWords(3), "?!")).containsExactly(0f, 0f, 0f);
     }
 
     @Test
     void should_give_relevance_scores_by_shared_words() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
         String query = "How do I cancel my booking?";
 
         double twoSharedWords = RelevanceScore.fromCosineSimilarity(
@@ -128,7 +134,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_embed_words_of_any_language() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
 
         assertThat(vector(model, "日本語")).isNotEqualTo(new float[384]);
         assertThat(vector(model, "日本語")).isNotEqualTo(vector(model, "中文"));
@@ -136,18 +142,48 @@ class EmbeddingModelMockTest {
     }
 
     @Test
-    void should_support_asynchronous_calls_by_default() {
+    void should_record_asynchronous_requests_at_once_and_embed_on_another_thread() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        Thread caller = Thread.currentThread();
+        List<Thread> embeddedOn = new CopyOnWriteArrayList<>();
+        CountDownLatch release = new CountDownLatch(1);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> {
+            embeddedOn.add(Thread.currentThread());
+            try {
+                release.await(5, SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return new float[] {1f, 2f};
+        });
 
-        assertThat(model.embedAsync(EmbeddingRequest.builder().input("hello").build()))
-                .succeedsWithin(5, SECONDS);
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hello").build());
+
+        assertThat(model.request().inputs().get(0).text()).isEqualTo("hello");
+        release.countDown();
+        assertThat(future)
+                .succeedsWithin(5, SECONDS)
+                .satisfies(response -> assertThat(response.embeddings().get(0).vector())
+                        .containsExactly(1f, 2f));
+        assertThat(embeddedOn).singleElement().isNotSameAs(caller);
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void should_fail_every_request_with_the_given_exception() {
+
+        RuntimeException failure = new IllegalStateException("down");
+        MockEmbeddingModel model = MockEmbeddingModel.thatFails(failure);
+
+        assertThatThrownBy(() -> model.embed("hello")).isSameAs(failure);
+        assertThatThrownBy(() -> model.embed("again")).isSameAs(failure);
     }
 
     @Test
     void should_accept_the_input_type() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
 
         model.embed(EmbeddingRequest.builder()
                 .input("hello")
@@ -162,30 +198,43 @@ class EmbeddingModelMockTest {
     @Test
     void should_not_record_a_request_for_the_dimension() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbedsByWords(50);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords(50);
 
         assertThat(model.dimension()).isEqualTo(50);
         assertThat(model.requests()).isEmpty();
     }
 
     @Test
-    void should_report_the_given_model_name_and_token_usage() {
+    void should_report_the_model_name_of_the_request_and_no_token_usage() {
 
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(1f)
-                .withModelName("model")
-                .withTokenUsage(new TokenUsage(1, 0));
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f);
 
-        EmbeddingResponse response = model.embed(EmbeddingRequest.builder().input("hello").build());
+        EmbeddingResponse response = model.embed(
+                EmbeddingRequest.builder().input("hello").modelName("embed-test").build());
 
-        assertThat(response.modelName()).isEqualTo("model");
-        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(1, 0));
+        assertThat(response.modelName()).isEqualTo("embed-test");
+        assertThat(response.tokenUsage()).isNull();
+        assertThat(model.embed(EmbeddingRequest.builder().input("hello").build()).modelName())
+                .isNull();
+    }
+
+    @Test
+    void should_take_the_listeners_as_a_list() {
+
+        EmbeddingModelListener listener = new EmbeddingModelListener() {};
+        List<EmbeddingModelListener> listeners = new ArrayList<>(List.of(listener));
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f).withListeners(listeners);
+
+        listeners.clear();
+
+        assertThat(model.listeners()).containsExactly(listener);
     }
 
     @Test
     void should_not_share_the_given_vector() {
 
         float[] vector = {1f, 2f};
-        EmbeddingModelMock model = EmbeddingModelMock.thatEmbeds(vector);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(vector);
 
         vector[0] = 5f;
         vector(model, "one")[1] = 5f;
@@ -196,7 +245,7 @@ class EmbeddingModelMockTest {
     @Test
     void should_not_accept_an_empty_vector() {
 
-        assertThatThrownBy(EmbeddingModelMock::thatEmbeds)
+        assertThatThrownBy(MockEmbeddingModel::thatEmbeds)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("thatEmbeds");
     }
@@ -206,24 +255,51 @@ class EmbeddingModelMockTest {
 
         RuntimeException failure = new IllegalStateException("down");
 
-        assertThatThrownBy(() -> EmbeddingModelMock.thatThrows(failure).embed("hello"))
+        assertThatThrownBy(() -> MockEmbeddingModel.thatFails(failure).embed("hello"))
                 .isSameAs(failure);
+    }
+
+    @Test
+    void should_fail_the_future_of_an_asynchronous_call_with_the_given_exception() {
+
+        RuntimeException failure = new IllegalStateException("down");
+
+        assertThat(MockEmbeddingModel.thatFails(failure)
+                        .embedAsync(EmbeddingRequest.builder().input("hello").build()))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(failure);
+    }
+
+    @Test
+    void should_not_accept_a_requested_dimension_like_a_model_without_that_parameter() {
+
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
+        EmbeddingRequest request = EmbeddingRequest.builder()
+                .input("hello")
+                .parameters(EmbeddingRequestParameters.builder().dimensions(256).build())
+                .build();
+
+        assertThatThrownBy(() -> model.embed(request))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("dimensions");
     }
 
     @Test
     void should_not_accept_null_arguments() {
 
-        assertThatThrownBy(() -> EmbeddingModelMock.thatEmbeds((float[]) null))
+        assertThatThrownBy(() -> MockEmbeddingModel.thatEmbeds((float[]) null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> EmbeddingModelMock.thatThrows(null))
+        assertThatThrownBy(() -> MockEmbeddingModel.thatFails(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    private static float[] vector(EmbeddingModelMock model, String text) {
+    private static float[] vector(MockEmbeddingModel model, String text) {
         return model.embed(text).content().vector();
     }
 
-    private static double similarity(EmbeddingModelMock model, String first, String second) {
+    private static double similarity(MockEmbeddingModel model, String first, String second) {
         Embedding a = model.embed(first).content();
         Embedding b = model.embed(second).content();
         return CosineSimilarity.between(a, b);

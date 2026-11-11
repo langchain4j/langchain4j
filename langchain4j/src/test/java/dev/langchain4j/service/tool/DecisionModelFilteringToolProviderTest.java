@@ -13,8 +13,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ class DecisionModelFilteringToolProviderTest {
             "create_invoice", 0.3);
 
     // answers each tool question with the relevance of the tool whose name is in the question
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
+    final MockDecisionModel decisionModel = MockDecisionModel.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
             .filter(entry -> question.text().contains(entry.getKey()))
             .mapToDouble(Map.Entry::getValue)
             .findFirst()
@@ -162,7 +162,7 @@ class DecisionModelFilteringToolProviderTest {
     void should_fall_back_to_all_tools_when_decision_model_fails() {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(
-                allTools, DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")));
+                allTools, MockDecisionModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception")));
 
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
                 .hasSize(4);
@@ -171,7 +171,7 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_fall_back_to_all_tools_when_decision_model_refuses_to_answer() {
 
-        DecisionModelMock refusing = DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of());
+        MockDecisionModel refusing = MockDecisionModel.thatAnswersQuestions(question -> RefusalAnswer.of());
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, refusing);
 
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
@@ -183,13 +183,13 @@ class DecisionModelFilteringToolProviderTest {
 
         ToolProvider noTools = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("Something went wrong, but this is an expected exception")))
+                .decisionModel(MockDecisionModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception")))
                 .alwaysInclude("send_email")
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.NO_TOOLS)
                 .build();
         ToolProvider failing = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
-                .decisionModel(DecisionModelMock.thatThrows(new RuntimeException("down")))
+                .decisionModel(MockDecisionModel.thatFails(new RuntimeException("down")))
                 .fallbackStrategy(DecisionModelFilteringToolProvider.FallbackStrategy.FAIL)
                 .build();
 
@@ -407,7 +407,7 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_pass_on_only_relevant_tools_in_ai_service() {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds(
+        MockChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("get_weather")
@@ -437,7 +437,7 @@ class DecisionModelFilteringToolProviderTest {
     @Test
     void should_select_tools_for_user_message_without_retrieved_content_in_ai_service() {
 
-        ChatModelMock chatModel = ChatModelMock.thatResponds("It will not rain.");
+        MockChatModel chatModel = MockChatModel.thatResponds("It will not rain.");
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .contentRetriever(query -> List.of(Content.from("The invoice INV-1 is due tomorrow")))

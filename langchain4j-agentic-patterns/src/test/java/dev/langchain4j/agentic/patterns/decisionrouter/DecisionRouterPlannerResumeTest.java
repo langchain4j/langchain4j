@@ -23,7 +23,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
@@ -115,7 +115,7 @@ class DecisionRouterPlannerResumeTest {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
         AtomicInteger decisions = new AtomicInteger();
         // asking again would route to the medical expert
-        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(request -> Map.of(
                 QUESTION_NAME,
                 ChoiceAnswer.builder()
                         .value(decisions.getAndIncrement() == 0 ? "askUser" : "medical")
@@ -138,7 +138,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        DecisionModelMock model = DecisionModelMock.thatAnswers(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -158,7 +158,7 @@ class DecisionRouterPlannerResumeTest {
 
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
-        DecisionModelMock model = DecisionModelMock.thatAnswers(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -191,7 +191,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeDeciding() {
         DecisionRouterPlanner planner =
-                new DecisionRouterPlanner(DecisionModelMock.thatThrows(new RuntimeException("unused")));
+                new DecisionRouterPlanner(MockDecisionModel.thatFails(new RuntimeException("unused")));
 
         assertThat(planner.executionState()).isEmpty();
     }

@@ -5,7 +5,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -22,7 +22,7 @@ class LangChain4jAssertionsTest {
     @Test
     void should_offer_langchain4j_and_assertj_assertions_with_one_import() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds("Booking cancelled"))
+                .chatModel(MockChatModel.thatResponds("Booking cancelled"))
                 .build();
 
         AiServiceInvocation invocation =

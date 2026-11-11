@@ -1,0 +1,520 @@
+package dev.langchain4j.test.mock;
+
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.test.mock.ScriptedResponses.Step;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscription;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
+/**
+ * A {@link StreamingChatModel} for tests: it needs no network, streams the answers the test tells it to, and records
+ * the requests it receives.
+ * <p>
+ * Script the answers step by step, one step per request. For example, a model that first calls a tool and then streams
+ * text:
+ * <pre>{@code
+ * MockStreamingChatModel model = MockStreamingChatModel.thatCallsTool("cancelBooking", Map.of("bookingNumber", "MS-777"))
+ *         .thenStreams("Booking MS-777 is cancelled.");
+ * }</pre>
+ * To control exactly which tokens are streamed, use {@link #thatStreamsTokens(String...)}. To test a stream that
+ * breaks, let a response fail after its tokens:
+ * <pre>{@code
+ * MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo")
+ *         .andFails(new RuntimeException("connection reset"));
+ * }</pre>
+ * Every {@code that...} method creates a mock with its first step (one step per message for the message-list forms),
+ * and every {@code then...} method adds a step. Each step answers exactly one request. A request after the last step
+ * gets an {@link IllegalStateException} in {@code onError} that shows the request, so a test notices when the code
+ * calls the model more often than the script expects, unless the code under test handles the error itself. To answer
+ * every further request with the last step, end the script with {@link #thenRepeats()}, for example
+ * {@code MockStreamingChatModel.thatStreams("Hello!").thenRepeats()}. A step can compute its answer from the request
+ * with {@link #thatStreams(Function)}.
+ * <p>
+ * An answer is streamed the way a provider streams it: first its thinking, then its text, then its tool calls, each
+ * tool call as partial tool calls followed by the complete tool call. Text given as one string, thinking and tool call
+ * arguments are streamed one character per token. The complete response reports what a provider reports: the model
+ * name of the request, and the finish reason {@link FinishReason#TOOL_EXECUTION} for an answer with tool calls,
+ * otherwise {@link FinishReason#STOP}. To report token usage in every response, use {@link #withTokenUsage(TokenUsage)}.
+ * To report anything else, for example {@link FinishReason#LENGTH} or a different token usage per step, give the whole
+ * response: {@link #thatStreams(ChatResponse)}.
+ * <p>
+ * The mock supports no capabilities, so an AI Service that returns a structured type, for example a POJO, adds format
+ * instructions to the user message instead of asking for a JSON schema response format. To test the response-format
+ * path, stub {@code supportedCapabilities()} on a Mockito spy of the mock.
+ * <p>
+ * {@code chat(request, handler)} returns immediately and calls the handler on another thread, also for a failure, so a
+ * test has to wait for {@code onCompleteResponse} or {@code onError}, for example with a {@code CompletableFuture}. The
+ * {@code Publisher} returned by {@code chat(request)} emits its events on the thread that requests them.
+ * <p>
+ * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
+ * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
+ * script ends with {@link #thenRepeats()}. The steps are taken in the order the requests arrive. A mock keeps every
+ * request it receives, so it is not meant for load tests or other long runs.
+ */
+@Experimental
+public class MockStreamingChatModel implements StreamingChatModel {
+
+    private static final String MOCK_NAME = "MockStreamingChatModel";
+
+    private final ScriptedResponses script;
+    private final RecordedRequests<ChatRequest> requests = new RecordedRequests<>("chat");
+    private List<ChatModelListener> listeners = List.of();
+
+    MockStreamingChatModel(List<Step> steps) {
+        this.script = new ScriptedResponses(MOCK_NAME, steps);
+    }
+
+    /**
+     * Adds a step: the next request is answered by streaming the given text, one character per token.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenStreams(String text) {
+        return thenStreams(AiMessage.from(text));
+    }
+
+    /**
+     * Adds a step: the next request is answered by streaming exactly the given tokens, which together make up one
+     * answer.
+     *
+     * @throws IllegalArgumentException if a token is empty
+     * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenStreamsTokens(String... tokens) {
+        script.add(Step.streaming(tokens));
+        return this;
+    }
+
+    /**
+     * Adds a step: the next request is answered by streaming the given message, one character per token.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenStreams(AiMessage aiMessage) {
+        script.add(Step.responding(aiMessage));
+        return this;
+    }
+
+    /**
+     * Adds a step: the next request is answered by streaming the message of the given response, one character per
+     * token, and completing with exactly that response, including its metadata, for example its token usage. Only tool
+     * calls without an id get the next id of the mock, see {@link MockChatModel#toolCall(String, Map)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenStreams(ChatResponse chatResponse) {
+        script.add(Step.responding(chatResponse));
+        return this;
+    }
+
+    /**
+     * Adds a step: the next request is answered with a call of the given tool.
+     *
+     * @param toolName  the name of the tool
+     * @param arguments the arguments of the tool, by name
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenCallsTool(String toolName, Map<String, ?> arguments) {
+        return thenCallsTool(toolName, MockChatModel.toJson(arguments));
+    }
+
+    /**
+     * Adds a step: the next request is answered with a call of the given tool. Use it for arguments that cannot be
+     * given as a map, for example invalid JSON.
+     *
+     * @param toolName      the name of the tool
+     * @param jsonArguments the arguments of the tool, as JSON
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenCallsTool(String toolName, String jsonArguments) {
+        script.add(Step.callingTool(toolName, jsonArguments));
+        return this;
+    }
+
+    /**
+     * Adds a step: the next request fails with the given exception before anything is streamed. To let a response fail
+     * after its tokens, use {@link #andFails(RuntimeException)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenFails(RuntimeException exception) {
+        script.add(Step.failing(exception));
+        return this;
+    }
+
+    /**
+     * Makes the response of the last step fail after its thinking and text were streamed, the way a broken connection
+     * does: the handler gets the partial responses and then the error, but no tool calls and no complete response. It
+     * does not add a step: to let the next request fail before anything is streamed, use
+     * {@link #thenFails(RuntimeException)}.
+     *
+     * @throws IllegalStateException if the last step already fails, computes its answer or has no text or thinking to
+     *                               stream, or if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel andFails(RuntimeException exception) {
+        script.failLastAfterTokens(exception);
+        return this;
+    }
+
+    /**
+     * Answers every further request with the last step of the script. Only the last step repeats; the script does not
+     * start over. A last step that computes its answer computes it again for each request. Without it, a request after
+     * the last step fails. It must be the last call of the script.
+     * <p>
+     * A step that calls a tool cannot repeat. To test a model that keeps calling a tool, for example the limit set with
+     * {@code maxToolCallingRoundTrips}, compute the answer:
+     * {@code thatStreams(request -> AiMessage.from(toolCall("getWeather", Map.of()))).thenRepeats()}.
+     *
+     * @throws IllegalStateException if the last step calls a tool, because an AI Service would then call the tool again
+     *                               and again, or if the script already ends with {@code thenRepeats()}
+     */
+    public MockStreamingChatModel thenRepeats() {
+        script.repeatLastStep();
+        return this;
+    }
+
+    /**
+     * Reports the given token usage in the response to every request, except for a step that gives the whole response:
+     * that one reports exactly its own token usage. For different token usages per step, give the whole responses, see
+     * {@link #thenStreams(ChatResponse)}.
+     */
+    public MockStreamingChatModel withTokenUsage(TokenUsage tokenUsage) {
+        script.defaultTokenUsage(tokenUsage);
+        return this;
+    }
+
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
+    public MockStreamingChatModel withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     */
+    public MockStreamingChatModel withListeners(List<ChatModelListener> listeners) {
+        this.listeners = List.copyOf(listeners);
+        return this;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    /**
+     * Emits {@link PartialThinking} and {@link PartialResponse} events, then {@link PartialToolCall} and
+     * {@link CompleteToolCall} events, then the {@link CompleteResponse}, on the thread that requests them, as many as
+     * the subscriber requested. A failure is reported with {@code onError}, never thrown.
+     */
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        return subscriber -> {
+            Events built;
+            try {
+                Step step = script.take(requests, chatRequest);
+                built = toEvents(script.answer(step, chatRequest));
+            } catch (RuntimeException | Error e) {
+                // for example an AssertionError thrown by a function that computes the answer: subscribe must not throw
+                subscriber.onSubscribe(new Subscription() {
+
+                    @Override
+                    public void request(long n) {}
+
+                    @Override
+                    public void cancel() {}
+                });
+                subscriber.onError(e);
+                return;
+            }
+            List<ChatModelStreamingEvent> events = built.events();
+            RuntimeException failure = built.failure();
+            subscriber.onSubscribe(new Subscription() {
+
+                private int next;
+                private long demand;
+                private boolean emitting;
+                private volatile boolean done;
+
+                @Override
+                public synchronized void request(long n) {
+                    if (done) {
+                        return;
+                    }
+                    if (n <= 0) {
+                        done = true;
+                        subscriber.onError(new IllegalArgumentException("Demand must be positive, got " + n));
+                        return;
+                    }
+                    demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
+                    if (emitting) {
+                        return; // called from onNext: the loop below emits the additional demand
+                    }
+                    emitting = true;
+                    try {
+                        emit();
+                    } finally {
+                        emitting = false;
+                    }
+                }
+
+                private void emit() {
+                    while (!done && demand > 0 && next < events.size()) {
+                        demand--;
+                        try {
+                            subscriber.onNext(events.get(next++));
+                        } catch (RuntimeException | Error e) {
+                            done = true; // a subscriber that throws cancels the stream, as with a real model
+                            throw e;
+                        }
+                    }
+                    if (!done && next == events.size()) {
+                        done = true;
+                        if (failure != null) {
+                            subscriber.onError(failure);
+                        } else {
+                            subscriber.onComplete();
+                        }
+                    }
+                }
+
+                @Override
+                public void cancel() {
+                    done = true;
+                }
+            });
+        };
+    }
+
+    /**
+     * The events of a step and the failure that follows them, if any.
+     */
+    private record Events(List<ChatModelStreamingEvent> events, RuntimeException failure) {}
+
+    private static Events toEvents(Step step) {
+        try {
+            List<ChatModelStreamingEvent> events = new ArrayList<>();
+            step.thinkingTokens().forEach(token -> events.add(new PartialThinking(token)));
+            step.tokens().forEach(token -> events.add(new PartialResponse(token)));
+            if (step.failure() == null) {
+                List<ToolExecutionRequest> toolCalls = step.aiMessage().toolExecutionRequests();
+                for (int i = 0; i < toolCalls.size(); i++) {
+                    events.addAll(partialToolCalls(i, toolCalls.get(i)));
+                    events.add(new CompleteToolCall(i, toolCalls.get(i)));
+                }
+                events.add(new CompleteResponse(step.response()));
+            }
+            return new Events(events, step.failure());
+        } catch (RuntimeException e) {
+            return new Events(List.of(), e); // an answer that no event can carry fails like a provider error
+        }
+    }
+
+    private static List<PartialToolCall> partialToolCalls(int index, ToolExecutionRequest toolCall) {
+        if (isNullOrBlank(toolCall.name())) {
+            return List.of(); // a partial tool call needs a name, which a hand-written tool call may not have
+        }
+        return ScriptedResponses.splitIntoTokens(toolCall.arguments()).stream()
+                .map(token -> PartialToolCall.builder()
+                        .index(index)
+                        .id(toolCall.id())
+                        .name(toolCall.name())
+                        .partialArguments(token)
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        Step step = script.take(requests, chatRequest);
+        Thread thread = new Thread(
+                () -> {
+                    try {
+                        stream(script.answer(step, chatRequest), handler);
+                    } catch (RuntimeException | Error e) {
+                        // without it, this thread would end without a final call, and a test waiting for one would hang
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                },
+                MOCK_NAME);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private static void stream(Step step, StreamingChatResponseHandler handler) {
+        Events built = toEvents(step);
+        StreamingHandle streamingHandle = new SimpleStreamingHandle();
+        for (ChatModelStreamingEvent event : built.events()) {
+            if (streamingHandle.isCancelled()) {
+                return;
+            }
+            if (event instanceof PartialThinking partialThinking) {
+                onPartialThinking(handler, partialThinking.text(), streamingHandle);
+            } else if (event instanceof PartialResponse partialResponse) {
+                onPartialResponse(handler, partialResponse.text(), streamingHandle);
+            } else if (event instanceof PartialToolCall partialToolCall) {
+                onPartialToolCall(handler, partialToolCall, streamingHandle);
+            } else if (event instanceof CompleteToolCall completeToolCall) {
+                onCompleteToolCall(handler, completeToolCall);
+            } else if (event instanceof CompleteResponse completeResponse) {
+                onCompleteResponse(handler, completeResponse.chatResponse());
+            }
+        }
+        if (built.failure() != null && !streamingHandle.isCancelled()) {
+            withLoggingExceptions(() -> handler.onError(built.failure()));
+        }
+    }
+
+    /**
+     * A copy of the requests received so far, in the order they arrived.
+     */
+    public List<ChatRequest> requests() {
+        return requests.all();
+    }
+
+    /**
+     * The only request received so far. To check it, for example:
+     * {@code LangChain4jAssertions.assertThat(model.request()).hasLastUserMessageContaining("MS-777")}.
+     *
+     * @throws IllegalStateException if the mock received no request or several requests
+     */
+    public ChatRequest request() {
+        return requests.only();
+    }
+
+    private static class SimpleStreamingHandle implements StreamingHandle {
+
+        private volatile boolean isCancelled;
+
+        @Override
+        public void cancel() {
+            isCancelled = true;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return isCancelled;
+        }
+    }
+
+    /**
+     * A model that answers the first request by streaming the given text, one character per token. Add the next steps
+     * with {@code then...} methods, or answer every request with this text: {@code thatStreams("Hello!").thenRepeats()}.
+     * To control exactly which tokens are streamed, use {@link #thatStreamsTokens(String...)}.
+     */
+    public static MockStreamingChatModel thatStreams(String text) {
+        return thatStreams(AiMessage.from(text));
+    }
+
+    /**
+     * A model that answers the first request by streaming exactly the given tokens, which together make up one answer:
+     * {@code thatStreamsTokens("Hel", "lo")} streams {@code "Hel"} and then {@code "lo"}, and completes with
+     * {@code "Hello"}. Add the next steps with {@code then...} methods.
+     *
+     * @throws IllegalArgumentException if a token is empty
+     */
+    public static MockStreamingChatModel thatStreamsTokens(String... tokens) {
+        return new MockStreamingChatModel(List.of(Step.streaming(tokens)));
+    }
+
+    /**
+     * A model that streams the given messages in order, one per request, one character per token. Add further steps
+     * with {@code then...} methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for
+     * example several tool calls in one answer, built with {@link MockChatModel#toolCall(String, Map)}.
+     */
+    public static MockStreamingChatModel thatStreams(AiMessage first, AiMessage... next) {
+        return thatStreams(Stream.concat(Stream.of(first), Stream.of(next)).toList());
+    }
+
+    /**
+     * A model that streams the given messages in order, one per request, one character per token. Add further steps
+     * with {@code then...} methods.
+     */
+    public static MockStreamingChatModel thatStreams(List<AiMessage> aiMessages) {
+        ensureNotEmpty(aiMessages, "aiMessages");
+        return new MockStreamingChatModel(
+                aiMessages.stream().map(Step::responding).toList());
+    }
+
+    /**
+     * A model that answers the first request by streaming the message of the given response, one character per token,
+     * and completing with exactly that response, including its metadata, for example its token usage, model name or
+     * finish reason. Only tool calls without an id get the next id of the mock, see
+     * {@link MockChatModel#toolCall(String, Map)}. Add the next steps with {@code then...} methods.
+     */
+    public static MockStreamingChatModel thatStreams(ChatResponse chatResponse) {
+        return new MockStreamingChatModel(List.of(Step.responding(chatResponse)));
+    }
+
+    /**
+     * A model that computes the answer to the first request from the request and streams it, one character per token.
+     * Add the next steps with {@code then...} methods, or compute the answer to every request:
+     * {@code thatStreams(request -> ...).thenRepeats()}. If the function throws, the request fails with that exception,
+     * unchanged. With {@code chat(request, handler)}, the function runs on the thread that streams the answer.
+     */
+    public static MockStreamingChatModel thatStreams(Function<ChatRequest, AiMessage> answers) {
+        return new MockStreamingChatModel(List.of(Step.computing(answers)));
+    }
+
+    /**
+     * A model that answers the first request with a call of the given tool. Add the next steps with {@code then...}
+     * methods. The call gets the next id of the mock, see {@link MockChatModel#toolCall(String, Map)}.
+     *
+     * @param toolName  the name of the tool
+     * @param arguments the arguments of the tool, by name
+     */
+    public static MockStreamingChatModel thatCallsTool(String toolName, Map<String, ?> arguments) {
+        return thatCallsTool(toolName, MockChatModel.toJson(arguments));
+    }
+
+    /**
+     * A model that answers the first request with a call of the given tool. Add the next steps with {@code then...}
+     * methods. Use it for arguments that cannot be given as a map, for example invalid JSON.
+     *
+     * @param toolName      the name of the tool
+     * @param jsonArguments the arguments of the tool, as JSON
+     */
+    public static MockStreamingChatModel thatCallsTool(String toolName, String jsonArguments) {
+        return new MockStreamingChatModel(List.of(Step.callingTool(toolName, jsonArguments)));
+    }
+
+    /**
+     * A model whose first request fails with the given exception, before anything is streamed: the handler gets it in
+     * {@code onError}. To let every request fail, add {@link #thenRepeats()}. To let later requests succeed, add steps
+     * with {@code then...} methods.
+     */
+    public static MockStreamingChatModel thatFails(RuntimeException exception) {
+        return new MockStreamingChatModel(List.of(Step.failing(exception)));
+    }
+}

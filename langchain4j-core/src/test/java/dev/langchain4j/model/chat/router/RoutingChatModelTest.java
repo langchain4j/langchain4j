@@ -1,8 +1,11 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.model.chat.router.RouterTestModels.withoutAsyncSupport;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -19,8 +22,9 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -31,7 +35,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -45,9 +49,8 @@ import org.junit.jupiter.api.Test;
 
 class RoutingChatModelTest {
 
-    final ChatModelMock small =
-            ChatModelMock.thatResponds("answer from small").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
-    final ChatModelMock large = ChatModelMock.thatResponds("answer from large");
+    final MockChatModel small = supportingJsonSchema(MockChatModel.thatResponds("answer from small"));
+    final MockChatModel large = MockChatModel.thatResponds("answer from large");
 
     static ChatModelRouter nonBlocking(ChatModelRouter router) {
         return new ChatModelRouter() {
@@ -189,7 +192,7 @@ class RoutingChatModelTest {
                 .name("weather")
                 .arguments("{}")
                 .build();
-        ChatModelMock small = ChatModelMock.thatResponds(AiMessage.from(toolCall), AiMessage.from("It is sunny"));
+        MockChatModel small = MockChatModel.thatResponds(AiMessage.from(toolCall), AiMessage.from("It is sunny"));
         List<String> routed = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", small)
@@ -449,7 +452,7 @@ class RoutingChatModelTest {
 
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", "Short questions", ChatModelMock.thatResponds("answer from small"))
+                .route("simple", "Short questions", MockChatModel.thatResponds("answer from small"))
                 .route("complex", "Everything else", large)
                 .router(request -> {
                     seen.addAll(request.routes());
@@ -475,9 +478,8 @@ class RoutingChatModelTest {
     @Test
     void should_fail_async_call_when_decision_model_does_not_support_async() {
 
-        DecisionModelMock decisionModel = DecisionModelMock.thatAnswers(Map.of(
-                        "route", ChoiceAnswer.builder().value("simple").build()))
-                .withoutAsyncSupport();
+        DecisionModel decisionModel = withoutAsyncSupport(
+                MockDecisionModel.thatAnswers(Map.of("route", ChoiceAnswer.builder().value("simple").build())));
         ChatModel chatModel = routingModel(new DecisionModelChatModelRouter(decisionModel));
 
         assertThat(chatModel.chatAsync(ChatRequest.builder()
@@ -588,8 +590,8 @@ class RoutingChatModelTest {
 
     // streaming
 
-    final StreamingChatModelMock smallStreaming = StreamingChatModelMock.thatStreams(AiMessage.from("answer from small"));
-    final StreamingChatModelMock largeStreaming = StreamingChatModelMock.thatStreams(AiMessage.from("answer from large"));
+    final MockStreamingChatModel smallStreaming = MockStreamingChatModel.thatStreams(AiMessage.from("answer from small"));
+    final MockStreamingChatModel largeStreaming = MockStreamingChatModel.thatStreams(AiMessage.from("answer from large"));
 
     RoutingStreamingChatModel routingStreamingModel(ChatModelRouter router) {
         return RoutingStreamingChatModel.builder()
@@ -746,10 +748,11 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_report_error_of_selected_streaming_model_to_handler() {
+    void should_report_error_of_selected_streaming_model_to_handler() throws Exception {
 
-        StreamingChatModel failing = StreamingChatModelMock.thatThrows(new IllegalArgumentException("unsupported parameter"));
-        List<Throwable> errors = new ArrayList<>();
+        StreamingChatModel failing = MockStreamingChatModel.thatFails(new IllegalArgumentException("unsupported parameter"));
+        CompletableFuture<Thread> errorThread = new CompletableFuture<>();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
 
         RoutingStreamingChatModel.builder()
                 .route("only", failing)
@@ -761,11 +764,15 @@ class RoutingChatModelTest {
                     public void onCompleteResponse(ChatResponse completeResponse) {}
 
                     @Override
-                    public void onError(Throwable error) {
-                        errors.add(error);
+                    public void onError(Throwable throwable) {
+                        errors.add(throwable);
+                        errorThread.complete(Thread.currentThread());
                     }
                 });
 
+        // once the streaming thread has ended, every callback it would make has run
+        assertThat(errorThread).succeedsWithin(Duration.ofSeconds(5));
+        errorThread.join().join(5_000);
         assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -890,5 +897,11 @@ class RoutingChatModelTest {
         assertThat(((CompleteResponse) events.get(events.size() - 1)).chatResponse().aiMessage().attributes())
                 .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "complex");
         assertThat(largeStreaming.requests()).hasSize(1);
+    }
+
+    private static MockChatModel supportingJsonSchema(MockChatModel model) {
+        MockChatModel supporting = spy(model);
+        doReturn(Set.of(RESPONSE_FORMAT_JSON_SCHEMA)).when(supporting).supportedCapabilities();
+        return supporting;
     }
 }

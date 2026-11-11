@@ -10,8 +10,8 @@ import static org.mockito.Mockito.verify;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -31,7 +31,7 @@ class AiServicesInterfaceLevelSystemMessageTest {
     static final String SYSTEM_MESSAGE = "Given a name of a country, answer with a name of it's capital";
 
     @Spy
-    ChatModel model = ChatModelMock.thatResponds("Berlin");
+    ChatModel model = MockChatModel.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -202,7 +202,7 @@ class AiServicesInterfaceLevelSystemMessageTest {
 
     @Test
     void interface_level_system_message_with_streaming_chat_model() throws Exception {
-        StreamingChatModelMock delegate = StreamingChatModelMock.thatStreams(AiMessage.from("Berlin"));
+        MockStreamingChatModel delegate = MockStreamingChatModel.thatStreams(AiMessage.from("Berlin"));
         List<ChatRequest> capturedRequests = new ArrayList<>();
         StreamingChatModel streamingModel = new StreamingChatModel() {
             @Override

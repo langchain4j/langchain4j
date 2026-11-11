@@ -1,7 +1,6 @@
 package com.example.support;
 
 import static com.example.support.Bookings.bookings;
-import static com.example.support.ModelScripts.callToolsThenAnswer;
 import static com.example.support.ModelScripts.toolCall;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
@@ -9,8 +8,9 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -26,19 +26,25 @@ class TokenUsageAndFinishReasonTest {
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
     }
 
-    ChatModelMock cancellingModel() {
-        return ChatModelMock.thatResponds(callToolsThenAnswer(
-                "Cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}")));
+    MockChatModel cancellingModel(TokenUsage first, TokenUsage second) {
+        return MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))
+                        .tokenUsage(first)
+                        .finishReason(FinishReason.TOOL_EXECUTION)
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Cancelled."))
+                        .tokenUsage(second)
+                        .finishReason(FinishReason.STOP)
+                        .build());
     }
 
     @Test
     void should_sum_token_usage_over_all_model_calls() {
-        CustomerSupportAgent agent = agent(cancellingModel()
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(150, 30))
-                .withFinishReason(FinishReason.STOP));
+        CustomerSupportAgent agent = agent(cancellingModel(new TokenUsage(100, 20), new TokenUsage(150, 30)));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Cancel MS-777")).invocation();
 
@@ -53,7 +59,7 @@ class TokenUsageAndFinishReasonTest {
     void should_sum_only_the_reported_token_counts() {
         // the second call reports only input tokens
         CustomerSupportAgent agent =
-                agent(cancellingModel().withTokenUsages(new TokenUsage(100, 20), new TokenUsage(150)));
+                agent(cancellingModel(new TokenUsage(100, 20), new TokenUsage(150)));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Cancel MS-777")).invocation();
 
@@ -62,7 +68,9 @@ class TokenUsageAndFinishReasonTest {
 
     @Test
     void should_fail_when_the_model_did_not_report_token_usage_or_finish_reason() {
-        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds("Hello"));
+        // a response given as a whole is used as it is: this one reports neither token usage nor finish reason
+        CustomerSupportAgent agent = agent(MockChatModel.thatResponds(
+                ChatResponse.builder().aiMessage(AiMessage.from("Hello")).build()));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Hi")).invocation();
 
@@ -76,7 +84,10 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_detect_a_response_that_was_cut_off() {
         CustomerSupportAgent agent =
-                agent(ChatModelMock.thatResponds("Your booking MS-777 starts on").withFinishReason(FinishReason.LENGTH));
+                agent(MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Your booking MS-777 starts on"))
+                        .finishReason(FinishReason.LENGTH)
+                        .build()));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "When does MS-777 start?")).invocation();
 
@@ -87,9 +98,7 @@ class TokenUsageAndFinishReasonTest {
 
     @Test
     void should_check_token_usage_and_finish_reason_of_a_result() {
-        CustomerSupportAgent agent = agent(cancellingModel()
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(150, 30))
-                .withFinishReason(FinishReason.STOP));
+        CustomerSupportAgent agent = agent(cancellingModel(new TokenUsage(100, 20), new TokenUsage(150, 30)));
 
         AiServiceCapture result = capture(() -> agent.chatWithDetails("klaus", "Cancel MS-777"));
 
@@ -100,11 +109,16 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_and_finish_reason_of_a_token_stream() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams(
-                                toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"),
-                                AiMessage.from("It starts on 2026-11-02."))
-                        .withTokenUsage(new TokenUsage(40, 10))
-                        .withFinishReason(FinishReason.STOP),
+                MockStreamingChatModel.thatStreams(ChatResponse.builder()
+                                .aiMessage(toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"))
+                                .tokenUsage(new TokenUsage(40, 10))
+                                .finishReason(FinishReason.TOOL_EXECUTION)
+                                .build())
+                        .thenStreams(ChatResponse.builder()
+                                .aiMessage(AiMessage.from("It starts on 2026-11-02."))
+                                .tokenUsage(new TokenUsage(40, 10))
+                                .finishReason(FinishReason.STOP)
+                                .build()),
                 bookings());
 
         AiServiceInvocation invocation = capture(() -> agent.chat("When does MS-777 start?")
@@ -119,7 +133,11 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_of_a_publisher() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                StreamingChatModelMock.thatStreams("Hello").withTokenUsage(new TokenUsage(7, 3)), bookings());
+                MockStreamingChatModel.thatStreams(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Hello"))
+                        .tokenUsage(new TokenUsage(7, 3))
+                        .build()),
+                bookings());
 
         AiServiceInvocation invocation = capture(() -> agent.chatReactive("Hi")).invocation();
 

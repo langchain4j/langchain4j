@@ -14,7 +14,8 @@ import com.example.support.SupportService;
 import com.example.support.TicketSummarizer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrailException;
-import dev.langchain4j.test.mock.ChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -45,9 +46,8 @@ class BlockingAssistantTest {
 
     @Test
     void records_tool_executed_through_client_proxy() {
-        useChatModelResponding(
-                toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-1\"}"),
-                AiMessage.from("Your order ORD-1 has been shipped."));
+        useChatModel(MockChatModel.thatCallsTool("getOrderStatus", Map.of("orderNumber", "ORD-1"))
+                .thenResponds("Your order ORD-1 has been shipped."));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> assistant.chat("Where is my order ORD-1?"))
@@ -67,10 +67,9 @@ class BlockingAssistantTest {
 
     @Test
     void records_several_tools_in_order_of_execution() {
-        useChatModelResponding(
-                toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-2\"}"),
-                toolCall("cancelOrder", "{\"orderNumber\":\"ORD-2\"}"),
-                AiMessage.from("Order ORD-2 was still processing, so I cancelled it."));
+        useChatModel(MockChatModel.thatCallsTool("getOrderStatus", Map.of("orderNumber", "ORD-2"))
+                .thenCallsTool("cancelOrder", Map.of("orderNumber", "ORD-2"))
+                .thenResponds("Order ORD-2 was still processing, so I cancelled it."));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> assistant.chat("Cancel ORD-2 if it has not shipped yet"))
@@ -87,7 +86,7 @@ class BlockingAssistantTest {
     @Test
     void records_tool_of_request_scoped_bean() {
         customerContext.setCustomerId("VIP-42");
-        useChatModelResponding(toolCall("getCustomerTier", "{}"), AiMessage.from("You are a gold customer."));
+        useChatModel(MockChatModel.thatCallsTool("getCustomerTier", Map.of()).thenResponds("You are a gold customer."));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> assistant.chat("What is my loyalty tier?"))
@@ -100,9 +99,8 @@ class BlockingAssistantTest {
 
     @Test
     void reports_failed_tool_execution_without_failing_the_invocation() {
-        useChatModelResponding(
-                toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-404\"}"),
-                AiMessage.from("I could not find order ORD-404."));
+        useChatModel(MockChatModel.thatCallsTool("getOrderStatus", Map.of("orderNumber", "ORD-404"))
+                .thenResponds("I could not find order ORD-404."));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> assistant.chat("Where is my order ORD-404?"))
@@ -163,11 +161,16 @@ class BlockingAssistantTest {
 
     @Test
     void sums_token_usage_over_all_model_calls() {
-        useChatModel(ChatModelMock.thatResponds(
-                                toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-1\"}"),
-                                AiMessage.from("Shipped."))
-                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(150, 30))
-                        .withFinishReason(FinishReason.STOP));
+        useChatModel(MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-1\"}"))
+                        .tokenUsage(new TokenUsage(100, 20))
+                        .finishReason(FinishReason.TOOL_EXECUTION)
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Shipped."))
+                        .tokenUsage(new TokenUsage(150, 30))
+                        .finishReason(FinishReason.STOP)
+                        .build()));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(
                         () -> assistant.chat("Where is ORD-1?"))
@@ -253,7 +256,7 @@ class BlockingAssistantTest {
 
     @Test
     void rethrows_model_failure_from_record() {
-        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(MockChatModel.thatFails(new RuntimeException("Model is overloaded")));
 
         assertThatThrownBy(() -> AiServiceCapture.capture(() -> assistant.chat("Hi")))
                 .hasMessageContaining("Model is overloaded");
@@ -261,7 +264,7 @@ class BlockingAssistantTest {
 
     @Test
     void returns_failed_invocation_when_failure_is_expected() {
-        useChatModel(ChatModelMock.thatThrows(new RuntimeException("Model is overloaded")));
+        useChatModel(MockChatModel.thatFails(new RuntimeException("Model is overloaded")));
 
         AiServiceInvocation invocation = AiServiceCapture.captureExpectingFailure(
                         () -> assistant.chat("Hi"))

@@ -16,8 +16,8 @@ import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.ChatModelMock;
-import dev.langchain4j.test.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
@@ -191,8 +191,8 @@ class AiServiceToolCallMemoryTest {
         }
     }
 
-    private static ChatModelMock bookingModel() {
-        return ChatModelMock.thatResponds(AiMessage.from(BOOK_HOTEL));
+    private static MockChatModel bookingModel() {
+        return MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL));
     }
 
     private static StreamingEventChatModelMock streamingBookingModel() {
@@ -231,7 +231,7 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatStreams(AiMessage.from(BOOK_HOTEL)))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from(BOOK_HOTEL)))
                 .chatMemory(memory)
                 .tools(new Booking())
                 .build();
@@ -288,8 +288,8 @@ class AiServiceToolCallMemoryTest {
     void async_service_should_send_the_stored_tool_result_to_the_model_on_the_next_turn() throws Exception {
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
-        ChatModelMock model =
-                ChatModelMock.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
+        MockChatModel model =
+                MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(model)
@@ -565,7 +565,7 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatStreams(
+                .streamingChatModel(MockStreamingChatModel.thatStreams(
                         AiMessage.from(GET_TEMPERATURE), AiMessage.from(GET_TEMPERATURE)))
                 .chatMemory(memory)
                 .tools(new Weather())

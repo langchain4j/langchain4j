@@ -3,7 +3,6 @@ package dev.langchain4j.test.mock;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
@@ -17,14 +16,13 @@ import java.util.function.Function;
  * requests it receives.
  */
 @Experimental
-public class ModerationModelMock implements ModerationModel {
+public class MockModerationModel implements ModerationModel {
 
     private final Function<ModerationRequest, Moderation> moderation;
     private final RecordedRequests<ModerationRequest> requests = new RecordedRequests<>("moderation");
-    private ModelProvider provider = ModelProvider.OTHER;
     private List<ModerationModelListener> listeners = List.of();
 
-    private ModerationModelMock(Function<ModerationRequest, Moderation> moderation) {
+    MockModerationModel(Function<ModerationRequest, Moderation> moderation) {
         this.moderation = ensureNotNull(moderation, "moderation");
     }
 
@@ -55,52 +53,47 @@ public class ModerationModelMock implements ModerationModel {
     /**
      * A model that does not flag anything.
      */
-    public static ModerationModelMock thatNeverFlags() {
-        return new ModerationModelMock(ignored -> Moderation.notFlagged());
+    public static MockModerationModel thatNeverFlags() {
+        return new MockModerationModel(ignored -> Moderation.notFlagged());
     }
 
     /**
      * A model that flags every request, reporting the given text as the flagged one.
      */
-    public static ModerationModelMock thatAlwaysFlags(String flaggedText) {
-        return new ModerationModelMock(ignored -> Moderation.flagged(flaggedText));
+    public static MockModerationModel thatAlwaysFlags(String flaggedText) {
+        return new MockModerationModel(ignored -> Moderation.flagged(flaggedText));
     }
 
     /**
      * A model that computes the moderation from each request.
      */
-    public static ModerationModelMock thatModerates(Function<ModerationRequest, Moderation> moderation) {
-        return new ModerationModelMock(moderation);
+    public static MockModerationModel thatModerates(Function<ModerationRequest, Moderation> moderation) {
+        return new MockModerationModel(moderation);
     }
 
     /**
      * A model whose requests all fail with exactly the given exception.
      */
-    public static ModerationModelMock thatThrows(RuntimeException exception) {
+    public static MockModerationModel thatFails(RuntimeException exception) {
         ensureNotNull(exception, "exception");
-        return new ModerationModelMock(ignored -> {
+        return new MockModerationModel(ignored -> {
             throw exception;
         });
     }
 
     /**
-     * Reports the given provider from {@link #provider()}.
+     * Notifies the given listeners of each call, like a real model does.
      */
-    public ModerationModelMock withProvider(ModelProvider provider) {
-        this.provider = ensureNotNull(provider, "provider");
+    public MockModerationModel withListeners(ModerationModelListener... listeners) {
+        this.listeners = List.of(listeners);
         return this;
-    }
-
-    @Override
-    public ModelProvider provider() {
-        return provider;
     }
 
     /**
      * Notifies the given listeners of each call, like a real model does.
      */
-    public ModerationModelMock withListeners(ModerationModelListener... listeners) {
-        this.listeners = List.of(listeners);
+    public MockModerationModel withListeners(List<ModerationModelListener> listeners) {
+        this.listeners = List.copyOf(listeners);
         return this;
     }
 

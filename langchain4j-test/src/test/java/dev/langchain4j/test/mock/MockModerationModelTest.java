@@ -3,16 +3,30 @@ package dev.langchain4j.test.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.listener.ModerationModelListener;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class ModerationModelMockTest {
+class MockModerationModelTest {
+
+    @Test
+    void should_take_the_listeners_as_a_list() {
+
+        ModerationModelListener listener = new ModerationModelListener() {};
+        List<ModerationModelListener> listeners = new ArrayList<>(List.of(listener));
+        MockModerationModel model = MockModerationModel.thatNeverFlags().withListeners(listeners);
+
+        listeners.clear();
+
+        assertThat(model.listeners()).containsExactly(listener);
+    }
 
     @Test
     void should_never_flag() {
 
-        assertThat(ModerationModelMock.thatNeverFlags().moderate("hello").content().flagged())
+        assertThat(MockModerationModel.thatNeverFlags().moderate("hello").content().flagged())
                 .isFalse();
     }
 
@@ -20,7 +34,7 @@ class ModerationModelMockTest {
     void should_always_flag_with_the_given_text() {
 
         Moderation moderation =
-                ModerationModelMock.thatAlwaysFlags("bad").moderate("hello").content();
+                MockModerationModel.thatAlwaysFlags("bad").moderate("hello").content();
 
         assertThat(moderation.flagged()).isTrue();
         assertThat(moderation.flaggedText()).isEqualTo("bad");
@@ -29,7 +43,7 @@ class ModerationModelMockTest {
     @Test
     void should_compute_the_moderation_from_the_request() {
 
-        ModerationModelMock model = ModerationModelMock.thatModerates(
+        MockModerationModel model = MockModerationModel.thatModerates(
                 request -> Moderation.flagged(request.texts().get(0)));
 
         assertThat(model.moderate("hello").content().flaggedText()).isEqualTo("hello");
@@ -38,7 +52,7 @@ class ModerationModelMockTest {
     @Test
     void should_record_the_requests() {
 
-        ModerationModelMock model = ModerationModelMock.thatNeverFlags();
+        MockModerationModel model = MockModerationModel.thatNeverFlags();
 
         model.moderate("first");
 
@@ -55,24 +69,17 @@ class ModerationModelMockTest {
 
         RuntimeException failure = new IllegalStateException("down");
 
-        assertThatThrownBy(() -> ModerationModelMock.thatThrows(failure).moderate("hello"))
-                .isSameAs(failure);
-    }
+        MockModerationModel model = MockModerationModel.thatFails(failure);
 
-    @Test
-    void should_report_the_given_provider() {
-
-        assertThat(ModerationModelMock.thatNeverFlags().withProvider(ModelProvider.OPEN_AI).provider())
-                .isEqualTo(ModelProvider.OPEN_AI);
+        assertThatThrownBy(() -> model.moderate("hello")).isSameAs(failure);
+        assertThatThrownBy(() -> model.moderate("again")).isSameAs(failure);
     }
 
     @Test
     void should_not_accept_null_arguments() {
 
-        assertThatThrownBy(() -> ModerationModelMock.thatModerates(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ModerationModelMock.thatThrows(null))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ModerationModelMock.thatNeverFlags().withProvider(null))
+        assertThatThrownBy(() -> MockModerationModel.thatModerates(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockModerationModel.thatFails(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

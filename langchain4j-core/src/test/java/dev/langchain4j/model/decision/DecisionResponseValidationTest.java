@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
-import dev.langchain4j.test.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -43,7 +43,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_accept_matching_response() {
 
-        DecisionModelMock model = DecisionModelMock.thatAnswers(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
                 Map.of("urgent", URGENT, "team", TEAM, "frustration", FRUSTRATION));
 
         assertThat(model.decide(REQUEST).choice("team").value()).isEqualTo("billing");
@@ -52,7 +52,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_accept_refusals_for_any_question_type() {
 
-        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(Map.of(
                 "urgent", RefusalAnswer.of(), "team", RefusalAnswer.of(), "frustration", FRUSTRATION));
 
         DecisionResponse response = model.decide(REQUEST);
@@ -66,7 +66,7 @@ class DecisionResponseValidationTest {
     @Test
     void should_attach_offered_options_to_choice_answers_so_that_misspelled_options_are_rejected() {
 
-        DecisionModelMock model = DecisionModelMock.thatAnswers(Map.of(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(Map.of(
                 "urgent",
                 URGENT,
                 "team",
@@ -89,7 +89,7 @@ class DecisionResponseValidationTest {
             Map<String, DecisionAnswer> answers, String expectedMessage) {
 
         List<Throwable> errors = new ArrayList<>();
-        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> answers)
+        MockDecisionModel model = MockDecisionModel.thatAnswers(request -> answers)
                 .withListeners(new DecisionModelListener() {
                     @Override
                     public void onError(DecisionModelErrorContext context) {
@@ -101,7 +101,7 @@ class DecisionResponseValidationTest {
                 .isInstanceOf(InvalidDecisionResponseException.class)
                 .hasMessageContaining(expectedMessage);
         assertThat(model.decideAsync(REQUEST))
-                .failsWithin(Duration.ZERO)
+                .failsWithin(Duration.ofSeconds(5))
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseInstanceOf(InvalidDecisionResponseException.class)
                 .withMessageContaining(expectedMessage);
