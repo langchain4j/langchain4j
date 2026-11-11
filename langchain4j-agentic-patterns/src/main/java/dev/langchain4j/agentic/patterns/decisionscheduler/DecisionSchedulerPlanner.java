@@ -58,9 +58,9 @@ import org.slf4j.LoggerFactory;
  *   <li>one yes/no question, by default "Has this goal been reached: ...?".</li>
  * </ul>
  * The texts of both questions and the levels can be replaced through the builder.
- * The planner identifies a subagent by its {@link AgentInstance#agentId() id}, which is also the name of its
- * question, so several subagents can have the same name: the decision model then tells them apart by their
- * descriptions. A subagent without a description is described by its name.
+ * The planner identifies a subagent by its name, which is also the name of its question. Several subagents can have
+ * the same name: each of them is then identified by its {@link AgentInstance#agentId() id} instead, and the decision
+ * model tells them apart by their descriptions. A subagent without a description is described by its name.
  * <p>
  * If the probability that the goal has been reached is at least the goal threshold the planner stops. Otherwise it
  * invokes the candidate with the highest score, the first declared one when several have the same score, provided
@@ -86,8 +86,9 @@ import org.slf4j.LoggerFactory;
  * <p>
  * The planner saves as its execution state the number of invocations, the subagents that cannot run again yet and
  * the subagent being invoked, so that after a suspension or a crash it resumes from that subagent. This state refers
- * to the subagents by their ids, which contain their position, so the planner has to be resumed with the same
- * subagents declared in the same order. When a subagent waits for a human the planner suspends without asking the
+ * to the subagents by their names, so it does not depend on the order in which they are declared. Only the subagents
+ * sharing a name are referred to by their ids, which contain their position, and have to be declared in the same
+ * position when the planner is resumed. When a subagent waits for a human the planner suspends without asking the
  * decision model, and decides on the answer when it is resumed. The state is saved only after each decision, so a
  * crash during a decision call makes the subagent that had just completed run again, and a crash before the first
  * subagent completes makes the planner decide again. A subagent whose output can be delayed, like a
@@ -156,8 +157,8 @@ public class DecisionSchedulerPlanner implements Planner {
     // the output key of the planner agent when a subagent writes it: the goal isn't asked before it is in the scope
     private String resultKey;
 
-    // persisted to resume after a suspension or a crash: the number of subagents invoked so far, the ids of those
-    // that ran and had no argument changed since, the id of the one being invoked (null between two steps), and
+    // persisted to resume after a suspension or a crash: the number of subagents invoked so far, the keys of those
+    // that ran and had no argument changed since, the key of the one being invoked (null between two steps), and
     // whether its answer was still pending, like an answer waited from a human
     private int invocations;
     private final Set<String> spent = new LinkedHashSet<>();
@@ -167,24 +168,26 @@ public class DecisionSchedulerPlanner implements Planner {
     // the subagents left out of this invocation because their description cannot be read
     private final Set<String> unavailable = new HashSet<>();
 
-    private record Subagent(AgentInstance agent, List<String> mandatoryArguments, Set<String> arguments) {
+    // the names that several subagents have, or that a subagent has in common with the goal question: these
+    // subagents are identified by their ids, the others by their names
+    private final Set<String> sharedNames = new HashSet<>();
 
-        static Subagent of(AgentInstance agent) {
+    /** A subagent with the key identifying it, which is also the name of its question. */
+    private record Subagent(String key, AgentInstance agent, List<String> mandatoryArguments, Set<String> arguments) {
+
+        static Subagent of(String key, AgentInstance agent) {
             // framework-provided arguments, like @MemoryId, are not read from the state
             List<AgentArgument> arguments = agent.arguments().stream()
                     .filter(argument -> !argument.name().startsWith("@"))
                     .toList();
             return new Subagent(
+                    key,
                     agent,
                     arguments.stream()
                             .filter(argument -> argument.defaultValue() == null && !argument.isOptional())
                             .map(AgentArgument::name)
                             .toList(),
                     arguments.stream().map(AgentArgument::name).collect(Collectors.toSet()));
-        }
-
-        String id() {
-            return agent.agentId();
         }
     }
 
@@ -267,14 +270,28 @@ public class DecisionSchedulerPlanner implements Planner {
                     + "method arguments are sent to the decision model together with the outputs of the subagents");
         }
 
-        // the id of a subagent is unique, unlike its name, and never the name of the goal question
-        initPlanningContext.subagents().forEach(agent -> subagents.put(agent.agentId(), Subagent.of(agent)));
+        // the name of the goal question is taken
+        Set<String> names = new HashSet<>(Set.of(GOAL_QUESTION_NAME));
+        for (AgentInstance agent : initPlanningContext.subagents()) {
+            if (!names.add(agent.name())) {
+                sharedNames.add(agent.name());
+            }
+        }
+        initPlanningContext.subagents().forEach(agent -> {
+            String key = key(agent.name(), agent.agentId());
+            subagents.put(key, Subagent.of(key, agent));
+        });
 
         String outputKey = plannerAgent.outputKey();
         boolean writtenByASubagent = !isNullOrBlank(outputKey)
                 && subagents.values().stream()
                         .anyMatch(subagent -> outputKey.equals(subagent.agent().outputKey()));
         this.resultKey = writtenByASubagent ? outputKey : null;
+    }
+
+    /** The key identifying a subagent: its name, or its id when that name is shared. */
+    private String key(String agentName, String agentId) {
+        return sharedNames.contains(agentName) ? agentId : agentName;
     }
 
     @Override
@@ -305,10 +322,10 @@ public class DecisionSchedulerPlanner implements Planner {
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgentInvocation invocation = planningContext.previousAgentInvocation();
-        Subagent subagent = subagents.get(invocation.agentId());
+        Subagent subagent = subagents.get(key(invocation.agentName(), invocation.agentId()));
         if (invocation.skipped()) {
             // a skipped agent didn't change the state, so it doesn't make other agents able to run again
-            LOG.info("Subagent '{}' skipped ({})", subagent.id(), invocation.skipReason());
+            LOG.info("Subagent '{}' skipped ({})", subagent.key(), invocation.skipReason());
             current = null;
             return decide(planningContext);
         }
@@ -320,7 +337,7 @@ public class DecisionSchedulerPlanner implements Planner {
                 return suspend();
             }
         } else if (DelayedResponse.PENDING.equals(invocation.output())) {
-            throw new IllegalStateException("The answer of the subagent '" + subagent.id() + "' is not available "
+            throw new IllegalStateException("The answer of the subagent '" + subagent.key() + "' is not available "
                     + "yet, but the subagent has no output key where DecisionSchedulerPlanner can read it when it "
                     + "arrives: declare an output key on every subagent whose answer can be delayed");
         }
@@ -335,7 +352,7 @@ public class DecisionSchedulerPlanner implements Planner {
         if (!isNullOrBlank(outputKey)) {
             subagents.values().stream()
                     .filter(other -> other.arguments().contains(outputKey))
-                    .forEach(other -> spent.remove(other.id()));
+                    .forEach(other -> spent.remove(other.key()));
         }
     }
 
@@ -363,7 +380,7 @@ public class DecisionSchedulerPlanner implements Planner {
         if (askGoal) {
             request.question(GOAL_QUESTION_NAME, goalQuestion);
         }
-        candidates.forEach(candidate -> request.question(candidate.id(), usefulnessQuestion(candidate.agent())));
+        candidates.forEach(candidate -> request.question(candidate.key(), usefulnessQuestion(candidate.agent())));
         DecisionResponse response = decisionModel.decide(request.build());
 
         Double goalProbability =
@@ -382,15 +399,15 @@ public class DecisionSchedulerPlanner implements Planner {
 
         Map<String, Double> scores = new LinkedHashMap<>();
         candidates.forEach(candidate ->
-                scores.put(candidate.id(), response.scale(candidate.id()).mean() / (usefulnessLevels.size() - 1)));
+                scores.put(candidate.key(), response.scale(candidate.key()).mean() / (usefulnessLevels.size() - 1)));
         // the first declared candidate wins a tie
         Subagent best = candidates.get(0);
         for (Subagent candidate : candidates) {
-            if (scores.get(candidate.id()) > scores.get(best.id())) {
+            if (scores.get(candidate.key()) > scores.get(best.key())) {
                 best = candidate;
             }
         }
-        if (scores.get(best.id()) < activationThreshold) {
+        if (scores.get(best.key()) < activationThreshold) {
             LOG.info(
                     "Stopping after {} invocations, since no subagent is useful enough: scores {}, goal probability {}",
                     invocations,
@@ -399,12 +416,12 @@ public class DecisionSchedulerPlanner implements Planner {
             return done();
         }
 
-        spent.add(best.id());
-        current = best.id();
+        spent.add(best.key());
+        current = best.key();
         invocations++;
         LOG.info(
                 "Invoking subagent '{}' (invocation #{}): scores {}, goal probability {}",
-                best.id(),
+                best.key(),
                 invocations,
                 scores,
                 goalProbability);
@@ -412,7 +429,7 @@ public class DecisionSchedulerPlanner implements Planner {
     }
 
     private boolean isCandidate(Subagent subagent, PlanningContext planningContext) {
-        return !spent.contains(subagent.id())
+        return !spent.contains(subagent.key())
                 && subagent.mandatoryArguments().stream().allMatch(planningContext.agenticScope()::hasState)
                 && planningContext.isActive(subagent.agent())
                 && isAvailable(subagent);
@@ -424,18 +441,18 @@ public class DecisionSchedulerPlanner implements Planner {
      * {@link AgentUnavailableException} means that: any other failure of the description propagates.
      */
     private boolean isAvailable(Subagent subagent) {
-        if (unavailable.contains(subagent.id())) {
+        if (unavailable.contains(subagent.key())) {
             return false;
         }
         try {
             subagent.agent().description();
             return true;
         } catch (AgentUnavailableException e) {
-            unavailable.add(subagent.id());
+            unavailable.add(subagent.key());
             LOG.warn(
                     "The subagent '{}' is left out of this invocation, because it is unavailable and its "
                             + "description cannot be read",
-                    subagent.id(),
+                    subagent.key(),
                     e);
             return false;
         }
@@ -521,7 +538,7 @@ public class DecisionSchedulerPlanner implements Planner {
             this.invocations = savedInvocations.intValue();
         }
         if (state.get(SPENT_STATE_KEY) instanceof List<?> savedSpent) {
-            savedSpent.forEach(id -> spent.add(id.toString()));
+            savedSpent.forEach(key -> spent.add(key.toString()));
         }
         if (state.get(CURRENT_STATE_KEY) instanceof String savedCurrent) {
             this.current = savedCurrent;

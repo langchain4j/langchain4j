@@ -177,14 +177,9 @@ class DecisionSchedulerPlannerTest {
         return ScaleAnswer.builder().mean(score * (DEFAULT_USEFULNESS_LEVELS.size() - 1)).build();
     }
 
-    /** The name of the subagent with the given id, which is that name followed by "$" and by its position. */
-    private static String agentName(String agentId) {
-        return agentId.substring(0, agentId.indexOf('$'));
-    }
-
     /**
      * A model answering each request with the goal probability and the scores computed from its state. The score of
-     * a subagent is found by its id or else by its name, and a subagent without a score is useless.
+     * a subagent is found by the name of its question, and a subagent without a score is useless.
      */
     private static DecisionModelMock model(
             Function<Map<String, Object>, Double> goalProbability,
@@ -197,8 +192,7 @@ class DecisionSchedulerPlannerTest {
                     name,
                     GOAL_QUESTION_NAME.equals(name)
                             ? YesNoAnswer.from(goalProbability.apply(state))
-                            : score(stateScores.getOrDefault(
-                                    name, stateScores.getOrDefault(agentName(name), 0.0)))));
+                            : score(stateScores.getOrDefault(name, 0.0))));
             return answers;
         });
     }
@@ -261,7 +255,7 @@ class DecisionSchedulerPlannerTest {
 
         assertThat(scheduler(model, writer()).handle(TICKET)).isNull();
         assertThat(invoked).isEmpty();
-        assertThat(model.request().questions()).containsOnlyKeys("writer$0");
+        assertThat(model.request().questions()).containsOnlyKeys("writer");
     }
 
     @Test
@@ -364,8 +358,8 @@ class DecisionSchedulerPlannerTest {
                 .handle(TICKET);
 
         assertThat(invoked).containsExactly("tracker", "summarizer");
-        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker$1");
-        assertThat(questionNames(model.requests().get(1))).containsExactly("summarizer$0");
+        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker");
+        assertThat(questionNames(model.requests().get(1))).containsExactly("summarizer");
     }
 
     @Test
@@ -374,7 +368,7 @@ class DecisionSchedulerPlannerTest {
 
         scheduler(model, tracker(), writer()).handle(TICKET);
 
-        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker$0", "writer$1");
+        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker", "writer");
         assertThat(invoked).containsExactly("writer");
     }
 
@@ -387,7 +381,7 @@ class DecisionSchedulerPlannerTest {
                 .build();
 
         assertThat(scheduler(model, tracker(), aiWriter).handle(TICKET)).isEqualTo("ai reply");
-        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker$0", "writer$1");
+        assertThat(questionNames(model.requests().get(0))).containsExactly("tracker", "writer");
         assertThat(invoked).isEmpty();
     }
 
@@ -399,8 +393,8 @@ class DecisionSchedulerPlannerTest {
 
         assertThat(invoked).containsExactly("tracker", "advisor");
         assertThat(questionNames(model.requests().get(0)))
-                .containsExactly(GOAL_QUESTION_NAME, "tracker$0", "advisor$1");
-        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "advisor$1");
+                .containsExactly(GOAL_QUESTION_NAME, "tracker", "advisor");
+        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "advisor");
         // once both ran no subagent can run again, so the model isn't asked a third time
         assertThat(model.requests()).hasSize(2);
     }
@@ -419,8 +413,8 @@ class DecisionSchedulerPlannerTest {
 
         assertThat(invoked).containsExactly("writer", "advisor", "writer");
         assertThat(reply).isEqualTo("reply using nothing and advisor output");
-        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "advisor$0");
-        assertThat(questionNames(model.requests().get(2))).containsExactly(GOAL_QUESTION_NAME, "writer$1");
+        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "advisor");
+        assertThat(questionNames(model.requests().get(2))).containsExactly(GOAL_QUESTION_NAME, "writer");
     }
 
     @Test
@@ -433,7 +427,7 @@ class DecisionSchedulerPlannerTest {
         scheduler(model, inactiveTracker, writer()).handle(TICKET);
 
         assertThat(invoked).containsExactly("writer");
-        assertThat(questionNames(model.requests().get(0))).containsExactly("writer$1");
+        assertThat(questionNames(model.requests().get(0))).containsExactly("writer");
     }
 
     @Test
@@ -449,8 +443,8 @@ class DecisionSchedulerPlannerTest {
 
         // the writer reads the output of the tracker, but a skipped tracker didn't change it
         assertThat(invoked).containsExactly("writer");
-        assertThat(questionNames(model.requests().get(0))).containsExactly("writer$0", "tracker$1");
-        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "tracker$1");
+        assertThat(questionNames(model.requests().get(0))).containsExactly("writer", "tracker");
+        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "tracker");
         assertThat(model.requests()).hasSize(2);
     }
 
@@ -498,7 +492,7 @@ class DecisionSchedulerPlannerTest {
                         "remote", "Failed to fetch the agent card", new IllegalStateException("connection refused")));
 
         assertThat(calledAgents(firstActionWith(model, remote, "ticket"))).containsExactly("tracker");
-        assertThat(questionNames(model.request())).containsExactly("tracker$0", "writer$1");
+        assertThat(questionNames(model.request())).containsExactly("tracker", "writer");
     }
 
     @Test
@@ -559,13 +553,13 @@ class DecisionSchedulerPlannerTest {
 
         Map<String, ?> firstQuestions = model.requests().get(0).questions();
         // each question is named after the id of its agent, and asks about the agent by its name
-        assertThat(firstQuestions).containsOnlyKeys("writer$0", "tracker$1");
-        assertThat(firstQuestions.get("writer$0"))
+        assertThat(firstQuestions).containsOnlyKeys("writer", "tracker");
+        assertThat(firstQuestions.get("writer"))
                 .isEqualTo(ScaleQuestion.from(
                         "How useful would it be to run the agent 'writer' (The writer agent) now, to reach this "
                                 + "goal: " + GOAL + "?",
                         List.of("USELESS", "MARGINAL", "USEFUL", "ESSENTIAL")));
-        assertThat(firstQuestions.get("tracker$1"))
+        assertThat(firstQuestions.get("tracker"))
                 .isEqualTo(ScaleQuestion.from(
                         // an agent without a description is described by its name
                         "How useful would it be to run the agent 'tracker' (tracker) now, to reach this goal: " + GOAL
@@ -573,7 +567,7 @@ class DecisionSchedulerPlannerTest {
                         DEFAULT_USEFULNESS_LEVELS));
 
         Map<String, ?> secondQuestions = model.requests().get(1).questions();
-        assertThat(secondQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker$1");
+        assertThat(secondQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker");
         assertThat(secondQuestions.get(GOAL_QUESTION_NAME))
                 .isEqualTo(YesNoQuestion.from("Has this goal been reached: " + GOAL + "?"));
     }
@@ -585,7 +579,7 @@ class DecisionSchedulerPlannerTest {
         // the output key of the scheduler is "reply", which the tracker doesn't write
         scheduler(model, tracker()).handle(TICKET);
 
-        assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME, "tracker$0");
+        assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME, "tracker");
         assertThat(invoked).containsExactly("tracker");
     }
 
@@ -739,7 +733,7 @@ class DecisionSchedulerPlannerTest {
 
         assertThatThrownBy(() -> scheduler(model, asyncTracker(null), writer()).handle(TICKET))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("'tracker$0'")
+                .hasMessageContaining("'tracker'")
                 .hasMessageContaining("output key");
         assertThat(model.requests()).hasSize(1);
     }
@@ -822,7 +816,7 @@ class DecisionSchedulerPlannerTest {
         // the middle level of three is scored 0.5, which reaches the activation threshold
         DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
                 GOAL_QUESTION_NAME, YesNoAnswer.from(0.1),
-                "tracker$0", ScaleAnswer.builder().mean(1.0).build()));
+                "tracker", ScaleAnswer.builder().mean(1.0).build()));
         SupportDesk scheduler = scheduler(
                 SupportDesk.class,
                 () -> planner(model)
@@ -838,7 +832,7 @@ class DecisionSchedulerPlannerTest {
         assertThat(invoked).containsExactly("tracker");
         Map<String, ?> questions = model.request().questions();
         assertThat(questions.get(GOAL_QUESTION_NAME)).isEqualTo(YesNoQuestion.from("Is it done? " + GOAL));
-        assertThat(questions.get("tracker$0"))
+        assertThat(questions.get("tracker"))
                 .isEqualTo(ScaleQuestion.from(
                         "Should tracker run now? The tracker agent. Goal: " + GOAL, levels));
     }

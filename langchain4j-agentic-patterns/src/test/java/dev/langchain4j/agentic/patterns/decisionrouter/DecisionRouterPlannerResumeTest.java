@@ -119,7 +119,7 @@ class DecisionRouterPlannerResumeTest {
         DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
                 QUESTION_NAME,
                 ChoiceAnswer.builder()
-                        .value(decisions.getAndIncrement() == 0 ? "askUser$1" : "medical$0")
+                        .value(decisions.getAndIncrement() == 0 ? "askUser" : "medical")
                         .build()));
         ResumableRouter router = AgenticServices.plannerBuilder(ResumableRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -140,7 +140,7 @@ class DecisionRouterPlannerResumeTest {
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
         DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                Map.of("medical$0", YesNoAnswer.from(0.8), "askUser$1", YesNoAnswer.from(0.7)));
+                Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .outputKey("responses")
@@ -160,7 +160,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
         DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                Map.of("medical$0", YesNoAnswer.from(0.8), "askUser$1", YesNoAnswer.from(0.7)));
+                Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .planner(() -> new DecisionRouterPlanner(model, 0.5))
@@ -174,8 +174,8 @@ class DecisionRouterPlannerResumeTest {
         DecisionRouterPlanner planner = new DecisionRouterPlanner(model, 0.5);
         planner.init(initPlanningContext);
         planner.firstAction(new PlanningContext(scope, null));
-        planner.nextAction(new PlanningContext(scope, invocation("medical$0", "medical answer")));
-        planner.nextAction(new PlanningContext(scope, invocation("askUser$1", "legal answer")));
+        planner.nextAction(new PlanningContext(scope, invocation("medical", "medical answer")));
+        planner.nextAction(new PlanningContext(scope, invocation("askUser", "legal answer")));
         Map<String, Object> executionState = planner.executionState();
 
         DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.5);
@@ -187,6 +187,32 @@ class DecisionRouterPlannerResumeTest {
         assertThat((Map<String, Object>) action.result())
                 .containsOnly(entry("medical", "medical answer"), entry("askUser", "legal answer"));
         assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void shouldResumeAfterTheSubagentsAreDeclaredInAnotherOrder() {
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused");
+        // the state was saved by a router declaring the medical expert before the legal reviewer
+        ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
+                .subAgents(legalReviewer, medicalExpert)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+        DefaultAgenticScope scope = new AgenticScopeRegistry("router").create("s6");
+        scope.writeState("request", REQUEST);
+        DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.5);
+        resumed.init(new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents()));
+        resumed.restoreExecutionState(Map.of(
+                "decision-router-activated", List.of("medical", "askUser"),
+                "decision-router-outputs", Map.of("medical", "medical answer", "askUser", "legal answer"),
+                "decision-router-deferred", List.of()));
+
+        // the state refers to the subagents by their names, so it does not depend on their positions
+        Action action = resumed.firstAction(new PlanningContext(scope, null));
+
+        assertThat(action.isDone()).isTrue();
+        assertThat((Map<String, Object>) action.result())
+                .containsOnly(entry("medical", "medical answer"), entry("askUser", "legal answer"));
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test
@@ -202,13 +228,13 @@ class DecisionRouterPlannerResumeTest {
         resumed.init(new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents()));
         // an execution state referring to a subagent that is not declared, for instance after a change of subagents
         resumed.restoreExecutionState(Map.of(
-                "decision-router-activated", List.of("medical"),
+                "decision-router-activated", List.of("technical"),
                 "decision-router-outputs", Map.of(),
                 "decision-router-deferred", List.of()));
 
         assertThatThrownBy(() -> resumed.firstAction(new PlanningContext(scope, null)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("'medical'")
+                .hasMessageContaining("'technical'")
                 .hasMessageContaining("subagents changed");
         assertThat(model.requests()).isEmpty();
     }
@@ -239,9 +265,8 @@ class DecisionRouterPlannerResumeTest {
         assertThat(planner.executionState()).isEmpty();
     }
 
-    private static AgentInvocation invocation(String agentId, Object output) {
-        return new AgentInvocation(
-                Object.class, agentId.substring(0, agentId.indexOf('$')), agentId, Map.of(), output);
+    private static AgentInvocation invocation(String agentName, Object output) {
+        return new AgentInvocation(Object.class, agentName, agentName, Map.of(), output);
     }
 
     private static void suspensionOf(Runnable invocation) {

@@ -49,10 +49,10 @@ import org.slf4j.LoggerFactory;
  * probabilities of the others, and when no subagent reaches the threshold none is invoked and the result is an empty
  * map.
  * <p>
- * The planner identifies a subagent by its {@link AgentInstance#agentId() id}, which names its option or its
- * question, so several subagents can have the same name: the decision model then tells them apart by their
- * descriptions, and in the map returned with an activation threshold the output of each of them is under its id
- * instead of its name.
+ * The planner identifies a subagent by its name, which names its option or its question. Several subagents can have
+ * the same name: each of them is then identified by its {@link AgentInstance#agentId() id} instead, the decision
+ * model tells them apart by their descriptions, and in the map returned with an activation threshold the output of
+ * each of them is under its id.
  * <p>
  * Only the subagents whose activation condition holds are offered to the decision model. When none does, the model
  * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
@@ -82,11 +82,11 @@ public class DecisionRouterPlanner implements Planner {
     private List<String> inputKeys;
     private final Map<String, AgentInstance> routes = new LinkedHashMap<>();
 
-    // the names that several subagents have: their outputs are returned under their ids
+    // the names that several subagents have: these subagents are identified by their ids, the others by their names
     private final Set<String> sharedNames = new HashSet<>();
 
-    // persisted to resume after a suspension or a crash: the ids of the activated agents, the outputs of those
-    // already invoked, and the ids of those whose output was still pending, like an agent waiting for a human
+    // persisted to resume after a suspension or a crash: the keys of the activated agents, the outputs of those
+    // already invoked, and the keys of those whose output was still pending, like an agent waiting for a human
     private List<String> activated;
     private final Map<String, Object> outputs = new HashMap<>();
     private final Set<String> deferred = new HashSet<>();
@@ -155,30 +155,38 @@ public class DecisionRouterPlanner implements Planner {
             ensureMapResult(initPlanningContext.plannerAgent().outputType());
         }
 
-        // the id of a subagent is unique, unlike its name
         Set<String> names = new HashSet<>();
         for (AgentInstance agent : initPlanningContext.subagents()) {
-            routes.put(agent.agentId(), agent);
             if (!names.add(agent.name())) {
                 sharedNames.add(agent.name());
             }
         }
+        initPlanningContext.subagents().forEach(agent -> routes.put(key(agent), agent));
+    }
+
+    /** The key identifying a subagent: its name, or its id when several subagents have that name. */
+    private String key(AgentInstance agent) {
+        return key(agent.name(), agent.agentId());
+    }
+
+    private String key(String agentName, String agentId) {
+        return sharedNames.contains(agentName) ? agentId : agentName;
     }
 
     /**
      * A single choice question among the candidates without an activation threshold, one yes/no question per
-     * candidate (named after its id) with an activation threshold.
+     * candidate (named after its key) with an activation threshold.
      */
     private Map<String, Question> questions(List<AgentInstance> candidates) {
         if (activationThreshold != null) {
             Map<String, Question> questions = new LinkedHashMap<>();
-            candidates.forEach(agent -> questions.put(agent.agentId(), relevanceQuestion(agent)));
+            candidates.forEach(agent -> questions.put(key(agent), relevanceQuestion(agent)));
             return questions;
         }
         ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(QUESTION_TEXT);
         // an agent without a description is described by its name
-        candidates.forEach(agent -> choice.option(
-                agent.agentId(), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
+        candidates.forEach(agent ->
+                choice.option(key(agent), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
         return Map.of(QUESTION_NAME, choice.build());
     }
 
@@ -215,17 +223,17 @@ public class DecisionRouterPlanner implements Planner {
             activated = candidates.isEmpty() ? List.of() : decide(planningContext.agenticScope(), candidates);
         } else {
             activated.stream()
-                    .filter(agentId -> !routes.containsKey(agentId))
+                    .filter(key -> !routes.containsKey(key))
                     .findFirst()
-                    .ifPresent(agentId -> {
+                    .ifPresent(key -> {
                         throw new IllegalStateException("Cannot resume DecisionRouterPlanner with the subagent '"
-                                + agentId + "' saved in its execution state, since the subagents changed after it "
+                                + key + "' saved in its execution state, since the subagents changed after it "
                                 + "was saved");
                     });
         }
 
         List<AgentInstance> pending = activated.stream()
-                .filter(agentId -> !outputs.containsKey(agentId))
+                .filter(key -> !outputs.containsKey(key))
                 .map(routes::get)
                 .toList();
         return pending.isEmpty() ? done(result(planningContext.agenticScope())) : call(pending);
@@ -233,7 +241,7 @@ public class DecisionRouterPlanner implements Planner {
 
     private List<String> decide(AgenticScope agenticScope, List<AgentInstance> candidates) {
         if (activationThreshold == null && candidates.size() == 1) {
-            return List.of(candidates.get(0).agentId());
+            return List.of(key(candidates.get(0)));
         }
 
         Map<String, Object> input = new LinkedHashMap<>();
@@ -246,8 +254,8 @@ public class DecisionRouterPlanner implements Planner {
         List<String> chosen = activationThreshold == null
                 ? List.of(response.choice(QUESTION_NAME).value())
                 : candidates.stream()
-                        .map(AgentInstance::agentId)
-                        .filter(agentId -> response.yesNo(agentId).probability() >= activationThreshold)
+                        .map(this::key)
+                        .filter(key -> response.yesNo(key).probability() >= activationThreshold)
                         .toList();
         LOG.info("Activating agents {} from the answers {}", chosen, response.answers());
         return chosen;
@@ -256,13 +264,13 @@ public class DecisionRouterPlanner implements Planner {
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgentInvocation invocation = planningContext.previousAgentInvocation();
-        String agentId = invocation.agentId();
+        String key = key(invocation.agentName(), invocation.agentId());
         // a skipped agent produced no output, so it is left out of the result
         if (!invocation.skipped()) {
-            outputs.put(agentId, invocation.output());
-            if (scopeOutput(agentId, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
+            outputs.put(key, invocation.output());
+            if (scopeOutput(key, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
                     && !delayedResponse.isDone()) {
-                deferred.add(agentId);
+                deferred.add(key);
             }
         }
         // the loop resumes only when all the activated agents completed, so the last done action carries all outputs
@@ -276,27 +284,21 @@ public class DecisionRouterPlanner implements Planner {
         Map<String, Object> result = new LinkedHashMap<>();
         activated.stream()
                 .filter(outputs::containsKey)
-                .forEach(agentId -> result.put(resultKey(agentId), outputOf(agentId, agenticScope)));
+                .forEach(key -> result.put(key, outputOf(key, agenticScope)));
         return result;
     }
 
-    /** The key of an output in the result: the name of its agent, or its id when several subagents have that name. */
-    private String resultKey(String agentId) {
-        String name = routes.get(agentId).name();
-        return sharedNames.contains(name) ? agentId : name;
-    }
-
-    private Object outputOf(String agentId, AgenticScope agenticScope) {
-        if (!deferred.contains(agentId)) {
-            return outputs.get(agentId);
+    private Object outputOf(String key, AgenticScope agenticScope) {
+        if (!deferred.contains(key)) {
+            return outputs.get(key);
         }
         // a pending output is completed later in the scope, without blocking here if it is still pending
-        Object scopeOutput = scopeOutput(agentId, agenticScope);
+        Object scopeOutput = scopeOutput(key, agenticScope);
         return scopeOutput instanceof DelayedResponse<?> delayedResponse ? delayedResponse.result() : scopeOutput;
     }
 
-    private Object scopeOutput(String agentId, AgenticScope agenticScope) {
-        String outputKey = routes.get(agentId).outputKey();
+    private Object scopeOutput(String key, AgenticScope agenticScope) {
+        String outputKey = routes.get(key).outputKey();
         return outputKey == null ? null : agenticScope.state().get(outputKey);
     }
 
@@ -316,14 +318,14 @@ public class DecisionRouterPlanner implements Planner {
 
     @Override
     public void restoreExecutionState(Map<String, Object> state) {
-        if (state.get(ACTIVATED_STATE_KEY) instanceof List<?> activatedIds) {
-            this.activated = activatedIds.stream().map(Object::toString).toList();
+        if (state.get(ACTIVATED_STATE_KEY) instanceof List<?> activatedKeys) {
+            this.activated = activatedKeys.stream().map(Object::toString).toList();
         }
         if (state.get(OUTPUTS_STATE_KEY) instanceof Map<?, ?> savedOutputs) {
-            savedOutputs.forEach((agentId, output) -> outputs.put(agentId.toString(), output));
+            savedOutputs.forEach((key, output) -> outputs.put(key.toString(), output));
         }
-        if (state.get(DEFERRED_STATE_KEY) instanceof List<?> deferredIds) {
-            deferredIds.forEach(agentId -> deferred.add(agentId.toString()));
+        if (state.get(DEFERRED_STATE_KEY) instanceof List<?> deferredKeys) {
+            deferredKeys.forEach(key -> deferred.add(key.toString()));
         }
     }
 

@@ -153,11 +153,6 @@ class DecisionSchedulerPlannerResumeTest {
         return List.copyOf(request.questions().keySet());
     }
 
-    /** The name of the subagent with the given id, which is that name followed by "$" and by its position. */
-    private static String agentName(String agentId) {
-        return agentId.substring(0, agentId.indexOf('$'));
-    }
-
     /**
      * A model answering each request with the goal probability and the scores computed from its state. The score of
      * a subagent is found by its name, and a subagent without a score is useless.
@@ -173,7 +168,7 @@ class DecisionSchedulerPlannerResumeTest {
                     GOAL_QUESTION_NAME.equals(name)
                             ? YesNoAnswer.from(goalProbability.apply(state))
                             : ScaleAnswer.builder()
-                                    .mean(scores.apply(state).getOrDefault(agentName(name), 0.0)
+                                    .mean(scores.apply(state).getOrDefault(name, 0.0)
                                             * (DEFAULT_USEFULNESS_LEVELS.size() - 1))
                                     .build()));
             return answers;
@@ -244,7 +239,7 @@ class DecisionSchedulerPlannerResumeTest {
                 .isEqualTo(FieldsInput.from(Map.of(
                         "ticket", TICKET, "orderStatus", "tracker output", "operatorNote", "operator answer")));
         // the tracker and the operator already ran, and none of their arguments changed
-        assertThat(questionNames(decisionOnTheAnswer)).containsExactly("writer$2");
+        assertThat(questionNames(decisionOnTheAnswer)).containsExactly("writer");
     }
 
     @Test
@@ -267,8 +262,8 @@ class DecisionSchedulerPlannerResumeTest {
 
     // ── Execution state at the planner level ──
 
-    private static AgentInvocation invocation(String agentId, Object output) {
-        return new AgentInvocation(Object.class, agentName(agentId), agentId, Map.of(), output);
+    private static AgentInvocation invocation(String agentName, Object output) {
+        return new AgentInvocation(Object.class, agentName, agentName, Map.of(), output);
     }
 
     private static List<String> calledAgents(Action action) {
@@ -309,8 +304,8 @@ class DecisionSchedulerPlannerResumeTest {
         Map<String, Object> executionState = planner.executionState();
         assertThat(executionState)
                 .containsEntry("decision-scheduler-invocations", 1)
-                .containsEntry("decision-scheduler-spent", List.of("tracker$0"))
-                .containsEntry("decision-scheduler-current", "tracker$0")
+                .containsEntry("decision-scheduler-spent", List.of("tracker"))
+                .containsEntry("decision-scheduler-current", "tracker")
                 .containsEntry("decision-scheduler-pending", false);
 
         DecisionSchedulerPlanner resumed = planner(model).build();
@@ -320,6 +315,27 @@ class DecisionSchedulerPlannerResumeTest {
         assertThat(calledAgents(resumed.firstAction(new PlanningContext(scope, null))))
                 .containsExactly("tracker");
         assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void shouldResumeAfterTheSubagentsAreDeclaredInAnotherOrder() {
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused");
+        // the state was saved by a scheduler declaring the tracker before the writer
+        AgentInstance desk = (AgentInstance) scheduler(model, writer(), tracker());
+        DefaultAgenticScope scope = scopeWithTheTicket("s8");
+
+        DecisionSchedulerPlanner resumed = planner(model).build();
+        resumed.init(new InitPlanningContext(scope, desk, desk.subagents()));
+        resumed.restoreExecutionState(Map.of(
+                "decision-scheduler-invocations", 1,
+                "decision-scheduler-spent", List.of("tracker"),
+                "decision-scheduler-current", "tracker",
+                "decision-scheduler-pending", false));
+
+        // the state refers to the subagents by their names, so it does not depend on their positions
+        assertThat(calledAgents(resumed.firstAction(new PlanningContext(scope, null))))
+                .containsExactly("tracker");
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test
@@ -333,14 +349,14 @@ class DecisionSchedulerPlannerResumeTest {
         // the state comes back from JSON, with a number of any kind
         resumed.restoreExecutionState(Map.of(
                 "decision-scheduler-invocations", 2L,
-                "decision-scheduler-spent", List.of("tracker$0", "writer$1"),
-                "decision-scheduler-current", "writer$1",
+                "decision-scheduler-spent", List.of("tracker", "writer"),
+                "decision-scheduler-current", "writer",
                 "decision-scheduler-pending", false));
 
         assertThat(calledAgents(resumed.firstAction(new PlanningContext(scope, null))))
                 .containsExactly("writer");
         scope.writeState("reply", "writer output");
-        Action action = resumed.nextAction(new PlanningContext(scope, invocation("writer$1", "writer output")));
+        Action action = resumed.nextAction(new PlanningContext(scope, invocation("writer", "writer output")));
 
         // both subagents ran and none of their arguments changed, so there is nothing to decide
         assertThat(action.isDone()).isTrue();
@@ -357,15 +373,15 @@ class DecisionSchedulerPlannerResumeTest {
         resumed.init(new InitPlanningContext(scope, desk, desk.subagents()));
         resumed.restoreExecutionState(Map.of(
                 "decision-scheduler-invocations", 2,
-                "decision-scheduler-spent", List.of("rewriter$0"),
-                "decision-scheduler-current", "rewriter$0",
+                "decision-scheduler-spent", List.of("rewriter"),
+                "decision-scheduler-current", "rewriter",
                 "decision-scheduler-pending", false));
 
         // running again the second invocation doesn't count as a third one
         assertThat(calledAgents(resumed.firstAction(new PlanningContext(scope, null))))
                 .containsExactly("rewriter");
         scope.writeState("reply", "rewriter output");
-        Action action = resumed.nextAction(new PlanningContext(scope, invocation("rewriter$0", "rewriter output")));
+        Action action = resumed.nextAction(new PlanningContext(scope, invocation("rewriter", "rewriter output")));
 
         // the limit of two invocations is reached, so only the goal is asked
         assertThat(action.isDone()).isTrue();
@@ -383,13 +399,13 @@ class DecisionSchedulerPlannerResumeTest {
         // the state was saved while waiting for a subagent removed since then
         resumed.restoreExecutionState(Map.of(
                 "decision-scheduler-invocations", 2,
-                "decision-scheduler-spent", List.of("tracker$0", "askUser$1"),
-                "decision-scheduler-current", "askUser$1",
+                "decision-scheduler-spent", List.of("tracker", "askUser"),
+                "decision-scheduler-current", "askUser",
                 "decision-scheduler-pending", true));
 
         assertThatThrownBy(() -> resumed.firstAction(new PlanningContext(scope, null)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("'askUser$1'")
+                .hasMessageContaining("'askUser'")
                 .hasMessageContaining("subagents changed");
         assertThat(model.requests()).isEmpty();
     }
