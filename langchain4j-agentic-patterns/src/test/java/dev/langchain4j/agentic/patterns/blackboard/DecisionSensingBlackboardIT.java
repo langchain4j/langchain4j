@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
+import static dev.langchain4j.agentic.patterns.DecisionModels.decisionModel;
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,8 +12,6 @@ import dev.langchain4j.agentic.patterns.blackboard.BlackboardMedicalAgents.LabRe
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardMedicalAgents.MedicalDiagnostics;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardMedicalAgents.SymptomExtractor;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
@@ -51,15 +50,6 @@ public class DecisionSensingBlackboardIT {
                 @V("symptoms") String symptoms,
                 @V("labAnalysis") String labAnalysis,
                 @V("nephrologistNeeded") boolean nephrologistNeeded);
-    }
-
-    private static DecisionModel decisionModel() {
-        return TypeSafeDecisionModel.builder()
-                .apiKey(System.getenv("TYPESAFE_API_KEY"))
-                .modelName("jev-1.13.0")
-                .logRequests(true)
-                .logResponses(true)
-                .build();
     }
 
     @Test

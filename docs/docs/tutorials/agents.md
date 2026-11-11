@@ -2824,7 +2824,7 @@ The conditional workflow discussed before routes a request to the right expert i
 
 A [decision model](/tutorials/decision-models) is a better fit for this kind of task: instead of generating text, it answers typed questions about an input, returning the probability of each possible answer. The decision router pattern uses one to choose among its subagents directly: each subagent is an option of a single choice question, described by its name and description, and the decision model returns the most probable one together with the probability of every subagent. Optionally, with an activation threshold, the router asks instead whether each subagent should handle the request, and invokes in parallel all those whose probability reaches the threshold, which is useful when a request spans more than one domain.
 
-The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold strictly between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. With an activation threshold, it creates instead one `YesNoQuestion` per subagent, like "Should the agent 'medical' (A medical expert, answering questions about health, injuries and treatments) handle this request?", all asked in the same request. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
+The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold strictly between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the id of the subagent as the option name and its description as the description of when that option applies. Like the supervisor, the planner identifies each subagent by its agent id, which is its name followed by its position among the subagents, such as `medical$0`, and not by its name, so two subagents can have the same name: the decision model tells them apart by their descriptions. With an activation threshold, it creates instead one `YesNoQuestion` per subagent, like "Should the agent 'medical' (A medical expert, answering questions about health, injuries and treatments) handle this request?", all asked in the same request. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
 
 When the router is invoked, the planner asks the decision model these questions in a single call, and then selects the subagents to activate from the answers. Internally, its `firstAction` method does roughly the following:
 
@@ -2833,13 +2833,13 @@ DecisionResponse response = decide(planningContext.agenticScope());
 activated = activationThreshold == null
         ? List.of(response.choice(QUESTION_NAME).value())
         : routes.keySet().stream()
-                .filter(name -> response.yesNo(name).probability() >= activationThreshold)
+                .filter(agentId -> response.yesNo(agentId).probability() >= activationThreshold)
                 .toList();
 ```
 
-Without an activation threshold, only the most probable subagent is invoked, and the `nextAction` method returns its output as the result of the router. With an activation threshold, all the subagents whose probability of "yes" is at least the threshold are invoked in parallel, and the `nextAction` method collects their outputs, so that the result of the router is a map from the name of each invoked subagent to its output, which is empty when no subagent reaches the threshold.
+Without an activation threshold, only the most probable subagent is invoked, and the `nextAction` method returns its output as the result of the router. With an activation threshold, all the subagents whose probability of "yes" is at least the threshold are invoked in parallel, and the `nextAction` method collects their outputs, so that the result of the router is a map from the name of each invoked subagent to its output, which is empty when no subagent reaches the threshold. Only the output of a subagent whose name is shared by other subagents is put in the map under its id instead of its name.
 
-The planner also saves the names of the activated subagents, and the outputs of those that already completed, as its execution state. This way, when the agentic system is resumed after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because one of the activated subagents is waiting for a human, or after a crash, the router doesn't ask the decision model again: it only invokes the activated subagents that didn't run yet, and its result still contains the outputs collected before the interruption.
+The planner also saves the ids of the activated subagents, and the outputs of those that already completed, as its execution state. Since an id contains the position of its subagent, the router has to be resumed with the same subagents declared in the same order. This way, when the agentic system is resumed after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because one of the activated subagents is waiting for a human, or after a crash, the router doesn't ask the decision model again: it only invokes the activated subagents that didn't run yet, and its result still contains the outputs collected before the interruption.
 
 To give a practical example, let's reimplement the expert router of the conditional workflow section. The experts are the same, except that their descriptions now say which requests they handle:
 
@@ -2874,7 +2874,7 @@ ExpertRouterAgent expertRouterAgent = AgenticServices.plannerBuilder(ExpertRoute
 String response = expertRouterAgent.ask("I broke my leg, what should I do?");
 ```
 
-Here the decision model receives the input `{"request": "I broke my leg, what should I do?"}` and the question "Which agent is best suited to handle this request?" with the options `medical`, `legal` and `technical`, and chooses `medical`, so that only the `MedicalExpert` is invoked and its answer is returned.
+Here the decision model receives the input `{"request": "I broke my leg, what should I do?"}` and the question "Which agent is best suited to handle this request?" with the options `medical$0`, `legal$1` and `technical$2`, and chooses `medical$0`, so that only the `MedicalExpert` is invoked and its answer is returned.
 
 Some requests, however, belong to more than one domain. To invoke all the experts whose probability reaches a given threshold, pass the threshold to the planner and let the router return a map, from the name of each invoked expert to its answer:
 
@@ -3055,6 +3055,146 @@ new ConfidenceCascadePlanner(decisionModel, 0.5,
 ```
 
 A few things to keep in mind. The cascade saves money and time only when most requests are accepted at a cheap tier: an escalated request pays for every tier it went through, plus one decision call for each graded answer, and these calls run one after the other. The grade is a relevance and completeness signal, not a proof of correctness: the decision model can judge whether an answer addresses the request, but it cannot verify facts, so the cascade suits the cases where a cheap check can tell a good answer from a bad one. For the same reason, a cheap tier should be grounded, for instance through [RAG](/tutorials/rag), rather than answer from what its model happens to know. The decision model only sees the arguments of the cascade agent and the answer of the tier, and not the chat memory or the instructions of the tiers, so the arguments must carry everything needed to judge the answer. Both the request and the answers are untrusted input, so a crafted request or answer can influence the grade: the cascade trades cost against quality, it is not a security or review boundary, and a step that must always reach a more capable tier or a human has to enforce it on its own, for instance through an [activation condition](#activation-conditions). Probabilities are not calibrated in the same way by different decision models, so the acceptance threshold should be tuned on your own requests, and tuned again when you change the decision model or its version. As for the decision router, the arguments of the cascade agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them, or `Content`s such as images, and an argument of any other type is rejected by the decision model with an error explaining which types are supported: this leaves to you the choice of what is sent to the provider of the decision model, which can differ from the provider of the chat models of the tiers. The answer of a tier is sent as it is when it is such a value, and converted to maps and lists through a JSON round trip otherwise, so a tier can return a typed value. A failure of the decision model fails the invocation of the cascade. Finally, the execution state is saved only after the grade, so a crash during the grading call itself makes the tier being graded run again when the cascade is resumed, and since the execution state refers to the tiers by their position, a cascade whose subagents changed after a suspension cannot be resumed and fails with an `IllegalStateException`.
+
+### Decision scheduler agentic pattern
+
+:::note
+The decision scheduler is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The decision scheduler is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
+In some agentic systems the agents to invoke, and their order, depend on the request and on what the agents invoked so far have found, so they cannot be written down in advance. The [supervisor](#pure-agentic-ai) handles this by asking an LLM, at every step, which agent to invoke next and with which arguments, which is flexible but slow and expensive. The [blackboard](#blackboard-agentic-pattern) is cheaper, since it activates the agents whose inputs are available, but it invokes every agent that can run until its goal predicate holds, and choosing among several ready agents is left to a hand-written `ConflictResolutionStrategy`.
+
+The decision scheduler pattern sits between the two. Like in the blackboard, its subagents read all their inputs from the `AgenticScope`, and one of them is invoked at each step. Unlike in the blackboard, which one is chosen by a [decision model](/tutorials/decision-models): at every step a single decision call scores how useful it would be to invoke each subagent that can run now, and tells whether the goal has been reached. The scheduler invokes the subagent with the highest score, and stops when the goal is reached or when no subagent is useful enough, so the subagents that are not useful for a request are never invoked. Compared with the supervisor, a step costs one decision call instead of an LLM call that has to reason and to generate the arguments of the next agent. The price is that a decision model answers questions but doesn't generate text, so it cannot produce arguments.
+
+The `DecisionSchedulerPlanner` implementing this pattern is created through a builder, with a `DecisionModel`, a description of the goal, and two thresholds strictly between 0 and 1: the goal threshold and the activation threshold. All of them are mandatory, while the maximum number of invocations is optional and defaults to 10. When it is initialized, the planner takes the arguments of the scheduler agent itself as the request, so the scheduler has to be defined through a typed agent interface. Like the supervisor, it identifies each subagent by its agent id, not by its name, so two subagents can have the same name: each gets its own question, and the decision model tells them apart by their descriptions.
+
+At each step the candidates are the subagents that can run now: all their mandatory arguments are in the `AgenticScope`, their [activation condition](#activation-conditions) holds, and they either never ran or had one of their arguments changed since their last run. The planner then sends a single request to the decision model, made of one `ScaleQuestion` for each candidate, named after the id of its agent, "How useful would it be to run the agent '...' (its description) now, to reach this goal: ...?", with the levels "USELESS", "MARGINAL", "USEFUL" and "ESSENTIAL", and one `YesNoQuestion`, "Has this goal been reached: ...?". The score of a candidate is the mean level of its answer, scaled between 0 and 1. The decision that follows is simple:
+
+```java
+if (goalProbability >= goalThreshold) {
+    return done();
+}
+// the candidate with the highest score, the first declared one when several have the same score
+if (scores.get(best.name()) < activationThreshold) {
+    return done();
+}
+return call(best.agent());
+```
+
+The scheduler also stops when no subagent can run, and after the maximum number of invocations, where only the goal question is asked and a warning is logged if the goal has not been reached. None of these stops is a failure: in all cases the result of the scheduler is the value found in the `AgenticScope` under its output key, which is typically the output key of the subagent producing the final result. When that is the case, the goal question is not even asked until that key is in the scope, since the goal cannot be reached before the result exists.
+
+To give a practical example, consider a support desk answering the tickets of the customers of a coffee machines store. Three specialists gather findings on a ticket: an `OrderTracker`, a [non-AI agent](#non-ai-agents) looking up the shipping status of an order through a static method annotated with `@Agent`, a `RefundPolicyAdvisor` and a `Troubleshooter`. All of them read the `ticket` and write their finding under their own output key:
+
+```java
+public interface Troubleshooter {
+
+    @UserMessage("""
+        You are a technician of the Brewmaster 3000 coffee machine.
+        Give in no more than 3 sentences the steps fixing the malfunction described in the following customer ticket.
+        Write only the steps: say nothing about refunds, returns or the warranty, not even that you cannot help
+        with them.
+        The ticket is: {{ticket}}
+        """)
+    @Agent(name = "troubleshooter",
+            description = "Finds the steps fixing a malfunction of the Brewmaster 3000 coffee machine",
+            outputKey = "troubleshooting")
+    String troubleshoot(@V("ticket") String ticket);
+}
+```
+
+A fourth agent, the `ReplyWriter`, turns the ticket and the findings into the reply:
+
+```java
+public interface ReplyWriter {
+
+    @UserMessage("""
+        You are a customer support agent.
+        Write a reply of no more than 5 sentences to the following customer ticket, using only the findings below
+        and never your own knowledge. Skip the findings that are not available, without mentioning them.
+        If no finding answers a part of the ticket, leave that part unanswered.
+        The ticket is: {{ticket}}
+        Order status: {{orderStatus}}
+        Refund policy: {{refundPolicy}}
+        Troubleshooting: {{troubleshooting}}
+        """)
+    @Agent(name = "replyWriter",
+            description = "Writes the final reply to the customer, once the findings needed to answer every part " +
+                    "of the ticket have been gathered",
+            outputKey = "reply")
+    String write(@V("ticket") String ticket, @V("orderStatus") String orderStatus,
+                 @V("refundPolicy") String refundPolicy, @V("troubleshooting") String troubleshooting);
+}
+```
+
+Not every ticket needs every finding, so the three findings are given a default value. An argument with a default value is not mandatory, which makes the `ReplyWriter` a candidate from the first step, and leaves to the decision model the choice of when it is worth invoking it. The `SupportDesk` interface is directly implemented by a `DecisionSchedulerPlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+public interface SupportDesk {
+
+    @Agent
+    String handle(@V("ticket") String ticket);
+}
+
+ReplyWriter replyWriter = AgenticServices.agentBuilder(ReplyWriter.class)
+        .chatModel(BASE_MODEL)
+        .defaultKeyValue("orderStatus", "not available")
+        .defaultKeyValue("refundPolicy", "not available")
+        .defaultKeyValue("troubleshooting", "not available")
+        .build();
+
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+SupportDesk supportDesk = AgenticServices.plannerBuilder(SupportDesk.class)
+        .subAgents(OrderTracker.class, refundPolicyAdvisor, troubleshooter, replyWriter)
+        .outputKey("reply")
+        .planner(() -> DecisionSchedulerPlanner.builder()
+                .decisionModel(decisionModel)
+                .goal("The reply answers every question and request of the customer's ticket, " +
+                        "using the findings gathered")
+                .goalThreshold(0.6)
+                .activationThreshold(0.3)
+                .build())
+        .build();
+
+String reply = supportDesk.handle("Where is my order #4711? It should have arrived last week.");
+```
+
+For this ticket the decision model receives the input `{"ticket": "Where is my order #4711? ..."}` and one question for each of the four agents. The `OrderTracker` gets by far the highest score, so it is invoked first. At the second step the input also contains the `orderStatus`, the `OrderTracker` is no longer a candidate, and the most useful agent is now the `ReplyWriter`. Once the `reply` is in the scope the goal question is asked too, the probability that the goal has been reached is high, and the scheduler returns the reply: the `RefundPolicyAdvisor` and the `Troubleshooter` are never invoked. For a ticket like "My Brewmaster 3000 leaks water from the bottom since the first day. How can I fix it, and can I get my money back if it cannot be fixed?" the path is different: the `RefundPolicyAdvisor` and the `Troubleshooter` are invoked, in an order decided by their scores, then the `ReplyWriter`, while the `OrderTracker` is never invoked.
+
+The same default values can be declared once in the agent interface, instead of on the builder, through [typed keys](#strongly-typed-inputs-and-outputs) returning a `defaultValue()`. This also allows to define the support desk with the [declarative API](#declarative-api), where the planner is provided by a method annotated with `@PlannerSupplier`:
+
+```java
+public interface SupportDesk {
+
+    @PlannerAgent(outputKey = "reply",
+            subAgents = { OrderTracker.class, RefundPolicyAdvisor.class, Troubleshooter.class, ReplyWriter.class })
+    String handle(@V("ticket") String ticket);
+
+    @PlannerSupplier
+    static Planner planner() {
+        return DecisionSchedulerPlanner.builder()
+                .decisionModel(decisionModel())
+                .goal("The reply answers every question and request of the customer's ticket, " +
+                        "using the findings gathered")
+                .goalThreshold(0.6)
+                .activationThreshold(0.3)
+                .build();
+    }
+}
+```
+
+A subagent that ran is offered to the decision model again only when one of its arguments changes. In the example, if the `ReplyWriter` is invoked before the `Troubleshooter`, the goal question finds that the reply doesn't say how to fix the machine, the `Troubleshooter` is invoked, and its output, being an argument of the `ReplyWriter`, makes the `ReplyWriter` a candidate again. This rule is what keeps the scheduler from invoking the same agent forever, and it also means that an agent rewriting one of its own arguments, like an editor that reads and writes the same `story`, can always run again: in this case the goal threshold, the activation threshold and the maximum number of invocations are what end the cycle.
+
+The input of the decision is the state of the task: the arguments of the scheduler agent, plus the outputs of the subagents that are in the scope, each under its output key. The arguments are sent to the decision model as they are, so they can be strings, numbers, booleans, maps and lists of them, or `Content`s, and an argument of any other type is rejected with an error explaining which types are supported: in this way the application decides which of its objects are sent to the provider of the decision model. The outputs of the subagents are sent as they are when they are such values, and are converted to maps and lists through a JSON round trip otherwise, so a subagent can return a typed value. The decision model sees this state only: it isn't told which subagents already ran, and the work of a subagent without an output key is invisible to it.
+
+The planner saves as its execution state the number of invocations, the subagents that cannot run again yet and the subagent being invoked, so that after a [suspension](#agenticscope-and-agentic-systems-recoverability) or a crash the scheduler resumes from that subagent, without asking the decision model again and without invoking again the subagents that completed. This state refers to the subagents by their ids, which contain their position, so the scheduler has to be resumed with the same subagents declared in the same order. When a subagent waits for a human the scheduler suspends without asking the decision model, and the next step is decided on the answer of the human when the scheduler is resumed. For this reason the subagents whose answer can be delayed, that is human-in-the-loop and asynchronous agents, must declare an output key, from which the planner reads their answer. A subagent whose description cannot be read because it is unavailable, like an [A2A agent](#a2a-integration) whose server is down, is left out for the rest of the invocation, with a warning, instead of failing it.
+
+A few things to keep in mind. Each step is a greedy choice with no lookahead, so this pattern fits the tasks where the most useful next step can be told from the current state, while a task that needs to plan several steps ahead, or to generate the arguments of its agents, is better served by a supervisor. The names, the descriptions and the outputs of the subagents are what the decision model reads, so they deserve care: a description should say when the agent is useful and not only what it does, as the one of the `ReplyWriter` above, and an agent should stay within its remit, because an output that comments on the work of another agent changes the score of that agent. The goal question is a relevance and completeness signal, not a proof of correctness: it cannot tell a grounded answer from an invented one, which is why the `ReplyWriter` is told to use only the findings. Scores and probabilities are not calibrated in the same way by every decision model, so the two thresholds must be tuned on the decision model in use, by looking at the scores logged at each step of some real invocations, and tuned again when it changes. In particular an agent that has to run again, like the `ReplyWriter` after a new finding, typically gets a lower score than at its first run, and the activation threshold must leave room for it. Every step costs one decision call, with one question for each candidate, and these calls run one after the other. A failure of the decision model fails the invocation of the scheduler. Finally, a planner instance holds the state of a single invocation, so the `planner` method of the builder must be given a supplier creating a new instance each time, as in the example above, while the decision model can be shared.
 
 ## Non-AI agents
 

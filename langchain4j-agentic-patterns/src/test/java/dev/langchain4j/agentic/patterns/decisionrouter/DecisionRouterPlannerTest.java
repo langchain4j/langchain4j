@@ -21,6 +21,7 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.V;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
@@ -131,14 +132,40 @@ class DecisionRouterPlannerTest {
         return ChoiceAnswer.builder().value(value).probabilities(probabilities).build();
     }
 
-    private static DecisionModelMock modelAnswering(ChoiceAnswer answer) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, answer));
+    /** The name of the subagent with the given id, which is that name followed by "$" and by its position. */
+    private static String agentName(String agentId) {
+        return agentId.substring(0, agentId.indexOf('$'));
     }
 
+    private static String agentId(String agentName, Collection<String> agentIds) {
+        return agentIds.stream()
+                .filter(agentId -> agentName(agentId).equals(agentName))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /** A model giving the answer, which is about agent names, with the ids that these agents have as options. */
+    private static DecisionModelMock modelAnswering(ChoiceAnswer answer) {
+        return DecisionModelMock.thatAnswers(request -> {
+            Collection<String> agentIds = ((ChoiceQuestion) request.questions().get(QUESTION_NAME))
+                    .options()
+                    .keySet();
+            Map<String, Double> probabilities = new LinkedHashMap<>();
+            answer.probabilities()
+                    .forEach((agentName, probability) -> probabilities.put(agentId(agentName, agentIds), probability));
+            return Map.of(QUESTION_NAME, choice(agentId(answer.value(), agentIds), probabilities));
+        });
+    }
+
+    /** A model answering the question about each agent, named after its id, with the probability of its name. */
     private static DecisionModelMock modelAnsweringRelevance(Map<String, Double> probabilities) {
-        Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
-        probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.from(probability)));
-        return DecisionModelMock.thatAlwaysAnswers(answers);
+        return DecisionModelMock.thatAnswers(request -> {
+            Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
+            request.questions()
+                    .keySet()
+                    .forEach(agentId -> answers.put(agentId, YesNoAnswer.from(probabilities.get(agentName(agentId)))));
+            return answers;
+        });
     }
 
     private <T> T router(Class<T> routerType, DecisionRouterPlanner planner) {
@@ -182,12 +209,12 @@ class DecisionRouterPlannerTest {
         assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
         ChoiceQuestion question = (ChoiceQuestion) request.questions().get(QUESTION_NAME);
         assertThat(question.text()).isEqualTo("Which agent is best suited to handle this request?");
-        // an option added without a description is described by its name
+        // an option is named after the id of its agent, and an agent without a description is described by its name
         assertThat(question.options())
                 .containsExactly(
-                        entry("medical", "Answers medical questions"),
-                        entry("legal", "Answers legal questions"),
-                        entry("technical", "technical"));
+                        entry("medical$0", "Answers medical questions"),
+                        entry("legal$1", "Answers legal questions"),
+                        entry("technical$2", "technical"));
     }
 
     @Test
@@ -305,7 +332,7 @@ class DecisionRouterPlannerTest {
 
         assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
         ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
-        assertThat(question.options()).containsOnlyKeys("medical", "technical");
+        assertThat(question.options()).containsOnlyKeys("medical$0", "technical$2");
         assertThat(inactiveCalls).hasValue(0);
     }
 
@@ -321,7 +348,7 @@ class DecisionRouterPlannerTest {
                 .build();
 
         assertThat(router.ask(REQUEST)).containsOnly(entry("medical", "medical answer"));
-        assertThat(model.request().questions()).containsOnlyKeys("medical", "technical");
+        assertThat(model.request().questions()).containsOnlyKeys("medical$0", "technical$2");
         assertThat(inactiveCalls).hasValue(0);
     }
 
@@ -407,16 +434,17 @@ class DecisionRouterPlannerTest {
 
         DecisionRequest request = model.request();
         assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST)));
-        assertThat(request.questions()).containsOnlyKeys("medical", "legal", "technical");
+        assertThat(request.questions()).containsOnlyKeys("medical$0", "legal$1", "technical$2");
         assertThat(request.questions().values())
                 .allSatisfy(question -> assertThat(question)
                         .isInstanceOfSatisfying(
                                 YesNoQuestion.class,
                                 yesNo -> assertThat(yesNo.yesWhen()).isNull()));
-        assertThat(request.questions().get("medical").text())
+        // a question is named after the id of its agent, and asks about the agent by its name
+        assertThat(request.questions().get("medical$0").text())
                 .isEqualTo("Should the agent 'medical' (Answers medical questions) handle this request?");
         // an agent without a description is asked about by its name only
-        assertThat(request.questions().get("technical").text())
+        assertThat(request.questions().get("technical$2").text())
                 .isEqualTo("Should the agent 'technical' handle this request?");
     }
 
@@ -454,25 +482,54 @@ class DecisionRouterPlannerTest {
 
     // ── Both modes ──
 
+    /** Another expert named "medical", like the {@link MedicalExpert}. */
+    public static class AnotherMedicalExpert {
+
+        @Agent(description = "Answers questions about medicines", outputKey = "otherMedicalResponse")
+        public String medical(@V("request") String request) {
+            return "another medical answer";
+        }
+    }
+
     @Test
-    void shouldRejectSubagentsWithTheSameName() {
-        var anotherMedicalExpert = new Object() {
-            @Agent(outputKey = "otherMedicalResponse")
-            public String medical(@V("request") String request) {
-                return "another medical answer";
-            }
-        };
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+    void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
+        DecisionModelMock model =
+                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
-                .subAgents(medicalExpert, anotherMedicalExpert)
+                .subAgents(medicalExpert, new AnotherMedicalExpert())
                 .planner(() -> new DecisionRouterPlanner(model))
                 .build();
 
-        assertThatThrownBy(() -> router.ask(REQUEST))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("distinct names")
-                .hasMessageContaining("'medical'");
+        assertThat(router.ask(REQUEST)).isEqualTo("another medical answer");
+        assertThat(medicalExpert.calls).hasValue(0);
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        assertThat(question.options())
+                .containsExactly(
+                        entry("medical$0", "Answers medical questions"),
+                        entry("medical$1", "Answers questions about medicines"));
+    }
+
+    @Test
+    void shouldReturnUnderTheirIdsTheOutputsOfTheSubagentsWithTheSameNameWithAThreshold() {
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "medical$0", YesNoAnswer.from(0.9),
+                "medical$1", YesNoAnswer.from(0.8),
+                "legal$2", YesNoAnswer.from(0.7)));
+
+        MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+
+        // the output of an agent is under its name, unless another subagent has the same name
+        assertThat(router.ask(REQUEST))
+                .containsOnly(
+                        entry("medical$0", "medical answer"),
+                        entry("medical$1", "another medical answer"),
+                        entry("legal", "legal answer"));
+        assertThat(model.request().questions().get("medical$1").text())
+                .isEqualTo("Should the agent 'medical' (Answers questions about medicines) handle this request?");
     }
 
     @Test
