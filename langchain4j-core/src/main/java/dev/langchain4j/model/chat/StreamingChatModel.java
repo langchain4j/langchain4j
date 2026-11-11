@@ -129,7 +129,13 @@ public interface StreamingChatModel {
         };
 
         onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
-        doChat(finalChatRequest, observingHandler);
+        int maxRetries = maxRetries();
+        if (maxRetries > 0) {
+            new RetryingStreamingChat(this::doChat, finalChatRequest, observingHandler, maxRetries, invocationId)
+                    .start();
+        } else {
+            doChat(finalChatRequest, observingHandler);
+        }
     }
 
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
@@ -277,6 +283,44 @@ public interface StreamingChatModel {
 
     default List<ChatModelListener> listeners() {
         return List.of();
+    }
+
+    /**
+     * The maximum number of times
+     * {@link #chat(ChatRequest, ChatRequestOptions, StreamingChatResponseHandler)} retries a failed request.
+     * <p>
+     * A request is retried only if it fails before anything (a partial response, partial thinking, partial or
+     * complete tool call, or the complete response) is delivered to the {@link StreamingChatResponseHandler},
+     * and the error is an {@link Exception} that is not a {@link dev.langchain4j.exception.NonRetriableException}
+     * (the same rule that {@link ChatModel} implementations use).
+     * Once anything has been delivered, the error is passed to
+     * {@link StreamingChatResponseHandler#onError(Throwable)} as usual.
+     * Raw events passed to {@link StreamingChatResponseHandler#onUnmappedRawEvent(Object)} do not prevent
+     * a retry, so the handler may receive raw events from a failed attempt; if that callback throws,
+     * the request is not retried.
+     * <p>
+     * Retries run on the default executor (see {@link dev.langchain4j.spi.ExecutorProvider}) after an
+     * exponential backoff with jitter (500 ms, 750 ms, 1125 ms, ...), without blocking a thread.
+     * Like other retry backoff, a retry does not carry the context captured by
+     * {@link dev.langchain4j.spi.ExecutorProvider#captureContext()}.
+     * {@link ChatModelListener}s are notified once per call, not once per attempt.
+     * An exception thrown synchronously by the first attempt (for example, for an unsupported request parameter)
+     * propagates to the caller and is not retried.
+     * <p>
+     * Unlike {@link ChatModel} implementations, which usually retry twice by default, retries are disabled by default.
+     * Retries apply only to models that do not override
+     * {@link #chat(ChatRequest, ChatRequestOptions, StreamingChatResponseHandler)} or
+     * {@link #chat(ChatRequest, StreamingChatResponseHandler)}.
+     * The reactive {@link #chat(ChatRequest)} does not retry.
+     * A {@code StreamingChatModel} that delegates to another model's {@code chat(...)} should not override this
+     * method, otherwise each request is retried by both models.
+     *
+     * @return the maximum number of retries; {@code 0} or less disables retries
+     * @since 1.24.0
+     */
+    @Experimental
+    default int maxRetries() {
+        return 0;
     }
 
     default ModelProvider provider() {
