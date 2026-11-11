@@ -1,12 +1,11 @@
 package dev.langchain4j.model.input.structured;
 
-import dev.langchain4j.internal.ValidationUtils;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import dev.langchain4j.internal.ValidationUtils;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Represents a structured prompt.
@@ -27,6 +26,16 @@ public @interface StructuredPrompt {
      * @return the delimiter.
      */
     String delimiter() default "\n";
+
+    /**
+     * When set to {@code true}, unresolved template variables will be kept as-is (e.g., {@code {{variable}}})
+     * instead of throwing an exception.
+     * <p>
+     * Defaults to {@code false}.
+     *
+     * @return whether lenient mode is enabled
+     */
+    boolean lenient() default false;
 
     /**
      * Utility class for {@link StructuredPrompt}.
