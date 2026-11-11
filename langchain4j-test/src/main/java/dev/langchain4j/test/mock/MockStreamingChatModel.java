@@ -1,5 +1,6 @@
 package dev.langchain4j.test.mock;
 
+import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -31,9 +32,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link StreamingChatModel} for tests: it needs no network, streams the answers the test tells it to, and records
@@ -73,7 +76,10 @@ import java.util.stream.Stream;
  * <p>
  * {@code chat(request, handler)} returns immediately and calls the handler on another thread, also for a failure, so a
  * test has to wait for {@code onCompleteResponse} or {@code onError}, for example with a {@code CompletableFuture}. The
- * {@code Publisher} returned by {@code chat(request)} emits its events on the thread that requests them.
+ * {@code Publisher} returned by {@code chat(request)} emits its events on the thread that requests them. Each
+ * subscription to that {@code Publisher} is one request: the mock records the request and takes the next step when the
+ * {@code Publisher} is subscribed to, not when {@code chat(request)} returns, so a retry that subscribes again gets the
+ * next step.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
@@ -104,7 +110,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
 
     /**
      * Adds a step: the next request is answered by streaming exactly the given tokens, which together make up one
-     * answer.
+     * answer. Without tokens, nothing is streamed and the answer has no text.
      *
      * @throws IllegalArgumentException if a token is empty
      * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
@@ -178,7 +184,8 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * {@link #thenFails(RuntimeException)}.
      *
      * @throws IllegalStateException if the last step already fails, computes its answer or has no text or thinking to
-     *                               stream, or if the script already ends with {@link #thenRepeats()}
+     *                               stream, if the mock already answered the last step, or if the script already ends
+     *                               with {@link #thenRepeats()}
      */
     public MockStreamingChatModel andFails(RuntimeException exception) {
         script.failLastAfterTokens(exception);
@@ -192,7 +199,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * <p>
      * A step that calls a tool cannot repeat. To test a model that keeps calling a tool, for example the limit set with
      * {@code maxToolCallingRoundTrips}, compute the answer:
-     * {@code thatStreams(request -> AiMessage.from(toolCall("getWeather", Map.of()))).thenRepeats()}.
+     * {@code thatStreams(request -> AiMessage.from(MockChatModel.toolCall("getWeather", Map.of()))).thenRepeats()}.
      *
      * @throws IllegalStateException if the last step calls a tool, because an AI Service would then call the tool again
      *                               and again, or if the script already ends with {@code thenRepeats()}
@@ -206,8 +213,10 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * Reports the given token usage in the response to every request, except for a step that gives the whole response:
      * that one reports exactly its own token usage. For different token usages per step, give the whole responses, see
      * {@link #thenStreams(ChatResponse)}.
+     *
+     * @param tokenUsage the token usage, or {@code null} for no token usage, which is also the default
      */
-    public MockStreamingChatModel withTokenUsage(TokenUsage tokenUsage) {
+    public MockStreamingChatModel withTokenUsage(@Nullable TokenUsage tokenUsage) {
         script.defaultTokenUsage(tokenUsage);
         return this;
     }
@@ -241,25 +250,21 @@ public class MockStreamingChatModel implements StreamingChatModel {
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return subscriber -> {
-            Events built;
+            Step step;
+            List<ChatModelStreamingEvent> events;
             try {
-                Step step = script.take(requests, chatRequest);
-                built = toEvents(script.answer(step, chatRequest));
+                step = script.answer(script.take(requests, chatRequest), chatRequest);
+                events = toEvents(step);
             } catch (RuntimeException | Error e) {
                 // for example an AssertionError thrown by a function that computes the answer: subscribe must not throw
-                subscriber.onSubscribe(new Subscription() {
-
-                    @Override
-                    public void request(long n) {}
-
-                    @Override
-                    public void cancel() {}
-                });
-                subscriber.onError(e);
+                failWithoutEvents(subscriber, e);
                 return;
             }
-            List<ChatModelStreamingEvent> events = built.events();
-            RuntimeException failure = built.failure();
+            RuntimeException failure = step.failure();
+            if (events.isEmpty() && failure != null) {
+                failWithoutEvents(subscriber, failure); // a failure needs no demand, like a provider's error response
+                return;
+            }
             subscriber.onSubscribe(new Subscription() {
 
                 private int next;
@@ -317,28 +322,27 @@ public class MockStreamingChatModel implements StreamingChatModel {
         };
     }
 
-    /**
-     * The events of a step and the failure that follows them, if any.
-     */
-    private record Events(List<ChatModelStreamingEvent> events, RuntimeException failure) {}
+    private static void failWithoutEvents(Subscriber<? super ChatModelStreamingEvent> subscriber, Throwable failure) {
+        subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
+        subscriber.onError(failure);
+    }
 
-    private static Events toEvents(Step step) {
-        try {
-            List<ChatModelStreamingEvent> events = new ArrayList<>();
-            step.thinkingTokens().forEach(token -> events.add(new PartialThinking(token)));
-            step.tokens().forEach(token -> events.add(new PartialResponse(token)));
-            if (step.failure() == null) {
-                List<ToolExecutionRequest> toolCalls = step.aiMessage().toolExecutionRequests();
-                for (int i = 0; i < toolCalls.size(); i++) {
-                    events.addAll(partialToolCalls(i, toolCalls.get(i)));
-                    events.add(new CompleteToolCall(i, toolCalls.get(i)));
-                }
-                events.add(new CompleteResponse(step.response()));
+    /**
+     * The events of a step, without the failure that follows them, if any.
+     */
+    private static List<ChatModelStreamingEvent> toEvents(Step step) {
+        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        step.thinkingTokens().forEach(token -> events.add(new PartialThinking(token)));
+        step.tokens().forEach(token -> events.add(new PartialResponse(token)));
+        if (step.failure() == null) {
+            List<ToolExecutionRequest> toolCalls = step.aiMessage().toolExecutionRequests();
+            for (int i = 0; i < toolCalls.size(); i++) {
+                events.addAll(partialToolCalls(i, toolCalls.get(i)));
+                events.add(new CompleteToolCall(i, toolCalls.get(i)));
             }
-            return new Events(events, step.failure());
-        } catch (RuntimeException e) {
-            return new Events(List.of(), e); // an answer that no event can carry fails like a provider error
+            events.add(new CompleteResponse(step.response()));
         }
+        return events;
     }
 
     private static List<PartialToolCall> partialToolCalls(int index, ToolExecutionRequest toolCall) {
@@ -358,26 +362,31 @@ public class MockStreamingChatModel implements StreamingChatModel {
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         Step step = script.take(requests, chatRequest);
-        Thread thread = new Thread(
-                () -> {
-                    try {
-                        stream(script.answer(step, chatRequest), handler);
-                    } catch (RuntimeException | Error e) {
-                        // without it, this thread would end without a final call, and a test waiting for one would hang
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
-                },
-                MOCK_NAME);
-        thread.setDaemon(true);
-        thread.start();
+        MockThreads.newThreadPerTask(MOCK_NAME).execute(() -> {
+            Throwable failure;
+            try {
+                failure = stream(script.answer(step, chatRequest), handler);
+            } catch (RuntimeException | Error e) {
+                // without it, this thread would end without a final call, and a test waiting for one would hang
+                failure = e;
+            }
+            if (failure != null) {
+                // outside the try, so that an Error thrown by onError itself does not lead to a second onError
+                Throwable error = failure;
+                withLoggingExceptions(() -> handler.onError(error));
+            }
+        });
     }
 
-    private static void stream(Step step, StreamingChatResponseHandler handler) {
-        Events built = toEvents(step);
+    /**
+     * Calls the handler for each event of the step, and returns the failure to report with {@code onError}: the
+     * failure of the step, or {@code null} if it has none or the handler cancelled the stream.
+     */
+    private static @Nullable RuntimeException stream(Step step, StreamingChatResponseHandler handler) {
         StreamingHandle streamingHandle = new SimpleStreamingHandle();
-        for (ChatModelStreamingEvent event : built.events()) {
+        for (ChatModelStreamingEvent event : toEvents(step)) {
             if (streamingHandle.isCancelled()) {
-                return;
+                return null;
             }
             if (event instanceof PartialThinking partialThinking) {
                 onPartialThinking(handler, partialThinking.text(), streamingHandle);
@@ -391,9 +400,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
                 onCompleteResponse(handler, completeResponse.chatResponse());
             }
         }
-        if (built.failure() != null && !streamingHandle.isCancelled()) {
-            withLoggingExceptions(() -> handler.onError(built.failure()));
-        }
+        return streamingHandle.isCancelled() ? null : step.failure();
     }
 
     /**
@@ -440,7 +447,8 @@ public class MockStreamingChatModel implements StreamingChatModel {
     /**
      * A model that answers the first request by streaming exactly the given tokens, which together make up one answer:
      * {@code thatStreamsTokens("Hel", "lo")} streams {@code "Hel"} and then {@code "lo"}, and completes with
-     * {@code "Hello"}. Add the next steps with {@code then...} methods.
+     * {@code "Hello"}. Without tokens, nothing is streamed and the answer has no text. Add the next steps with
+     * {@code then...} methods.
      *
      * @throws IllegalArgumentException if a token is empty
      */

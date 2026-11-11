@@ -100,18 +100,10 @@ final class ScriptedResponses {
                             + " empty token to a handler. To stream an answer without text, give no tokens.");
                 }
             }
-            AiMessage aiMessage = AiMessage.builder()
+            Step step = responding(AiMessage.builder()
                     .text(tokens.length == 0 ? null : String.join("", tokens))
-                    .build();
-            return new Step(
-                    ChatResponse.builder()
-                            .aiMessage(aiMessage)
-                            .finishReason(FinishReason.STOP)
-                            .build(),
-                    List.of(tokens),
-                    null,
-                    null,
-                    false);
+                    .build());
+            return new Step(step.response(), List.of(tokens), null, null, false);
         }
 
         static Step computing(Function<ChatRequest, AiMessage> answers) {
@@ -182,7 +174,7 @@ final class ScriptedResponses {
                     + " call the tool again and again. Script the answer that follows the tool results first. To test a"
                     + " model that keeps calling a tool, for example the limit set with maxToolCallingRoundTrips,"
                     + " compute the answer: "
-                    + factory + "(request -> AiMessage.from(toolCall(...))).thenRepeats()");
+                    + factory + "(request -> AiMessage.from(MockChatModel.toolCall(...))).thenRepeats()");
         }
         repeatsLastStep = true;
     }

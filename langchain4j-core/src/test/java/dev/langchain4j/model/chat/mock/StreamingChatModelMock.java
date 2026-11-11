@@ -42,9 +42,10 @@ import java.util.concurrent.Flow.Subscription;
  * streamed again for every further request (like Mockito's {@code thenReturn(a, b)}), unless it contains tool execution
  * requests: then the mock fails, because repeating it would make an AI Service call the tools again and again.
  *
- * @deprecated use {@link MockStreamingChatModel} from the {@code langchain4j-test} module. Unlike this class, it
- * answers one request per scripted step and fails when the script runs out; end the script with
- * {@link MockStreamingChatModel#thenRepeats()} to answer every further request with its last step.
+ * @deprecated use {@link MockStreamingChatModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
+ * script runs out; end the script with {@link MockStreamingChatModel#thenRepeats()} to answer every further request
+ * with its last step.
  * {@code withTokenUsage(...)}, {@code requests()} and {@code request()} have the same names. A response reports the
  * model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of
  * {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:

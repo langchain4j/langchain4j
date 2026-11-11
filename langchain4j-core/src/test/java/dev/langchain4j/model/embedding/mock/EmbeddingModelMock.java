@@ -13,10 +13,12 @@ import java.util.List;
  * An {@link EmbeddingModel} for tests: it returns the same fixed embedding for every input.
  * This implementation is experimental and subject to change in the future.
  *
- * @deprecated use {@link MockEmbeddingModel} from the {@code langchain4j-test} module:
- * {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)} returns the same vector as this class, and
- * {@link MockEmbeddingModel#thatEmbedsByWords()} returns vectors that are closer the more words two texts share.
- * It supports asynchronous calls, which complete on another thread. {@code withProvider(...)} has no replacement.
+ * @deprecated use {@link MockEmbeddingModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module: {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)} returns the same vector as this
+ * class, and {@link MockEmbeddingModel#thatEmbedsByWords()} returns vectors that are closer the more words two texts
+ * share. It supports asynchronous calls, which complete on another thread. It accepts the per-call parameters
+ * {@code modelName} and {@code inputType}, which this class rejects, and a response reports the model name.
+ * {@code withProvider(...)} has no replacement.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)

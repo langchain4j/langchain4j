@@ -2730,7 +2730,10 @@ class AiServiceInvocationEventsTest {
     void should_not_record_parent_of_ai_service_called_by_error_handler_of_token_stream_started_by_tool() {
         Assistant calledByHandler = innerAssistant();
         StreamingAssistant calledByTool = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("model failed")))
+                // the error arrives on the calling thread, inside the invocation, as with a model that fails before
+                // it streams: the handler must still run outside the invocation
+                .streamingChatModel(
+                        streamingOnCallingThread(MockStreamingChatModel.thatFails(new RuntimeException("model failed"))))
                 .registerListeners(listeners())
                 .build();
         List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
@@ -2748,7 +2751,7 @@ class AiServiceInvocationEventsTest {
                                 answer.complete(calledByHandler.chat("about " + error.getMessage()));
                             })
                             .start();
-                    return answer.orTimeout(5, SECONDS).join(); // the error arrives on the thread of the model
+                    return answer.orTimeout(5, SECONDS).join();
                 }))
                 .registerListeners(listeners())
                 .build();

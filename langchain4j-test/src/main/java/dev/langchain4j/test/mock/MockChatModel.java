@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link ChatModel} for tests: it needs no network, answers the way the test tells it to, and records the requests
@@ -168,8 +169,10 @@ public class MockChatModel implements ChatModel {
      * Reports the given token usage in the response to every request, except for a step that gives the whole response:
      * that one reports exactly its own token usage. For different token usages per step, give the whole responses, see
      * {@link #thenResponds(ChatResponse)}.
+     *
+     * @param tokenUsage the token usage, or {@code null} for no token usage, which is also the default
      */
-    public MockChatModel withTokenUsage(TokenUsage tokenUsage) {
+    public MockChatModel withTokenUsage(@Nullable TokenUsage tokenUsage) {
         script.defaultTokenUsage(tokenUsage);
         return this;
     }
@@ -322,7 +325,9 @@ public class MockChatModel implements ChatModel {
      * {@link #thatResponds(Function)} or for several tool calls in one answer. When a mock answers with it, the call
      * gets the next id of that mock: {@code tool_call_1}, {@code tool_call_2}, and so on, so that every call has its own
      * id, also two calls of the same tool with the same arguments. To give a call a fixed id, use
-     * {@code ToolExecutionRequest.builder()}.
+     * {@code ToolExecutionRequest.builder()}. An answer with two calls that have the same fixed id is rejected, because
+     * a provider never gives two calls of one answer the same id. The ids are unique within one mock only: when several
+     * mocks answer into one chat memory, for example two AI Services that share it, give the calls fixed ids.
      *
      * @param toolName  the name of the tool
      * @param arguments the arguments of the tool, by name

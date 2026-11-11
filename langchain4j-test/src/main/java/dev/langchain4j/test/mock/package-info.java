@@ -13,7 +13,9 @@
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test, for
  * example by replacing the model bean for each test. In Quarkus, {@code QuarkusMock.installMockForType(...)} does that.
  * In Spring, {@code @TestBean} replaces the bean once per cached Spring context, which is usually per test class; for a
- * new mock per test, build the context in the test, for example with {@code ApplicationContextRunner}. A script that
+ * new mock per test, build the context in the test, for example with {@code ApplicationContextRunner}. Give the
+ * {@code @TestBean} field the type of the bean it replaces, for example {@code ChatModel}: for a field of the mock's
+ * type, Spring finds no bean to replace and adds the mock as a second model bean. A script that
  * ends with {@code thenRepeats()}, or a mock without a script, can be shared between tests, but its {@code requests()}
  * then hold the requests of every test that used it. A script without {@code thenRepeats()} that is shared between
  * tests fails as soon as it runs out. A mock keeps every request it receives, so it is not meant for load tests or

@@ -181,6 +181,29 @@ class MockChatModelTest {
     }
 
     @Test
+    void should_answer_chat_async_without_the_inheritable_thread_locals_but_with_the_class_loader_of_the_caller() {
+
+        InheritableThreadLocal<String> currentUser = new InheritableThreadLocal<>();
+        currentUser.set("klaus");
+        List<ClassLoader> classLoaders = new ArrayList<>();
+        try {
+            MockChatModel model = MockChatModel.thatResponds(request -> {
+                classLoaders.add(Thread.currentThread().getContextClassLoader());
+                return AiMessage.from(String.valueOf(currentUser.get()));
+            });
+
+            // like a provider's I/O thread, which does not know the user of the calling thread
+            assertThat(model.chatAsync(REQUEST))
+                    .succeedsWithin(5, SECONDS)
+                    .extracting(response -> response.aiMessage().text())
+                    .isEqualTo("null");
+            assertThat(classLoaders).containsExactly(Thread.currentThread().getContextClassLoader());
+        } finally {
+            currentUser.remove();
+        }
+    }
+
+    @Test
     void should_answer_concurrent_async_requests_whose_computed_answers_wait_for_each_other() {
 
         int requestCount = Runtime.getRuntime().availableProcessors() * 2 + 4; // more than the common pool has threads

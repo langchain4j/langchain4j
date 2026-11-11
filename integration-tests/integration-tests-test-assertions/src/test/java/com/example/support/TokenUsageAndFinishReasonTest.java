@@ -15,6 +15,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.service.AiServiceCapture;
 import dev.langchain4j.test.service.AiServiceInvocation;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -109,16 +110,9 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_and_finish_reason_of_a_token_stream() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                MockStreamingChatModel.thatStreams(ChatResponse.builder()
-                                .aiMessage(toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"))
-                                .tokenUsage(new TokenUsage(40, 10))
-                                .finishReason(FinishReason.TOOL_EXECUTION)
-                                .build())
-                        .thenStreams(ChatResponse.builder()
-                                .aiMessage(AiMessage.from("It starts on 2026-11-02."))
-                                .tokenUsage(new TokenUsage(40, 10))
-                                .finishReason(FinishReason.STOP)
-                                .build()),
+                MockStreamingChatModel.thatCallsTool("getBookingDetails", Map.of("bookingNumber", "MS-777"))
+                        .thenStreams("It starts on 2026-11-02.")
+                        .withTokenUsage(new TokenUsage(40, 10)),
                 bookings());
 
         AiServiceInvocation invocation = capture(() -> agent.chat("When does MS-777 start?")
@@ -133,11 +127,7 @@ class TokenUsageAndFinishReasonTest {
     @Test
     void should_capture_token_usage_of_a_publisher() {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
-                MockStreamingChatModel.thatStreams(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("Hello"))
-                        .tokenUsage(new TokenUsage(7, 3))
-                        .build()),
-                bookings());
+                MockStreamingChatModel.thatStreams("Hello").withTokenUsage(new TokenUsage(7, 3)), bookings());
 
         AiServiceInvocation invocation = capture(() -> agent.chatReactive("Hi")).invocation();
 

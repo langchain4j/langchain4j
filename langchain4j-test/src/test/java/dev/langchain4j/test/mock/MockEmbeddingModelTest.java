@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -53,7 +54,7 @@ class MockEmbeddingModelTest {
         model.embed("second");
 
         assertThat(model.requests()).hasSize(2);
-        assertThatThrownBy(model::request).hasMessage("Expected exactly 1 embedding request, but received 2");
+        assertThatThrownBy(model::request).hasMessage("Expected exactly 1 embedding request, but received 2. To check each of them, use requests(), for example requests().get(0)");
     }
 
     @Test
@@ -139,6 +140,24 @@ class MockEmbeddingModelTest {
         assertThat(vector(model, "日本語")).isNotEqualTo(new float[384]);
         assertThat(vector(model, "日本語")).isNotEqualTo(vector(model, "中文"));
         assertThat(vector(model, "Größe")).isEqualTo(vector(model, "größe"));
+        // vowel signs are combining marks: they belong to the word, so these two words share no part
+        assertThat(similarity(model, "बुकिंग", "बैंक")).isCloseTo(0.0, within(1e-6));
+    }
+
+    @Test
+    void should_embed_every_input_of_a_request_in_order() {
+
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
+
+        List<Embedding> embeddings = model.embedAll(
+                        List.of(TextSegment.from("cancel my booking"), TextSegment.from("pets")))
+                .content();
+
+        assertThat(model.request().inputs()).hasSize(2);
+        assertThat(embeddings)
+                .containsExactly(
+                        model.embed("cancel my booking").content(),
+                        model.embed("pets").content());
     }
 
     @Test

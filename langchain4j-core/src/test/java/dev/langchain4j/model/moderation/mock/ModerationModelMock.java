@@ -12,8 +12,8 @@ import java.util.function.Function;
 /**
  * A {@link ModerationModel} for tests: it returns the same moderation for every request and records the requests.
  *
- * @deprecated use {@link MockModerationModel} from the {@code langchain4j-test} module. {@code requests()} has the
- * same name and returns a copy.
+ * @deprecated use {@link MockModerationModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module. {@code requests()} has the same name and returns a copy.
  */
 @Deprecated(since = "1.24.0", forRemoval = true)
 public class ModerationModelMock implements ModerationModel {

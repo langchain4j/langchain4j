@@ -27,9 +27,10 @@ import java.util.function.ToDoubleFunction;
  * It supports both {@link #decide(DecisionRequest)} and {@link #decideAsync(DecisionRequest)} (the future is already
  * completed when returned), unless created with {@link #withoutAsyncSupport()}.
  *
- * @deprecated use {@link MockDecisionModel} from the {@code langchain4j-test} module. {@code requests()} and
- * {@code request()} have the same names. {@code withTokenUsage(...)}, {@code withoutAsyncSupport()} and
- * {@code withAsyncResponse(...)} have no replacement, and asynchronous calls complete on another thread. Another
+ * @deprecated use {@link MockDecisionModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module. {@code requests()} and {@code request()} have the same names.
+ * {@code withTokenUsage(...)}, {@code withoutAsyncSupport()} and {@code withAsyncResponse(...)} have no replacement,
+ * and asynchronous calls complete on another thread. A response reports the model name of the request. Another
  * difference: {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} takes a {@code ToDoubleFunction},
  * so a lambda compiles unchanged, but a variable of type {@code Function<YesNoQuestion, Double>} does not.
  */

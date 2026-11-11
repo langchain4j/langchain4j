@@ -46,7 +46,6 @@
 
         <!-- test dependencies -->
 
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-test</artifactId>

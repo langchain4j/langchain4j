@@ -35,31 +35,11 @@ import org.junit.jupiter.api.Test;
 public class MockStreamingChatModelTest {
 
     @Test
-    void should_split_text_into_one_token_per_character() {
+    void should_stream_consecutive_spaces_as_separate_tokens() throws Exception {
 
-        AiMessage aiMessage = AiMessage.from("Hello");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("a  b");
 
-        List<String> tokens = ScriptedResponses.splitIntoTokens(aiMessage.text());
-
-        assertThat(tokens).containsExactly("H", "e", "l", "l", "o");
-    }
-
-    @Test
-    void should_split_empty_text_into_no_tokens() {
-        AiMessage aiMessage = AiMessage.from("");
-
-        List<String> tokens = ScriptedResponses.splitIntoTokens(aiMessage.text());
-
-        assertThat(tokens).isEmpty();
-    }
-
-    @Test
-    void should_keep_consecutive_spaces_when_splitting_text_into_tokens() {
-        AiMessage aiMessage = AiMessage.from("a  b");
-
-        List<String> tokens = ScriptedResponses.splitIntoTokens(aiMessage.text());
-
-        assertThat(tokens).containsExactly("a", " ", " ", "b");
+        assertThat(stream(model).tokens()).containsExactly("a", " ", " ", "b");
     }
 
     @Test
@@ -504,6 +484,40 @@ public class MockStreamingChatModelTest {
         subscribe(model, signals);
 
         assertThat(signals).containsExactly(failure);
+    }
+
+    @Test
+    void should_signal_a_failure_before_anything_is_streamed_without_waiting_for_demand() {
+
+        RuntimeException failure = new IllegalStateException("down");
+        List<Object> signals = new CopyOnWriteArrayList<>();
+
+        MockStreamingChatModel.thatFails(failure)
+                .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
+                .subscribe(new Flow.Subscriber<>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        signals.add("subscribed"); // requests nothing
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent event) {
+                        signals.add(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        signals.add(error);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        signals.add("complete");
+                    }
+                });
+
+        assertThat(signals).containsExactly("subscribed", failure);
     }
 
     @Test

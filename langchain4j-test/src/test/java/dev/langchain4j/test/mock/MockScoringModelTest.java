@@ -41,7 +41,7 @@ class MockScoringModelTest {
         model.score(REQUEST);
 
         assertThat(model.requests()).hasSize(2);
-        assertThatThrownBy(model::request).hasMessage("Expected exactly 1 scoring request, but received 2");
+        assertThatThrownBy(model::request).hasMessage("Expected exactly 1 scoring request, but received 2. To check each of them, use requests(), for example requests().get(0)");
     }
 
     @Test

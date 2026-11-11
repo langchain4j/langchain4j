@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * An {@link EmbeddingModel} for tests: it needs no network and records the requests it receives. It supports both
@@ -33,6 +34,7 @@ import java.util.function.Function;
 public class MockEmbeddingModel implements EmbeddingModel {
 
     private static final int DEFAULT_DIMENSION = 384;
+    private static final Pattern WORD_SEPARATORS = Pattern.compile("[^\\p{L}\\p{M}\\p{N}]+");
 
     private final Function<String, float[]> embeddings;
     private final RecordedRequests<EmbeddingRequest> requests = new RecordedRequests<>("embedding");
@@ -180,7 +182,7 @@ public class MockEmbeddingModel implements EmbeddingModel {
 
     private static float[] embedByWords(String text, int dimension) {
         float[] vector = new float[dimension];
-        for (String word : text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) {
+        for (String word : WORD_SEPARATORS.split(text.toLowerCase(Locale.ROOT))) {
             if (!word.isEmpty()) {
                 vector[Math.floorMod(word.hashCode(), dimension)] += 1f;
             }
