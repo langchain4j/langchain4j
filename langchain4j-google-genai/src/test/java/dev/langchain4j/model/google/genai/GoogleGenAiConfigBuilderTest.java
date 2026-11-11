@@ -11,6 +11,7 @@ import com.google.genai.types.Part;
 import com.google.genai.types.PrebuiltVoiceConfig;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
+import com.google.genai.types.ToolConfig;
 import com.google.genai.types.VoiceConfig;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -25,7 +26,10 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiConfigBuilderTest {
 
@@ -973,5 +977,126 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.tools().get())
                 .hasSize(3)
                 .allSatisfy(tool -> assertThat(tool.codeExecution()).isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"googleSearch", "googleMaps", "urlContext", "codeExecution"})
+    void should_include_server_side_tool_invocations_when_a_google_tool_is_combined_with_function_declarations(
+            String googleTool) {
+        GenerateContentConfig config = buildConfigWithGoogleTool(parametersWithFunction(), googleTool, null);
+
+        ToolConfig toolConfig = config.toolConfig().orElseThrow();
+        assertThat(toolConfig.includeServerSideToolInvocations()).hasValue(true);
+        assertThat(toolConfig.functionCallingConfig().orElseThrow().mode().orElseThrow())
+                .hasToString("AUTO");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"googleSearch", "googleMaps", "urlContext", "codeExecution"})
+    void should_not_set_a_tool_config_when_a_google_tool_is_used_without_function_declarations(String googleTool) {
+        GenerateContentConfig config =
+                buildConfigWithGoogleTool(DefaultChatRequestParameters.builder().build(), googleTool, null);
+
+        assertThat(config.toolConfig()).isEmpty();
+    }
+
+    @Test
+    void should_not_include_server_side_tool_invocations_on_vertex_ai() {
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parametersWithFunction(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true,
+                true,
+                true,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .isEmpty();
+    }
+
+    @Test
+    void should_not_include_server_side_tool_invocations_without_google_tools() {
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parametersWithFunction(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .isEmpty();
+    }
+
+    @Test
+    void should_let_the_customizer_override_server_side_tool_invocations() {
+        GenerateContentConfig config = buildConfigWithGoogleTool(
+                parametersWithFunction(),
+                "googleSearch",
+                builder -> builder.toolConfig(ToolConfig.builder()
+                        .includeServerSideToolInvocations(false)
+                        .build()));
+
+        assertThat(config.toolConfig().orElseThrow().includeServerSideToolInvocations())
+                .hasValue(false);
+    }
+
+    private static ChatRequestParameters parametersWithFunction() {
+        return DefaultChatRequestParameters.builder()
+                .toolSpecifications(List.of(ToolSpecification.builder()
+                        .name("getWeather")
+                        .description("Get weather")
+                        .build()))
+                .build();
+    }
+
+    private static GenerateContentConfig buildConfigWithGoogleTool(
+            ChatRequestParameters parameters,
+            String googleTool,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                googleTool.equals("googleSearch"),
+                googleTool.equals("googleMaps"),
+                googleTool.equals("urlContext"),
+                googleTool.equals("codeExecution"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                generateContentConfigCustomizer);
     }
 }

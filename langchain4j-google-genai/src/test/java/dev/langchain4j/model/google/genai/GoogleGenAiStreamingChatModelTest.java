@@ -22,6 +22,10 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
+import com.google.genai.types.ToolCall;
+import com.google.genai.types.ToolConfig;
+import com.google.genai.types.ToolResponse;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -340,6 +344,98 @@ class GoogleGenAiStreamingChatModelTest {
                 .isEqualTo(Base64.getEncoder().encodeToString("first-image".getBytes(StandardCharsets.UTF_8)));
         assertThat(response.aiMessage().images().get(1).base64Data())
                 .isEqualTo(Base64.getEncoder().encodeToString("second-image".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void should_keep_the_server_side_tool_parts_of_every_streaming_chunk() throws Exception {
+        Part searchCall = Part.builder()
+                .toolCall(ToolCall.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .args(Map.of("queries", List.of("Eiffel Tower completion year")))
+                        .build())
+                .thoughtSignature("search-call-signature".getBytes())
+                .build();
+        Part searchResponse = Part.builder()
+                .toolResponse(ToolResponse.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .response(Map.of("search_suggestions", "<div>Eiffel Tower</div>"))
+                        .build())
+                .thoughtSignature("search-response-signature".getBytes())
+                .build();
+        Part functionCall = Part.builder()
+                .functionCall(FunctionCall.builder()
+                        .id("call-2")
+                        .name("record_fact")
+                        .args(Map.of("value", "1889"))
+                        .build())
+                .build();
+        Models models = streamingModels(chunkWith(searchCall), chunkWith(searchResponse), chunkWith(functionCall));
+
+        AiMessage aiMessage = stream(modelWithGoogleSearch(clientWith(models)), new ArrayList<>(), new ArrayList<>())
+                .aiMessage();
+
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class))
+                .containsExactly(searchCall.toJson(), searchResponse.toJson());
+        assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
+    void should_include_server_side_tool_invocations_on_the_gemini_developer_api() throws Exception {
+        Models models = streamingModels(chunkWith(Part.fromText("42")));
+
+        stream(modelWithGoogleSearch(clientWith(models)), new ArrayList<>(), new ArrayList<>());
+
+        assertThat(sentToolConfig(models).includeServerSideToolInvocations()).hasValue(true);
+    }
+
+    @Test
+    void should_not_include_server_side_tool_invocations_on_vertex_ai() throws Exception {
+        Models models = streamingModels(chunkWith(Part.fromText("42")));
+        Client client = clientWith(models);
+        when(client.vertexAI()).thenReturn(true);
+
+        stream(modelWithGoogleSearch(client), new ArrayList<>(), new ArrayList<>());
+
+        assertThat(sentToolConfig(models).includeServerSideToolInvocations()).isEmpty();
+    }
+
+    private static Models streamingModels(GenerateContentResponse... chunks) {
+        Models models = mock(Models.class);
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator()).thenReturn(List.of(chunks).iterator());
+        return models;
+    }
+
+    private static Client clientWith(Models models) throws Exception {
+        Client client = mock(Client.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+        return client;
+    }
+
+    private static GoogleGenAiStreamingChatModel modelWithGoogleSearch(Client client) {
+        return GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.8-flash")
+                .enableGoogleSearch(true)
+                .defaultRequestParameters(GoogleGenAiChatRequestParameters.builder()
+                        .toolSpecifications(
+                                ToolSpecification.builder().name("record_fact").build())
+                        .build())
+                .build();
+    }
+
+    private static ToolConfig sentToolConfig(Models models) {
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+        return configCaptor.getValue().toolConfig().orElseThrow();
     }
 
     private static GenerateContentResponse responseWithImage(String data) {
