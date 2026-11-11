@@ -58,7 +58,11 @@ public class TextSegment {
 
     @Override
     public int hashCode() {
-        return Objects.hash(text, metadata);
+        // Metadata is mutable, so including it would make the hash code change after
+        // the segment has been inserted into a hash-based collection.
+        // equals() still compares metadata; equal segments always share the same text
+        // and therefore always have the same hash code.
+        return text.hashCode();
     }
 
     @Override
