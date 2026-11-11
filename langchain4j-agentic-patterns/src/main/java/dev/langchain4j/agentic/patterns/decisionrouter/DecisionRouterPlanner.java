@@ -38,7 +38,8 @@ import org.slf4j.LoggerFactory;
  * decision is made of the arguments of the router agent itself, read from the {@link AgenticScope}.
  * <p>
  * Without an activation threshold, each subagent is an option of a single choice question, described by its
- * description, and the planner invokes only the most probable subagent and returns its output.
+ * description, or by its name when it has none, and the planner invokes only the most probable subagent and returns
+ * its output.
  * <p>
  * With an activation threshold, the planner asks instead one yes/no question per subagent, all in the same request
  * ("Should the agent '...' handle this request?"), invokes in parallel all the subagents whose probability of "yes"
@@ -56,6 +57,11 @@ import org.slf4j.LoggerFactory;
  * Only the subagents whose activation condition holds are offered to the decision model. When none does, the model
  * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
  * activation threshold, when only one does, it is invoked without asking the model.
+ * <p>
+ * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
+ * given a supplier creating a new instance at each invocation, for example
+ * {@code () -> new DecisionRouterPlanner(decisionModel)}, while the decision model can be shared. An instance that is
+ * initialized a second time fails with an {@link IllegalStateException}.
  */
 @Experimental
 public class DecisionRouterPlanner implements Planner {
@@ -131,6 +137,11 @@ public class DecisionRouterPlanner implements Planner {
 
     @Override
     public void init(InitPlanningContext initPlanningContext) {
+        if (inputKeys != null) {
+            throw new IllegalStateException("A DecisionRouterPlanner instance holds the state of a single invocation "
+                    + "and cannot be reused: give the agentic system a supplier creating a new instance at each "
+                    + "invocation, for example planner(() -> new DecisionRouterPlanner(decisionModel))");
+        }
         // framework-provided arguments, like @MemoryId, are not part of the request
         this.inputKeys = initPlanningContext.plannerAgent().arguments().stream()
                 .map(AgentArgument::name)
@@ -202,6 +213,15 @@ public class DecisionRouterPlanner implements Planner {
             List<AgentInstance> candidates =
                     routes.values().stream().filter(planningContext::isActive).toList();
             activated = candidates.isEmpty() ? List.of() : decide(planningContext.agenticScope(), candidates);
+        } else {
+            activated.stream()
+                    .filter(agentId -> !routes.containsKey(agentId))
+                    .findFirst()
+                    .ifPresent(agentId -> {
+                        throw new IllegalStateException("Cannot resume DecisionRouterPlanner with the subagent '"
+                                + agentId + "' saved in its execution state, since the subagents changed after it "
+                                + "was saved");
+                    });
         }
 
         List<AgentInstance> pending = activated.stream()

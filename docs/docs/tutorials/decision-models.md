@@ -392,16 +392,18 @@ needed. They work with any `DecisionModel` implementation.
 | `AgenticServices.decisionAgentBuilder` | `langchain4j-agentic` |
 | `DecisionRouterPlanner`, `ConfidenceCascadePlanner`, `DecisionSchedulerPlanner` | `langchain4j-agentic-patterns` |
 
-Each of these components makes an additional call to the decision model. Its token usage is not included in the token
-usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+Each of these components makes one or more additional calls to the decision model. Their token usage is not included
+in the token usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
 A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
 to the agent listeners and counted by the `AgentMonitor`.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
-with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component) or, for the
-chat model router, `question(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants
-(`DEFAULT_QUESTION` for the chat model router).
+with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component), for the
+chat model router, with `question(...)`, and for the decision scheduler, with `goalQuestionTemplate(...)` and
+`usefulnessQuestionTemplate(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants
+(`DEFAULT_QUESTION` for the chat model router, `DEFAULT_GOAL_QUESTION_TEMPLATE` and
+`DEFAULT_USEFULNESS_QUESTION_TEMPLATE` for the decision scheduler).
 For example:
 
 ```java

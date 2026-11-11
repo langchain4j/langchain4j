@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.patterns.decisionscheduler;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -25,7 +26,7 @@ import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import java.util.Arrays;
+import dev.langchain4j.model.input.PromptTemplate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,14 +51,16 @@ import org.slf4j.LoggerFactory;
  * run. An argument is mandatory when it has no default value and is not optional. The planner then sends a single
  * request to the decision model with:
  * <ul>
- *   <li>one scale question per candidate, "How useful would it be to run the agent '...' (its description) now, to
- *   reach this goal: ...?", with the levels "USELESS", "MARGINAL", "USEFUL" and "ESSENTIAL". The score of the
- *   candidate is the mean level of the answer, scaled between 0 and 1;</li>
- *   <li>one yes/no question, "Has this goal been reached: ...?".</li>
+ *   <li>one scale question per candidate, by default "How useful would it be to run the agent '...' (its
+ *   description) now, to reach this goal: ...?", with the levels "USELESS", "MARGINAL", "USEFUL" and "ESSENTIAL".
+ *   The score of the candidate is the mean level of the answer, scaled between 0 (the lowest level) and 1 (the
+ *   highest level);</li>
+ *   <li>one yes/no question, by default "Has this goal been reached: ...?".</li>
  * </ul>
+ * The texts of both questions and the levels can be replaced through the builder.
  * The planner identifies a subagent by its {@link AgentInstance#agentId() id}, which is also the name of its
  * question, so several subagents can have the same name: the decision model then tells them apart by their
- * descriptions.
+ * descriptions. A subagent without a description is described by its name.
  * <p>
  * If the probability that the goal has been reached is at least the goal threshold the planner stops. Otherwise it
  * invokes the candidate with the highest score, the first declared one when several have the same score, provided
@@ -73,9 +76,9 @@ import org.slf4j.LoggerFactory;
  * they can be strings, numbers, booleans, maps and lists of them, or {@link Content}s, and an argument of any other
  * type is rejected by the decision model with an error explaining which types are supported: the application decides
  * which of its objects are sent to the provider of the decision model. The outputs of the subagents are sent as they
- * are when they are such values, and converted to maps and lists through a JSON round trip otherwise. The decision
- * model sees this state only: it is not told which subagents already ran, and the work of a subagent without an
- * output key is invisible to it.
+ * are when they are such values, and converted to maps and lists through a JSON round trip otherwise, which
+ * serializes all their fields, private ones included. The decision model sees this state only: it is not told which
+ * subagents already ran, and the work of a subagent without an output key is invisible to it.
  * <p>
  * A subagent whose description cannot be read because it is unavailable, like an A2A agent whose server is down, is
  * left out of the candidates for the rest of the invocation, with a warning. A failure of the decision model fails
@@ -85,29 +88,52 @@ import org.slf4j.LoggerFactory;
  * the subagent being invoked, so that after a suspension or a crash it resumes from that subagent. This state refers
  * to the subagents by their ids, which contain their position, so the planner has to be resumed with the same
  * subagents declared in the same order. When a subagent waits for a human the planner suspends without asking the
- * decision model, and decides on the answer when it is resumed. A crash during a decision call makes the subagent that had just completed run again, because the state is
- * saved only after the decision. A subagent whose output can be delayed, like a human-in-the-loop or an asynchronous
- * agent, must declare an output key, since the planner reads its answer from the scope: the decision following an
- * asynchronous subagent waits for its answer.
+ * decision model, and decides on the answer when it is resumed. The state is saved only after each decision, so a
+ * crash during a decision call makes the subagent that had just completed run again, and a crash before the first
+ * subagent completes makes the planner decide again. A subagent whose output can be delayed, like a
+ * human-in-the-loop or an asynchronous agent, must declare an output key, since the planner reads its answer from
+ * the scope: the decision following an asynchronous subagent waits for its answer.
  * <p>
  * Each step is a greedy choice with no lookahead, so this planner fits the tasks where the most useful next step can
  * be told from the current state, not those that need a plan of several steps. The scores and the probabilities are
  * not calibrated in the same way by every decision model, so both thresholds must be tuned on the decision model in
- * use and tuned again when it changes. The state is untrusted input to the decision, so a crafted request or agent
- * output can influence it: this planner is not a security boundary.
+ * use and tuned again when it changes. The state and the descriptions of the subagents, like those of remote A2A
+ * agents, are untrusted input to the decision, so a crafted request, agent output or description can influence it:
+ * this planner is not a security boundary, and a subagent with side effects must be guarded on its own, for instance
+ * through an activation condition.
  * <p>
  * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
  * given a supplier creating a new instance at each invocation, for example
- * {@code () -> DecisionSchedulerPlanner.builder().decisionModel(decisionModel).goal("...").goalThreshold(0.5)
- * .activationThreshold(0.5).build()}, while the decision model can be shared.
+ * {@code () -> DecisionSchedulerPlanner.builder().decisionModel(decisionModel).goal("...").goalThreshold(0.6)
+ * .activationThreshold(0.3).build()}, while the decision model can be shared. An instance that is initialized a
+ * second time fails with an {@link IllegalStateException}.
  */
 @Experimental
 public class DecisionSchedulerPlanner implements Planner {
 
     private static final Logger LOG = LoggerFactory.getLogger(DecisionSchedulerPlanner.class);
 
+    /**
+     * The default template of the yes/no question asking whether the goal has been reached, with the variable
+     * {@code {{goal}}}.
+     */
+    public static final PromptTemplate DEFAULT_GOAL_QUESTION_TEMPLATE =
+            PromptTemplate.from("Has this goal been reached: {{goal}}?");
+
+    /**
+     * The default template of the scale question asking how useful it would be to invoke a subagent now, with the
+     * variables {@code {{name}}} and {@code {{description}}} of the subagent, and {@code {{goal}}}.
+     */
+    public static final PromptTemplate DEFAULT_USEFULNESS_QUESTION_TEMPLATE = PromptTemplate.from(
+            "How useful would it be to run the agent '{{name}}' ({{description}}) now, to reach this goal: {{goal}}?");
+
+    /** The default levels of the usefulness question, from the lowest to the highest. */
+    public static final List<String> DEFAULT_USEFULNESS_LEVELS = List.of("USELESS", "MARGINAL", "USEFUL", "ESSENTIAL");
+
+    /** The default maximum number of subagent invocations. */
+    public static final int DEFAULT_MAX_INVOCATIONS = 10;
+
     static final String GOAL_QUESTION_NAME = "goal-reached";
-    static final int DEFAULT_MAX_INVOCATIONS = 10;
 
     private static final String DECISION_SCHEDULER_KEY_PREFIX = "decision-scheduler-";
     private static final String INVOCATIONS_STATE_KEY = DECISION_SCHEDULER_KEY_PREFIX + "invocations";
@@ -117,6 +143,9 @@ public class DecisionSchedulerPlanner implements Planner {
 
     private final DecisionModel decisionModel;
     private final String goal;
+    private final YesNoQuestion goalQuestion;
+    private final PromptTemplate usefulnessQuestionTemplate;
+    private final List<String> usefulnessLevels;
     private final double goalThreshold;
     private final double activationThreshold;
     private final int maxInvocations;
@@ -137,19 +166,6 @@ public class DecisionSchedulerPlanner implements Planner {
 
     // the subagents left out of this invocation because their description cannot be read
     private final Set<String> unavailable = new HashSet<>();
-
-    /** The levels on which the decision model grades the usefulness of a subagent, from the lowest to the highest. */
-    enum Usefulness {
-        USELESS,
-        MARGINAL,
-        USEFUL,
-        ESSENTIAL;
-
-        /** The levels as they are sent to the decision model. */
-        static List<String> names() {
-            return Arrays.stream(values()).map(Enum::name).toList();
-        }
-    }
 
     private record Subagent(AgentInstance agent, List<String> mandatoryArguments, Set<String> arguments) {
 
@@ -175,12 +191,48 @@ public class DecisionSchedulerPlanner implements Planner {
     private DecisionSchedulerPlanner(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         this.goal = ensureNotBlank(builder.goal, "goal");
+        this.goalQuestion =
+                goalQuestion(getOrDefault(builder.goalQuestionTemplate, DEFAULT_GOAL_QUESTION_TEMPLATE), goal);
+        this.usefulnessQuestionTemplate = validUsefulnessQuestionTemplate(
+                getOrDefault(builder.usefulnessQuestionTemplate, DEFAULT_USEFULNESS_QUESTION_TEMPLATE));
+        this.usefulnessLevels = List.copyOf(getOrDefault(builder.usefulnessLevels, DEFAULT_USEFULNESS_LEVELS));
+        if (usefulnessLevels.size() < 2) {
+            throw illegalArgument("The usefulness question needs at least 2 levels, but has: %s", usefulnessLevels);
+        }
         this.goalThreshold = validThreshold(builder.goalThreshold, "Goal threshold");
         this.activationThreshold = validThreshold(builder.activationThreshold, "Activation threshold");
-        if (builder.maxInvocations < 1) {
-            throw illegalArgument("Max invocations must be at least 1, but is: %s", builder.maxInvocations);
+        this.maxInvocations = getOrDefault(builder.maxInvocations, DEFAULT_MAX_INVOCATIONS);
+        if (maxInvocations < 1) {
+            throw illegalArgument("Max invocations must be at least 1, but is: %s", maxInvocations);
         }
-        this.maxInvocations = builder.maxInvocations;
+    }
+
+    private static YesNoQuestion goalQuestion(PromptTemplate template, String goal) {
+        String text;
+        try {
+            text = template.apply(Map.of("goal", goal)).text();
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The goal question template can only use the {{goal}} variable, but was: " + template.template(),
+                    e);
+        }
+        return YesNoQuestion.from(text);
+    }
+
+    private static PromptTemplate validUsefulnessQuestionTemplate(PromptTemplate template) {
+        if (!template.template().contains("{{name}}") && !template.template().contains("{{description}}")) {
+            throw new IllegalArgumentException("The usefulness question template must contain {{name}} or "
+                    + "{{description}}, to tell the subagents apart, but was: " + template.template());
+        }
+        try {
+            template.apply(Map.of("name", "name", "description", "description", "goal", "goal"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The usefulness question template can only use the {{name}}, {{description}} and {{goal}} "
+                            + "variables, but was: " + template.template(),
+                    e);
+        }
+        return template;
     }
 
     private static double validThreshold(Double threshold, String name) {
@@ -199,6 +251,11 @@ public class DecisionSchedulerPlanner implements Planner {
 
     @Override
     public void init(InitPlanningContext initPlanningContext) {
+        if (inputKeys != null) {
+            throw new IllegalStateException("A DecisionSchedulerPlanner instance holds the state of a single "
+                    + "invocation and cannot be reused: give the agentic system a supplier creating a new instance "
+                    + "at each invocation, for example planner(() -> DecisionSchedulerPlanner.builder()...build())");
+        }
         AgentInstance plannerAgent = initPlanningContext.plannerAgent();
         // framework-provided arguments, like @MemoryId, are not part of the state
         this.inputKeys = plannerAgent.arguments().stream()
@@ -304,10 +361,9 @@ public class DecisionSchedulerPlanner implements Planner {
 
         DecisionRequest.Builder request = DecisionRequest.builder().inputFields(state(agenticScope));
         if (askGoal) {
-            request.question(GOAL_QUESTION_NAME, YesNoQuestion.from(goalQuestionText(goal)));
+            request.question(GOAL_QUESTION_NAME, goalQuestion);
         }
-        candidates.forEach(
-                candidate -> request.question(candidate.id(), usefulnessQuestion(candidate.agent(), goal)));
+        candidates.forEach(candidate -> request.question(candidate.id(), usefulnessQuestion(candidate.agent())));
         DecisionResponse response = decisionModel.decide(request.build());
 
         Double goalProbability =
@@ -326,7 +382,7 @@ public class DecisionSchedulerPlanner implements Planner {
 
         Map<String, Double> scores = new LinkedHashMap<>();
         candidates.forEach(candidate ->
-                scores.put(candidate.id(), response.scale(candidate.id()).mean() / Usefulness.ESSENTIAL.ordinal()));
+                scores.put(candidate.id(), response.scale(candidate.id()).mean() / (usefulnessLevels.size() - 1)));
         // the first declared candidate wins a tie
         Subagent best = candidates.get(0);
         for (Subagent candidate : candidates) {
@@ -385,18 +441,18 @@ public class DecisionSchedulerPlanner implements Planner {
         }
     }
 
-    static String goalQuestionText(String goal) {
-        return "Has this goal been reached: " + goal + "?";
-    }
-
-    static String usefulnessQuestionText(String agentName, String agentDescription, String goal) {
-        String description = isNullOrBlank(agentDescription) ? "" : " (" + agentDescription + ")";
-        return "How useful would it be to run the agent '" + agentName + "'" + description
-                + " now, to reach this goal: " + goal + "?";
-    }
-
-    private static ScaleQuestion usefulnessQuestion(AgentInstance agent, String goal) {
-        return ScaleQuestion.from(usefulnessQuestionText(agent.name(), agent.description(), goal), Usefulness.names());
+    private ScaleQuestion usefulnessQuestion(AgentInstance agent) {
+        String description = agent.description();
+        String text = usefulnessQuestionTemplate
+                .apply(Map.of(
+                        "name",
+                        agent.name(),
+                        "description",
+                        isNullOrBlank(description) ? agent.name() : description,
+                        "goal",
+                        goal))
+                .text();
+        return ScaleQuestion.from(text, usefulnessLevels);
     }
 
     /**
@@ -486,7 +542,10 @@ public class DecisionSchedulerPlanner implements Planner {
         private String goal;
         private Double goalThreshold;
         private Double activationThreshold;
-        private int maxInvocations = DEFAULT_MAX_INVOCATIONS;
+        private Integer maxInvocations;
+        private PromptTemplate goalQuestionTemplate;
+        private PromptTemplate usefulnessQuestionTemplate;
+        private List<String> usefulnessLevels;
 
         private Builder() {}
 
@@ -511,33 +570,75 @@ public class DecisionSchedulerPlanner implements Planner {
          * Sets the minimum probability that the goal has been reached for the planner to stop. Mandatory, strictly
          * between 0 and 1.
          */
-        public Builder goalThreshold(double goalThreshold) {
+        public Builder goalThreshold(Double goalThreshold) {
             this.goalThreshold = goalThreshold;
             return this;
         }
 
         /**
-         * Sets the minimum score, from 0 ("USELESS") to 1 ("ESSENTIAL"), for the most useful subagent to be
-         * invoked: when no subagent reaches it the planner stops. Mandatory, strictly between 0 and 1.
+         * Sets the minimum score for the most useful subagent to be invoked: when no subagent reaches it the planner
+         * stops. The score goes from 0 (the lowest usefulness level) to 1 (the highest one): with the default levels,
+         * "USELESS" is 0, "MARGINAL" 1/3, "USEFUL" 2/3 and "ESSENTIAL" 1. Mandatory, strictly between 0 and 1.
          */
-        public Builder activationThreshold(double activationThreshold) {
+        public Builder activationThreshold(Double activationThreshold) {
             this.activationThreshold = activationThreshold;
             return this;
         }
 
         /**
-         * Sets the maximum number of subagent invocations, after which the planner stops with a warning. The
-         * default is 10.
+         * Sets the maximum number of subagent invocations, after which the planner only asks whether the goal has
+         * been reached, and stops, with a warning if it has not. At least 1.
+         * <p>
+         * Default value is {@value DecisionSchedulerPlanner#DEFAULT_MAX_INVOCATIONS}.
          */
-        public Builder maxInvocations(int maxInvocations) {
+        public Builder maxInvocations(Integer maxInvocations) {
             this.maxInvocations = maxInvocations;
             return this;
         }
 
         /**
+         * Sets the template of the yes/no question asking whether the goal has been reached, which can use the
+         * {@code {{goal}}} variable (the goal set with {@link #goal(String)}).
+         * <p>
+         * Default value is {@link DecisionSchedulerPlanner#DEFAULT_GOAL_QUESTION_TEMPLATE}.
+         */
+        public Builder goalQuestionTemplate(PromptTemplate goalQuestionTemplate) {
+            this.goalQuestionTemplate = goalQuestionTemplate;
+            return this;
+        }
+
+        /**
+         * Sets the template of the scale question asking how useful it would be to invoke a subagent now, which must
+         * contain the {@code {{name}}} or the {@code {{description}}} variable (the name and the description of the
+         * subagent, or its name when it has no description), and can use the {@code {{goal}}} variable.
+         * <p>
+         * Default value is {@link DecisionSchedulerPlanner#DEFAULT_USEFULNESS_QUESTION_TEMPLATE}.
+         */
+        public Builder usefulnessQuestionTemplate(PromptTemplate usefulnessQuestionTemplate) {
+            this.usefulnessQuestionTemplate = usefulnessQuestionTemplate;
+            return this;
+        }
+
+        /**
+         * Sets the levels of the usefulness question, at least 2, from the lowest to the highest. The score of a
+         * subagent is the mean level of the answer scaled between 0 (the lowest level) and 1 (the highest one).
+         * <p>
+         * Default value is {@link DecisionSchedulerPlanner#DEFAULT_USEFULNESS_LEVELS}.
+         */
+        public Builder usefulnessLevels(List<String> usefulnessLevels) {
+            this.usefulnessLevels = usefulnessLevels;
+            return this;
+        }
+
+        /**
+         * When the planner is initialized, at each invocation, it fails with an {@link IllegalArgumentException} if
+         * the planner agent is not a typed agent interface with at least one argument to send to the decision model.
+         *
          * @throws IllegalArgumentException if the decision model is {@code null}, if the goal is {@code null} or
-         *         blank, if a threshold is not set or is not strictly between 0 and 1, or if the maximum number of
-         *         invocations is less than 1
+         *         blank, if a threshold is not set or is not strictly between 0 and 1, if the maximum number of
+         *         invocations is less than 1, if a question template uses other variables than its own or the
+         *         usefulness question template contains neither {@code {{name}}} nor {@code {{description}}}, or if
+         *         there are fewer than 2 usefulness levels
          */
         public DecisionSchedulerPlanner build() {
             return new DecisionSchedulerPlanner(this);

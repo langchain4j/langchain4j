@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.patterns.decisionscheduler;
 
+import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.DEFAULT_USEFULNESS_LEVELS;
 import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.GOAL_QUESTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.Usefulness;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
@@ -174,7 +174,7 @@ class DecisionSchedulerPlannerResumeTest {
                             ? YesNoAnswer.from(goalProbability.apply(state))
                             : ScaleAnswer.builder()
                                     .mean(scores.apply(state).getOrDefault(agentName(name), 0.0)
-                                            * Usefulness.ESSENTIAL.ordinal())
+                                            * (DEFAULT_USEFULNESS_LEVELS.size() - 1))
                                     .build()));
             return answers;
         });

@@ -76,6 +76,7 @@ public class DecisionSchedulerMedicalIT {
         // the diagnosis needs the symptoms and the lab analysis, and reaches the goal
         assertThat(path).endsWith("diagnose").containsOnlyOnce("diagnose");
         assertThat(path).contains("extractSymptoms", "analyzeLabResults");
-        HtmlReportGenerator.generateReport(monitor, Path.of("src", "test", "resources", "medical-decision-scheduler.html"));
+//        HtmlReportGenerator.generateReport(monitor,
+//                Path.of("src", "test", "resources", "medical-decision-scheduler.html"));
     }
 }

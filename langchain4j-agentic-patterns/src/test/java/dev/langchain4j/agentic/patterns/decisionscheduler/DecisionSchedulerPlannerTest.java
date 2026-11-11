@@ -1,22 +1,22 @@
 package dev.langchain4j.agentic.patterns.decisionscheduler;
 
 import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.GOAL_QUESTION_NAME;
-import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.goalQuestionText;
-import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.usefulnessQuestionText;
+import static dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.DEFAULT_USEFULNESS_LEVELS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner.Usefulness;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.AgenticServices.NonAiAgentBuilder;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -40,8 +40,10 @@ import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,7 +174,7 @@ class DecisionSchedulerPlannerTest {
     }
 
     private static ScaleAnswer score(double score) {
-        return ScaleAnswer.builder().mean(score * Usefulness.ESSENTIAL.ordinal()).build();
+        return ScaleAnswer.builder().mean(score * (DEFAULT_USEFULNESS_LEVELS.size() - 1)).build();
     }
 
     /** The name of the subagent with the given id, which is that name followed by "$" and by its position. */
@@ -564,15 +566,16 @@ class DecisionSchedulerPlannerTest {
                                 + "goal: " + GOAL + "?",
                         List.of("USELESS", "MARGINAL", "USEFUL", "ESSENTIAL")));
         assertThat(firstQuestions.get("tracker$1"))
-                .isEqualTo(ScaleQuestion.from(usefulnessQuestionText("tracker", null, GOAL), Usefulness.names()));
-        assertThat(usefulnessQuestionText("tracker", " ", GOAL))
-                .isEqualTo("How useful would it be to run the agent 'tracker' now, to reach this goal: " + GOAL + "?");
+                .isEqualTo(ScaleQuestion.from(
+                        // an agent without a description is described by its name
+                        "How useful would it be to run the agent 'tracker' (tracker) now, to reach this goal: " + GOAL
+                                + "?",
+                        DEFAULT_USEFULNESS_LEVELS));
 
         Map<String, ?> secondQuestions = model.requests().get(1).questions();
         assertThat(secondQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker$1");
         assertThat(secondQuestions.get(GOAL_QUESTION_NAME))
                 .isEqualTo(YesNoQuestion.from("Has this goal been reached: " + GOAL + "?"));
-        assertThat(goalQuestionText(GOAL)).isEqualTo("Has this goal been reached: " + GOAL + "?");
     }
 
     @Test
@@ -700,6 +703,37 @@ class DecisionSchedulerPlannerTest {
     }
 
     @Test
+    void shouldRetryAFailedAsyncSubagentWithoutDeadlocking() {
+        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        AtomicInteger attempts = new AtomicInteger();
+        AgenticScopeFunction<Object> flakyAsyncTracker = agent(
+                        "tracker",
+                        "orderStatus",
+                        scope -> {
+                            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(200));
+                            if (attempts.incrementAndGet() == 1) {
+                                throw new IllegalStateException("tracker temporarily down");
+                            }
+                            return "tracker output";
+                        },
+                        input("ticket"))
+                .async(true)
+                .build();
+        SupportDesk desk = AgenticServices.plannerBuilder(SupportDesk.class)
+                .subAgents(flakyAsyncTracker, writer())
+                .outputKey("reply")
+                .errorHandler(errorContext -> ErrorRecoveryResult.retry())
+                .planner(() -> planner(model).build())
+                .build();
+
+        String reply = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> desk.handle(TICKET));
+
+        assertThat(reply).isEqualTo("reply using tracker output and nothing");
+        assertThat(attempts).hasValue(2);
+        assertThat(invoked).containsExactly("tracker", "tracker", "writer");
+    }
+
+    @Test
     void shouldFailWhenTheDelayedOutputOfASubagentHasNoOutputKey() {
         DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
 
@@ -783,6 +817,70 @@ class DecisionSchedulerPlannerTest {
     }
 
     @Test
+    void shouldAskTheReplacedQuestionsWithTheReplacedLevels() {
+        List<String> levels = List.of("NO", "MAYBE", "YES");
+        // the middle level of three is scored 0.5, which reaches the activation threshold
+        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
+                GOAL_QUESTION_NAME, YesNoAnswer.from(0.1),
+                "tracker$0", ScaleAnswer.builder().mean(1.0).build()));
+        SupportDesk scheduler = scheduler(
+                SupportDesk.class,
+                () -> planner(model)
+                        .goalQuestionTemplate(PromptTemplate.from("Is it done? {{goal}}"))
+                        .usefulnessQuestionTemplate(
+                                PromptTemplate.from("Should {{name}} run now? {{description}}. Goal: {{goal}}"))
+                        .usefulnessLevels(levels)
+                        .build(),
+                tracker());
+
+        scheduler.handle(TICKET);
+
+        assertThat(invoked).containsExactly("tracker");
+        Map<String, ?> questions = model.request().questions();
+        assertThat(questions.get(GOAL_QUESTION_NAME)).isEqualTo(YesNoQuestion.from("Is it done? " + GOAL));
+        assertThat(questions.get("tracker$0"))
+                .isEqualTo(ScaleQuestion.from(
+                        "Should tracker run now? The tracker agent. Goal: " + GOAL, levels));
+    }
+
+    @Test
+    void shouldRejectInvalidQuestionTemplatesAndLevels() {
+        DecisionModelMock model = model(0.9, Map.of());
+
+        assertThatThrownBy(() -> planner(model)
+                        .goalQuestionTemplate(PromptTemplate.from("Is {{goal}} reached for {{customer}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{goal}}");
+        assertThatThrownBy(() -> planner(model)
+                        .usefulnessQuestionTemplate(PromptTemplate.from("Is it useful to reach {{goal}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}} or {{description}}");
+        assertThatThrownBy(() -> planner(model)
+                        .usefulnessQuestionTemplate(PromptTemplate.from("Is {{name}} useful for {{customer}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}}, {{description}} and {{goal}}");
+        assertThatThrownBy(() -> planner(model).usefulnessLevels(List.of("USEFUL")).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 2 levels");
+    }
+
+    @Test
+    void shouldRejectAPlannerInstanceInitializedTwice() {
+        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        DecisionSchedulerPlanner planner = planner(model).build();
+        SupportDesk scheduler = scheduler(SupportDesk.class, () -> planner, tracker(), writer());
+
+        assertThat(scheduler.handle(TICKET)).isEqualTo("reply using tracker output and nothing");
+
+        assertThatThrownBy(() -> scheduler.handle(TICKET))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cannot be reused");
+    }
+
+    @Test
     void shouldRejectAnUntypedScheduler() {
         DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
 
@@ -822,10 +920,14 @@ class DecisionSchedulerPlannerTest {
         assertThat(firstQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker$0", "tracker$1");
         assertThat(firstQuestions.get("tracker$0"))
                 .isEqualTo(ScaleQuestion.from(
-                        usefulnessQuestionText("tracker", "The first tracker", GOAL), Usefulness.names()));
+                        "How useful would it be to run the agent 'tracker' (The first tracker) now, to reach this "
+                                + "goal: " + GOAL + "?",
+                        DEFAULT_USEFULNESS_LEVELS));
         assertThat(firstQuestions.get("tracker$1"))
                 .isEqualTo(ScaleQuestion.from(
-                        usefulnessQuestionText("tracker", "The second tracker", GOAL), Usefulness.names()));
+                        "How useful would it be to run the agent 'tracker' (The second tracker) now, to reach this "
+                                + "goal: " + GOAL + "?",
+                        DEFAULT_USEFULNESS_LEVELS));
         assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "tracker$0");
     }
 

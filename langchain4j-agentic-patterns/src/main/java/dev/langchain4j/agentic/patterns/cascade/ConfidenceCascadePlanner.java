@@ -67,7 +67,8 @@ import org.slf4j.LoggerFactory;
  * <p>
  * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
  * given a supplier creating a new instance at each invocation, for example
- * {@code () -> new ConfidenceCascadePlanner(decisionModel, 0.5)}, while the decision model can be shared.
+ * {@code () -> new ConfidenceCascadePlanner(decisionModel, 0.5)}, while the decision model can be shared. An instance
+ * that is initialized a second time fails with an {@link IllegalStateException}.
  */
 @Experimental
 public class ConfidenceCascadePlanner implements Planner {
@@ -157,6 +158,12 @@ public class ConfidenceCascadePlanner implements Planner {
 
     @Override
     public void init(InitPlanningContext initPlanningContext) {
+        if (inputKeys != null) {
+            throw new IllegalStateException("A ConfidenceCascadePlanner instance holds the state of a single "
+                    + "invocation and cannot be reused: give the agentic system a supplier creating a new instance "
+                    + "at each invocation, for example "
+                    + "planner(() -> new ConfidenceCascadePlanner(decisionModel, 0.5))");
+        }
         // framework-provided arguments, like @MemoryId, are not part of the request
         this.inputKeys = initPlanningContext.plannerAgent().arguments().stream()
                 .map(AgentArgument::name)
