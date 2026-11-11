@@ -10,12 +10,27 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public class AnthropicCacheControl {
 
     private final String type;
+    private final String ttl;
 
     public AnthropicCacheControl(String type) {
+        this(type, null);
+    }
+
+    public AnthropicCacheControl(String type, String ttl) {
         this.type = type;
+        this.ttl = ttl;
     }
 
     public String getType() {
         return type;
+    }
+
+    public String getTtl() {
+        return ttl;
+    }
+
+    @Override
+    public String toString() {
+        return "AnthropicCacheControl{type='" + type + "', ttl='" + ttl + "'}";
     }
 }

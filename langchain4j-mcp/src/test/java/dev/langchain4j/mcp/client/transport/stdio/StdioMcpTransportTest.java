@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport.stdio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -20,8 +22,89 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StdioMcpTransportTest {
+
+    @Test
+    void should_inherit_working_directory_by_default() throws Exception {
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try (StdioMcpTransport transport =
+                workingDirectoryProcessBuilder(executorService).build()) {
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+
+            transport.start(messageHandler);
+
+            verify(messageHandler, timeout(5_000))
+                    .onMessage(Path.of("").toRealPath().toUri().toString());
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void should_use_configured_working_directory_on_start_and_restart(@TempDir Path tempDir) throws Exception {
+        Path workingDirectory = Files.createDirectory(tempDir.resolve("directory with spaces"));
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try (StdioMcpTransport transport = workingDirectoryProcessBuilder(executorService)
+                .workingDirectory(workingDirectory)
+                .build()) {
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+            String expectedDirectory = workingDirectory.toRealPath().toUri().toString();
+
+            transport.start(messageHandler);
+            verify(messageHandler, timeout(5_000)).onMessage(expectedDirectory);
+
+            transport.start(messageHandler);
+            verify(messageHandler, timeout(5_000).times(2)).onMessage(expectedDirectory);
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"missing", "file"})
+    void should_fail_to_start_with_invalid_working_directory(String kind, @TempDir Path tempDir) throws Exception {
+        Path workingDirectory = tempDir.resolve(kind);
+        if (kind.equals("file")) {
+            Files.createFile(workingDirectory);
+        }
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try (StdioMcpTransport transport = workingDirectoryProcessBuilder(executorService)
+                .workingDirectory(workingDirectory)
+                .build()) {
+            assertThatThrownBy(() -> transport.start(mock(McpOperationHandler.class)))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasCauseInstanceOf(IOException.class);
+            assertThat(transport.getProcess()).isNull();
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    private static StdioMcpTransport.Builder workingDirectoryProcessBuilder(ExecutorService executorService)
+            throws URISyntaxException {
+        String javaExecutable = System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java";
+        Path java = Path.of(System.getProperty("java.home"), "bin", javaExecutable);
+        Path testClasses = Path.of(WorkingDirectoryProcess.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .toURI());
+        return new StdioMcpTransport.Builder()
+                .command(List.of(
+                        java.toString(), "-cp", testClasses.toString(), WorkingDirectoryProcess.class.getName()))
+                .executorService(executorService);
+    }
+
+    public static class WorkingDirectoryProcess {
+        public static void main(String[] args) throws IOException {
+            System.out.println(Path.of("").toRealPath().toUri());
+            // Keep the process alive until the transport closes its input or destroys it.
+            System.in.read();
+        }
+    }
 
     /**
      * When {@link StdioMcpTransport#start} is called again (as happens during reconnection triggered
@@ -57,6 +140,40 @@ class StdioMcpTransportTest {
                     .as("the previous process should have been destroyed on restart")
                     .isTrue();
             assertThat(firstProcess.isAlive()).isFalse();
+            assertThat(secondProcess.isAlive()).isTrue();
+
+            transport.close();
+            secondProcess.waitFor(5, TimeUnit.SECONDS);
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void stop_should_destroy_the_process_and_allow_another_start() throws IOException, InterruptedException {
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            StdioMcpTransport transport = new StdioMcpTransport.Builder()
+                    .command(List.of("cat"))
+                    .environment(Map.of())
+                    .executorService(executorService)
+                    .build();
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+            transport.start(messageHandler);
+            Process firstProcess = transport.getProcess();
+            assertThat(firstProcess.isAlive()).isTrue();
+
+            // as the client does when its build fails: the process goes, the transport stays usable
+            transport.stop();
+            assertThat(firstProcess.waitFor(5, TimeUnit.SECONDS))
+                    .as("the process should have been destroyed by stop")
+                    .isTrue();
+            assertThat(transport.getProcess()).isNull();
+
+            transport.start(messageHandler);
+            Process secondProcess = transport.getProcess();
+            assertThat(secondProcess).isNotSameAs(firstProcess);
             assertThat(secondProcess.isAlive()).isTrue();
 
             transport.close();

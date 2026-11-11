@@ -8,8 +8,8 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -166,7 +166,8 @@ public class DefaultToolExecutor implements ToolExecutor {
      * the calling thread, like the default implementation.
      */
     @Override
-    public CompletableFuture<ToolExecutionResult> executeAsync(ToolExecutionRequest request, InvocationContext context) {
+    public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest request, InvocationContext context) {
         Object[] arguments = prepareArguments(request, context);
 
         Object result;
@@ -452,14 +453,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
+                String enumValue = Objects.requireNonNull(argument).toString().strip();
                 try {
-                    return Enum.valueOf(
-                            enumClass, Objects.requireNonNull(argument).toString());
+                    return Enum.valueOf(enumClass, enumValue);
                 } catch (IllegalArgumentException e) {
                     // try to convert to uppercase as a last resort
-                    return Enum.valueOf(
-                            enumClass,
-                            Objects.requireNonNull(argument).toString().toUpperCase(Locale.ROOT));
+                    return Enum.valueOf(enumClass, enumValue.toUpperCase(Locale.ROOT));
                 }
             } catch (Exception | Error e) {
                 throw new IllegalArgumentException(

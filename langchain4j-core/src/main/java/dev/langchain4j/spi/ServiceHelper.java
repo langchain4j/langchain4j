@@ -25,19 +25,34 @@ public class ServiceHelper {
     }
 
     /**
-     * Load the first available service of a given type.
+     * Load the service of a given type with the highest {@link PrioritizedFactory#priority() priority}.
+     *
+     * <p>If several services share the highest priority, the first one found by the
+     * {@link ServiceLoader} is returned and a warning is logged, because that order depends on the
+     * classpath and is not stable.</p>
      *
      * @param clazz the type of service
      * @param <T>   the type of service
-     * @return the first service, null if none
+     * @return the service with the highest priority, null if none
      */
     public static <T> T loadFactory(Class<T> clazz) {
-        Collection<T> factories = loadFactories(clazz, null);
-        return factories.isEmpty() ? null : factories.iterator().next();
+        List<T> factories = loadSortedByPriority(clazz, null);
+        if (factories.isEmpty()) {
+            return null;
+        }
+        String warning = ambiguityWarning(clazz, factories);
+        if (warning != null) {
+            log.warn(warning);
+        }
+        return factories.get(0);
     }
 
     /**
-     * Load all the services of a given type.
+     * Load all the services of a given type, sorted by {@link PrioritizedFactory#priority() priority},
+     * highest first.
+     *
+     * <p>Use this when every service is used. When only one is used, use {@link #loadFactory(Class)}
+     * instead, which also warns when the choice depends on classpath order.</p>
      *
      * @param clazz the type of service
      * @param <T>   the type of service
@@ -59,12 +74,20 @@ public class ServiceHelper {
      *
      * <p>If the above return nothing, will fall back to {@code ServiceLoader.load(clazz, $this class loader$)}</p>
      *
+     * <p>Services are sorted by {@link PrioritizedFactory#priority() priority}, highest first.
+     * Use this when every service is used. When only one is used, use {@link #loadFactory(Class)}
+     * instead, which also warns when the choice depends on classpath order.</p>
+     *
      * @param clazz       the type of service
      * @param classLoader the classloader to use, may be null
      * @param <T>         the type of service
      * @return the list of services, empty if none
      */
     public static <T> Collection<T> loadFactories(Class<T> clazz, /* @Nullable */ ClassLoader classLoader) {
+        return loadSortedByPriority(clazz, classLoader);
+    }
+
+    private static <T> List<T> loadSortedByPriority(Class<T> clazz, ClassLoader classLoader) {
         List<T> result;
         if (classLoader != null) {
             result = loadAll(ServiceLoader.load(clazz, classLoader));
@@ -79,18 +102,9 @@ public class ServiceHelper {
             // class. In OSGi it would be the bundle exposing vert.x and so have access to all its classes.
             result = loadAll(ServiceLoader.load(clazz, ServiceHelper.class.getClassLoader()));
         }
-        result = sortByPriority(result);
-        warnIfAmbiguous(clazz, result);
-        return result;
+        return sortByPriority(result);
     }
 
-    /**
-     * Every caller of this takes the first service and ignores the rest, so a second implementation
-     * on the classpath is decided by whatever order the {@link ServiceLoader} happened to enumerate
-     * - which can differ between a development run, a shaded jar and a container image. That is
-     * worth saying out loud rather than leaving someone to discover that their JSON, or their
-     * prompt templating, is not the implementation they thought.
-     */
     /**
      * Highest priority first, stable so that equal priorities keep the {@link ServiceLoader} order
      * they came in with.
@@ -107,19 +121,27 @@ public class ServiceHelper {
                 : PrioritizedFactory.DEFAULT_PRIORITY;
     }
 
-    private static <T> void warnIfAmbiguous(Class<T> clazz, List<T> found) {
-        if (found.size() > 1) {
-            log.warn(
-                    "Found {} implementations of {} on the classpath; using {} and ignoring {}. "
-                            + "Which one is used is decided by classpath order and is not stable - "
-                            + "remove the ones you do not want.",
-                    found.size(),
-                    clazz.getName(),
-                    found.get(0).getClass().getName(),
-                    found.subList(1, found.size()).stream()
-                            .map(other -> other.getClass().getName())
-                            .toList());
+    static <T> String ambiguityWarning(Class<T> clazz, List<T> sorted) {
+        if (sorted.isEmpty()) {
+            return null;
         }
+        int highest = priorityOf(sorted.get(0));
+        List<String> tied = sorted.subList(1, sorted.size()).stream()
+                .filter(other -> priorityOf(other) == highest)
+                .map(other -> other.getClass().getName())
+                .toList();
+        if (tied.isEmpty()) {
+            return null;
+        }
+        return String.format(
+                "Found %d implementations of %s with the same priority on the classpath; using %s and ignoring %s. "
+                        + "Which one is used is decided by classpath order and is not stable - "
+                        + "remove the ones you do not want, or implement %s on the one that should win.",
+                tied.size() + 1,
+                clazz.getName(),
+                sorted.get(0).getClass().getName(),
+                tied,
+                PrioritizedFactory.class.getName());
     }
 
     /**

@@ -1,40 +1,46 @@
 package dev.langchain4j.agentic.declarative;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentFromParameter;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeAgentCreationContext;
+import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeDecisionAgentCreationContext;
 import dev.langchain4j.agentic.agent.AgentBuilder;
+import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.internal.AgentHelpers;
+import dev.langchain4j.agentic.internal.HelperMethod;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.service.decision.Decide;
+import dev.langchain4j.service.decision.ThresholdContext;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -48,8 +54,18 @@ public class DeclarativeUtil {
 
     private DeclarativeUtil() {}
 
+    /**
+     * Applies the static helper methods of the given agent type to its builder, when the builder is created
+     * programmatically: the chat model is left to the builder, and a non-static helper is an error, since the builder
+     * has no helper objects.
+     */
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
-        configureAgent(agentType, null, true, agentBuilder, AgenticServices.AgentConfigurator.empty());
+        configureAgent(
+                AgentHelpers.of(agentType, List.of()),
+                null,
+                true,
+                agentBuilder,
+                AgenticServices.AgentConfigurator.empty());
     }
 
     public static void configureAgent(
@@ -57,17 +73,53 @@ public class DeclarativeUtil {
             ChatModel chatModel,
             AgentBuilder<?, ?> agentBuilder,
             AgenticServices.AgentConfigurator agentConfigurator) {
-        configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
+        configureAgent(
+                AgentHelpers.of(agentType, agentConfigurator.helperObjects(agentType)),
+                chatModel,
+                false,
+                agentBuilder,
+                agentConfigurator);
     }
 
     private static void configureAgent(
-            Class<?> agentType,
+            AgentHelpers helpers,
             ChatModel chatModel,
             boolean allowNullChatModel,
             AgentBuilder<?, ?> agentBuilder,
             AgenticServices.AgentConfigurator agentConfigurator) {
-        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class).ifPresent(method -> {
-            Object tools = invokeSupplierWithResolvers(agentType, method, Object.class);
+        boolean chatModelSupplied = configureAgentFeatures(helpers, agentBuilder);
+        if (!chatModelSupplied) {
+            if (chatModel == null && !allowNullChatModel) {
+                throw new IllegalArgumentException("ChatModel not provided for subagent "
+                        + helpers.agentType().getName()
+                        + ". Please provide one either with a method annotated with @ChatModelSupplier or "
+                        + "@StreamingChatModelSupplier, static on the agent type or declared by a helper object, "
+                        + "or through the parent agent's chatModel parameter.");
+            }
+            agentBuilder.chatModel(chatModel);
+        }
+
+        if (agentConfigurator.agentInstanceFactory() != null) {
+            agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+
+        agentConfigurator
+                .configurator()
+                .accept(new DefaultDeclarativeAgentCreationContext(helpers.agentType(), agentBuilder));
+    }
+
+    /**
+     * Applies the helpers of an AI agent to its builder.
+     *
+     * @return whether a chat model or a streaming chat model supplier has been applied
+     */
+    private static boolean configureAgentFeatures(AgentHelpers helpers, AgentBuilder<?, ?> agentBuilder) {
+        Class<?> agentType = helpers.agentType();
+        checkNoDecisionSuppliers(helpers);
+
+        helpers.select(ToolsSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), Object.class);
+            Object tools = invokeSupplierWithResolvers(agentType, helper, Object.class);
             if (tools instanceof Map) {
                 agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
             } else if (tools.getClass().isArray()) {
@@ -77,133 +129,197 @@ public class DeclarativeUtil {
             }
         });
 
-        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class).ifPresent(method -> {
-            checkReturnType(method, ToolProvider.class);
-            agentBuilder.toolProvider(invokeSupplierWithResolvers(agentType, method, ToolProvider.class));
+        helpers.select(ToolProviderSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), ToolProvider.class);
+            agentBuilder.toolProvider(invokeSupplierWithResolvers(agentType, helper, ToolProvider.class));
         });
 
-        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class).ifPresent(method -> {
-            checkReturnType(method, ContentRetriever.class);
-            agentBuilder.contentRetriever(invokeSupplierWithResolvers(agentType, method, ContentRetriever.class));
+        helpers.select(ToolSearchStrategySupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), ToolSearchStrategy.class);
+            agentBuilder.toolSearchStrategy(invokeSupplierWithResolvers(agentType, helper, ToolSearchStrategy.class));
         });
 
-        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class).ifPresent(method -> {
-            checkReturnType(method, RetrievalAugmentor.class);
-            agentBuilder.retrievalAugmentor(invokeSupplierWithResolvers(agentType, method, RetrievalAugmentor.class));
+        helpers.select(ContentRetrieverSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), ContentRetriever.class);
+            agentBuilder.contentRetriever(invokeSupplierWithResolvers(agentType, helper, ContentRetriever.class));
         });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class).ifPresent(method -> {
-            checkReturnType(method, ChatMemory.class);
-            if (method.getParameterCount() == 0) {
-                throw new IllegalArgumentException(
-                        "Method " + method + " must have at least 1 argument: [class java.lang.Object]");
-            }
-            if (method.getParameterCount() == 1) {
-                checkArguments(method, Object.class);
-                agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
+        helpers.select(RetrievalAugmentorSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), RetrievalAugmentor.class);
+            agentBuilder.retrievalAugmentor(invokeSupplierWithResolvers(agentType, helper, RetrievalAugmentor.class));
+        });
+
+        helpers.select(ChatMemoryProviderSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), ChatMemory.class);
+            ResolvedParameters parameters =
+                    ResolvedParameters.of(agentType, helper).checkFrameworkParameters(Object.class);
+            agentBuilder.chatMemoryProvider(memoryId -> parameters.invoke(memoryId));
+        });
+
+        helpers.select(ChatMemorySupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), ChatMemory.class);
+            agentBuilder.chatMemory(invokeSupplierWithResolvers(agentType, helper, ChatMemory.class));
+        });
+
+        // a supplier reading the AgenticScope is a function of it, invoked at each invocation of the agent; one whose
+        // parameters are all provided by a resolver is a fixed model, invoked once
+        boolean chatModelSupplied = false;
+        Optional<HelperMethod> chatModelSupplier = helpers.select(ChatModelSupplier.class);
+        if (chatModelSupplier.isPresent()) {
+            HelperMethod helper = chatModelSupplier.get();
+            checkReturnType(helper.method(), ChatModel.class);
+            if (frameworkParameterCount(agentType, helper.method()) > 0) {
+                agentBuilder.chatModel(agenticScopeFunction(agentType, helper, ChatModel.class));
             } else {
-                agentBuilder.chatMemoryProvider(memoryId -> {
-                    Function<AgenticScope, ChatMemory> fn =
-                            agenticScopeFunctionWithSupplierParameterResolver(agentType, method, ChatMemory.class);
-                    return fn.apply(null);
-                });
+                agentBuilder.chatModel(invokeSupplierWithResolvers(agentType, helper, ChatModel.class));
             }
+            chatModelSupplied = true;
+        } else {
+            Optional<HelperMethod> streamingChatModelSupplier = helpers.select(StreamingChatModelSupplier.class);
+            if (streamingChatModelSupplier.isPresent()) {
+                HelperMethod helper = streamingChatModelSupplier.get();
+                checkReturnType(helper.method(), StreamingChatModel.class);
+                if (frameworkParameterCount(agentType, helper.method()) > 0) {
+                    agentBuilder.streamingChatModel(agenticScopeFunction(agentType, helper, StreamingChatModel.class));
+                } else {
+                    agentBuilder.streamingChatModel(
+                            invokeSupplierWithResolvers(agentType, helper, StreamingChatModel.class));
+                }
+                chatModelSupplied = true;
+            }
+        }
+
+        buildListener(helpers, agentBuilder::listener);
+
+        helpers.select(SystemMessageProviderSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), String.class);
+            ResolvedParameters parameters =
+                    ResolvedParameters.of(agentType, helper).checkFrameworkParameters(Object.class);
+            agentBuilder.systemMessageProvider(memoryId -> parameters.invoke(memoryId));
         });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class).ifPresent(method -> {
-            checkReturnType(method, ChatMemory.class);
-            agentBuilder.chatMemory(invokeSupplierWithResolvers(agentType, method, ChatMemory.class));
+        helpers.select(UserMessageProviderSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), String.class);
+            ResolvedParameters parameters =
+                    ResolvedParameters.of(agentType, helper).checkFrameworkParameters(Object.class);
+            agentBuilder.userMessageProvider(memoryId -> parameters.invoke(memoryId));
         });
 
-        getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
-                .ifPresentOrElse(
-                        method -> {
-                            if (method.getParameterCount() > 0) {
-                                Function<AgenticScope, ChatModel> scopeFunction =
-                                        agenticScopeFunctionWithSupplierParameterResolver(
-                                                agentType, method, ChatModel.class);
-                                Function<AgenticScope, ChatModel> provider = scope -> {
-                                    if (scope == null) {
-                                        return invokeStatic(method, new Object[method.getParameterCount()]);
-                                    }
-                                    return scopeFunction.apply(scope);
-                                };
-                                agentBuilder.chatModel(provider);
-                            } else {
-                                agentBuilder.chatModel((ChatModel) invokeStatic(method));
-                            }
-                        },
-                        () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
-                                .ifPresentOrElse(
-                                        method -> {
-                                            if (method.getParameterCount() > 0) {
-                                                Function<AgenticScope, StreamingChatModel> scopeFunction =
-                                                        agenticScopeFunctionWithSupplierParameterResolver(
-                                                                agentType, method, StreamingChatModel.class);
-                                                Function<AgenticScope, StreamingChatModel> provider = scope -> {
-                                                    if (scope == null) {
-                                                        return invokeStatic(
-                                                                method, new Object[method.getParameterCount()]);
-                                                    }
-                                                    return scopeFunction.apply(scope);
-                                                };
-                                                agentBuilder.streamingChatModel(provider);
-                                            } else {
-                                                agentBuilder.streamingChatModel(
-                                                        (StreamingChatModel) invokeStatic(method));
-                                            }
-                                        },
-                                        () -> {
-                                            if (chatModel == null && !allowNullChatModel) {
-                                                throw new IllegalArgumentException(
-                                                        "ChatModel not provided for subagent " + agentType.getName()
-                                                                + ". Please provide one either with a static method annotated with @ChatModelSupplier "
-                                                                + "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
-                                            }
-                                            agentBuilder.chatModel(chatModel);
-                                        }));
+        AgentCondition activationCondition = activationCondition(helpers);
+        if (activationCondition != null) {
+            agentBuilder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
+        return chatModelSupplied;
+    }
 
-        getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class).ifPresent(listenerMethod -> {
-            checkReturnType(listenerMethod, AgentListener.class);
-            agentBuilder.listener(invokeSupplierWithResolvers(agentType, listenerMethod, AgentListener.class));
-        });
+    /**
+     * Whether the given type is a decision agent: an interface whose {@link Agent @Agent}
+     * method is annotated with {@link Decide @Decide}, or which declares a {@link DecisionModelSupplier} method.
+     */
+    public static boolean isDecisionAgent(Class<?> agentType) {
+        if (!agentType.isInterface()) {
+            return false;
+        }
+        Method agentMethod = validateAgentClass(agentType, false);
+        if (agentMethod == null) {
+            return false;
+        }
+        return agentMethod.isAnnotationPresent(Decide.class)
+                || getAnnotatedMethodOnClass(agentType, DecisionModelSupplier.class)
+                        .isPresent();
+    }
 
-        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class)
-                .ifPresent(method -> {
-                    checkReturnType(method, String.class);
-                    checkArguments(method, Object.class);
-                    agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
-                });
+    public static void configureDecisionAgent(Class<?> agentType, DecisionAgentBuilder<?> builder) {
+        configureDecisionAgentFeatures(AgentHelpers.of(agentType, List.of()), builder);
+    }
 
-        getAnnotatedMethodOnClass(agentType, UserMessageProviderSupplier.class).ifPresent(method -> {
-            checkReturnType(method, String.class);
-            checkArguments(method, Object.class);
-            agentBuilder.userMessageProvider(memoryId -> invokeStatic(method, memoryId));
-        });
+    /**
+     * Applies the declarative configuration of the given decision agent type to its builder: the
+     * {@link DecisionModelSupplier}, the {@link DecisionThresholdSupplier}, the {@link AgentListenerSupplier} and the
+     * {@link ActivationCondition}, static on the type or instance methods of its helper objects, and the agent
+     * configurator.
+     *
+     * @throws AgenticSystemConfigurationException if the type also declares a {@link ChatModelSupplier} or a
+     * {@link StreamingChatModelSupplier}
+     */
+    public static void configureDecisionAgent(
+            Class<?> agentType, DecisionAgentBuilder<?> builder, AgenticServices.AgentConfigurator agentConfigurator) {
+        configureDecisionAgentFeatures(AgentHelpers.of(agentType, agentConfigurator.helperObjects(agentType)), builder);
 
         if (agentConfigurator.agentInstanceFactory() != null) {
-            agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+            builder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
         }
 
-        agentConfigurator.configurator().accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
+        agentConfigurator.configurator().accept(new DefaultDeclarativeDecisionAgentCreationContext(agentType, builder));
     }
 
-    public static void checkArguments(Method method, Class<?>... expected) {
-        Class<?>[] actual = method.getParameterTypes();
-        if (actual.length != expected.length) {
-            throw new IllegalArgumentException(
-                    "Method " + method + " must have " + expected.length + " arguments: " + Arrays.toString(expected));
+    private static void configureDecisionAgentFeatures(AgentHelpers helpers, DecisionAgentBuilder<?> builder) {
+        Class<?> agentType = helpers.agentType();
+        for (Class<? extends Annotation> chatModelAnnotation :
+                List.of(ChatModelSupplier.class, StreamingChatModelSupplier.class)) {
+            if (helpers.select(chatModelAnnotation).isPresent()) {
+                throw new AgenticSystemConfigurationException(
+                        "The decision agent " + agentType.getName()
+                                + " declares a method annotated with @" + chatModelAnnotation.getSimpleName()
+                                + ": a decision agent uses a decision model, provided with @DecisionModelSupplier, and no chat model");
+            }
         }
-        for (int i = 0; i < expected.length; i++) {
-            if (!expected[i].isAssignableFrom(actual[i])) {
-                throw new IllegalArgumentException(
-                        "Method " + method + " argument " + (i + 1) + " must be of type " + expected[i].getName());
+
+        helpers.select(DecisionModelSupplier.class).ifPresent(helper -> {
+            checkReturnType(helper.method(), DecisionModel.class);
+            if (frameworkParameterCount(agentType, helper.method()) > 0) {
+                builder.decisionModelProvider(agenticScopeFunction(agentType, helper, DecisionModel.class));
+            } else {
+                builder.decisionModel(invokeSupplierWithResolvers(agentType, helper, DecisionModel.class));
+            }
+        });
+
+        helpers.select(DecisionThresholdSupplier.class).ifPresent(helper -> {
+            Method method = helper.method();
+            if (method.getReturnType() != double.class && method.getReturnType() != Double.class) {
+                throw new IllegalArgumentException("Method " + method + " must return double");
+            }
+            ResolvedParameters threshold =
+                    ResolvedParameters.of(agentType, helper).checkFrameworkParameters(ThresholdContext.class);
+            builder.thresholdProvider(context -> threshold.invoke(context));
+        });
+
+        buildListener(helpers, builder::listener);
+
+        AgentCondition activationCondition = activationCondition(helpers);
+        if (activationCondition != null) {
+            builder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
+    }
+
+    /**
+     * Checks that the given agent, built as an agent of another kind, has no helper method annotated with
+     * {@link DecisionModelSupplier} or {@link DecisionThresholdSupplier}, which would be silently ignored.
+     *
+     * @throws AgenticSystemConfigurationException if it has
+     */
+    public static void checkNoDecisionSuppliers(AgentHelpers helpers) {
+        for (Class<? extends Annotation> decisionAnnotation :
+                List.of(DecisionModelSupplier.class, DecisionThresholdSupplier.class)) {
+            if (helpers.select(decisionAnnotation).isPresent()) {
+                throw new AgenticSystemConfigurationException("The agent " + helpers.agentType().getName()
+                        + " declares a method annotated with @" + decisionAnnotation.getSimpleName()
+                        + ", but it is not built as a decision agent: a decision agent is an interface with an @Agent method "
+                        + "annotated with @Decide, or declaring a @DecisionModelSupplier, built with "
+                        + "AgenticServices.decisionAgentBuilder or by the declarative API");
             }
         }
     }
 
+    /**
+     * Checks that the given method can return an instance of the expected type: its return type must be a subtype or
+     * a supertype, like {@code Object}, of the expected one.
+     *
+     * @throws IllegalArgumentException if it cannot
+     */
     public static void checkReturnType(Method method, Class<?> expected) {
-        if (!method.getReturnType().isAssignableFrom(expected)) {
+        Class<?> returnType = method.getReturnType();
+        if (!expected.isAssignableFrom(returnType) && !returnType.isAssignableFrom(expected)) {
             throw new IllegalArgumentException("Method " + method + " must return " + expected.getName());
         }
     }
@@ -216,52 +332,179 @@ public class DeclarativeUtil {
         }
     }
 
-    public static <T> void configureOutput(Class<T> agentServiceClass, AgenticService<?, ?> builder) {
-        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
-                .map(m -> agenticScopeFunction(m, Object.class))
+    public static void configureOutput(AgentHelpers helpers, AgenticService<?, ?> builder) {
+        helpers.select(Output.class)
+                .map(helper -> agenticScopeFunction(helpers.agentType(), helper, Object.class))
                 .ifPresent(builder::output);
     }
 
-    public static Optional<Method> predicateMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
-        return selectMethod(
-                agentServiceClass,
-                methodSelector.and(m -> (m.getReturnType() == boolean.class || m.getReturnType() == Boolean.class)));
+    /**
+     * Selects the condition helper method annotated with the given annotation, a static method of the agent type or
+     * an instance method of a helper object.
+     *
+     * @throws IllegalArgumentException if the selected method doesn't return a boolean
+     */
+    public static Optional<HelperMethod> predicateHelper(AgentHelpers helpers, Class<? extends Annotation> annotation) {
+        return predicateHelper(helpers, annotation, method -> true);
     }
 
-    public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
-        buildBeforeCall(agentServiceClass).ifPresent(builder::beforeCall);
-        buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
-        buildListener(agentServiceClass, builder);
+    /**
+     * Selects the condition helper method annotated with the given annotation and matching the given filter, a
+     * static method of the agent type or an instance method of a helper object.
+     *
+     * @throws IllegalArgumentException if the selected method doesn't return a boolean
+     */
+    public static Optional<HelperMethod> predicateHelper(
+            AgentHelpers helpers, Class<? extends Annotation> annotation, Predicate<Method> filter) {
+        Optional<HelperMethod> helper = helpers.select(annotation, filter);
+        helper.ifPresent(h -> checkBooleanReturnType(h.method()));
+        return helper;
     }
 
-    private static Optional<Consumer<AgenticScope>> buildBeforeCall(Class<?> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeCall.class))
-                .map(m -> {
-                    checkReturnType(m, void.class);
-                    return agenticScopeFunction(m, Object.class)::apply;
-                });
+    private static void checkBooleanReturnType(Method method) {
+        if (method.getReturnType() != boolean.class && method.getReturnType() != Boolean.class) {
+            throw new IllegalArgumentException("Method " + method + " must return boolean");
+        }
     }
 
-    public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
-        return selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(ParallelExecutor.class)
-                                && Executor.class.isAssignableFrom(method.getReturnType()))
-                .map(method -> invokeParallelExecutor(agentServiceClass, method));
+    /**
+     * Applies to the builder of a workflow, planner or supervisor agent the helpers common to every kind of them:
+     * the {@link BeforeCall}, the {@link ErrorHandler}, the {@link AgentListenerSupplier} and the
+     * {@link ActivationCondition} without value.
+     */
+    public static void buildAgentFeatures(AgentHelpers helpers, AgenticService<?, ?> builder) {
+        checkNoDecisionSuppliers(helpers);
+        buildBeforeCall(helpers).ifPresent(builder::beforeCall);
+        buildErrorHandler(helpers).ifPresent(builder::errorHandler);
+        buildListener(helpers, builder::listener);
+        AgentCondition activationCondition = activationCondition(helpers);
+        if (activationCondition != null) {
+            builder.activationCondition(activationCondition.description(), activationCondition.predicate());
+        }
     }
 
-    private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
-            Class<T> agentServiceClass) {
-        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
-                .map(m -> errorContext -> invokeStatic(m, errorContext));
+    /**
+     * Reads the activation condition of the given agent: the method annotated with {@link ActivationCondition}
+     * without a value, static on the agent type or an instance method of one of its helper objects. An
+     * {@link ActivationCondition} with a value is allowed only on a {@link ConditionalAgent}, where it selects the
+     * subagents to activate, and where a condition without value is not allowed.
+     *
+     * @return the activation condition of the agent, or {@code null} when it has none
+     * @throws AgenticSystemConfigurationException if there is more than one such method, if it doesn't return a
+     *         boolean, or if a condition with a value is declared on a class that is not a conditional agent
+     */
+    public static AgentCondition activationCondition(AgentHelpers helpers) {
+        Class<?> agentClass = helpers.agentType();
+        boolean conditionalAgent =
+                getAnnotatedMethodOnClass(agentClass, ConditionalAgent.class).isPresent();
+        HelperMethod conditionMethod = null;
+        for (HelperMethod helper : helpers.selectAll(ActivationCondition.class)) {
+            Method method = helper.method();
+            if (method.getAnnotation(ActivationCondition.class).value().length > 0) {
+                if (!conditionalAgent) {
+                    throw new AgenticSystemConfigurationException("The @ActivationCondition method " + method
+                            + " names the subagents it activates, but " + agentClass.getName()
+                            + " is not a @ConditionalAgent. Remove its value to make it the activation condition of "
+                            + agentClass.getSimpleName() + " itself.");
+                }
+                continue;
+            }
+            if (conditionalAgent) {
+                throw new AgenticSystemConfigurationException("The @ActivationCondition method " + method
+                        + " has no value, but on the @ConditionalAgent " + agentClass.getName()
+                        + " every activation condition must name the subagents it activates.");
+            }
+            if (method.getReturnType() != boolean.class && method.getReturnType() != Boolean.class) {
+                throw new AgenticSystemConfigurationException(
+                        "The @ActivationCondition method " + method + " must return a boolean");
+            }
+            if (conditionMethod != null) {
+                throw new AgenticSystemConfigurationException("Only one @ActivationCondition method without value is "
+                        + "allowed in " + agentClass.getName() + ", but found " + conditionMethod.describe() + " and "
+                        + helper.describe());
+            }
+            conditionMethod = helper;
+        }
+        return conditionMethod == null
+                ? null
+                : new AgentCondition(
+                        conditionMethod
+                                .method()
+                                .getAnnotation(ActivationCondition.class)
+                                .description(),
+                        agenticScopeFunction(agentClass, conditionMethod, Boolean.class, false)::apply);
     }
 
-    private static void buildListener(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
-        getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
-                .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgentListener.class);
-                    builder.listener(invokeStatic(listenerMethod));
-                });
+    /**
+     * The static methods annotated with the given annotation declared by the given type, its superclasses and its
+     * interfaces.
+     */
+    public static Set<Method> staticMethodsAnnotatedWith(Class<?> type, Class<? extends Annotation> annotation) {
+        Set<Method> methods = new LinkedHashSet<>();
+        collectStaticMethodsAnnotatedWith(type, annotation, methods);
+        return methods;
+    }
+
+    private static void collectStaticMethodsAnnotatedWith(
+            Class<?> type, Class<? extends Annotation> annotation, Set<Method> methods) {
+        for (Method method : type.getMethods()) {
+            if (method.isAnnotationPresent(annotation) && Modifier.isStatic(method.getModifiers())) {
+                methods.add(method);
+            }
+        }
+        if (type.getSuperclass() != null) {
+            collectStaticMethodsAnnotatedWith(type.getSuperclass(), annotation, methods);
+        }
+        for (Class<?> interf : type.getInterfaces()) {
+            collectStaticMethodsAnnotatedWith(interf, annotation, methods);
+        }
+    }
+
+    private static Optional<Consumer<AgenticScope>> buildBeforeCall(AgentHelpers helpers) {
+        return helpers.select(BeforeCall.class).map(helper -> {
+            checkReturnType(helper.method(), void.class);
+            return agenticScopeFunction(helpers.agentType(), helper, Object.class)::apply;
+        });
+    }
+
+    public static Optional<Executor> parallelExecutor(AgentHelpers helpers) {
+        return helpers.select(ParallelExecutor.class).map(helper -> {
+            checkReturnType(helper.method(), Executor.class);
+            return invokeSupplierWithResolvers(helpers.agentType(), helper, Executor.class);
+        });
+    }
+
+    private static Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(AgentHelpers helpers) {
+        return helpers.select(ErrorHandler.class).map(helper -> {
+            checkReturnType(helper.method(), ErrorRecoveryResult.class);
+            ResolvedParameters parameters =
+                    ResolvedParameters.of(helpers.agentType(), helper).checkFrameworkParameters(ErrorContext.class);
+            return errorContext -> parameters.invoke(errorContext);
+        });
+    }
+
+    /**
+     * Applies the {@link AgentListenerSupplier} helper of the given agent, if any, to the given listener registration
+     * of its builder, which composes the listener with the ones already registered.
+     */
+    public static void buildListener(AgentHelpers helpers, Consumer<AgentListener> listenerRegistration) {
+        AgentListener listener = agentListener(helpers);
+        if (listener != null) {
+            listenerRegistration.accept(listener);
+        }
+    }
+
+    /**
+     * @return the listener returned by the {@link AgentListenerSupplier} helper of the given agent, or {@code null}
+     *         when it has none
+     */
+    public static AgentListener agentListener(AgentHelpers helpers) {
+        return helpers.select(AgentListenerSupplier.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), AgentListener.class);
+                    return invokeSupplierWithResolvers(helpers.agentType(), helper, AgentListener.class);
+                })
+                .orElse(null);
     }
 
     public static Optional<Method> selectMethod(Class<?> agentServiceClass, Predicate<Method> methodSelector) {
@@ -285,119 +528,54 @@ public class DeclarativeUtil {
         return Optional.empty();
     }
 
-    public static Predicate<AgenticScope> agenticScopePredicate(Method predicateMethod) {
-        return agenticScope ->
-                agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
+    public static Predicate<AgenticScope> agenticScopePredicate(Class<?> agentType, HelperMethod predicateMethod) {
+        return agenticScopeFunction(agentType, predicateMethod, boolean.class)::apply;
     }
 
-    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
-        if (method.getParameterCount() == 0) {
-            return invokeStatic(method);
-        }
-        List<SupplierParameterResolver> resolvers = getSupplierParameterResolvers();
-        if (resolvers.isEmpty()) {
-            return invokeStatic(method, new Object[method.getParameterCount()]);
-        }
-        Function<AgenticScope, T> fn =
-                agenticScopeFunctionWithSupplierParameterResolver(agentType, method, targetClass);
-        return fn.apply(null);
+    /**
+     * @return the number of parameters of the given method that are not provided by a registered
+     *         {@link SupplierParameterResolver}
+     */
+    public static int frameworkParameterCount(Class<?> agentType, Method method) {
+        return method.getParameterCount() == 0
+                ? 0
+                : ResolvedParameters.of(agentType, method).frameworkParameterCount();
     }
 
-    private static <T> Function<AgenticScope, T> agenticScopeFunctionWithSupplierParameterResolver(
-            Class<?> agentType, Method functionMethod, Class<T> targetClass) {
-        List<SupplierParameterResolver> resolvers = getSupplierParameterResolvers();
-        if (resolvers.isEmpty()) {
-            return agenticScopeFunction(functionMethod, targetClass);
+    /**
+     * Invokes a supplier method, a static method of the agent type or an instance method of a helper object: all its
+     * parameters must be provided by the registered {@link SupplierParameterResolver}s.
+     *
+     * @throws AgenticSystemConfigurationException if a parameter is not supported by any resolver
+     */
+    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, HelperMethod helper, Class<T> targetClass) {
+        if (helper.method().getParameterCount() == 0) {
+            return helper.invoke();
         }
+        return ResolvedParameters.of(agentType, helper).checkAllResolved().invoke();
+    }
 
-        Parameter[] parameters = functionMethod.getParameters();
-        List<AgentArgument> unresolvedAgentArguments = new ArrayList<>(parameters.length);
-        List<Integer> unresolvedParameterIndexes = new ArrayList<>(parameters.length);
+    /**
+     * Creates a function invoking the given helper method of the given agent type, a static method of the type or an
+     * instance method of a helper object: its parameters supported by a registered {@link SupplierParameterResolver}
+     * are resolved, the others are read from the {@link AgenticScope}, and are {@code null} when the function is
+     * applied without one.
+     */
+    public static <T> Function<AgenticScope, T> agenticScopeFunction(
+            Class<?> agentType, HelperMethod functionMethod, Class<T> targetClass) {
+        return agenticScopeFunction(agentType, functionMethod, targetClass, true);
+    }
 
-        SupplierParameterResolver.Context[] contexts = new SupplierParameterResolver.Context[parameters.length];
-        SupplierParameterResolver[] paramResolvers = new SupplierParameterResolver[parameters.length];
-        for (int i = 0; i < parameters.length; i++) {
-            SupplierParameterResolver.Context ctx =
-                    new DefaultSupplierParameterResolverContext(agentType, functionMethod, parameters[i]);
-            for (SupplierParameterResolver resolver : resolvers) {
-                if (resolver.supports(ctx)) {
-                    contexts[i] = ctx;
-                    paramResolvers[i] = resolver;
-                    break;
-                }
-            }
-            if (paramResolvers[i] == null) {
-                unresolvedAgentArguments.add(argumentFromParameter(parameters[i]));
-                unresolvedParameterIndexes.add(i);
-            }
-        }
-
+    private static <T> Function<AgenticScope, T> agenticScopeFunction(
+            Class<?> agentType, HelperMethod helper, Class<T> targetClass, boolean writeConvertedArguments) {
+        ResolvedParameters parameters = ResolvedParameters.of(agentType, helper);
+        Method functionMethod = helper.method();
         return agenticScope -> {
             try {
-                Object[] args = new Object[parameters.length];
-                for (int i = 0; i < paramResolvers.length; i++) {
-                    if (paramResolvers[i] != null) {
-                        args[i] = paramResolvers[i].resolve(contexts[i]);
-                    }
-                }
-                Map<String, Object> additionalArgs = new HashMap<>();
-                additionalArgs.put(AGENTIC_SCOPE_ARG_NAME, agenticScope);
-                Object[] unresolvedArgs = agentInvocationArguments(
-                                agenticScope, unresolvedAgentArguments, additionalArgs)
+                Object[] args = parameters
+                        .invocationArguments(agenticScope, Map.of(), writeConvertedArguments)
                         .positionalArgs();
-                for (int i = 0; i < unresolvedArgs.length; i++) {
-                    args[unresolvedParameterIndexes.get(i)] = unresolvedArgs[i];
-                }
-                return (T) functionMethod.invoke(null, args);
-            } catch (Exception e) {
-                throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
-            }
-        };
-    }
-
-    private static Executor invokeParallelExecutor(Class<?> agentType, Method method) {
-        if (method.getParameterCount() == 0) {
-            return invokeStatic(method);
-        }
-        List<SupplierParameterResolver> resolvers = getSupplierParameterResolvers();
-        if (resolvers.isEmpty()) {
-            throw missingSupplierParameterResolver(method, method.getParameters()[0]);
-        }
-
-        Parameter[] parameters = method.getParameters();
-        Object[] args = new Object[parameters.length];
-        for (int i = 0; i < parameters.length; i++) {
-            SupplierParameterResolver.Context ctx =
-                    new DefaultSupplierParameterResolverContext(agentType, method, parameters[i]);
-            SupplierParameterResolver resolver = null;
-            for (SupplierParameterResolver candidate : resolvers) {
-                if (candidate.supports(ctx)) {
-                    resolver = candidate;
-                    break;
-                }
-            }
-            if (resolver == null) {
-                throw missingSupplierParameterResolver(method, parameters[i]);
-            }
-            args[i] = resolver.resolve(ctx);
-        }
-        return invokeStatic(method, args);
-    }
-
-    private static AgenticSystemConfigurationException missingSupplierParameterResolver(
-            Method method, Parameter parameter) {
-        return new AgenticSystemConfigurationException("No SupplierParameterResolver is registered for parameter "
-                + parameter + " of @ParallelExecutor method " + method + ".");
-    }
-
-    public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
-        List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
-        return agenticScope -> {
-            try {
-                Object[] args = agentInvocationArguments(
-                                agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
-                        .positionalArgs();
-                return (T) functionMethod.invoke(null, args);
+                return (T) functionMethod.invoke(helper.target(), args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
             }
@@ -411,8 +589,4 @@ public class DeclarativeUtil {
     public static List<SupplierParameterResolver> getSupplierParameterResolvers() {
         return supplierParameterResolvers;
     }
-
-    private record DefaultSupplierParameterResolverContext(
-            Class<?> declaringAgentClass, Method supplierMethod, Parameter parameter)
-            implements SupplierParameterResolver.Context {}
 }

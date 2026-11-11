@@ -3,18 +3,23 @@ package dev.langchain4j.model.cohere;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.net.Proxy;
 import java.time.Duration;
@@ -32,7 +37,9 @@ public class CohereScoringModel implements ScoringModel {
 
     private final CohereClient client;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer maxRetries;
+    private final List<ScoringModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public CohereScoringModel(
@@ -53,7 +60,9 @@ public class CohereScoringModel implements ScoringModel {
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
         this.modelName = modelName;
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(maxRetries, 2);
+        this.listeners = List.of();
     }
 
     public CohereScoringModel(CohereScoringModelBuilder builder) {
@@ -68,7 +77,9 @@ public class CohereScoringModel implements ScoringModel {
                 .logger(builder.logger)
                 .build();
         this.modelName = builder.modelName;
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.listeners = copy(builder.listeners);
     }
 
     /**
@@ -85,12 +96,37 @@ public class CohereScoringModel implements ScoringModel {
     }
 
     @Override
+    public ScoringRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
+    }
+
+    @Override
+    public List<ScoringModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.COHERE;
+    }
+
+    @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        ensureNotNull(segments, "segments");
+        ScoringResponse response = score(ScoringRequest.builder()
+                .documents(segments.stream().map(TextSegment::text).toList())
+                .query(query)
+                .build());
+        return Response.from(response.scores(), response.tokenUsage());
+    }
+
+    @Override
+    public ScoringResponse doScore(ScoringRequest scoringRequest) {
 
         RerankRequest request = RerankRequest.builder()
-                .model(modelName)
-                .query(query)
-                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .model(getOrDefault(scoringRequest.modelName(), modelName))
+                .query(scoringRequest.query())
+                .documents(scoringRequest.documents())
                 .build();
 
         RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
@@ -100,16 +136,19 @@ public class CohereScoringModel implements ScoringModel {
                 .map(Result::getRelevanceScore)
                 .collect(toList());
 
-        return Response.from(
-                scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+        return ScoringResponse.builder()
+                .scores(scores)
+                .modelName(getOrDefault(scoringRequest.modelName(), modelName))
+                .tokenUsage(new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()))
+                .build();
     }
 
     /**
-     * Genuinely non-blocking counterpart of {@link #scoreAll(List, String)}, used by the asynchronous and reactive
+     * Genuinely non-blocking counterpart of {@link #doScore(ScoringRequest)}, used by the asynchronous and reactive
      * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
      * and cancelling the returned future aborts the in-flight call (best-effort).
      * <p>
-     * Like {@link #scoreAll(List, String)}, a failed request is retried up to {@code maxRetries} times
+     * Like {@link #doScore(ScoringRequest)}, a failed request is retried up to {@code maxRetries} times
      * (retry-around-future, composing futures without parking a thread); a cancellation is never retried.
      */
     @Override
@@ -149,6 +188,7 @@ public class CohereScoringModel implements ScoringModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private List<ScoringModelListener> listeners;
 
         CohereScoringModelBuilder() {}
 
@@ -220,6 +260,29 @@ public class CohereScoringModel implements ScoringModel {
         public CohereScoringModelBuilder logger(Logger logger) {
             this.logger = logger;
             return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public CohereScoringModelBuilder listeners(List<ScoringModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public CohereScoringModelBuilder listeners(ScoringModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public CohereScoringModel build() {

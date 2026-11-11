@@ -1,6 +1,6 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.spi.json.StateJsonCodecFactory;
@@ -34,9 +34,9 @@ public final class StateJson {
      *                    it means asking for another codec.
      */
     public static Json.JsonCodec codec(TypeAllowlist allowlist, ClassLoader classLoader) {
-        for (StateJsonCodecFactory factory : loadFactories(StateJsonCodecFactory.class)) {
-            return factory.create(allowlist, classLoader);
-        }
-        return new JacksonStateJsonCodec(allowlist, classLoader);
+        StateJsonCodecFactory factory = loadFactory(StateJsonCodecFactory.class);
+        return factory != null
+                ? factory.create(allowlist, classLoader)
+                : new JacksonStateJsonCodec(allowlist, classLoader);
     }
 }

@@ -426,10 +426,10 @@ public class DoclingDocumentParser implements DocumentParser {
         /**
          * Sets the strategy used to invoke Docling for a prepared request. The default executor calls the asynchronous
          * convert/chunk endpoints matching the request type (which already submit, poll, and fetch the result on the
-         * common {@link java.util.concurrent.ForkJoinPool}). Supplying a custom executor lets callers control exactly
-         * how Docling is called (for example to add retry behaviour, or to run the blocking call on their own executor
-         * instead of the common {@link java.util.concurrent.ForkJoinPool}) and lifts the request-type and target
-         * restrictions enforced for the default executor.
+         * Docling client's threads; with the reference client, set {@code asyncExecutor(...)} on the
+         * {@link DoclingServeApi} builder to choose them). Supplying a custom executor lets callers control exactly how
+         * Docling is called (for example to add retry behaviour, or for fully custom orchestration) and lifts the
+         * request-type and target restrictions enforced for the default executor.
          *
          * @param requestExecutor
          *            the executor that invokes Docling

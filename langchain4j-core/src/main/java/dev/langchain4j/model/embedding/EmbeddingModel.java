@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -12,6 +13,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
@@ -29,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -57,7 +60,7 @@ public interface EmbeddingModel {
 
         EmbeddingRequest finalRequest = validatedRequest(request);
 
-        List<EmbeddingModelListener> listeners = listeners();
+        List<EmbeddingModelListener> listeners = ObservabilityListeners.embedding(listeners());
         if (isNullOrEmpty(listeners)) {
             return doEmbed(finalRequest);
         }
@@ -66,6 +69,7 @@ public interface EmbeddingModel {
                 .map(input -> TextSegment.from(input.text()))
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
@@ -73,6 +77,7 @@ public interface EmbeddingModel {
                         .embeddingRequest(finalRequest)
                         .embeddingModel(this)
                         .attributes(attributes)
+                        .invocationId(invocationId)
                         .build(),
                 listeners);
         try {
@@ -85,6 +90,7 @@ public interface EmbeddingModel {
                             .embeddingResponse(response)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .response(legacyResponse)
                             .textSegments(textSegments)
                             .build(),
@@ -98,6 +104,7 @@ public interface EmbeddingModel {
                             .embeddingRequest(finalRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;
@@ -111,7 +118,12 @@ public interface EmbeddingModel {
      * validation failure completes the future exceptionally rather than being thrown, so callers always observe
      * errors through the future. {@link #listeners()} are notified around the asynchronous call. Cancelling the
      * returned future cancels the in-flight embedding call for providers whose {@link #doEmbedAsync(EmbeddingRequest)}
-     * honors cancellation (best-effort).
+     * honors cancellation (best-effort); the listeners are then notified of neither a response nor an error.
+     * When {@link #doEmbedAsync(EmbeddingRequest)} is not implemented, the returned future fails with an
+     * {@link AsyncNotSupportedException}, and the listeners are notified of it as an error (listeners that count
+     * errors may want to leave it out). A RAG component built with {@code offloadBlocking(true)} then runs
+     * {@link #embed(EmbeddingRequest)} on another thread, which the listeners observe as a separate call; without it,
+     * the RAG call fails with an {@code UnsupportedFeatureException}.
      *
      * @param request the inputs to embed and the per-call parameters.
      * @return a {@link CompletableFuture} of the embeddings and the response metadata.
@@ -121,21 +133,28 @@ public interface EmbeddingModel {
     default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
 
         EmbeddingRequest finalRequest;
+        List<EmbeddingModelListener> listeners;
         try {
             finalRequest = validatedRequest(request);
-        } catch (Exception validationError) {
-            return CompletableFuture.failedFuture(validationError);
+            listeners = ObservabilityListeners.embedding(listeners());
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
         }
 
-        List<EmbeddingModelListener> listeners = listeners();
         if (isNullOrEmpty(listeners)) {
             return invokeDoEmbedAsync(finalRequest);
         }
 
-        List<TextSegment> textSegments = finalRequest.inputs().stream()
-                .map(input -> TextSegment.from(input.text()))
-                .toList();
+        List<TextSegment> textSegments;
+        try {
+            textSegments = finalRequest.inputs().stream()
+                    .map(input -> TextSegment.from(input.text()))
+                    .toList();
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
@@ -143,6 +162,7 @@ public interface EmbeddingModel {
                         .embeddingRequest(finalRequest)
                         .embeddingModel(this)
                         .attributes(attributes)
+                        .invocationId(invocationId)
                         .build(),
                 listeners);
 
@@ -160,6 +180,7 @@ public interface EmbeddingModel {
                                     .embeddingRequest(finalRequest)
                                     .embeddingModel(this)
                                     .attributes(attributes)
+                                    .invocationId(invocationId)
                                     .build(),
                             listeners);
                 }
@@ -172,6 +193,7 @@ public interface EmbeddingModel {
                                 .embeddingResponse(response)
                                 .embeddingModel(this)
                                 .attributes(attributes)
+                                .invocationId(invocationId)
                                 .response(legacyResponse)
                                 .textSegments(textSegments)
                                 .build(),

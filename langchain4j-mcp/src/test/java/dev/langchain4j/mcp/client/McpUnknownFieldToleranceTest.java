@@ -24,7 +24,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{},
                  "serverInfo":{"name":"s","version":"1","websiteUrl":"https://example.com"}}}""";
 
-        McpInitializeResult result = McpJson.deserialize(McpJson.parse(response), McpInitializeResult.class);
+        McpInitializeResult result = McpJson.deserialize(response, McpInitializeResult.class);
 
         assertThat(result.getResult().getServerInfo().getName()).isEqualTo("s");
     }
@@ -36,7 +36,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"result":{"resources":[
                  {"uri":"file:///a","name":"n","title":"T","size":12,"annotations":{"audience":["user"]}}]}}""";
 
-        McpListResourcesResult result = McpJson.deserialize(McpJson.parse(response), McpListResourcesResult.class);
+        McpListResourcesResult result = McpJson.deserialize(response, McpListResourcesResult.class);
 
         assertThat(result.getResult().getResources()).singleElement().satisfies(r -> assertThat(r.name())
                 .isEqualTo("n"));
@@ -48,7 +48,7 @@ class McpUnknownFieldToleranceTest {
                 """
                 {"jsonrpc":"2.0","id":1,"result":{"prompts":[{"name":"p","title":"T","description":"d"}]}}""";
 
-        McpListPromptsResult result = McpJson.deserialize(McpJson.parse(response), McpListPromptsResult.class);
+        McpListPromptsResult result = McpJson.deserialize(response, McpListPromptsResult.class);
 
         assertThat(result.getResult().getPrompts()).singleElement().satisfies(p -> assertThat(p.name())
                 .isEqualTo("p"));
@@ -74,7 +74,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"someFutureTopLevel":true,
                  "result":{"nextCursor":"c","someFutureResultField":1,"resources":[{"uri":"file:///a","name":"n"}]}}""";
 
-        assertThatCode(() -> McpJson.deserialize(McpJson.parse(response), McpListResourcesResult.class))
+        assertThatCode(() -> McpJson.deserialize(response, McpListResourcesResult.class))
                 .doesNotThrowAnyException();
     }
 }

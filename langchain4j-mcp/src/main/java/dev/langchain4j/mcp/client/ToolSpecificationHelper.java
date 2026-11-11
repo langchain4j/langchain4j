@@ -46,12 +46,12 @@ class ToolSpecificationHelper {
             }
             Map<String, Object> inputSchema = object(tool.get("inputSchema"));
             builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(inputSchema));
-            Map<String, String> paramHeaders = extractAndValidateMcpParamHeaders(inputSchema, toolName);
+            McpParamHeaders paramHeaders = extractAndValidateMcpParamHeaders(inputSchema, toolName);
             if (paramHeaders == null) {
                 continue;
             }
-            if (!paramHeaders.isEmpty()) {
-                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders);
+            if (!paramHeaders.headers().isEmpty()) {
+                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders.headers());
             }
             if (tool.containsKey("annotations")) {
                 processMcpToolAnnotations(object(tool.get("annotations")), builder);
@@ -428,18 +428,20 @@ class ToolSpecificationHelper {
         meta.forEach(builder::addMetadata);
     }
 
-    static Map<String, String> extractAndValidateMcpParamHeaders(Map<String, Object> schema, String toolName) {
-        Map<String, String> result = new LinkedHashMap<>();
+    private record McpParamHeaders(Map<List<String>, String> headers) {}
+
+    private static McpParamHeaders extractAndValidateMcpParamHeaders(Map<String, Object> schema, String toolName) {
+        Map<List<String>, String> headers = new LinkedHashMap<>();
         Set<String> seenHeaderNamesLower = new HashSet<>();
         List<String> errors = new ArrayList<>();
-        extractAndValidateMcpParamHeaders(schema, "", result, seenHeaderNamesLower, errors);
+        extractAndValidateMcpParamHeaders(schema, List.of(), headers, seenHeaderNamesLower, errors);
         if (!errors.isEmpty()) {
             for (String error : errors) {
                 log.warn("Excluding tool '{}' from tools/list: {}", toolName, error);
             }
             return null;
         }
-        return result;
+        return new McpParamHeaders(headers);
     }
 
     private static final List<String> FORBIDDEN_SCHEMA_KEYWORDS = List.of(
@@ -447,8 +449,8 @@ class ToolSpecificationHelper {
 
     private static void extractAndValidateMcpParamHeaders(
             Map<String, Object> schema,
-            String pathPrefix,
-            Map<String, String> result,
+            List<String> pathPrefix,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
         checkForbiddenSubtrees(schema, errors);
@@ -456,19 +458,21 @@ class ToolSpecificationHelper {
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
             // a non-object property schema yields an empty map, which simply declares no header
             Map<String, Object> propSchema = object(entry.getValue());
-            String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
+            List<String> propertyPath = new ArrayList<>(pathPrefix);
+            propertyPath.add(entry.getKey());
+            String pathDescription = String.join(".", propertyPath);
             Object headerAnnotation = propSchema.get("x-mcp-header");
             if (headerAnnotation != null) {
                 if (!(headerAnnotation instanceof String)) {
-                    errors.add("x-mcp-header value must be a string, but property '" + propertyPath + "' declares "
+                    errors.add("x-mcp-header value must be a string, but property '" + pathDescription + "' declares "
                             + jsonTypeName(headerAnnotation));
                 } else {
                     validateMcpParamHeader(
-                            (String) headerAnnotation, propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+                            (String) headerAnnotation, propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
                 }
             }
             if (propSchema.containsKey("properties")) {
-                extractAndValidateMcpParamHeaders(propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+                extractAndValidateMcpParamHeaders(propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
             } else {
                 checkForbiddenSubtrees(propSchema, errors);
             }
@@ -478,28 +482,29 @@ class ToolSpecificationHelper {
     private static void validateMcpParamHeader(
             String headerName,
             Map<String, Object> propSchema,
-            String propertyPath,
-            Map<String, String> result,
+            List<String> propertyPath,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
+        String pathDescription = String.join(".", propertyPath);
         if (headerName.isEmpty()) {
-            errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
+            errors.add("x-mcp-header value must not be empty (property '" + pathDescription + "')");
         } else if (!isValidToken(headerName)) {
-            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + propertyPath
+            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + pathDescription
                     + "')");
         }
         if (!seenHeaderNamesLower.add(headerName.toLowerCase(Locale.ROOT))) {
-            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '" + propertyPath
-                    + "')");
+            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '"
+                    + pathDescription + "')");
         }
         for (String type : declaredTypes(propSchema)) {
             if (!ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
-                errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
+                errors.add("x-mcp-header on property '" + pathDescription + "' with forbidden type '" + type
                         + "' (only string, integer, boolean are allowed)");
             }
         }
         if (errors.isEmpty()) {
-            result.put(propertyPath, headerName);
+            headers.put(List.copyOf(propertyPath), headerName);
         }
     }
 

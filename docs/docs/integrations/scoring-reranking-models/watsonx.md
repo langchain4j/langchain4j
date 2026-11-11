@@ -14,7 +14,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -143,6 +143,11 @@ System.out.println(scores);
 ```
 
 > 🔗 [View available rerank model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#rerank)
+
+## Observability
+
+Attach [listeners](/tutorials/observability#scoringmodel-listener) with `WatsonxScoringModel.builder().listeners(...)` to observe
+requests, responses and errors.
 
 ## Examples
 

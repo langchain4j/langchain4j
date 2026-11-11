@@ -19,6 +19,29 @@
           "code": "java.class.nonFinalClassInheritsFromNewClass",
           "old": "class dev.langchain4j.exception.UnsupportedFeatureException",
           "justification": "UnsupportedFeatureException now extends NonRetriableException instead of extending LangChain4jException directly. NonRetriableException is itself a LangChain4jException, so the type is still assignable everywhere it was before and every existing catch clause keeps compiling and catching; only an intermediate supertype is inserted. The behavioural effect is that RetryUtils stops retrying it, which is the intended fix: a provider that does not support a feature will not begin to support it on a retry, so the retries only added latency before the same failure."
+        },
+        {
+          "regex": true,
+          "code": "java\\.method\\.(parameterTypeErasureChanged|returnTypeErasureChanged)",
+          "new": "(parameter|method) dev\\.langchain4j\\.guardrail\\.OutputGuardrailResult dev\\.langchain4j\\.guardrail\\.OutputGuardrailExecutor::composeResult\\(.*",
+          "justification": "OutputGuardrailExecutor now overrides the generic AbstractGuardrailExecutor.composeResult(R, R) to keep the result object attached by a guardrail. The compiler still emits the bridge method composeResult(GuardrailResult, GuardrailResult) with the previous erasure, so the change is binary and source compatible; revapi only compares the declared method."
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.decision.request.DecisionRequest.Builder dev.langchain4j.model.decision.request.DecisionRequest.Builder::input(java.util.Map<java.lang.String, ?>)",
+          "justification": "DecisionRequest is @Experimental and its Map and List<Content> inputs are not adopted yet: they are replaced in place (no deprecation, decided by the maintainer) by inputFields(Map), inputContents(List) and inputMessages(List), and input() now returns the typed DecisionInput instead of Object."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter dev.langchain4j.model.decision.request.DecisionRequest.Builder dev.langchain4j.model.decision.request.DecisionRequest.Builder::input(===java.util.List<? extends dev.langchain4j.data.message.Content>===)",
+          "new": "parameter dev.langchain4j.model.decision.request.DecisionRequest.Builder dev.langchain4j.model.decision.request.DecisionRequest.Builder::input(===dev.langchain4j.model.decision.request.DecisionInput===)",
+          "justification": "DecisionRequest is @Experimental and its Map and List<Content> inputs are not adopted yet: they are replaced in place (no deprecation, decided by the maintainer) by inputFields(Map), inputContents(List) and inputMessages(List), and input() now returns the typed DecisionInput instead of Object."
+        },
+        {
+          "code": "java.method.returnTypeChangedCovariantly",
+          "old": "method java.lang.Object dev.langchain4j.model.decision.request.DecisionRequest::input()",
+          "new": "method dev.langchain4j.model.decision.request.DecisionInput dev.langchain4j.model.decision.request.DecisionRequest::input()",
+          "justification": "DecisionRequest is @Experimental and its Map and List<Content> inputs are not adopted yet: they are replaced in place (no deprecation, decided by the maintainer) by inputFields(Map), inputContents(List) and inputMessages(List), and input() now returns the typed DecisionInput instead of Object."
         }
       ]
     }

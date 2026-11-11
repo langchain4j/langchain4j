@@ -6,7 +6,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
@@ -175,18 +178,20 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
         Query originalQuery = Query.from(queryText, augmentationRequest.metadata());
 
-        Collection<Query> queries = queryTransformer.transform(originalQuery);
+        return CurrentInvocation.callWith(invocationContextOf(originalQuery), () -> {
+            Collection<Query> queries = queryTransformer.transform(originalQuery);
 
-        Map<Query, Collection<List<Content>>> queryToContents = process(queries);
+            Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
-        List<Content> contents = contentAggregator.aggregate(queryToContents);
+            List<Content> contents = contentAggregator.aggregate(queryToContents);
 
-        ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
+            ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
 
-        return AugmentationResult.builder()
-            .chatMessage(augmentedChatMessage)
-            .contents(contents)
-            .build();
+            return AugmentationResult.builder()
+                .chatMessage(augmentedChatMessage)
+                .contents(contents)
+                .build();
+        });
     }
 
     @Override
@@ -206,14 +211,17 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             // are composed, not joined, so the caller thread is never blocked; cancelling the returned future cancels
             // every in-flight stage via the CancellationChain (best-effort - see augmentAsync's javadoc).
             chain.track(nativeOrOffload(
+                            originalQuery,
                             () -> queryTransformer.transformAsync(originalQuery),
                             () -> queryTransformer.transform(originalQuery)))
                 .thenCompose(queries -> processAsync(chain, queries))
                 .thenCompose(queryToContents -> chain.track(nativeOrOffload(
+                        originalQuery,
                         () -> contentAggregator.aggregateAsync(queryToContents),
                         () -> contentAggregator.aggregate(queryToContents))))
                 .thenApply(contents -> AugmentationResult.builder()
-                    .chatMessage(contentInjector.inject(contents, chatMessage))
+                    .chatMessage(CurrentInvocation.callWith(
+                        invocationContextOf(originalQuery), () -> contentInjector.inject(contents, chatMessage)))
                     .contents(contents)
                     .build())
                 .whenComplete((augmentationResult, error) -> {
@@ -238,7 +246,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new LinkedHashMap<>();
         for (Query query : queries) {
             CompletableFuture<Collection<List<Content>>> futureContents = chain.track(
-                            nativeOrOffload(() -> queryRouter.routeAsync(query), () -> queryRouter.route(query)))
+                            nativeOrOffload(query, () -> queryRouter.routeAsync(query), () -> queryRouter.route(query)))
                     .thenCompose(retrievers -> retrieveFromAllAsync(chain, retrievers, query));
             queryToFutureContents.put(query, futureContents);
         }
@@ -264,7 +272,11 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     private CompletableFuture<List<Content>> retrieveOneAsync(ContentRetriever retriever, Query query) {
-        return nativeOrOffload(() -> retriever.retrieveAsync(query), () -> retriever.retrieve(query));
+        return nativeOrOffload(query, () -> retriever.retrieveAsync(query), () -> retriever.retrieve(query));
+    }
+
+    private static InvocationContext invocationContextOf(Query query) {
+        return query.metadata() != null ? query.metadata().invocationContext() : null;
     }
 
     /**
@@ -274,10 +286,11 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
      * {@code offloadBlocking}, or fails with an actionable message. Any other error propagates unchanged. No
      * reflection: async availability is discovered by calling it.
      */
-    private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
+    private <T> CompletableFuture<T> nativeOrOffload(
+            Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
         CompletableFuture<T> async;
         try {
-            async = asyncCall.get();
+            async = CurrentInvocation.callWith(invocationContextOf(query), asyncCall);
         } catch (Throwable t) {
             async = CompletableFuture.failedFuture(t);
         }
@@ -285,7 +298,10 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
-                    return supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
+                    return supplyAsync(
+                            () -> CurrentInvocation.callWith(invocationContextOf(query), blockingCall),
+                            CapturedContextSupport.restoringIn(
+                                    DefaultExecutorProvider.getDefaultExecutor(), invocationContextOf(query)));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                         + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
@@ -318,7 +334,10 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
             queries.forEach(query -> {
                 CompletableFuture<Collection<List<Content>>> futureContents =
-                        supplyAsync(() -> queryRouter.route(query), executor)
+                        supplyAsync(
+                                        () -> CurrentInvocation.callWith(
+                                                invocationContextOf(query), () -> queryRouter.route(query)),
+                                        CapturedContextSupport.restoringIn(executor, invocationContextOf(query)))
                                 .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
                 queryToFutureContents.put(query, futureContents);
             });
@@ -331,7 +350,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
-            .map(retriever -> supplyAsync(() -> retriever.retrieve(query), executor))
+            .map(retriever -> supplyAsync(
+                    () -> CurrentInvocation.callWith(invocationContextOf(query), () -> retriever.retrieve(query)),
+                    CapturedContextSupport.restoringIn(executor, invocationContextOf(query))))
             .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))

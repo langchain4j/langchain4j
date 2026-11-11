@@ -11,6 +11,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -180,7 +181,9 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         if (throwToolArgumentsExceptions) {
             throw e == null ? new ToolArgumentsException(message) : new ToolArgumentsException(message, e);
         } else {
-            throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
+            throw e == null
+                    ? new LlmVisibleToolExecutionException(message)
+                    : new LlmVisibleToolExecutionException(message, e);
         }
     }
 

@@ -29,14 +29,6 @@ public final class TestedModels {
             .modelId("us.amazon.nova-pro-v1:0")
             .build();
 
-    public static final ChatModel CLAUDE_3_HAIKU = BedrockChatModel.builder()
-            .modelId("anthropic.claude-3-haiku-20240307-v1:0")
-            .logResponses(true)
-            .build();
-    public static final StreamingChatModel STREAMING_CLAUDE_3_HAIKU = BedrockStreamingChatModel.builder()
-            .modelId("anthropic.claude-3-haiku-20240307-v1:0")
-            .build();
-
     public static final ChatModel MISTRAL_LARGE = BedrockChatModel.builder()
             .modelId("mistral.mistral-large-2402-v1:0")
             .build();

@@ -4,8 +4,8 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -107,7 +107,9 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (config.throwToolArgumentsExceptions) {
             throw e == null ? new ToolArgumentsException(message) : new ToolArgumentsException(message, e);
         } else {
-            throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
+            throw e == null
+                    ? new LlmVisibleToolExecutionException(message)
+                    : new LlmVisibleToolExecutionException(message, e);
         }
     }
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.moderation;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.listener.ModerationModelErrorContext;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
@@ -10,6 +11,7 @@ import dev.langchain4j.model.moderation.listener.ModerationModelRequestContext;
 import dev.langchain4j.model.moderation.listener.ModerationModelResponseContext;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,13 +26,18 @@ class ModerationModelListenerUtils {
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ModerationModelRequestContext requestContext =
-                new ModerationModelRequestContext(moderationRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ModerationModelRequestContext requestContext = ModerationModelRequestContext.builder()
+                .moderationRequest(moderationRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
@@ -41,7 +48,7 @@ class ModerationModelListenerUtils {
                         modelProvider,
                         e);
             }
-        });
+        }));
     }
 
     static void onResponse(
@@ -49,13 +56,19 @@ class ModerationModelListenerUtils {
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ModerationModelResponseContext responseContext =
-                new ModerationModelResponseContext(moderationResponse, moderationRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ModerationModelResponseContext responseContext = ModerationModelResponseContext.builder()
+                .moderationResponse(moderationResponse)
+                .moderationRequest(moderationRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
@@ -66,7 +79,7 @@ class ModerationModelListenerUtils {
                         modelProvider,
                         e);
             }
-        });
+        }));
     }
 
     static void onError(
@@ -74,13 +87,19 @@ class ModerationModelListenerUtils {
             ModerationRequest moderationRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ModerationModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ModerationModelErrorContext errorContext =
-                new ModerationModelErrorContext(error, moderationRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ModerationModelErrorContext errorContext = ModerationModelErrorContext.builder()
+                .error(error)
+                .moderationRequest(moderationRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
@@ -91,6 +110,6 @@ class ModerationModelListenerUtils {
                         modelProvider,
                         e);
             }
-        });
+        }));
     }
 }

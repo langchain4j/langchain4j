@@ -20,7 +20,7 @@ It looks beyond the surface-level matching of terms to consider the deeper inter
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jina</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -49,3 +49,8 @@ return AiServices.builder(Assistant.class)
     .retrievalAugmentor(retrievalAugmentor)
     .build();
 ```
+
+## Observability
+
+Attach [listeners](/tutorials/observability#scoringmodel-listener) with `JinaScoringModel.builder().listeners(...)` to observe
+requests, responses and errors.

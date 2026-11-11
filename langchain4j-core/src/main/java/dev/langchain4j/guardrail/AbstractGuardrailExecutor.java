@@ -7,6 +7,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
@@ -104,10 +105,15 @@ public abstract sealed class AbstractGuardrailExecutor<
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            return guardrail.validate(request).validatedBy(guardrail.getClass());
+            return CurrentInvocation.callWith(invocationContextOf(request), () -> guardrail.validate(request))
+                    .validatedBy(guardrail.getClass());
         } catch (Exception e) {
             throw createGuardrailException(e.getMessage(), e);
         }
+    }
+
+    static InvocationContext invocationContextOf(GuardrailRequest<?> request) {
+        return request.requestParams() == null ? null : request.requestParams().invocationContext();
     }
 
     /**
@@ -175,7 +181,8 @@ public abstract sealed class AbstractGuardrailExecutor<
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            CompletableFuture<R> inFlight = guardrail.validateAsync(request);
+            CompletableFuture<R> inFlight =
+                    CurrentInvocation.callWith(invocationContextOf(request), () -> guardrail.validateAsync(request));
             chain.track(inFlight);
             return inFlight.handle((result, error) -> {
                 if (error != null) {
@@ -236,7 +243,20 @@ public abstract sealed class AbstractGuardrailExecutor<
         });
     }
 
+    /**
+     * Composes an accumulated result with the result of the guardrail that just ran.
+     * <p>
+     *     When both results are successful, a rewrite carried by the newer result wins, otherwise any rewrite
+     *     carried by the older result is preserved. Failures take precedence over successes and are merged when
+     *     both results failed.
+     * </p>
+     */
     protected R composeResult(R oldResult, R newResult) {
+        if (oldResult.isSuccess() && newResult.isSuccess()) {
+            // Both succeeded, so a rewrite from the newer result wins, otherwise keep any earlier rewrite
+            return (!newResult.hasRewrittenResult() && oldResult.hasRewrittenResult()) ? oldResult : newResult;
+        }
+
         if (oldResult.isSuccess()) {
             return newResult;
         }

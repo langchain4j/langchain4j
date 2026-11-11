@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai.common.responses;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static java.util.Collections.singletonList;
 
 import dev.langchain4j.exception.AuthenticationException;
@@ -20,6 +19,7 @@ class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatM
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(modelName())
+                .reasoningEffort("none") // gpt-5.6-luna accepts a temperature only without reasoning
                 .temperature(temperature())
                 .topP(topP())
                 .maxOutputTokens(maxTokens())
@@ -29,7 +29,7 @@ class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatM
 
     @Override
     protected String modelName() {
-        return GPT_4_1_NANO.toString();
+        return "gpt-5.6-luna";
     }
 
     @Override

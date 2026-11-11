@@ -14,7 +14,8 @@ class GoogleGenAiTokenUsageTest {
                 .totalTokenCount(49)
                 .cachedContentTokenCount(5)
                 .thoughtsTokenCount(15)
-                .toolUsePromptTokenCount(4);
+                .toolUsePromptTokenCount(4)
+                .initialPromptTokenCount(8);
     }
 
     @Test
@@ -27,6 +28,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(5);
         assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(15);
         assertThat(tokenUsage.toolUsePromptTokenCount()).isEqualTo(4);
+        assertThat(tokenUsage.initialPromptTokenCount()).isEqualTo(8);
     }
 
     @Test
@@ -40,6 +42,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(tokenUsage.cachedContentTokenCount()).isNull();
         assertThat(tokenUsage.thoughtsTokenCount()).isNull();
         assertThat(tokenUsage.toolUsePromptTokenCount()).isNull();
+        assertThat(tokenUsage.initialPromptTokenCount()).isNull();
     }
 
     @Test
@@ -52,6 +55,7 @@ class GoogleGenAiTokenUsageTest {
                 .cachedContentTokenCount(4)
                 .thoughtsTokenCount(6)
                 .toolUsePromptTokenCount(2)
+                .initialPromptTokenCount(3)
                 .build();
 
         GoogleGenAiTokenUsage result = first.add(second);
@@ -62,6 +66,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(result.cachedContentTokenCount()).isEqualTo(9);
         assertThat(result.thoughtsTokenCount()).isEqualTo(21);
         assertThat(result.toolUsePromptTokenCount()).isEqualTo(6);
+        assertThat(result.initialPromptTokenCount()).isEqualTo(11);
     }
 
     @Test
@@ -78,6 +83,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(result.cachedContentTokenCount()).isEqualTo(5);
         assertThat(result.thoughtsTokenCount()).isEqualTo(15);
         assertThat(result.toolUsePromptTokenCount()).isEqualTo(4);
+        assertThat(result.initialPromptTokenCount()).isEqualTo(8);
     }
 
     @Test
@@ -92,6 +98,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(result.cachedContentTokenCount()).isEqualTo(5);
         assertThat(result.thoughtsTokenCount()).isEqualTo(15);
         assertThat(result.toolUsePromptTokenCount()).isEqualTo(4);
+        assertThat(result.initialPromptTokenCount()).isEqualTo(8);
     }
 
     @Test
@@ -105,6 +112,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(googleGenAiResult.cachedContentTokenCount()).isEqualTo(5);
         assertThat(googleGenAiResult.thoughtsTokenCount()).isEqualTo(15);
         assertThat(googleGenAiResult.toolUsePromptTokenCount()).isEqualTo(4);
+        assertThat(googleGenAiResult.initialPromptTokenCount()).isEqualTo(8);
     }
 
     @Test
@@ -148,6 +156,15 @@ class GoogleGenAiTokenUsageTest {
     }
 
     @Test
+    void should_not_be_equal_when_initial_prompt_token_count_differs() {
+        GoogleGenAiTokenUsage tokenUsage = fullyPopulated().build();
+        GoogleGenAiTokenUsage other =
+                fullyPopulated().initialPromptTokenCount(9).build();
+
+        assertThat(tokenUsage).isNotEqualTo(other);
+    }
+
+    @Test
     void should_not_be_equal_to_a_base_token_usage_with_the_same_counts() {
         GoogleGenAiTokenUsage tokenUsage = GoogleGenAiTokenUsage.builder()
                 .inputTokenCount(10)
@@ -163,6 +180,7 @@ class GoogleGenAiTokenUsageTest {
         assertThat(fullyPopulated().build().toString())
                 .contains("cachedContentTokenCount = 5")
                 .contains("thoughtsTokenCount = 15")
-                .contains("toolUsePromptTokenCount = 4");
+                .contains("toolUsePromptTokenCount = 4")
+                .contains("initialPromptTokenCount = 8");
     }
 }

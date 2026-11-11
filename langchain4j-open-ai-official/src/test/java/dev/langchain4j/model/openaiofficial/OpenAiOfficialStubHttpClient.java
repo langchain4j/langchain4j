@@ -27,10 +27,16 @@ import java.util.concurrent.CompletableFuture;
 class OpenAiOfficialStubHttpClient implements HttpClient {
 
     private final Map<String, Deque<String>> responseBodiesByPath = new LinkedHashMap<>();
+    private final Map<String, Deque<Integer>> statusCodesByPath = new LinkedHashMap<>();
     private final List<RecordedRequest> recordedRequests = new ArrayList<>();
 
     void enqueue(String path, String responseBody) {
+        enqueue(path, 200, responseBody);
+    }
+
+    void enqueue(String path, int statusCode, String responseBody) {
         responseBodiesByPath.computeIfAbsent(path, key -> new ArrayDeque<>()).add(responseBody);
+        statusCodesByPath.computeIfAbsent(path, key -> new ArrayDeque<>()).add(statusCode);
     }
 
     List<RecordedRequest> recordedRequests() {
@@ -54,7 +60,7 @@ class OpenAiOfficialStubHttpClient implements HttpClient {
         if (responseBodies == null || responseBodies.isEmpty()) {
             throw new AssertionError("No stubbed response for " + request.method() + " '" + path + "'");
         }
-        return toResponse(responseBodies.poll());
+        return toResponse(statusCodesByPath.get(path).poll(), responseBodies.poll());
     }
 
     @Override
@@ -79,13 +85,13 @@ class OpenAiOfficialStubHttpClient implements HttpClient {
         return buffer.toString(UTF_8);
     }
 
-    private static HttpResponse toResponse(String responseBody) {
+    private static HttpResponse toResponse(int statusCode, String responseBody) {
         byte[] bytes = responseBody.getBytes(UTF_8);
         return new HttpResponse() {
 
             @Override
             public int statusCode() {
-                return 200;
+                return statusCode;
             }
 
             @Override

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -12,6 +13,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.NO_CHOICES_ERROR_MESSAGE;
 
 class StreamingRequestExecutor<Response> {
 
@@ -104,6 +106,7 @@ class StreamingRequestExecutor<Response> {
 
             volatile SuccessfulHttpResponse response;
             volatile StreamingHandle streamingHandle;
+            volatile boolean eventReceived;
 
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
@@ -120,6 +123,7 @@ class StreamingRequestExecutor<Response> {
                 if (streamingHandle == null) {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
+                eventReceived = true;
 
                 if ("[DONE]".equals(event.data())) {
                     return;
@@ -146,7 +150,9 @@ class StreamingRequestExecutor<Response> {
 
             @Override
             public void onClose() {
-                if (streamingHandle == null || !streamingHandle.isCancelled()) {
+                if (!eventReceived) {
+                    errorHandler.accept(new InternalServerException(NO_CHOICES_ERROR_MESSAGE));
+                } else if (streamingHandle == null || !streamingHandle.isCancelled()) {
                     streamingCompletionCallback.run();
                 }
             }

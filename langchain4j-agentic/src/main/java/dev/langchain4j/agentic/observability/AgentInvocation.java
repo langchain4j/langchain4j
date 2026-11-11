@@ -4,10 +4,13 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,20 +23,69 @@ public class AgentInvocation {
     private final List<ToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
-    private final LocalDateTime startTime;
+    private final Instant startInstant;
 
     private AgentResponse agentResponse;
-    private LocalDateTime finishTime;
+    private Instant finishInstant;
     private int iterationIndex = -1;
+    private String skipReason;
+
+    private Duration suspendedTime = Duration.ZERO;
+    private volatile Instant suspendedAt;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
-        this.startTime = LocalDateTime.now();
+        this.startInstant = Instant.now();
     }
 
-    void finished(AgentResponse agentResponse) {
+    /**
+     * Creates the finished, zero-duration invocation of an agent that was skipped instead of being invoked.
+     */
+    static AgentInvocation skipped(AgentSkipped agentSkipped) {
+        AgentInvocation invocation =
+                new AgentInvocation(new AgentRequest(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of()));
+        invocation.agentResponse = new AgentResponse(agentSkipped.agenticScope(), agentSkipped.agent(), Map.of());
+        invocation.finishInstant = invocation.startInstant;
+        invocation.skipReason = agentSkipped.reason();
+        return invocation;
+    }
+
+    synchronized void finished(AgentResponse agentResponse) {
+        cancelSuspension();
         this.agentResponse = agentResponse;
-        this.finishTime = LocalDateTime.now();
+        this.finishInstant = Instant.now();
+    }
+
+    /**
+     * Marks the agentic system as suspended while this invocation is in progress. No-op if it is already suspended,
+     * since the suspension is notified once per level of the agents containing the suspended step, or if it is
+     * already finished.
+     */
+    synchronized void markSuspended() {
+        if (suspendedAt == null && finishInstant == null) {
+            suspendedAt = Instant.now();
+        }
+    }
+
+    /**
+     * Ends the current suspension, if any, adding it to the suspended time: the agent is invoked again to resume the
+     * agentic system, or the execution ended without invoking it again.
+     */
+    synchronized void markResumed() {
+        Instant start = suspendedAt;
+        if (start != null) {
+            suspendedTime = suspendedTime.plus(Duration.between(start, Instant.now()));
+            suspendedAt = null;
+        }
+    }
+
+    /**
+     * Forgets the current suspension, if any, of an invocation ending without its agent being invoked again: the
+     * agent was still running when the agentic system was suspended, like a parallel sibling of the suspended step,
+     * so it was never waiting.
+     */
+    synchronized void cancelSuspension() {
+        suspendedAt = null;
     }
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
@@ -45,22 +97,61 @@ public class AgentInvocation {
     }
 
     public boolean done() {
-        return finishTime != null;
+        return finishInstant != null;
+    }
+
+    /**
+     * Returns {@code true} while the agentic system is suspended, for instance waiting for a human, with this
+     * invocation in progress: the root agent and the workflows containing the suspended step stay in progress until
+     * the system is resumed by invoking the root agent again, when they continue this same invocation. An agent still
+     * running in another branch of a parallel workflow also returns {@code true}, until it completes.
+     */
+    public boolean suspended() {
+        return suspendedAt != null;
+    }
+
+    /**
+     * Returns the total time the agentic system spent suspended during this invocation, counting an ongoing
+     * suspension until now, or zero if it never was: a loop whose step waits for a human adds up one wait per
+     * iteration. Once the invocation is finished, its {@link #duration()} includes this time.
+     */
+    public synchronized Duration suspendedDuration() {
+        Instant start = suspendedAt;
+        return start == null ? suspendedTime : suspendedTime.plus(Duration.between(start, Instant.now()));
+    }
+
+    /**
+     * Returns {@code true} if the agent was skipped instead of being invoked, because its activation condition was
+     * false or because it is optional and one of its arguments was missing.
+     */
+    public boolean skipped() {
+        return skipReason != null;
+    }
+
+    /**
+     * Returns why the agent was skipped, or {@code null} if it was invoked.
+     */
+    public String skipReason() {
+        return skipReason;
     }
 
     public LocalDateTime startTime() {
-        return startTime;
+        return LocalDateTime.ofInstant(startInstant, ZoneId.systemDefault());
     }
 
     public LocalDateTime finishTime() {
-        return finishTime;
+        return finishInstant == null ? null : LocalDateTime.ofInstant(finishInstant, ZoneId.systemDefault());
     }
 
+    /**
+     * Returns how long the invocation took, measured between two instants: a daylight saving time change in the
+     * meantime does not affect it, unlike the difference between {@link #startTime()} and {@link #finishTime()}.
+     */
     public Duration duration() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Duration.between(startTime, finishTime);
+        return Duration.between(startInstant, finishInstant);
     }
 
     public AgentInstance agent() {
@@ -86,13 +177,47 @@ public class AgentInvocation {
         return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
     }
 
+    /**
+     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. It is
+     * empty if the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider
+     * didn't report the token usage.
+     */
     public Optional<TokenUsage> tokenUsage() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
         }
-        return Optional.ofNullable(agentResponse.chatResponse())
+        Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
                 .map(ChatResponseMetadata::tokenUsage);
+        return chatTokenUsage.isPresent() ? chatTokenUsage : decisionResponse().map(DecisionResponse::tokenUsage);
+    }
+
+    /**
+     * Returns the name of the model that answered the LLM calls of an AI agent, or the decision call of a
+     * decision agent, as reported by the provider in the response metadata. It is empty if the agent called no
+     * model, like a workflow or a non-AI agent, if it was skipped, if the provider didn't report the model name, or
+     * if the LLM calls of an AI agent (for example, the calls of a tool loop) were answered by different models,
+     * since {@link #tokenUsage()} is the total of all those calls.
+     */
+    public Optional<String> modelName() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::modelName);
+        return chatModelName.isPresent() ? chatModelName : decisionResponse().map(DecisionResponse::modelName);
+    }
+
+    /**
+     * Returns the response of the decision model of a decision agent, with its answers and their probabilities. It
+     * is empty for every other kind of agent, and if the agent was skipped.
+     */
+    public Optional<DecisionResponse> decisionResponse() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        return Optional.ofNullable(agentResponse.decisionResponse());
     }
 
     /**
@@ -123,9 +248,11 @@ public class AgentInvocation {
         StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
                 (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
-                ", startTime=" + startTime +
-                ", finishTime=" + finishTime +
+                (skipped() ? ", skipped=" + skipReason : "") +
+                ", startTime=" + startTime() +
+                ", finishTime=" + finishTime() +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
+                (suspendedDuration().isZero() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
                 ", tokens=" + (done() ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +

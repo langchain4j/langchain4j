@@ -174,7 +174,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("o4-mini")
+                .modelName("gpt-6.1-terra")
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

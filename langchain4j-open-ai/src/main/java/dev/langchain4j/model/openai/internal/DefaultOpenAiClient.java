@@ -9,8 +9,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.NO_CHOICES_ERROR_MESSAGE;
 import static java.time.Duration.ofSeconds;
 
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -36,6 +38,8 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateRequest;
+import dev.langchain4j.model.openai.internal.decision.DecisionCreateResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.internal.image.EditImageRequest;
@@ -207,6 +211,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
         private final OpenAiStreamingResponseBuilder responseBuilder;
         private SuccessfulHttpResponse rawHttpResponse;
+        private boolean eventReceived;
 
         ChatCompletionEventSink(Tube<ChatModelStreamingEvent> tube, ChatCompletionOptions options) {
             this.tube = ensureNotNull(tube, "tube");
@@ -228,6 +233,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
             if (!(item instanceof ServerSentEvent sse)) {
                 return;
             }
+            eventReceived = true;
             if (DONE_MARKER.equals(sse.data())) {
                 return;
             }
@@ -264,6 +270,11 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 return;
             }
             try {
+                String errorMessage = eventReceived ? responseBuilder.errorMessage() : NO_CHOICES_ERROR_MESSAGE;
+                if (errorMessage != null) {
+                    tube.fail(new InternalServerException(errorMessage));
+                    return;
+                }
                 if (toolCallBuilder.hasRequests()) {
                     handler.onCompleteToolCall(toolCallBuilder.buildAndReset());
                 }
@@ -304,6 +315,21 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, ModerationResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<DecisionCreateResponse> decision(DecisionCreateRequest request) {
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "decisions")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(httpClient, httpRequest, DecisionCreateResponse.class);
     }
 
     @Override

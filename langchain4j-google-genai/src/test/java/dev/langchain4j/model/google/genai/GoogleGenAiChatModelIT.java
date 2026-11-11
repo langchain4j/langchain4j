@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.time.Duration.ofMinutes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -26,7 +27,8 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     static final GoogleGenAiChatModel GOOGLE_GEN_AI_CHAT_MODEL = GoogleGenAiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-2.5-flash")
+            .modelName("gemini-3.8-flash")
+            .thinkingBudget(0)
             .build();
 
     @Override
@@ -39,13 +41,14 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         return GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash"))
+                .modelName(getOrDefault(parameters.modelName(), "gemini-3.8-flash"))
+                .thinkingBudget(0)
                 .build();
     }
 
     @Override
     protected String customModelName() {
-        return "gemini-3.8-flash";
+        return "gemini-3.1-flash-lite";
     }
 
     @Override
@@ -59,8 +62,8 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // TCK uses raw schema string which Gemini SDK doesn't natively map in this builder logic
+    protected boolean supportsChatAsync() {
+        return true;
     }
 
     @Override
@@ -101,6 +104,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName("gemini-3.1-pro-preview")
                 .temperature(0.0)
+                .timeout(ofMinutes(2)) // this preview model sometimes stalls for minutes, the call is then retried
                 .build();
 
         ToolSpecification tool = ToolSpecification.builder()
@@ -145,7 +149,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     void should_apply_generate_content_config_customizer() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .generateContentConfigCustomizer(
                         config -> config.temperature(0.7f).seed(42))
                 .build();
@@ -153,6 +157,22 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         String response = model.chat("Respond with exactly one word: Hello.");
 
         assertThat(response).isNotBlank();
+    }
+
+    @Test
+    void should_run_code_with_code_execution_tool() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-3.8-flash")
+                .enableCodeExecution(true)
+                .includeCodeExecutionOutput(true)
+                .build();
+
+        String answer = model.chat("What is 2 to the power of 100? Generate and run code to compute it.");
+
+        assertThat(answer)
+                .contains("Code executed:\n```python\n")
+                .containsPattern("Output:\\n```\\n[^`]*1267650600228229401496703205376");
     }
 
     @Override

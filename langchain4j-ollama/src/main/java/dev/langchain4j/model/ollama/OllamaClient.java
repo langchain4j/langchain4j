@@ -4,6 +4,7 @@ import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -45,6 +46,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -117,6 +119,29 @@ class OllamaClient {
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
 
         return fromJson(successfulHttpResponse.body(), OllamaChatResponse.class);
+    }
+
+    OllamaDecisionResponse decide(OllamaDecisionRequest request) {
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(toDecisionHttpRequest(request));
+        return fromJson(successfulHttpResponse.body(), OllamaDecisionResponse.class);
+    }
+
+    CompletableFuture<OllamaDecisionResponse> decideAsync(OllamaDecisionRequest request) {
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(toDecisionHttpRequest(request));
+        CompletableFuture<OllamaDecisionResponse> result =
+                httpFuture.thenApply(response -> fromJson(response.body(), OllamaDecisionResponse.class));
+        propagateCancellation(result, httpFuture);
+        return result;
+    }
+
+    private HttpRequest toDecisionHttpRequest(OllamaDecisionRequest request) {
+        return HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "v1/systemone")
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(toJson(request))
+                .build();
     }
 
     void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {

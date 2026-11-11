@@ -29,6 +29,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -113,7 +114,7 @@ import java.util.function.UnaryOperator;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@link String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
+ * - a {@link String}, an {@link AiMessage} or a {@link ChatResponse}, if you want to get the answer from the LLM as-is
  * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
  * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
@@ -793,7 +794,8 @@ public abstract class AiServices<T> {
      * and LLMs can typically self-correct when given a clear error message. Configuring a handler
      * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
      * which is more in line with how agentic systems are expected to behave.
-     * The default will change to "Return a text message" in LangChain4j 2.0.
+     * The default will change to {@link ToolArgumentsErrorHandler#sendExceptionMessageToLlm()}
+     * in an upcoming release.
      * <p>
      * Example:
      * <pre>{@code
@@ -813,6 +815,8 @@ public abstract class AiServices<T> {
      *
      * @param handler The handler responsible for processing tool argument errors
      * @return builder
+     * @see ToolArgumentsErrorHandler#sendExceptionMessageToLlm()
+     * @see ToolArgumentsErrorHandler#failInvocation()
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
@@ -840,7 +844,9 @@ public abstract class AiServices<T> {
      * and the LLM provider's logs. For production use, configure a handler that returns either a
      * generic message or a sanitized/curated description of the failure, and rely on logs/events for
      * the underlying detail.
-     * The default will change to "Throw an exception" in LangChain4j 2.0.
+     * The default will change to {@link ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()}
+     * in an upcoming release: the invocation fails, unless the exception itself says what
+     * the LLM may be told (see {@link dev.langchain4j.exception.ToolErrorVisibleToLlm}).
      * <p>
      * Example:
      * <pre>{@code
@@ -860,6 +866,10 @@ public abstract class AiServices<T> {
      *
      * @param handler The handler responsible for processing tool execution errors
      * @return builder
+     * @see ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()
+     * @see ToolExecutionErrorHandler#failInvocation()
+     * @see ToolExecutionErrorHandler#sendExceptionMessageToLlm()
+     * @see dev.langchain4j.exception.ToolErrorVisibleToLlm
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */

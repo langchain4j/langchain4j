@@ -463,12 +463,36 @@ public class SupervisorAgentIT {
         agentic_banker_with_exchange_test(false, false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
     }
 
+    @Test
+    void agentic_banker_with_programmatic_non_agentic_exchange_test() {
+        ExchangeOperator exchangeOperator = new ExchangeOperator();
+        AgenticServices.AgenticScopeFunction<Double> exchangeAgent = AgenticServices.nonAiAgentBuilder(
+                        scope -> exchangeOperator.exchange(
+                                scope.readState("originalCurrency", ""),
+                                scope.readState("amount", 0.0),
+                                scope.readState("targetCurrency", "")))
+                .name("exchange")
+                .description(
+                        "A money exchanger that converts a given amount of money from the original to the target currency")
+                .inputKeys(String.class, "originalCurrency", Double.class, "amount", String.class, "targetCurrency")
+                .outputKey("exchange")
+                .build();
+
+        agentic_banker_with_exchange_test(
+                false, false, "Transfer 100 EUR from Mario's account to Georgios' one", exchangeAgent);
+    }
+
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames) {
         agentic_banker_with_exchange_test(
                 fullyAI, conflictingNames, "Transfer 100 EUR from Mario's account to Georgios' one");
     }
 
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames, String userRequest) {
+        agentic_banker_with_exchange_test(fullyAI, conflictingNames, userRequest, new ExchangeOperator());
+    }
+
+    private void agentic_banker_with_exchange_test(
+            boolean fullyAI, boolean conflictingNames, String userRequest, Object nonAiExchangeAgent) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -501,7 +525,7 @@ public class SupervisorAgentIT {
                     .build();
         } else {
             // Using a non-AI agent
-            exchangeAgent = new ExchangeOperator();
+            exchangeAgent = nonAiExchangeAgent;
         }
 
         Map<String, String> toolCalls = new HashMap<>();

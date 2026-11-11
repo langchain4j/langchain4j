@@ -26,6 +26,7 @@ concurrency:
 jobs:
   update_versions:
     runs-on: ubuntu-latest
+    environment: release-follow-up
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

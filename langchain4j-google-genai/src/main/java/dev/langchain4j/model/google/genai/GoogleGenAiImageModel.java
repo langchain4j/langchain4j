@@ -86,8 +86,10 @@ public class GoogleGenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         ensureNotBlank(prompt, "prompt");
 
-        Content content =
-                Content.builder().parts(List.of(Part.fromText(prompt))).build();
+        Content content = Content.builder()
+                .role("user")
+                .parts(List.of(Part.fromText(prompt)))
+                .build();
 
         return generateImageResponse(List.of(content));
     }
@@ -101,7 +103,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(Part.fromText(prompt));
         parts.add(createImagePart(image));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }
@@ -117,7 +119,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(createImagePart(image));
         parts.add(createImagePart(mask));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }

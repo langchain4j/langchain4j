@@ -1080,13 +1080,13 @@ public abstract class AbstractAiServiceWithToolsIT {
         checkMemoryWithImmediateTool(messages, "How much is 37 plus 87?", "124");
 
         // Check that the memory is not corrupted and conversation can continue
-        response = assistant.chat("Now add 47 to the previous result");
+        response = assistant.chat("Now use the tool to add 47 to the previous result");
         assertThat(response.content()).isNull();
         assertThat(response.toolExecutions().get(0).result()).isEqualTo("171");
 
         messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
-        checkMemoryWithImmediateTool(messages.subList(3, 6), "Now add 47 to the previous result", "171");
+        checkMemoryWithImmediateTool(messages.subList(3, 6), "Now use the tool to add 47 to the previous result", "171");
     }
 
     static void checkMemoryWithImmediateTool(List<ChatMessage> messages, String request, String response) {

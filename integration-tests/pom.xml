@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.21.0-beta31-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -29,9 +29,26 @@
         <module>integration-tests-class-instance-loader/integration-tests-class-instance-loader-quarkus</module>
         <module>integration-tests-class-metadata-provider</module>
         <module>integration-tests-class-metadata-provider/integration-tests-class-metadata-provider-spring</module>
+        <module>integration-tests-decision-models</module>
         <module>integration-tests-guardrails</module>
         <module>integration-tests-jackson3</module>
+        <module>integration-tests-test-assertions</module>
+        <module>integration-tests-test-assertions/integration-tests-test-assertions-spring</module>
+        <module>integration-tests-test-assertions/integration-tests-test-assertions-quarkus</module>
     </modules>
+
+    <profiles>
+        <!-- These apps build against released versions of the Spring Boot starter and the Quarkus extension, which
+             depend on langchain4j-core: an intended change in core could break them until those projects release.
+             So they run only in the nightly build, which turns this profile on. -->
+        <profile>
+            <id>test-assertions-frameworks</id>
+            <modules>
+                <module>integration-tests-test-assertions/integration-tests-test-assertions-spring-starter</module>
+                <module>integration-tests-test-assertions/integration-tests-test-assertions-quarkus-extension</module>
+            </modules>
+        </profile>
+    </profiles>
 
     <properties>
         <!-- Don't want to actually install, deploy, or generate sources/javadocs for any of the artifacts under here -->

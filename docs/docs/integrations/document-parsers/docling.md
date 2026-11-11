@@ -15,23 +15,25 @@ This integration communicates with a running [docling-serve](https://github.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-docling</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 This module depends on `docling-serve-api` (the interface) and includes `docling-serve-client` (the reference HTTP client) as an optional runtime dependency.
 
-**If you are not using Spring Boot or Quarkus** (which may provide their own `DoclingServeApi` implementation), you must also add the reference client explicitly:
+**If no other library in your application provides a `DoclingServeApi` implementation** (some framework integrations, for example for Quarkus or Spring Boot, do), you must also add the reference client explicitly:
 
 ```xml
 <dependency>
     <groupId>ai.docling</groupId>
     <artifactId>docling-serve-client</artifactId>
-    <version>0.6.4</version>
+    <version>0.7.1</version>
 </dependency>
 ```
 
-Frameworks such as [Quarkus](https://quarkus.io) or [Spring Boot](https://spring.io/projects/spring-boot) provide their own integrations with Docling. See the [Docling Java Documentation](https://docling-project.github.io/docling-java/dev/docling-serve/serve-client/#when-to-use-this-module) for how to wire in those specific implementations.
+Use the same version as the `docling-serve-api` that `langchain4j-document-parser-docling` brings in (`mvn dependency:tree` shows it): mixing versions can make `DoclingServeApi.builder()` fail at runtime.
+
+Frameworks such as [Quarkus](https://quarkus.io) or [Spring Boot](https://spring.io/projects/spring-boot) provide their own integrations with Docling. See the [Docling Java Documentation](https://docling-project.github.io/docling-java/current/docling-serve/serve-client/#when-to-use-this-module) for how to wire in those specific implementations.
 
 
 ## Usage
@@ -64,7 +66,7 @@ Document fromUrl = UrlDocumentLoader.load("https://example.com/report.pdf", pars
 ### Choosing the Docling Operation
 
 The operation performed by Docling — conversion, hierarchical chunking, or hybrid
-chunking — is controlled by the [`DocumentRequest`](https://docling-project.github.io/docling-java/dev/docling-serve/serve-api/#requests-convertdocumentrequest)
+chunking — is controlled by the [`DocumentRequest`](https://docling-project.github.io/docling-java/current/docling-serve/serve-api/#requests-convertdocumentrequest)
 template supplied to the builder. The template carries everything except the
 document source: the parser injects the source of the document being parsed into a
 fresh copy of the template for each call and routes it to the matching Docling
@@ -206,25 +208,34 @@ Uni.createFrom().completionStage(() -> parser.parseAsync(inputStream));
 ```
 
 > **Threading note.** `parseAsync` controls only where the stream is read; the
-> Docling network call itself runs on threads owned by the Docling client. The
-> reference `docling-serve-client` performs its HTTP and task polling on the common
-> `ForkJoinPool` and exposes no executor to change that. If you need to control
-> where the blocking network work runs (for example a dedicated pool or virtual
-> threads), supply a custom
-> [`DoclingRequestExecutor`](#customizing-how-docling-is-called) that invokes the
-> client on your own executor.
+> Docling network call itself runs on threads owned by the `DoclingServeApi`
+> implementation. The reference `docling-serve-client` submits the task, polls for
+> completion and fetches the result on `CompletableFuture`'s default async executor
+> (normally the common `ForkJoinPool`). To use your own executor instead (for
+> example a dedicated pool or virtual threads), set it when you build the client,
+> as shown below. The client never shuts the executor down, so you own its
+> lifecycle. Other `DoclingServeApi` implementations, such as those provided by
+> framework integrations, may ignore or reject this option.
+
+```java
+Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+
+DoclingServeApi api = DoclingServeApi.builder()
+        .baseUrl("http://localhost:5001")
+        .asyncExecutor(executor)
+        .build();
+```
 
 ### Customizing How Docling Is Called
 
 By default the parser calls Docling's asynchronous convert/chunk endpoints
 matching the request type. Those endpoints already submit a task, poll for
-completion, and fetch the result — all on the common `ForkJoinPool`, so there is
-no need for a custom executor just to get that task/queue behaviour. Supply a
-`DoclingRequestExecutor` when you want to:
+completion, and fetch the result on the Docling client's threads (see the
+threading note above), so there is no need for a custom executor just to get that
+task/queue behaviour or to choose the threads. Supply a `DoclingRequestExecutor`
+when you want to:
 
-- add **retry or backoff** around the Docling call;
-- run the blocking call on **your own executor** (a dedicated pool or virtual
-  threads) instead of the common `ForkJoinPool`; or
+- add **retry or backoff** around the Docling call; or
 - perform **fully custom orchestration** (for example driving the task/queue
   endpoints yourself with a custom poll cadence).
 
@@ -238,20 +249,6 @@ DoclingDocumentParser parser = DoclingDocumentParser.builder()
             return client.convertSourceAsync(convertRequest)
                     .exceptionallyCompose(error -> client.convertSourceAsync(convertRequest));
         })
-        .build();
-```
-
-To run the blocking work on your own executor (here, virtual threads) — this uses
-the *synchronous* `convertSource` so the network call runs on the supplied pool
-rather than the common `ForkJoinPool`:
-
-```java
-Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-
-DoclingDocumentParser parser = DoclingDocumentParser.builder()
-        .doclingClient(api)
-        .requestExecutor((client, request) -> CompletableFuture.supplyAsync(
-                () -> client.convertSource((ConvertDocumentRequest) request), executor))
         .build();
 ```
 

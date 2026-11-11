@@ -14,6 +14,7 @@ import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.json.JsonMapper;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.CREATOR;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
 
@@ -31,11 +32,15 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
 
     static ObjectMapper createObjectMapper() {
         return Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())
-                .changeDefaultVisibility(vc -> vc.withVisibility(FIELD, ANY))
+                .changeDefaultVisibility(vc -> vc.withVisibility(FIELD, ANY).withVisibility(CREATOR, ANY))
                 // same intent as the Jackson 2 codec
                 .disable(SerializationFeature.INDENT_OUTPUT)
                 .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+                // together with CREATOR visibility above: the Jackson 2 codec gets the same from
+                // jackson-module-parameter-names, which findAndRegisterModules() picks up in Spring
+                // Boot and Quarkus applications
+                .enable(MapperFeature.DETECT_PARAMETER_NAMES)
                 // the Jackson 2 codec calls findAndRegisterModules(); without the same here, a
                 // user's own datatype module - Kotlin, Guava, Joda - would be picked up on the
                 // default codec and silently dropped on this one

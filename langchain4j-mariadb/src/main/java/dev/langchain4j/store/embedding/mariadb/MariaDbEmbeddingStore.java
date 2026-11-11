@@ -217,10 +217,11 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        String whereClause = metadataHandler.whereClause(filter);
-        String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause);
+        WhereClause whereClause = metadataHandler.whereClause(filter);
+        String sql = String.format("DELETE FROM %s WHERE %s", table, whereClause.sql());
         try (Connection connection = datasource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
+            whereClause.bindParameters(statement, 1);
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -257,10 +258,10 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = datasource.getConnection()) {
 
-            String metadataFilterClause = filter != null ? metadataHandler.whereClause(filter) : null;
+            WhereClause whereClause = filter != null ? metadataHandler.whereClause(filter) : WhereClause.EMPTY;
             String filterClause = "";
-            if (metadataFilterClause != null && !metadataFilterClause.isEmpty()) {
-                filterClause = "and " + metadataFilterClause + " ";
+            if (!whereClause.sql().isEmpty()) {
+                filterClause = "and " + whereClause.sql() + " ";
             }
 
             String distanceTypeName = this.distanceType.name().toLowerCase(Locale.ROOT);
@@ -282,6 +283,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
             try (PreparedStatement selectStmt = connection.prepareStatement(sql)) {
                 selectStmt.setObject(1, referenceEmbedding.vector());
                 selectStmt.setDouble(2, minScore);
+                whereClause.bindParameters(selectStmt, 3);
 
                 try (ResultSet resultSet = selectStmt.executeQuery()) {
                     while (resultSet.next()) {

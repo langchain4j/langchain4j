@@ -2,17 +2,18 @@ package dev.langchain4j.agentic.workflow.impl;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateHelper;
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.LOOP_COUNTER_ARG_NAME;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
-import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.internal.AgentHelpers;
+import dev.langchain4j.agentic.internal.HelperMethod;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.LoopAgentService;
 import java.lang.reflect.Method;
@@ -30,12 +31,27 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
     protected boolean testExitAtLoopEnd = false;
 
     public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        this(agentServiceClass, agenticMethod, List.of());
+    }
+
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public LoopAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
         super(agentServiceClass, agenticMethod);
-        configureLoop(agentServiceClass);
+        configureLoop(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override
     public T build() {
+        if (subagents.isEmpty()) {
+            throw new AgenticSystemConfigurationException("A loop agent requires at least one subagent.");
+        }
+        if (maxIterations < 1) {
+            throw new AgenticSystemConfigurationException(
+                    "A loop agent requires maxIterations to be at least 1, but was " + maxIterations + ".");
+        }
         return build(() -> new LoopPlanner(maxIterations, testExitAtLoopEnd, exitCondition, exitConditionDescription));
     }
 
@@ -90,29 +106,34 @@ public class LoopAgentServiceImpl<T> extends AbstractServiceBuilder<T, LoopAgent
         return "Loop";
     }
 
-    private void configureLoop(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureLoop(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
 
-        predicateMethod(agentServiceClass, method -> method.isAnnotationPresent(ExitCondition.class))
-                .map(method -> {
-                    testExitAtLoopEnd(method.getAnnotation(ExitCondition.class).testExitAtLoopEnd());
-                    return method;
+        predicateHelper(helpers, ExitCondition.class)
+                .map(helper -> {
+                    testExitAtLoopEnd(
+                            helper.method().getAnnotation(ExitCondition.class).testExitAtLoopEnd());
+                    return helper;
                 })
-                .ifPresent(method -> this.exitCondition(
-                        method.getAnnotation(ExitCondition.class).description(), loopExitConditionPredicate(method)));
+                .ifPresent(helper -> this.exitCondition(
+                        helper.method().getAnnotation(ExitCondition.class).description(),
+                        loopExitConditionPredicate(helpers.agentType(), helper)));
     }
 
-    private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(Method predicateMethod) {
-        List<AgentArgument> agentArguments = argumentsFromMethod(predicateMethod);
+    private static BiPredicate<AgenticScope, Integer> loopExitConditionPredicate(
+            Class<?> agentServiceClass, HelperMethod predicateHelper) {
+        ResolvedParameters parameters = ResolvedParameters.of(agentServiceClass, predicateHelper);
+        Method predicateMethod = predicateHelper.method();
         return (agenticScope, loopCounter) -> {
             try {
-                Object[] args = agentInvocationArguments(
+                Object[] args = parameters
+                        .invocationArguments(
                                 agenticScope,
-                                agentArguments,
-                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter))
+                                Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope, LOOP_COUNTER_ARG_NAME, loopCounter),
+                                true)
                         .positionalArgs();
-                return (boolean) predicateMethod.invoke(null, args);
+                return (boolean) predicateMethod.invoke(predicateHelper.target(), args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking exit predicate method: " + predicateMethod.getName(), e);
             }
