@@ -32,7 +32,7 @@
         <dependency>
             <groupId>io.github.beehive-lab</groupId>
             <artifactId>gpu-llama3</artifactId>
-            <version>0.4.0-jdk25</version>
+            <version>0.5.0-jdk21</version>
         </dependency>
 
         <!-- test dependencies -->
