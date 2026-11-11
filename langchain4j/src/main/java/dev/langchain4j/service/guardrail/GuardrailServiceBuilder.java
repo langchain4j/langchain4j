@@ -25,9 +25,10 @@ import java.util.stream.Stream;
  * mechanisms for an AI service class. This class allows customization of the guardrails through configuration objects,
  * guardrail classes, or direct instances of guardrails.
  * <p>
- * This builder supports setting guardrails via both annotations and explicit configurations in code. Annotations at the
- * method level take precedence over annotations at the class level, and annotations take precedence over guardrails
- * configured programmatically in the builder.
+ * This builder supports setting guardrails via both annotations and explicit configurations in code. Guardrails
+ * configured programmatically in the builder take precedence over annotations, and annotations at the method level take
+ * precedence over annotations at the class level. The same applies to the guardrail configuration: a configuration set
+ * in the builder is used instead of the one computed from the annotation (e.g. its {@code maxRetries}).
  */
 final class GuardrailServiceBuilder implements Builder {
     private final Supplier<InputGuardrailExecutor> defaultInputGuardrailSupplier =

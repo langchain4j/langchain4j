@@ -171,6 +171,56 @@ class DefaultGuardrailServiceTests {
                 .isExactlyInstanceOf(OG1.class);
     }
 
+    @Test
+    void builderGuardrailsTakePrecedenceOverClassAndMethodAnnotations() {
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+                .inputGuardrailClasses(IG2.class)
+                .outputGuardrails(new OG2())
+                .build();
+
+        assertThat(guardrailService.getInputGuardrails("chat")).singleElement().isExactlyInstanceOf(IG2.class);
+        assertThat(guardrailService.getInputGuardrails("chat2")).singleElement().isExactlyInstanceOf(IG2.class);
+        assertThat(guardrailService.getOutputGuardrails("chat")).singleElement().isExactlyInstanceOf(OG2.class);
+        assertThat(guardrailService.getOutputGuardrails("chat2")).singleElement().isExactlyInstanceOf(OG2.class);
+
+        // without a config on the builder, the config still comes from the annotation
+        assertThat(guardrailService.getOutputConfig("chat"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(10);
+        assertThat(guardrailService.getOutputConfig("chat2"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT);
+    }
+
+    @Test
+    void builderConfigTakesPrecedenceOverAnnotationConfig() {
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
+                        .maxRetries(5)
+                        .build())
+                .build();
+
+        // the guardrails still come from the annotations
+        assertThat(guardrailService.getOutputGuardrails("chat"))
+                .satisfiesExactly(
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG1.class),
+                        guardrail -> assertThat(guardrail).isInstanceOf(OG2.class));
+        assertThat(guardrailService.getOutputGuardrails("chat2"))
+                .singleElement()
+                .isExactlyInstanceOf(OG1.class);
+
+        assertThat(guardrailService.getOutputConfig("chat"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(5);
+        assertThat(guardrailService.getOutputConfig("chat2"))
+                .get()
+                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(5);
+    }
+
     @ParameterizedTest
     @MethodSource("classAndMethodLevelGuardrailBuilders")
     void classAndMethodLevelGuardrails(String testDescription, GuardrailService gs) {

@@ -307,10 +307,9 @@ public interface GuardrailService {
 
         /**
          * Builds and returns an instance of {@link GuardrailService}.
-         * This method configures input and output guardrails at the service level
-         * using the provided class-level or method-level annotations. If no
-         * method-level annotations are present, it defers to class-level annotations,
-         * and if those are absent, it uses the settings defined in the builder.
+         * This method configures input and output guardrails for each method of the service.
+         * Guardrails set in the builder take precedence. If none are set, it uses the
+         * method-level annotations, and if those are absent, the class-level annotations.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.
