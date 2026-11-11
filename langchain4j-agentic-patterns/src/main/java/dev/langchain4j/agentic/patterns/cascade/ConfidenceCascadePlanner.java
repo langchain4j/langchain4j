@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.patterns.cascade;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -33,8 +35,8 @@ import org.slf4j.LoggerFactory;
  * answer that a {@link DecisionModel} accepts. The subagents are the tiers of the cascade, in declaration order: for
  * example an agent on a small model, the same agent on a large model, and finally a human.
  * <p>
- * After each tier answers, the planner asks the decision model the yes/no question "Does the answer fully and
- * correctly address the request?", with an input made of the arguments of the cascade agent itself, read from the
+ * After each tier answers, the planner asks the decision model a yes/no question, by default "Does the answer fully
+ * and correctly address the request?", with an input made of the arguments of the cascade agent itself, read from the
  * {@link AgenticScope}, plus the answer of the tier under the {@code candidateAnswer} field. If the probability of
  * "yes" is at least the acceptance threshold the answer is returned as the result of the cascade, otherwise the next
  * tier is tried. The last tier is never graded: its answer is returned anyway. More generally, the answer of a tier
@@ -69,14 +71,19 @@ import org.slf4j.LoggerFactory;
  * given a supplier creating a new instance at each invocation, for example
  * {@code () -> new ConfidenceCascadePlanner(decisionModel, 0.5)}, while the decision model can be shared. An instance
  * that is initialized a second time fails with an {@link IllegalStateException}.
+ * <p>
+ * A planner is created with one of the constructors, or through its {@link #builder() builder}, which also allows
+ * replacing the text of the question.
  */
 @Experimental
 public class ConfidenceCascadePlanner implements Planner {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConfidenceCascadePlanner.class);
 
+    /** The default yes/no question asked to grade the answer of a tier. */
+    public static final String DEFAULT_QUESTION = "Does the answer fully and correctly address the request?";
+
     static final String QUESTION_NAME = "accepted";
-    static final String QUESTION_TEXT = "Does the answer fully and correctly address the request?";
     static final String ANSWER_KEY = "candidateAnswer";
 
     private static final String CONFIDENCE_CASCADE_KEY_PREFIX = "confidence-cascade-";
@@ -141,19 +148,34 @@ public class ConfidenceCascadePlanner implements Planner {
      */
     public ConfidenceCascadePlanner(
             DecisionModel decisionModel, double acceptanceThreshold, String acceptanceCriterion) {
-        this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        if (!(acceptanceThreshold > 0.0 && acceptanceThreshold < 1.0)) {
-            throw illegalArgument(
-                    "Acceptance threshold must be greater than 0.0 and less than 1.0, but is: %s", acceptanceThreshold);
+        this(builder()
+                .decisionModel(decisionModel)
+                .acceptanceThreshold(acceptanceThreshold)
+                .acceptanceCriterion(acceptanceCriterion));
+    }
+
+    private ConfidenceCascadePlanner(Builder builder) {
+        this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
+        if (builder.acceptanceThreshold == null) {
+            throw illegalArgument("Acceptance threshold must be set");
         }
-        this.acceptanceThreshold = acceptanceThreshold;
-        if (acceptanceCriterion != null && acceptanceCriterion.isBlank()) {
+        if (!(builder.acceptanceThreshold > 0.0 && builder.acceptanceThreshold < 1.0)) {
+            throw illegalArgument(
+                    "Acceptance threshold must be greater than 0.0 and less than 1.0, but is: %s",
+                    builder.acceptanceThreshold);
+        }
+        this.acceptanceThreshold = builder.acceptanceThreshold;
+        if (builder.acceptanceCriterion != null && builder.acceptanceCriterion.isBlank()) {
             throw illegalArgument("Acceptance criterion must not be blank, pass null for no criterion");
         }
         this.question = YesNoQuestion.builder()
-                .text(QUESTION_TEXT)
-                .yesWhen(acceptanceCriterion)
+                .text(ensureNotBlank(getOrDefault(builder.question, DEFAULT_QUESTION), "question"))
+                .yesWhen(builder.acceptanceCriterion)
                 .build();
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
@@ -355,5 +377,69 @@ public class ConfidenceCascadePlanner implements Planner {
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.SEQUENCE;
+    }
+
+    public static final class Builder {
+
+        private DecisionModel decisionModel;
+        private Double acceptanceThreshold;
+        private String acceptanceCriterion;
+        private String question;
+
+        private Builder() {}
+
+        /**
+         * Sets the decision model grading the answer of each tier. Mandatory.
+         */
+        public Builder decisionModel(DecisionModel decisionModel) {
+            this.decisionModel = decisionModel;
+            return this;
+        }
+
+        /**
+         * Sets the minimum probability of "yes" for an answer to be accepted. Mandatory, strictly between 0 and 1.
+         */
+        public Builder acceptanceThreshold(Double acceptanceThreshold) {
+            this.acceptanceThreshold = acceptanceThreshold;
+            return this;
+        }
+
+        /**
+         * Sets a description of when the answer should be accepted, sent to the decision model as the
+         * {@code yesWhen} description of the grading question. Not blank.
+         * <p>
+         * By default there is no acceptance criterion.
+         */
+        public Builder acceptanceCriterion(String acceptanceCriterion) {
+            this.acceptanceCriterion = acceptanceCriterion;
+            return this;
+        }
+
+        /**
+         * Sets the yes/no question asked to grade the answer of a tier, which the decision model receives as the
+         * {@code candidateAnswer} field of its input, next to the arguments of the cascade agent.
+         * <p>
+         * It is a plain question rather than a template: the request and the answer are the input of the decision,
+         * so there is nothing to insert into the question.
+         * <p>
+         * Default value is {@value ConfidenceCascadePlanner#DEFAULT_QUESTION}.
+         */
+        public Builder question(String question) {
+            this.question = question;
+            return this;
+        }
+
+        /**
+         * When the cascade is invoked, before calling the first tier, it fails with an
+         * {@link IllegalArgumentException} if the cascade agent is not a typed agent interface with at least one
+         * argument to send to the decision model, if one of its arguments is named {@code candidateAnswer}, or if it
+         * has fewer than two subagents.
+         *
+         * @throws IllegalArgumentException if the decision model is {@code null}, if the acceptance threshold is not
+         *         set or is not strictly between 0 and 1, or if the acceptance criterion or the question is blank
+         */
+        public ConfidenceCascadePlanner build() {
+            return new ConfidenceCascadePlanner(this);
+        }
     }
 }

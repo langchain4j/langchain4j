@@ -1,7 +1,9 @@
 package dev.langchain4j.agentic.patterns.decisionrouter;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -22,6 +24,7 @@ import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.input.PromptTemplate;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -37,12 +40,13 @@ import org.slf4j.LoggerFactory;
  * A router planner that lets a {@link DecisionModel} choose which subagents handle a request. The input of the
  * decision is made of the arguments of the router agent itself, read from the {@link AgenticScope}.
  * <p>
- * Without an activation threshold, each subagent is an option of a single choice question, described by its
- * description, or by its name when it has none, and the planner invokes only the most probable subagent and returns
- * its output.
+ * Without an activation threshold, each subagent is an option of a single choice question, by default "Which agent
+ * is best suited to handle this request?", described by its description, or by its name when it has none, and the
+ * planner invokes only the most probable subagent and returns its output.
  * <p>
  * With an activation threshold, the planner asks instead one yes/no question per subagent, all in the same request
- * ("Should the agent '...' handle this request?"), invokes in parallel all the subagents whose probability of "yes"
+ * (by default "Should the agent '...' (its description) handle this request?", where a subagent without a
+ * description is described by its name), invokes in parallel all the subagents whose probability of "yes"
  * is at least the threshold, and returns a map from the name of each invoked subagent to its output, so the method of
  * the router agent must return a {@code Map}, which is checked when the router is invoked. These probabilities are
  * independent of each other: several subagents can reach a high threshold, adding a subagent does not change the
@@ -58,6 +62,9 @@ import org.slf4j.LoggerFactory;
  * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
  * activation threshold, when only one does, it is invoked without asking the model.
  * <p>
+ * A planner is created with one of the constructors, or through its {@link #builder() builder}, which also allows
+ * replacing the texts of both questions.
+ * <p>
  * A planner instance holds the state of a single invocation and is not thread-safe, so the agentic system must be
  * given a supplier creating a new instance at each invocation, for example
  * {@code () -> new DecisionRouterPlanner(decisionModel)}, while the decision model can be shared. An instance that is
@@ -68,8 +75,20 @@ public class DecisionRouterPlanner implements Planner {
 
     private static final Logger LOG = LoggerFactory.getLogger(DecisionRouterPlanner.class);
 
+    /**
+     * The default question asked to choose among the subagents, which are its options, when the router has no
+     * activation threshold.
+     */
+    public static final String DEFAULT_CHOICE_QUESTION = "Which agent is best suited to handle this request?";
+
+    /**
+     * The default template of the yes/no question asked for each subagent when the router has an activation
+     * threshold, with the variables {@code {{name}}} and {@code {{description}}} of the subagent.
+     */
+    public static final PromptTemplate DEFAULT_RELEVANCE_QUESTION_TEMPLATE =
+            PromptTemplate.from("Should the agent '{{name}}' ({{description}}) handle this request?");
+
     static final String QUESTION_NAME = "decision-agent";
-    static final String QUESTION_TEXT = "Which agent is best suited to handle this request?";
 
     private static final String DECISION_ROUTER_KEY_PREFIX = "decision-router-";
     private static final String ACTIVATED_STATE_KEY = DECISION_ROUTER_KEY_PREFIX + "activated";
@@ -78,6 +97,8 @@ public class DecisionRouterPlanner implements Planner {
 
     private final DecisionModel decisionModel;
     private final Double activationThreshold;
+    private final String choiceQuestion;
+    private final PromptTemplate relevanceQuestionTemplate;
 
     private List<String> inputKeys;
     private final Map<String, AgentInstance> routes = new LinkedHashMap<>();
@@ -102,8 +123,7 @@ public class DecisionRouterPlanner implements Planner {
      * @throws IllegalArgumentException if {@code decisionModel} is {@code null}
      */
     public DecisionRouterPlanner(DecisionModel decisionModel) {
-        this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        this.activationThreshold = null;
+        this(builder().decisionModel(decisionModel));
     }
 
     /**
@@ -123,8 +143,17 @@ public class DecisionRouterPlanner implements Planner {
      *         is not strictly between 0 and 1
      */
     public DecisionRouterPlanner(DecisionModel decisionModel, double activationThreshold) {
-        this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        this.activationThreshold = validThreshold(activationThreshold);
+        this(builder().decisionModel(decisionModel).activationThreshold(activationThreshold));
+    }
+
+    private DecisionRouterPlanner(Builder builder) {
+        this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
+        this.activationThreshold =
+                builder.activationThreshold == null ? null : validThreshold(builder.activationThreshold);
+        this.choiceQuestion =
+                ensureNotBlank(getOrDefault(builder.choiceQuestion, DEFAULT_CHOICE_QUESTION), "choiceQuestion");
+        this.relevanceQuestionTemplate = validRelevanceQuestionTemplate(
+                getOrDefault(builder.relevanceQuestionTemplate, DEFAULT_RELEVANCE_QUESTION_TEMPLATE));
     }
 
     private static double validThreshold(double threshold) {
@@ -133,6 +162,26 @@ public class DecisionRouterPlanner implements Planner {
                     "Activation threshold must be greater than 0.0 and lesser than 1.0, but is: %s", threshold);
         }
         return threshold;
+    }
+
+    private static PromptTemplate validRelevanceQuestionTemplate(PromptTemplate template) {
+        if (!template.template().contains("{{name}}") && !template.template().contains("{{description}}")) {
+            throw new IllegalArgumentException("The relevance question template must contain {{name}} or "
+                    + "{{description}}, to tell the subagents apart, but was: " + template.template());
+        }
+        try {
+            template.apply(Map.of("name", "name", "description", "description"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The relevance question template can only use the {{name}} and {{description}} variables, but "
+                            + "was: " + template.template(),
+                    e);
+        }
+        return template;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
@@ -183,16 +232,19 @@ public class DecisionRouterPlanner implements Planner {
             candidates.forEach(agent -> questions.put(key(agent), relevanceQuestion(agent)));
             return questions;
         }
-        ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(QUESTION_TEXT);
+        ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(choiceQuestion);
         // an agent without a description is described by its name
         candidates.forEach(agent ->
                 choice.option(key(agent), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
         return Map.of(QUESTION_NAME, choice.build());
     }
 
-    private static YesNoQuestion relevanceQuestion(AgentInstance agent) {
-        String description = isNullOrBlank(agent.description()) ? "" : " (" + agent.description() + ")";
-        return YesNoQuestion.from("Should the agent '" + agent.name() + "'" + description + " handle this request?");
+    private YesNoQuestion relevanceQuestion(AgentInstance agent) {
+        // an agent without a description is described by its name
+        String description = isNullOrBlank(agent.description()) ? agent.name() : agent.description();
+        return YesNoQuestion.from(relevanceQuestionTemplate
+                .apply(Map.of("name", agent.name(), "description", description))
+                .text());
     }
 
     private void ensureMapResult(Type outputType) {
@@ -332,5 +384,77 @@ public class DecisionRouterPlanner implements Planner {
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.ROUTER;
+    }
+
+    public static final class Builder {
+
+        private DecisionModel decisionModel;
+        private Double activationThreshold;
+        private String choiceQuestion;
+        private PromptTemplate relevanceQuestionTemplate;
+
+        private Builder() {}
+
+        /**
+         * Sets the decision model choosing the subagents to invoke. Mandatory.
+         */
+        public Builder decisionModel(DecisionModel decisionModel) {
+            this.decisionModel = decisionModel;
+            return this;
+        }
+
+        /**
+         * Sets the minimum probability of "yes" for a subagent to be invoked, strictly between 0 and 1. The router
+         * then asks the decision model, for each subagent, whether it should handle the request, invokes in parallel
+         * all the subagents reaching this threshold, and returns a map from the name of each invoked subagent to its
+         * output, so the method of the router agent must return a {@code Map}.
+         * <p>
+         * By default there is no activation threshold, and the router invokes only the subagent that the decision
+         * model considers the most probable.
+         */
+        public Builder activationThreshold(Double activationThreshold) {
+            this.activationThreshold = activationThreshold;
+            return this;
+        }
+
+        /**
+         * Sets the question asked to choose among the subagents, which are its options, when the router has no
+         * activation threshold.
+         * <p>
+         * It is a plain question rather than a template: all the subagents are the options of a single choice
+         * question, so there is nothing to insert into the question.
+         * <p>
+         * Default value is {@value DecisionRouterPlanner#DEFAULT_CHOICE_QUESTION}.
+         */
+        public Builder choiceQuestion(String choiceQuestion) {
+            this.choiceQuestion = choiceQuestion;
+            return this;
+        }
+
+        /**
+         * Sets the template of the yes/no question asked for each subagent when the router has an activation
+         * threshold, which must contain the {@code {{name}}} or the {@code {{description}}} variable (the name and
+         * the description of the subagent, or its name when it has no description).
+         * <p>
+         * Default value is {@link DecisionRouterPlanner#DEFAULT_RELEVANCE_QUESTION_TEMPLATE}.
+         */
+        public Builder relevanceQuestionTemplate(PromptTemplate relevanceQuestionTemplate) {
+            this.relevanceQuestionTemplate = relevanceQuestionTemplate;
+            return this;
+        }
+
+        /**
+         * When the router is invoked, before asking the decision model, it fails with an
+         * {@link IllegalArgumentException} if the router agent is not a typed agent interface with at least one
+         * argument to send to the decision model, or if it has an activation threshold and its method does not
+         * return a {@code Map} (or a {@code ResultWithAgenticScope} of a {@code Map}).
+         *
+         * @throws IllegalArgumentException if the decision model is {@code null}, if the activation threshold is not
+         *         strictly between 0 and 1, if the choice question is blank, or if the relevance question template
+         *         contains neither {@code {{name}}} nor {@code {{description}}} or uses other variables
+         */
+        public DecisionRouterPlanner build() {
+            return new DecisionRouterPlanner(this);
+        }
     }
 }

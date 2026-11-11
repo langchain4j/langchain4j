@@ -20,6 +20,7 @@ import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.V;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -188,6 +189,19 @@ class DecisionRouterPlannerTest {
                         entry("medical", "Answers medical questions"),
                         entry("legal", "Answers legal questions"),
                         entry("technical", "technical"));
+    }
+
+    @Test
+    void shouldAskTheChoiceQuestionSetOnTheBuilder() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
+                .decisionModel(model)
+                .choiceQuestion("Which expert should answer this request?")
+                .build();
+
+        assertThat(router(ExpertRouter.class, planner).ask(REQUEST)).isEqualTo("medical answer");
+        assertThat(model.request().questions().get(QUESTION_NAME).text())
+                .isEqualTo("Which expert should answer this request?");
     }
 
     @Test
@@ -415,9 +429,28 @@ class DecisionRouterPlannerTest {
                                 yesNo -> assertThat(yesNo.yesWhen()).isNull()));
         assertThat(request.questions().get("medical").text())
                 .isEqualTo("Should the agent 'medical' (Answers medical questions) handle this request?");
-        // an agent without a description is asked about by its name only
+        // an agent without a description is described by its name
         assertThat(request.questions().get("technical").text())
-                .isEqualTo("Should the agent 'technical' handle this request?");
+                .isEqualTo("Should the agent 'technical' (technical) handle this request?");
+    }
+
+    @Test
+    void shouldAskTheRelevanceQuestionOfTheTemplateSetOnTheBuilder() {
+        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
+        DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
+                .decisionModel(model)
+                .activationThreshold(0.5)
+                .relevanceQuestionTemplate(PromptTemplate.from("Is this a request for the expert who: {{description}}?"))
+                .build();
+
+        assertThat(router(MultiExpertRouter.class, planner).ask(REQUEST))
+                .containsOnly(entry("medical", "medical answer"));
+
+        DecisionRequest request = model.request();
+        assertThat(request.questions().get("medical").text())
+                .isEqualTo("Is this a request for the expert who: Answers medical questions?");
+        assertThat(request.questions().get("technical").text())
+                .isEqualTo("Is this a request for the expert who: technical?");
     }
 
     @Test
@@ -504,6 +537,33 @@ class DecisionRouterPlannerTest {
                         entry("legal", "legal answer"));
         assertThat(model.request().questions().get("medical$1").text())
                 .isEqualTo("Should the agent 'medical' (Answers questions about medicines) handle this request?");
+    }
+
+    @Test
+    void shouldRejectInvalidQuestions() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .choiceQuestion(" ")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("choiceQuestion");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .relevanceQuestionTemplate(PromptTemplate.from("Should an agent handle this request?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}} or {{description}}");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .relevanceQuestionTemplate(PromptTemplate.from("Should {{name}} handle {{ticket}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}} and {{description}}");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder().build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decisionModel");
     }
 
     @Test
