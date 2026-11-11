@@ -2,6 +2,7 @@ package dev.langchain4j.http.client;
 
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 public abstract class HttpClientTimeoutIT {
 
     private static final int WIREMOCK_PORT = 8083;
+    private static final int ZERO_TIMEOUT_DELAY_MILLIS = 300;
 
     protected abstract List<HttpClient> clients(Duration readTimeout);
 
@@ -153,6 +155,61 @@ public abstract class HttpClientTimeoutIT {
             verify(spyListener, times(1)).onError(any());
             verifyNoMoreInteractions(spyListener);
         }
+    }
+
+    @Test
+    void should_not_time_out_on_read_sync_when_read_timeout_is_zero() {
+
+        for (HttpClient client : clients(Duration.ZERO)) {
+
+            // given
+            wireMockServer.stubFor(WireMock.get("/endpoint").willReturn(WireMock.ok().withFixedDelay(ZERO_TIMEOUT_DELAY_MILLIS)));
+
+            // when
+            SuccessfulHttpResponse response = client.execute(endpointRequest());
+
+            // then
+            assertThat(response.statusCode()).isEqualTo(200);
+        }
+    }
+
+    @Test
+    void should_not_time_out_on_read_async_when_read_timeout_is_zero() throws Exception {
+
+        for (HttpClient client : clients(Duration.ZERO)) {
+
+            // given
+            wireMockServer.stubFor(WireMock.get("/endpoint").willReturn(WireMock.ok().withFixedDelay(ZERO_TIMEOUT_DELAY_MILLIS)));
+
+            CompletableFuture<Integer> statusCode = new CompletableFuture<>();
+
+            // when
+            client.execute(endpointRequest(), new DefaultServerSentEventParser(), new ServerSentEventListener() {
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse response) {
+                    statusCode.complete(response.statusCode());
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {}
+
+                @Override
+                public void onError(Throwable throwable) {
+                    statusCode.completeExceptionally(throwable);
+                }
+            });
+
+            // then
+            assertThat(statusCode.get(10, SECONDS)).isEqualTo(200);
+        }
+    }
+
+    private static HttpRequest endpointRequest() {
+        return HttpRequest.builder()
+                .method(GET)
+                .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
+                .build();
     }
 
     protected void assertCause(Throwable throwable) {

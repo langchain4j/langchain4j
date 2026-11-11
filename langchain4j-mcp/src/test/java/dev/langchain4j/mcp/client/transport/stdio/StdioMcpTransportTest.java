@@ -151,6 +151,40 @@ class StdioMcpTransportTest {
 
     @Test
     @DisabledOnOs(OS.WINDOWS)
+    void stop_should_destroy_the_process_and_allow_another_start() throws IOException, InterruptedException {
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            StdioMcpTransport transport = new StdioMcpTransport.Builder()
+                    .command(List.of("cat"))
+                    .environment(Map.of())
+                    .executorService(executorService)
+                    .build();
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+            transport.start(messageHandler);
+            Process firstProcess = transport.getProcess();
+            assertThat(firstProcess.isAlive()).isTrue();
+
+            // as the client does when its build fails: the process goes, the transport stays usable
+            transport.stop();
+            assertThat(firstProcess.waitFor(5, TimeUnit.SECONDS))
+                    .as("the process should have been destroyed by stop")
+                    .isTrue();
+            assertThat(transport.getProcess()).isNull();
+
+            transport.start(messageHandler);
+            Process secondProcess = transport.getProcess();
+            assertThat(secondProcess).isNotSameAs(firstProcess);
+            assertThat(secondProcess.isAlive()).isTrue();
+
+            transport.close();
+            secondProcess.waitFor(5, TimeUnit.SECONDS);
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
     void retired_process_should_not_cancel_replacement_operations(@TempDir Path tempDir)
             throws IOException, InterruptedException {
         Path releaseExit = tempDir.resolve("release-exit");

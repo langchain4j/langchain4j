@@ -147,6 +147,9 @@ public class DockerMcpTransport implements McpTransport {
             dockerClient.startContainerCmd(containerId).exec();
             dockerClient.waitContainerCmd(containerId).start().awaitStarted();
             log.debug("ID of the started container: {}", exec.getId());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -218,11 +221,20 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
+    public void stop() {
+        String containerToRemove = containerId;
+        if (containerToRemove == null) {
+            return; // no container was created, or it has already been removed
+        }
+        containerId = null;
+        log.debug("Removing container {}", containerToRemove);
+        // forced, so that it also kills a running container and removes one that has already exited
+        dockerClient.removeContainerCmd(containerToRemove).withForce(true).exec();
+    }
+
+    @Override
     public void close() throws IOException {
-        log.debug("Killing container {}", containerId);
-        dockerClient.killContainerCmd(containerId).exec();
-        log.debug("Deleting container {}", containerId);
-        dockerClient.removeContainerCmd(containerId).exec();
+        stop();
     }
 
     private CompletableFuture<String> execute(String request, Long id) {
