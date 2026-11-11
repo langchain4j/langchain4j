@@ -181,7 +181,9 @@ class DefaultGuardrailServiceTests {
         assertThat(guardrailService.getInputGuardrails("chat")).singleElement().isExactlyInstanceOf(IG2.class);
         assertThat(guardrailService.getInputGuardrails("chat2")).singleElement().isExactlyInstanceOf(IG2.class);
         assertThat(guardrailService.getOutputGuardrails("chat")).singleElement().isExactlyInstanceOf(OG2.class);
-        assertThat(guardrailService.getOutputGuardrails("chat2")).singleElement().isExactlyInstanceOf(OG2.class);
+        assertThat(guardrailService.getOutputGuardrails("chat2"))
+                .singleElement()
+                .isExactlyInstanceOf(OG2.class);
 
         // without a config on the builder, the config still comes from the annotation
         assertThat(guardrailService.getOutputConfig("chat"))
