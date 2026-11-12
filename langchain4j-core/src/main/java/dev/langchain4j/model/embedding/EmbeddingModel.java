@@ -114,9 +114,9 @@ public interface EmbeddingModel {
     /**
      * Non-blocking counterpart of {@link #embed(EmbeddingRequest)}: embeds the request's inputs and completes the
      * returned future with the embeddings, without blocking the calling thread. The request's parameters are merged
-     * with {@link #defaultRequestParameters()} and validated exactly as in {@link #embed(EmbeddingRequest)}, but a
-     * validation failure completes the future exceptionally rather than being thrown, so callers always observe
-     * errors through the future. {@link #listeners()} are notified around the asynchronous call. Cancelling the
+     * with {@link #defaultRequestParameters()} and validated exactly as in {@link #embed(EmbeddingRequest)}. This
+     * method never throws: any failure, including an invalid request, completes the returned future exceptionally.
+     * {@link #listeners()} are notified around the asynchronous call. Cancelling the
      * returned future cancels the in-flight embedding call for providers whose {@link #doEmbedAsync(EmbeddingRequest)}
      * honors cancellation (best-effort); the listeners are then notified of neither a response nor an error.
      * When {@link #doEmbedAsync(EmbeddingRequest)} is not implemented, the returned future fails with an

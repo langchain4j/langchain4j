@@ -117,10 +117,14 @@ public class RoutingChatModel implements ChatModel {
             }
             CompletableFuture<ChatResponse> response;
             try {
+                ChatModel model = selector.model(routeName);
                 response = CurrentInvocation.callWithIdOrWithout(
                         invocationId,
-                        () -> selector.model(routeName)
-                                .chatAsync(chatRequest, RouteSelector.withRoute(options, routeName, invocationId)));
+                        () -> model.chatAsync(chatRequest, RouteSelector.withRoute(options, routeName, invocationId)));
+                if (response == null) {
+                    throw new IllegalStateException(
+                            model.getClass().getName() + ".chatAsync(ChatRequest, ChatRequestOptions) returned null");
+                }
             } catch (Exception e) {
                 result.completeExceptionally(e);
                 return;

@@ -25,6 +25,7 @@ import java.util.concurrent.Flow.Subscription;
 
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
@@ -153,7 +154,8 @@ public interface StreamingChatModel {
      *         interleaved with the above),</li>
      *     <li>exactly one terminal {@link CompleteResponse} (wrapping the aggregated final {@link ChatResponse}),</li>
      * </ul>
-     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
+     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}. This method
+     * never throws: any failure, including an invalid request, reaches the subscriber's {@code onError}.
      * <p>
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} on each new subscription
      * (just before the underlying request goes out), {@code onResponse} after the terminal
@@ -191,15 +193,24 @@ public interface StreamingChatModel {
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(request.messages())
-                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
-                .build();
+        ChatRequest finalChatRequest;
+        List<ChatModelListener> listeners;
+        ModelProvider provider;
+        UUID invocationId;
+        try {
+            ensureNotNull(request, "request");
+            finalChatRequest = ChatRequest.builder()
+                    .messages(request.messages())
+                    .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                    .build();
 
-        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
+            listeners = ObservabilityListeners.chat(listeners());
 
-        ModelProvider provider = provider();
-        UUID invocationId = CurrentInvocation.invocationId();
+            provider = provider();
+            invocationId = CurrentInvocation.invocationId();
+        } catch (Exception error) {
+            return failedPublisher(error);
+        }
 
         return new Publisher<ChatModelStreamingEvent>() {
 
@@ -315,8 +326,12 @@ public interface StreamingChatModel {
     @Experimental
     default Publisher<String> chat(String userMessage) {
 
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        ChatRequest chatRequest;
+        try {
+            chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        } catch (Exception error) {
+            return failedPublisher(error);
+        }
 
         return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
 
@@ -359,10 +374,11 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
-
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chat(chatRequest);
+        try {
+            return chat(ChatRequest.builder().messages(messages).build());
+        } catch (Exception error) {
+            return failedPublisher(error);
+        }
     }
 
     /**
@@ -375,13 +391,21 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
-
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chat(chatRequest);
+        try {
+            return chat(ChatRequest.builder().messages(messages).build());
+        } catch (Exception error) {
+            return failedPublisher(error);
+        }
     }
 
     default Set<Capability> supportedCapabilities() {
         return Set.of();
+    }
+
+    private static <T> Publisher<T> failedPublisher(Throwable error) {
+        return subscriber -> {
+            subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
+            subscriber.onError(error);
+        };
     }
 }

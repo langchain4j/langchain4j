@@ -32,6 +32,10 @@ public class DefaultQueryTransformer implements QueryTransformer {
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
         // Pass-through, no I/O: complete synchronously so the async RAG flow treats this stage as non-blocking.
-        return CompletableFuture.completedFuture(transform(query));
+        try {
+            return CompletableFuture.completedFuture(transform(query));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }

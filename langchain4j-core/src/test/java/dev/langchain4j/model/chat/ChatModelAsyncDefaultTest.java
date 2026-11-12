@@ -4,12 +4,14 @@ import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
 import java.util.List;
@@ -123,7 +125,34 @@ class ChatModelAsyncDefaultTest {
         assertThat(model.chatAsync((ChatRequest) null))
                 .failsWithin(Duration.ofSeconds(1))
                 .withThrowableOfType(ExecutionException.class)
-                .withCauseInstanceOf(NullPointerException.class);
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("chatRequest cannot be null");
+    }
+
+    @Test
+    void chatAsync_returns_a_failed_future_without_notifying_listeners_when_listeners_cannot_be_obtained() {
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        IllegalStateException error = new IllegalStateException("cannot obtain listeners");
+        doThrow(error).when(model).listeners();
+
+        assertThat(model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void chatAsync_with_user_message_propagates_cancellation_to_the_model_call() {
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        CompletableFuture<ChatResponse> inFlight = new CompletableFuture<>();
+        doReturn(inFlight).when(model).chatAsync(any(ChatRequest.class));
+
+        model.chatAsync("hi").cancel(true);
+
+        assertThat(inFlight).isCancelled();
     }
 
     @Test
@@ -159,8 +188,11 @@ class ChatModelAsyncDefaultTest {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageContaining("doChatAsync(ChatRequest) returned null");
+        Throwable failure = future.handle((response, error) -> error).join();
+        ArgumentCaptor<ChatModelErrorContext> errorContext = ArgumentCaptor.forClass(ChatModelErrorContext.class);
         verify(listener).onRequest(any());
-        verify(listener).onError(any());
+        verify(listener).onError(errorContext.capture());
         verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(failure);
     }
 }

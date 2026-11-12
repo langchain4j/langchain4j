@@ -3,6 +3,9 @@ package dev.langchain4j.model.chat.router;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -355,6 +358,27 @@ class RoutingChatModelTest {
                 .withCauseInstanceOf(IllegalArgumentException.class);
         assertThat(small.requests()).isEmpty();
         assertThat(large.requests()).isEmpty();
+    }
+
+    @Test
+    void should_return_failed_future_when_routed_model_returns_null() {
+
+        ChatModelMock modelReturningNull = spy(ChatModelMock.thatAlwaysResponds("unused"));
+        doReturn(null).when(modelReturningNull).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", "Short questions", modelReturningNull)
+                .route("complex", "Everything else", large)
+                .router(nonBlocking(byLength()))
+                .defaultRoute("complex")
+                .build();
+
+        assertThat(chatModel.chatAsync(
+                        ChatRequest.builder().messages(UserMessage.from("Hi!")).build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageEndingWith(".chatAsync(ChatRequest, ChatRequestOptions) returned null");
     }
 
     @Test

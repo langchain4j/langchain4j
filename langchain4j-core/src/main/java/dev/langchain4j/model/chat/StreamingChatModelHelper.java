@@ -38,20 +38,7 @@ public final class StreamingChatModelHelper {
     public static CompletableFuture<ChatResponse> chatAsync(
             StreamingChatModel streamingChatModel, ChatRequest request, Consumer<Throwable> errorHandler) {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        try {
-            subscribe(streamingChatModel, request, errorHandler, future);
-        } catch (Exception e) {
-            future.completeExceptionally(e);
-        }
-        return future;
-    }
-
-    private static void subscribe(
-            StreamingChatModel streamingChatModel,
-            ChatRequest request,
-            Consumer<Throwable> errorHandler,
-            CompletableFuture<ChatResponse> future) {
-        streamingChatModel.chat(request).subscribe(new Flow.Subscriber<>() {
+        Flow.Subscriber<ChatModelStreamingEvent> subscriber = new Flow.Subscriber<>() {
 
             private ChatResponse response;
 
@@ -94,6 +81,12 @@ public final class StreamingChatModelHelper {
                             "The streaming model completed without emitting a CompleteResponse"));
                 }
             }
-        });
+        };
+        try {
+            streamingChatModel.chat(request).subscribe(subscriber);
+        } catch (Exception e) {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 }

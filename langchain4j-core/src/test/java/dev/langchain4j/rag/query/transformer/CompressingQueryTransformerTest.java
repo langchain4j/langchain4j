@@ -115,6 +115,7 @@ class CompressingQueryTransformerTest {
                 .failsWithin(Duration.ofSeconds(1))
                 .withThrowableOfType(ExecutionException.class)
                 .havingCause()
+                .isExactlyInstanceOf(RuntimeException.class)
                 .withMessageContaining("Expecting single text content");
         assertThat(model.requests()).isEmpty();
     }

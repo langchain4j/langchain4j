@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class DecisionModelTest {
 
@@ -429,8 +430,12 @@ class DecisionModelTest {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageContaining("doDecideAsync(DecisionRequest) returned null");
+        Throwable failure = future.handle((response, error) -> error).join();
+        ArgumentCaptor<DecisionModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(DecisionModelErrorContext.class);
         verify(listener).onRequest(any());
-        verify(listener).onError(any());
+        verify(listener).onError(errorContext.capture());
         verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(failure);
     }
 }

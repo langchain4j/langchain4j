@@ -6,27 +6,40 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -117,7 +130,7 @@ class LanguageModelQueryRouterTest {
                 .withThrowableOfType(ExecutionException.class)
                 .havingCause()
                 .isInstanceOf(IllegalArgumentException.class)
-                .withMessageContaining("user");
+                .withMessageContaining("Value for the variable 'user' is missing");
         assertThat(model.requests()).isEmpty();
     }
 
@@ -139,6 +152,99 @@ class LanguageModelQueryRouterTest {
                 .succeedsWithin(Duration.ofSeconds(1))
                 .satisfies(retrievers ->
                         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever));
+    }
+
+    @Test
+    void routeAsync_should_apply_fallback_strategy_when_chat_model_returns_null() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("2"));
+        doReturn(null).when(model).chatAsync(any(ChatRequest.class));
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        assertThat(router.routeAsync(Query.from("Do Labradors shed?")))
+                .succeedsWithin(Duration.ofSeconds(1))
+                .satisfies(retrievers ->
+                        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever));
+    }
+
+    @ParameterizedTest
+    @EnumSource(FallbackStrategy.class)
+    void routeAsync_should_propagate_missing_async_support_instead_of_applying_fallback(
+            FallbackStrategy fallbackStrategy) {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("2"));
+        doReturn(AsyncNotSupported.failedFuture(ChatModelMock.class, "doChatAsync"))
+                .when(model)
+                .doChatAsync(any());
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        // so that the caller, for example DefaultRetrievalAugmentor, can call route() instead
+        assertThat(router.routeAsync(Query.from("Do Labradors shed?")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(AsyncNotSupportedException.class);
+    }
+
+    @Test
+    void routeAsync_should_propagate_missing_async_support_thrown_synchronously() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("2"));
+        AsyncNotSupportedException missingAsyncSupport = new AsyncNotSupportedException("no async support");
+        doThrow(missingAsyncSupport).when(model).chatAsync(any(ChatRequest.class));
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        assertThat(router.routeAsync(Query.from("Do Labradors shed?")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(missingAsyncSupport);
+    }
+
+    @Test
+    void retrieval_augmentor_should_route_with_route_when_chat_model_has_no_async_support() throws Exception {
+        ContentRetriever catArticles = query -> List.of(Content.from("cats shed"));
+        ContentRetriever dogArticles = query -> List.of(Content.from("Labradors shed"));
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticles, "articles about cats");
+        retrieverToDescription.put(dogArticles, "articles about dogs");
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("2"));
+        doReturn(AsyncNotSupported.failedFuture(ChatModelMock.class, "doChatAsync"))
+                .when(model)
+                .doChatAsync(any());
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new LanguageModelQueryRouter(model, retrieverToDescription))
+                .offloadBlocking(true)
+                .build();
+        UserMessage userMessage = UserMessage.from("Do Labradors shed?");
+
+        AugmentationResult result = augmentor
+                .augmentAsync(new AugmentationRequest(userMessage, Metadata.from(userMessage, null, null)))
+                .get(5, SECONDS);
+
+        assertThat(result.contents()).extracting(content -> content.textSegment().text())
+                .containsExactly("Labradors shed");
     }
 
     @Test

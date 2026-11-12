@@ -45,6 +45,10 @@ public class DefaultQueryRouter implements QueryRouter {
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
         // Static routing, no I/O: complete synchronously so the async RAG flow treats this stage as non-blocking.
-        return CompletableFuture.completedFuture(route(query));
+        try {
+            return CompletableFuture.completedFuture(route(query));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }

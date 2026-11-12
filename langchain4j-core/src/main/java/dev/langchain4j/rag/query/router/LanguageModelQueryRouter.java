@@ -12,6 +12,7 @@ import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -120,8 +121,11 @@ public class LanguageModelQueryRouter implements QueryRouter {
         CompletableFuture<ChatResponse> chatFuture;
         try {
             chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+            if (chatFuture == null) {
+                throw new IllegalStateException(chatModel.getClass().getName() + ".chatAsync(ChatRequest) returned null");
+            }
         } catch (Exception e) {
-            chatFuture = CompletableFuture.failedFuture(e); // like route(): the fallback strategy applies
+            chatFuture = CompletableFuture.failedFuture(e); // handled below like a failed call
         }
         CompletableFuture<Collection<ContentRetriever>> result = chatFuture
                 .thenApply(response -> parse(response.aiMessage().text()))
@@ -130,7 +134,10 @@ public class LanguageModelQueryRouter implements QueryRouter {
                 // propagate it - and an Error (like sync's `catch (Exception)`) is not caught either.
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
-                    if (cause instanceof Exception e && !(cause instanceof CancellationException)) {
+                    // AsyncNotSupportedException is propagated, so that the caller can call route() instead
+                    if (cause instanceof Exception e
+                            && !(cause instanceof CancellationException)
+                            && !(cause instanceof AsyncNotSupportedException)) {
                         return fallback(query, e);
                     }
                     throw cause instanceof RuntimeException re ? re : new CompletionException(cause);

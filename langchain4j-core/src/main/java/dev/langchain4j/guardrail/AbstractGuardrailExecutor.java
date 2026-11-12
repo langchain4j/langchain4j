@@ -177,8 +177,12 @@ public abstract sealed class AbstractGuardrailExecutor<
      * mirroring the synchronous error handling.
      */
     protected CompletableFuture<R> validateAsync(P request, G guardrail, CancellationChain chain) {
-        ensureNotNull(request, "request");
-        ensureNotNull(guardrail, "guardrail");
+        try {
+            ensureNotNull(request, "request");
+            ensureNotNull(guardrail, "guardrail");
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
 
         try {
             CompletableFuture<R> inFlight =

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
@@ -118,6 +119,21 @@ class InputGuardrailExecutorTests {
                 .failsWithin(Duration.ofSeconds(1))
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void validateAsync_should_return_failed_future_for_null_request() {
+        var executor = InputGuardrailExecutor.builder().build();
+        InputGuardrail guardrail = new InputGuardrail() {};
+
+        CompletableFuture<InputGuardrailResult> future =
+                executor.validateAsync(null, guardrail, new CancellationChain(new CompletableFuture<>()));
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("request");
     }
 
     @Test

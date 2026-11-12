@@ -245,6 +245,9 @@ runs there - keep it non-blocking, or use `thenApplyAsync(fn, executor)`.
 A provider that has not implemented the non-blocking path fails loudly with an `AsyncNotSupportedException`
 carried by the returned future, rather than silently blocking a thread.
 
+`chatAsync(...)` never throws: every failure, including an invalid request (for example no messages), completes
+the returned future exceptionally.
+
 See [Non-blocking and Reactive](/tutorials/non-blocking) for the full picture, including streaming and AI Services.
 
 ### Kotlin Extensions

@@ -90,7 +90,7 @@ class ExpandingQueryTransformerTest {
                 .withThrowableOfType(ExecutionException.class)
                 .havingCause()
                 .isInstanceOf(IllegalArgumentException.class)
-                .withMessageContaining("language");
+                .withMessageContaining("Value for the variable 'language' is missing");
         assertThat(model.requests()).isEmpty();
     }
 

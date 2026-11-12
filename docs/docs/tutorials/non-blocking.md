@@ -179,6 +179,10 @@ future or publisher fails with an `AsyncNotSupportedException` naming the compon
 `AsyncNotSupportedException` is an `UnsupportedFeatureException`, so one catch clause covers both flavours of
 "not supported", and it is never retried.
 
+The asynchronous methods never throw: every failure, including an invalid request, completes the returned future
+exceptionally or reaches the subscriber's `onError`. So handle errors on the future (for example with
+`exceptionally(...)` or `whenComplete(...)`) or in `onError`, not with a `try`/`catch` around the call.
+
 ## Blocking code you cannot avoid
 
 Tools are the common case: a tool that calls a database or a blocking HTTP API cannot be made non-blocking. Such
