@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -385,7 +386,7 @@ class StreamingChatModelTest implements WithAssertions {
     }
 
     @Test
-    void handler_chat_should_report_a_failing_on_complete_response_once_without_a_listener_error() {
+    void handler_chat_should_report_a_failing_on_complete_response_to_the_listeners_and_the_handler() {
 
         List<String> listenerCalls = new ArrayList<>();
         ChatResponse response = ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build();
@@ -404,11 +405,11 @@ class StreamingChatModelTest implements WithAssertions {
         assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
 
         assertThat(handler.errors).containsExactly(failure);
-        assertThat(listenerCalls).containsExactly("onRequest", "onResponse");
+        assertThat(listenerCalls).containsExactly("onRequest", "onResponse", "onError");
     }
 
     @Test
-    void handler_chat_should_not_notify_listeners_of_an_error_after_their_response() {
+    void handler_chat_should_notify_listeners_of_an_error_thrown_by_on_complete_response() {
 
         List<String> listenerCalls = new ArrayList<>();
         StreamingChatModel model = StreamingChatModelMock.thatAlwaysStreams("Hi")
@@ -420,7 +421,65 @@ class StreamingChatModelTest implements WithAssertions {
         assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
 
         assertThat(handler.errors).containsExactly(failure);
-        assertThat(listenerCalls).containsExactly("onRequest", "onResponse");
+        assertThat(listenerCalls).containsExactly("onRequest", "onResponse", "onError");
+    }
+
+    @Test
+    void handler_chat_should_report_every_failing_on_partial_response_that_the_model_catches() {
+
+        List<String> listenerCalls = new ArrayList<>();
+        ChatResponse response = ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build();
+        StreamingChatModelMock model = spy(
+                StreamingChatModelMock.thatAlwaysStreams("Hi").withListeners(recordingListener(listenerCalls)));
+        doAnswer(invocation -> {
+                    // like a provider: each exception thrown by the handler is reported to its onError
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "H");
+                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "i");
+                    InternalStreamingChatResponseHandlerUtils.onCompleteResponse(handler, response);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        RuntimeException failure = new IllegalStateException("cannot show the token");
+        ErrorCollectingHandler handler = new ErrorCollectingHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                throw failure;
+            }
+        };
+
+        assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
+
+        assertThat(handler.errors).containsExactly(failure, failure);
+        assertThat(handler.responses).containsExactly(response);
+        assertThat(listenerCalls).containsExactly("onRequest", "onError", "onError", "onResponse");
+    }
+
+    @Test
+    void handler_chat_should_deliver_an_error_that_the_model_reports_after_the_complete_response() {
+
+        List<String> listenerCalls = new ArrayList<>();
+        ChatResponse response = ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build();
+        RuntimeException failure = new IllegalStateException("connection reset");
+        StreamingChatModelMock model = spy(
+                StreamingChatModelMock.thatAlwaysStreams("Hi").withListeners(recordingListener(listenerCalls)));
+        doAnswer(invocation -> {
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    handler.onCompleteResponse(response);
+                    handler.onError(failure);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        ErrorCollectingHandler handler = new ErrorCollectingHandler();
+
+        assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
+
+        assertThat(handler.responses).containsExactly(response);
+        assertThat(handler.errors).containsExactly(failure);
+        assertThat(listenerCalls).containsExactly("onRequest", "onResponse", "onError");
     }
 
     @Test
@@ -463,7 +522,7 @@ class StreamingChatModelTest implements WithAssertions {
     }
 
     @Test
-    void handler_chat_should_deliver_only_the_first_error_of_the_model() {
+    void handler_chat_should_deliver_every_error_that_the_model_reports() {
 
         List<String> listenerCalls = new ArrayList<>();
         RuntimeException first = new IllegalStateException("first");
@@ -482,7 +541,28 @@ class StreamingChatModelTest implements WithAssertions {
 
         model.chat("Hello", handler);
 
-        assertThat(handler.errors).containsExactly(first);
+        assertThat(handler.errors).containsExactly(first, second);
+        assertThat(listenerCalls).containsExactly("onRequest", "onError", "onError");
+    }
+
+    @Test
+    void handler_chat_should_not_report_a_second_error_when_the_model_throws_after_reporting_one() {
+
+        List<String> listenerCalls = new ArrayList<>();
+        RuntimeException reported = new IllegalStateException("bad request");
+        StreamingChatModelMock model = spy(
+                StreamingChatModelMock.thatAlwaysStreams("Hi").withListeners(recordingListener(listenerCalls)));
+        doAnswer(invocation -> {
+                    invocation.getArgument(1, StreamingChatResponseHandler.class).onError(reported);
+                    throw new IllegalStateException("cleanup failed");
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        ErrorCollectingHandler handler = new ErrorCollectingHandler();
+
+        assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
+
+        assertThat(handler.errors).containsExactly(reported);
         assertThat(listenerCalls).containsExactly("onRequest", "onError");
     }
 
@@ -560,7 +640,7 @@ class StreamingChatModelTest implements WithAssertions {
         }
     }
 
-    private static final class ErrorCollectingHandler implements StreamingChatResponseHandler {
+    private static class ErrorCollectingHandler implements StreamingChatResponseHandler {
 
         private final List<ChatResponse> responses = new ArrayList<>();
         private final List<Throwable> errors = new ArrayList<>();

@@ -106,7 +106,6 @@ public interface StreamingChatModel {
             return;
         }
 
-        AtomicBoolean responseNotified = new AtomicBoolean();
         AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean errorReported = new AtomicBoolean();
         AtomicReference<Throwable> onErrorFailure = new AtomicReference<>();
@@ -155,21 +154,14 @@ public interface StreamingChatModel {
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
-                responseNotified.set(true);
                 handler.onCompleteResponse(completeResponse);
                 completed.set(true);
             }
 
             @Override
             public void onError(Throwable error) {
-                if (completed.get() || !errorReported.compareAndSet(false, true)) {
-                    logIgnoredError(error);
-                    return;
-                }
-                if (!responseNotified.get()) {
-                    ChatModelListenerUtils.onError(
-                            error, finalChatRequest, provider(), attributes, invocationId, listeners);
-                }
+                errorReported.set(true);
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
                 try {
                     handler.onError(error);
                 } catch (Throwable onErrorThrew) {
@@ -187,11 +179,12 @@ public interface StreamingChatModel {
             if (error == onErrorFailure.get()) {
                 throw error; // the handler's onError threw while the failure was reported on the calling thread
             }
-            if (handler == null && !completed.get() && !errorReported.get()) {
-                if (!responseNotified.get()) {
-                    ChatModelListenerUtils.onError(
-                            error, finalChatRequest, provider(), attributes, invocationId, listeners);
-                }
+            if (completed.get() || errorReported.get()) {
+                logIgnoredError(error);
+                return;
+            }
+            if (handler == null) {
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
                 throw error;
             }
             observingHandler.onError(error);
