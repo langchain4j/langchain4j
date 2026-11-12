@@ -11,19 +11,24 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The context in which a {@link Planner} decides its next action.
  *
+ * @param agenticScope the scope of the agentic system running the planner
  * @param previousAgentInvocation the invocation of the subagent that just completed, or {@code null} for the first
  *                                action
  * @param plannerAgent the agent running the planner, or {@code null} when the context is not created by an agentic
- *                     system, for instance in a unit test of the planner
+ *                     system, for instance in a unit test of the planner. The model responses reported to a context
+ *                     are notified only when this is an agent created by the agentic system.
  */
 public record PlanningContext(
-        AgenticScope agenticScope, AgentInvocation previousAgentInvocation, AgentInstance plannerAgent) {
+        AgenticScope agenticScope,
+        @Nullable AgentInvocation previousAgentInvocation,
+        @Nullable AgentInstance plannerAgent) {
 
-    public PlanningContext(AgenticScope agenticScope, AgentInvocation previousAgentInvocation) {
+    public PlanningContext(AgenticScope agenticScope, @Nullable AgentInvocation previousAgentInvocation) {
         this(agenticScope, previousAgentInvocation, null);
     }
 
@@ -52,12 +57,12 @@ public record PlanningContext(
      * instance by the {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon
      * as the model returns, once for each call.
      * <p>
-     * It does nothing when this context has no {@link #plannerAgent() planner agent}, or when the response is
-     * {@code null}.
+     * It does nothing when this context has no {@link #plannerAgent() planner agent} created by the agentic system,
+     * or when the response is {@code null}.
      *
-     * @param chatResponse the response returned by the chat model
+     * @param chatResponse the response returned by the chat model, or {@code null}, which is ignored
      */
-    public void reportChatModelResponse(ChatResponse chatResponse) {
+    public void reportChatModelResponse(@Nullable ChatResponse chatResponse) {
         if (chatResponse != null) {
             reportModelResponse(chatResponse.tokenUsage(), chatResponse.modelName());
         }
@@ -67,15 +72,15 @@ public record PlanningContext(
      * Reports the response of a decision model that the planner called itself to decide what to do, like
      * {@link #reportChatModelResponse(ChatResponse)} does for a chat model.
      *
-     * @param decisionResponse the response returned by the decision model
+     * @param decisionResponse the response returned by the decision model, or {@code null}, which is ignored
      */
-    public void reportDecisionModelResponse(DecisionResponse decisionResponse) {
+    public void reportDecisionModelResponse(@Nullable DecisionResponse decisionResponse) {
         if (decisionResponse != null) {
             reportModelResponse(decisionResponse.tokenUsage(), decisionResponse.modelName());
         }
     }
 
-    private void reportModelResponse(TokenUsage tokenUsage, String modelName) {
+    private void reportModelResponse(@Nullable TokenUsage tokenUsage, @Nullable String modelName) {
         if (plannerAgent instanceof InternalAgent agent) {
             onPlannerModelResponse(
                     agent.listener(), new PlannerModelResponse(agenticScope, plannerAgent, tokenUsage, modelName));

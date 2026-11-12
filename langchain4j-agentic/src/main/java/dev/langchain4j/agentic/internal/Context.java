@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.UserMessage;
@@ -34,7 +35,10 @@ public class Context {
      * @throws IllegalConfigurationException if {@code chatModel} is {@code null}
      */
     public static ContextSummarizer createSummarizer(ChatModel chatModel) {
-        return createSummarizer(chatModel, response -> {});
+        if (chatModel == null) {
+            throw new IllegalConfigurationException("A ChatModel is required to summarize agentic context.");
+        }
+        return conversation -> chatModel.chat(summarizationPrompt(conversation));
     }
 
     /**
@@ -48,6 +52,7 @@ public class Context {
         if (chatModel == null) {
             throw new IllegalConfigurationException("A ChatModel is required to summarize agentic context.");
         }
+        ensureNotNull(responseConsumer, "responseConsumer");
         return conversation -> {
             ChatResponse response = chatModel.chat(UserMessage.from(summarizationPrompt(conversation)));
             responseConsumer.accept(response);

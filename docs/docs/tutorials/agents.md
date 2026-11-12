@@ -990,6 +990,7 @@ public interface AgentListener {
     default void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) { }
 
     default void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) { }
+    default void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) { }
 
     default boolean inheritedBySubagents() {
         return false;
@@ -1061,7 +1062,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 These listeners receive the AI Service events themselves; implement `onAgentAiServiceEvent` when you also need the agent that produced them.
 
-Some agentic patterns also call a model themselves to decide what to do: the [supervisor](#supervisor-design-and-customization) asks its chat model which subagent to invoke next, the [decision router](#decision-router-agentic-pattern), the [confidence cascade](#confidence-cascade-agentic-pattern) and the [decision scheduler](#decision-scheduler-agentic-pattern) ask a decision model, and the [peer-to-peer](#peer-to-peer-agentic-pattern) pattern can ask a chat model to extract the values of its variables from the request. These calls are not made by an AI agent, so they produce no AI Service event and are not part of any `AgentResponse`. They are notified instead to the `onPlannerModelResponse` method, which receives a `PlannerModelResponse` providing the agent running the pattern, its `AgenticScope`, and the `tokenUsage()` and the `modelName()` reported by the model for that call, whether it is a chat model or a decision model. For instance, adding this method to the former listener also logs the tokens that the patterns spend to orchestrate their subagents:
+Some agentic patterns also call a model themselves to decide what to do: the [supervisor](#supervisor-design-and-customization) asks its chat model which subagent to invoke next, the [decision router](#decision-router-agentic-pattern), the [confidence cascade](#confidence-cascade-agentic-pattern) and the [decision scheduler](#decision-scheduler-agentic-pattern) ask a decision model, and the [peer-to-peer](#peer-to-peer-agentic-pattern) pattern can ask a chat model to extract the values of its variables from the request. These calls are not made by an AI agent, so they produce no AI Service event and are not part of any `AgentResponse`. They are notified instead to the `onPlannerModelResponse` method, which receives a `PlannerModelResponse` providing the agent running the pattern, its `AgenticScope`, and the `tokenUsage()` and the `modelName()` reported by the model for that call, whether it is a chat model or a decision model. For instance, adding this method to the former listener also logs the tokens that these patterns spend to orchestrate their subagents, when the agentic system contains any of them:
 
 ```java
 @Override
@@ -1141,7 +1142,7 @@ Map<String, Object> input = Map.of(
 String story = styledWriter.invoke(input);
 ```
 
-the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. For an AI agent, the `modelName()` method of its `AgentInvocation` also returns the name of the model that answered its last LLM call, as reported by the provider in the response metadata, so it is empty for workflow and non-AI agents, and for providers not reporting it.
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. For an AI agent, the `tokenUsage()` method of its `AgentInvocation` returns the total of all its LLM calls, for instance the calls of a tool loop, and `modelName()` returns the name of the model that answered them, as reported by the provider in the response metadata, so it is empty for workflow and non-AI agents, for providers not reporting it, and when the calls were answered by different models.
 
 The patterns that call a model themselves, as discussed in the [observability](#observability) section, like the supervisor, the decision router, the confidence cascade, the decision scheduler and the peer-to-peer pattern, also report the tokens of those calls: the `tokenUsage()` and `totalTokenCount()` methods of their `AgentInvocation` return the total of the model calls made by the pattern itself, and `modelName()` returns the name of the model that answered them, or nothing when they were answered by different models. This is what the pattern spent to orchestrate its subagents and it does not include the tokens of the subagents, which are reported by their own invocations, so the invocation of a workflow that calls no model, like a sequence or a loop, still has no tokens. These three methods can be called at any time, and for a pattern they return what its model calls consumed so far: also while its invocation is still in progress or [suspended](#agenticscope-and-agentic-systems-recoverability), and after it failed, so the tokens that a pattern spent before failing are not lost. When a pattern is suspended and then resumed, the model calls made before the suspension are counted too. The tokens of an AI agent or of a decision agent are instead known only when its invocation completes: until then, and when it fails, these methods return nothing. The additional model call that summarizes the context of an AI agent configured with `summarizedContext` is not counted in the tokens of that agent.
 
@@ -1777,7 +1778,7 @@ AgenticServices.supervisorBuilder()
 
 The agents offered to the supervisor's planner are only those whose [activation condition](#activation-conditions) holds when it is asked to choose the next one. When the supervisor nevertheless invokes an agent that is skipped, because its activation condition no longer holds or because it is optional and an argument is missing, the supervisor's planner receives, as the last response, a message saying that the agent was skipped and why, instead of a stale output, so that it can decide what to do next.
 
-The supervisor calls its chat model once for each subagent it invokes, and once more to decide that the request has been fulfilled. The `SCORED` response strategy adds one call to score the two candidate responses, and the context strategies based on summarization add one call before each step that has a context to summarize. All these calls are notified to the `onPlannerModelResponse` method of the [listeners](#observability), and the `AgentMonitor` counts their tokens on the invocation of the supervisor, separately from the ones of its subagents, as explained in the [monitoring](#monitoring) section.
+The supervisor calls its chat model once for each subagent it invokes, and once more to decide that the request has been fulfilled, unless it stops because it reached the maximum number of agent invocations set with `maxAgentsInvocations`. The `SCORED` response strategy adds one call to score the two candidate responses, when the final answer of the model includes a response, and the context strategies based on summarization add one call before each step that has a context to summarize. All these calls are notified to the `onPlannerModelResponse` method of the [listeners](#observability), and the `AgentMonitor` counts their tokens on the invocation of the supervisor, separately from the ones of its subagents, as explained in the [monitoring](#monitoring) section.
 
 Other customization points for the supervisor agent could be eventually implemented and made available in the future.
 
@@ -1926,13 +1927,19 @@ A planner that calls a model itself to decide what to do, like the supervisor or
 ```java
 @Override
 public Action nextAction(PlanningContext planningContext) {
-    ChatResponse response = chatModel.chat(messages);
+    ChatResponse response = chatModel.chat(UserMessage.from("Should the research go on? Answer yes or no."));
     planningContext.reportChatModelResponse(response);
-    // decide the next action from the response
+    return response.aiMessage().text().contains("yes") ? call(subagents) : done();
 }
 ```
 
-The `reportChatModelResponse` method takes the `ChatResponse` of a chat model, and `reportDecisionModelResponse` the `DecisionResponse` of a decision model. The token usage and the model name of each reported response are notified to the `onPlannerModelResponse` method of the [listeners](#observability) of the agent running the planner, and the [`AgentMonitor`](#monitoring) counts its tokens on the invocation of that agent, so a model call that is not reported is invisible to both. A planner calling its model through an AI Service can make the method of that service return a `Result`, and report its `finalResponse()`.
+The `reportChatModelResponse` method takes the `ChatResponse` of a chat model, and `reportDecisionModelResponse` the `DecisionResponse` of a decision model. The token usage and the model name of each reported response are notified to the `onPlannerModelResponse` method of the [listeners](#observability) of the agent running the planner, and the [`AgentMonitor`](#monitoring) counts its tokens on the invocation of that agent, so a model call that is not reported is invisible to both. A planner calling its model through an AI Service can make the method of that service return a `Result`, and report all the model calls that the AI Service made: the `intermediateResponses()`, which are there when the AI Service calls tools, and the `finalResponse()`.
+
+```java
+Result<String> result = researchPlanner.nextStep(request);
+result.intermediateResponses().forEach(planningContext::reportChatModelResponse);
+planningContext.reportChatModelResponse(result.finalResponse());
+```
 
 Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.
 

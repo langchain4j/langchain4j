@@ -395,10 +395,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     /**
-     * Runs a model call of the supervisor with its scope and its planning context bound to the thread: the context
-     * summarizer runs inside the request transformer of the planning service, which is cached per scope and shared
-     * by all the invocations of the supervisor, so the thread is the only way it can reach the planning context of
-     * the current invocation to report its own model call.
+     * Runs a model call of the supervisor with its scope and its {@link CurrentPlanningContext} bound to the thread.
      */
     private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
         // the managed parameters of the caller are put back afterwards, since the supervisor can be invoked from

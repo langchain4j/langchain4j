@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 public class AgentInvocation {
 
@@ -35,8 +36,8 @@ public class AgentInvocation {
     private volatile Instant suspendedAt;
 
     private boolean plannerModelCalled;
-    private TokenUsage plannerTokenUsage;
-    private String plannerModelName;
+    private @Nullable TokenUsage plannerTokenUsage;
+    private @Nullable String plannerModelName;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -194,16 +195,20 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
+    /**
+     * Returns the total number of tokens of {@link #tokenUsage()}, or zero if it is empty. For an agent whose planner
+     * calls a model itself, like a supervisor, it counts only those calls, and not the tokens of its subagents.
+     */
     public int totalTokenCount() {
         return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
     }
 
     /**
-     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. For
-     * an agent whose planner calls a model itself, like a supervisor or a decision router, it is the total of those
-     * calls, without the token usage of its subagents, which is reported by their own invocations. It is empty if
-     * the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider didn't
-     * report the token usage.
+     * Returns the token usage of an AI agent, which is the total of all its LLM calls when it calls tools, or of the
+     * decision call of a decision agent. For an agent whose planner calls a model itself, like a supervisor or a
+     * decision router, it is the total of those calls, without the token usage of its subagents, which is reported
+     * by their own invocations. It is empty if the agent called no model, like a workflow or a non-AI agent, if it
+     * was skipped, or if the provider didn't report the token usage.
      * <p>
      * This method can be called at any time. For an agent whose planner calls a model itself it returns what those
      * calls consumed so far, also while the invocation is in progress or suspended, and after it failed. The token
