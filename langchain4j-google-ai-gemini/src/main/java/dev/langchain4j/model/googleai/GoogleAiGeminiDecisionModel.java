@@ -23,6 +23,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import java.time.Duration;
@@ -76,6 +77,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
     private final GeminiService geminiService;
     private final int maxRetries;
     private final GoogleAiGeminiDecisionRequestParameters defaultRequestParameters;
+    private final String yesWhenPrefix;
+    private final String noWhenPrefix;
     private final List<DecisionModelListener> listeners;
 
     public GoogleAiGeminiDecisionModel(GoogleAiGeminiDecisionModelBuilder builder) {
@@ -94,6 +97,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
                 .modelName(builder.modelName)
                 .customParameters(builder.customParameters)
                 .build();
+        this.yesWhenPrefix = getOrDefault(builder.yesWhenPrefix, "Also answer yes when: ");
+        this.noWhenPrefix = getOrDefault(builder.noWhenPrefix, "Also answer no when: ");
         this.listeners = copy(builder.listeners);
     }
 
@@ -103,7 +108,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
 
     @Override
     public DecisionResponse doDecide(DecisionRequest request) {
-        GeminiDecisionRequest geminiRequest = GeminiDecisionMapper.toGeminiRequest(request);
+        GeminiDecisionRequest geminiRequest =
+                GeminiDecisionMapper.toGeminiRequest(request, yesWhenPrefix, noWhenPrefix);
         GeminiDecisionResponse response = withRetryMappingExceptions(() -> decide(geminiRequest), maxRetries);
         return GeminiDecisionMapper.toDecisionResponse(response, request);
     }
@@ -123,7 +129,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
         try {
-            GeminiDecisionRequest geminiRequest = GeminiDecisionMapper.toGeminiRequest(request);
+            GeminiDecisionRequest geminiRequest =
+                    GeminiDecisionMapper.toGeminiRequest(request, yesWhenPrefix, noWhenPrefix);
             CompletableFuture<GeminiDecisionResponse> responseFuture =
                     withRetryMappingExceptionsAsync(() -> decideAsync(geminiRequest), maxRetries);
             CompletableFuture<DecisionResponse> result = responseFuture.thenApply(
@@ -180,6 +187,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         private @Nullable Logger logger;
         private @Nullable Supplier<Map<String, String>> customHeadersSupplier;
         private @Nullable Map<String, Object> customParameters;
+        private @Nullable String yesWhenPrefix;
+        private @Nullable String noWhenPrefix;
         private @Nullable List<DecisionModelListener> listeners;
 
         public GoogleAiGeminiDecisionModelBuilder() {
@@ -303,6 +312,40 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
          */
         public GoogleAiGeminiDecisionModelBuilder customParameters(@Nullable Map<String, Object> customParameters) {
             this.customParameters = customParameters;
+            return this;
+        }
+
+        /**
+         * The text put before {@link YesNoQuestion#yesWhen()} when a yes/no question has a {@code yesWhen} but no
+         * {@code noWhen}. Such a question is sent to Gemini as its text, a line break, this prefix and the
+         * {@code yesWhen}, for example:
+         * <pre>
+         * Is this a return request?
+         * Also answer yes when: The customer wants to exchange an item for another size.
+         * </pre>
+         * When not set ({@code null}), {@code "Also answer yes when: "} is used.
+         * <p>
+         * A {@code yesWhen} on its own is one reason to answer yes, not the only one (see {@link YesNoQuestion}).
+         * The default prefix says so: without "Also", Gemini tends to answer no whenever the {@code yesWhen} does not
+         * hold. A question with both {@code yesWhen} and {@code noWhen} is sent with Gemini's own criteria fields,
+         * and this prefix is not used.
+         */
+        public GoogleAiGeminiDecisionModelBuilder yesWhenPrefix(@Nullable String yesWhenPrefix) {
+            this.yesWhenPrefix = yesWhenPrefix;
+            return this;
+        }
+
+        /**
+         * The text put before {@link YesNoQuestion#noWhen()} when a yes/no question has a {@code noWhen} but no
+         * {@code yesWhen}. Such a question is sent to Gemini as its text, a line break, this prefix and the
+         * {@code noWhen}. When not set ({@code null}), {@code "Also answer no when: "} is used.
+         * <p>
+         * A {@code noWhen} on its own is one reason to answer no, not the only one (see {@link YesNoQuestion}). A
+         * question with both {@code yesWhen} and {@code noWhen} is sent with Gemini's own criteria fields, and this
+         * prefix is not used.
+         */
+        public GoogleAiGeminiDecisionModelBuilder noWhenPrefix(@Nullable String noWhenPrefix) {
+            this.noWhenPrefix = noWhenPrefix;
             return this;
         }
 

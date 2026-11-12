@@ -61,7 +61,7 @@ class GeminiDecisionMapper {
 
     private GeminiDecisionMapper() {}
 
-    static GeminiDecisionRequest toGeminiRequest(DecisionRequest request) {
+    static GeminiDecisionRequest toGeminiRequest(DecisionRequest request, String yesWhenPrefix, String noWhenPrefix) {
         if (isNullOrBlank(request.modelName())) {
             throw new IllegalArgumentException("The model name must be set, either with "
                     + "GoogleAiGeminiDecisionModel.builder().modelName(...) or on the request with "
@@ -82,7 +82,8 @@ class GeminiDecisionMapper {
         if (!customParameters.containsKey("questions")) {
             Map<String, GeminiDecisionRequest.Question> questions = new LinkedHashMap<>();
             questionNamesByKey(request)
-                    .forEach((key, name) -> questions.put(key, toQuestion(request.questions().get(name))));
+                    .forEach((key, name) -> questions.put(
+                            key, toQuestion(request.questions().get(name), yesWhenPrefix, noWhenPrefix)));
             geminiRequest.questions = questions;
         }
         if (!isNullOrEmpty(customParameters)) {
@@ -257,9 +258,10 @@ class GeminiDecisionMapper {
         };
     }
 
-    private static GeminiDecisionRequest.Question toQuestion(Question question) {
+    private static GeminiDecisionRequest.Question toQuestion(
+            Question question, String yesWhenPrefix, String noWhenPrefix) {
         if (question instanceof YesNoQuestion yesNo) {
-            return new GeminiDecisionRequest.Question("noul", yesNo.text(), yesNoCriteria(yesNo));
+            return toYesNoQuestion(yesNo, yesWhenPrefix, noWhenPrefix);
         } else if (question instanceof ChoiceQuestion choice) {
             return new GeminiDecisionRequest.Question("choice", choice.text(), choice.options());
         } else if (question instanceof ScaleQuestion scale) {
@@ -269,18 +271,28 @@ class GeminiDecisionMapper {
                 PROVIDER + " does not support " + question.getClass().getName() + " questions");
     }
 
-    private static @Nullable Map<String, String> yesNoCriteria(YesNoQuestion question) {
-        if (question.yesWhen() == null && question.noWhen() == null) {
-            return null;
+    /**
+     * A one-sided criterion is one reason for its answer, not the only one, but Gemini reads a lone
+     * {@code true_description} as the only reason to answer yes. Added to the instructions after a prefix such as
+     * "Also answer yes when: ", it is read as one reason among others.
+     */
+    private static GeminiDecisionRequest.Question toYesNoQuestion(
+            YesNoQuestion question, String yesWhenPrefix, String noWhenPrefix) {
+        String yesWhen = question.yesWhen();
+        String noWhen = question.noWhen();
+        if (yesWhen != null && noWhen != null) {
+            Map<String, String> criteria = new LinkedHashMap<>();
+            criteria.put("true_description", yesWhen);
+            criteria.put("false_description", noWhen);
+            return new GeminiDecisionRequest.Question("noul", question.text(), criteria);
         }
-        Map<String, String> criteria = new LinkedHashMap<>();
-        if (question.yesWhen() != null) {
-            criteria.put("true_description", question.yesWhen());
+        String instructions = question.text();
+        if (yesWhen != null) {
+            instructions += "\n" + yesWhenPrefix + yesWhen;
+        } else if (noWhen != null) {
+            instructions += "\n" + noWhenPrefix + noWhen;
         }
-        if (question.noWhen() != null) {
-            criteria.put("false_description", question.noWhen());
-        }
-        return criteria;
+        return new GeminiDecisionRequest.Question("noul", instructions, null);
     }
 
     /**

@@ -59,7 +59,8 @@ the request fails with a `ModelNotFoundException`.
 
 The other settings are `baseUrl` (by default `https://generativelanguage.googleapis.com/v1beta`), `timeout`,
 `maxRetries`, `logRequests`, `logResponses`, `logger`, `httpClientBuilder`, `customHeaders`, `customParameters`
-(see [Custom parameters](#custom-parameters)) and `listeners`.
+(see [Custom parameters](#custom-parameters)), `yesWhenPrefix` and `noWhenPrefix` (see
+[Questions and answers](#questions-and-answers)) and `listeners`.
 
 Both `decide()` and `decideAsync()` are supported.
 
@@ -149,9 +150,32 @@ is rejected with an `IllegalArgumentException` before calling the API. A `Custom
 
 | `DecisionModel` | Gemini | Notes |
 |---|---|---|
-| `YesNoQuestion` | `noul` | `yesWhen` and `noWhen` are sent as the criteria (`true_description` and `false_description`) |
+| `YesNoQuestion` | `noul` | `yesWhen` and `noWhen` are sent as described below |
 | `ChoiceQuestion` | `choice` | options are sent with their descriptions |
 | `ScaleQuestion` | `score` | levels are sent as text, as `label: description` when they have a description |
+
+When a yes/no question has both `yesWhen` and `noWhen`, they are sent as Gemini's criteria (`true_description` and
+`false_description`). When it has only one of them, it is added to the question text on a new line, after the text
+"Also answer yes when: " or "Also answer no when: ":
+
+```
+Is this a return request?
+Also answer yes when: The customer wants to exchange an item for another size.
+```
+
+A `yesWhen` on its own is one reason to answer yes, not the only one: when it does not hold, the question itself
+decides (see [Yes/no questions](/tutorials/decision-models#yesno-questions)). Without "Also", Gemini tends to answer
+"no" whenever the `yesWhen` does not hold. To use another text, set it with `yesWhenPrefix(...)` and
+`noWhenPrefix(...)` on the builder:
+
+```java
+DecisionModel decisionModel = GoogleAiGeminiDecisionModel.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .modelName("gemini-decision-1")
+        .yesWhenPrefix("Answer yes also if: ")
+        .noWhenPrefix("Answer no also if: ")
+        .build();
+```
 
 Yes/no answers include the probability of "yes". Gemini always reports it between 0.01 and 0.99, so
 `isYes(threshold)` with a threshold above 0.99 never returns `true`. Choice and scale answers include the probability
