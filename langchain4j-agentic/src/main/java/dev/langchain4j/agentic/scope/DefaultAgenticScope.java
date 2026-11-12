@@ -341,17 +341,22 @@ public class DefaultAgenticScope implements AgenticScope {
     /**
      * Suspends the root call, which returns to its caller to be resumed by a later call on this scope. As after a
      * completed call, the failure of an asynchronous agent completing afterwards is reported, and a persistent scope
-     * is saved again with its result. The suspension of an agent already completed is not reported: it is among
-     * the pending responses the root call just notified.
+     * is saved again with its result. The suspension of an asynchronous agent is reported only when the scope then
+     * has a pending response that is not among the {@code notifiedResponseIds}: an agent leaves its pending response
+     * just before it completes, so the root call may have suspended on it, and notified it, while the agent was still
+     * running.
+     *
+     * @param notifiedResponseIds the ids of the pending responses when the root call notified its suspension, taken
+     *                            before notifying it
      */
-    public void rootCallSuspended(AgenticScopeRegistry registry, AgentListener agentListener) {
+    public void rootCallSuspended(
+            AgenticScopeRegistry registry, AgentListener agentListener, Set<String> notifiedResponseIds) {
         Map.copyOf(state).forEach((key, value) -> {
             if (value instanceof AsyncResponse<?> unread) {
-                if (unread.isDone()) {
-                    reportUnreadFailure(key, unread, null, false);
-                } else {
-                    unread.onComplete(completed -> reportUnreadFailure(key, completed, agentListener, false));
-                }
+                unread.onComplete(completed -> {
+                    boolean leftNewPendingResponse = !notifiedResponseIds.containsAll(pendingResponseIds());
+                    reportUnreadFailure(key, completed, leftNewPendingResponse ? agentListener : null, false);
+                });
             }
         });
         if (kind == Kind.PERSISTENT) {
