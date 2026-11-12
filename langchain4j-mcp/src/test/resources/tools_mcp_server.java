@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.AudioContent;
 import io.quarkiverse.mcp.server.ImageContent;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
@@ -101,6 +102,11 @@ public class tools_mcp_server {
 
     @Tool
     public ToolResponse getImage() {
-        return new ToolResponse(false, List.of(new ImageContent("does not matter", "does not matter")));
+        return new ToolResponse(false, List.of(new ImageContent("AQID", "image/png")));
+    }
+
+    @Tool
+    public ToolResponse getAudio() {
+        return new ToolResponse(false, List.of(new AudioContent("AQID", "audio/wav")));
     }
 }
