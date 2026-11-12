@@ -8,7 +8,6 @@ import dev.langchain4j.agentic.internal.CurrentPlanningContext;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
@@ -402,6 +401,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
      * the current invocation to report its own model call.
      */
     private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
+        // the managed parameters of the caller are put back afterwards, since the supervisor can be invoked from
+        // inside another AI service call, for instance by one of its tools
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
         LangChain4jManaged.setCurrent(Map.of(
                 AgenticScope.class,
                 planningContext.agenticScope(),
@@ -410,7 +412,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         try {
             return supplier.get();
         } finally {
-            LangChain4jManaged.removeCurrent();
+            if (callerParameters == null) {
+                LangChain4jManaged.removeCurrent();
+            } else {
+                LangChain4jManaged.setCurrent(callerParameters);
+            }
         }
     }
 
