@@ -5,6 +5,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
@@ -1884,7 +1885,7 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        return CompletableFuture.supplyAsync(
+        return failOnThrow(() -> CompletableFuture.supplyAsync(
                         () -> executeToolAsync(
                                 invocationContext,
                                 toolExecutors,
@@ -1892,7 +1893,7 @@ public class ToolService {
                                 externalBeforeToolExecution,
                                 externalAfterToolExecution),
                         executor)
-                .thenCompose(toolResultFuture -> toolResultFuture);
+                .thenCompose(toolResultFuture -> toolResultFuture));
     }
 
     /**

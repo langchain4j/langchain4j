@@ -16,10 +16,15 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -39,6 +44,21 @@ class ToolServiceTest {
 
     private static final ToolExecutionErrorHandler DEFAULT_EXEC_HANDLER =
             (error, ctx) -> ToolErrorHandlerResult.text(error.getMessage());
+
+    @Test
+    void startTool_should_return_a_failed_future_when_the_executor_rejects_the_tool() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.shutdown();
+
+        CompletableFuture<ToolExecutionResult> future =
+                new ToolService().startTool(DUMMY_REQUEST, Map.of(), DUMMY_CONTEXT, null, null, executor);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(RejectedExecutionException.class);
+    }
 
     @Test
     void shouldReturnImmediately_empty_list_should_not_crash() {

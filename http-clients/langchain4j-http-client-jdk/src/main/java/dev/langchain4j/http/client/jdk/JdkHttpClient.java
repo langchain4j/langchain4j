@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.jdk;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -125,6 +126,10 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
         CompletableFuture<HttpResponse<byte[]>> sendFuture = delegate.sendAsync(jdkRequest, BodyHandlers.ofByteArray());

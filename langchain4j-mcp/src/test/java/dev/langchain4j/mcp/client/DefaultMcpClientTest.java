@@ -113,6 +113,31 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void executeToolAsync_should_return_a_failed_future_when_the_client_is_closed() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        client.close();
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("echo")
+                .arguments("{}")
+                .build();
+
+        // when
+        CompletableFuture<ToolExecutionResult> future = client.executeToolAsync(request, null);
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessage("The client is closed");
+    }
+
+    @Test
     public void should_reinitialize_when_transport_onFailure() throws Exception {
         // given: a client that will have its onFailure callback run
         final McpTransport transport = getMinimalMcpTransportMock();

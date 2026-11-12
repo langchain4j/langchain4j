@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -163,6 +164,10 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
         java.util.concurrent.Future<SimpleHttpResponse> apacheFuture = asyncClient()
