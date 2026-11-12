@@ -23,12 +23,12 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -54,8 +54,9 @@ public interface StreamingChatModel {
      * <p>
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
-     * before this method returns. With a {@code null} handler, a failure found before the request is sent is thrown
-     * instead, because there is no handler to report it to.
+     * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
+     * before this method returns, that exception is thrown from this method. With a {@code null} handler, a failure
+     * found before the request is sent is thrown instead, because there is no handler to report it to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
@@ -69,8 +70,9 @@ public interface StreamingChatModel {
      * <p>
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
-     * before this method returns. With a {@code null} handler, a failure found before the request is sent is thrown
-     * instead, because there is no handler to report it to.
+     * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
+     * before this method returns, that exception is thrown from this method. With a {@code null} handler, a failure
+     * found before the request is sent is thrown instead, because there is no handler to report it to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -100,13 +102,14 @@ public interface StreamingChatModel {
             if (handler == null) {
                 throw error;
             }
-            withLoggingExceptions(() -> handler.onError(error));
+            handler.onError(error);
             return;
         }
 
         AtomicBoolean responseNotified = new AtomicBoolean();
         AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean errorReported = new AtomicBoolean();
+        AtomicReference<Throwable> onErrorFailure = new AtomicReference<>();
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
             @Override
@@ -167,7 +170,12 @@ public interface StreamingChatModel {
                     ChatModelListenerUtils.onError(
                             error, finalChatRequest, provider(), attributes, invocationId, listeners);
                 }
-                handler.onError(error);
+                try {
+                    handler.onError(error);
+                } catch (Throwable onErrorThrew) {
+                    onErrorFailure.set(onErrorThrew);
+                    throw onErrorThrew;
+                }
             }
         };
 
@@ -176,6 +184,9 @@ public interface StreamingChatModel {
             doChat(finalChatRequest, observingHandler);
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
+            if (error == onErrorFailure.get()) {
+                throw error; // the handler's onError threw while the failure was reported on the calling thread
+            }
             if (handler == null && !completed.get() && !errorReported.get()) {
                 if (!responseNotified.get()) {
                     ChatModelListenerUtils.onError(
@@ -183,7 +194,7 @@ public interface StreamingChatModel {
                 }
                 throw error;
             }
-            withLoggingExceptions(() -> observingHandler.onError(error));
+            observingHandler.onError(error);
         }
     }
 
@@ -371,7 +382,7 @@ public interface StreamingChatModel {
             if (handler == null) {
                 throw error;
             }
-            withLoggingExceptions(() -> handler.onError(error));
+            handler.onError(error);
             return;
         }
 
@@ -392,7 +403,7 @@ public interface StreamingChatModel {
             if (handler == null) {
                 throw error;
             }
-            withLoggingExceptions(() -> handler.onError(error));
+            handler.onError(error);
             return;
         }
 

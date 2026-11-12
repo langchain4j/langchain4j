@@ -871,6 +871,38 @@ class RoutingChatModelTest {
     }
 
     @Test
+    void should_throw_what_the_streaming_handler_on_error_throws_without_reporting_it_twice() {
+
+        StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        List<Throwable> errors = new ArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                throw onErrorFailure;
+            }
+        };
+        RoutingStreamingChatModel model = RoutingStreamingChatModel.builder()
+                .route("only", failing)
+                .router(request -> ChatModelRoutingResult.route("only"))
+                .defaultRoute("only")
+                .build();
+
+        assertThatThrownBy(() -> model.chat("Hi!", handler)).isSameAs(onErrorFailure);
+        assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
+
+        errors.clear();
+        assertThatThrownBy(() -> routingStreamingModel(request -> ChatModelRoutingResult.route("medium"))
+                        .chat("Hi!", handler))
+                .isSameAs(onErrorFailure);
+        assertThat(errors).singleElement().isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void should_report_error_of_selected_streaming_model_to_handler() {
 
         StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));

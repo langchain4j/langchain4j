@@ -214,7 +214,8 @@ public interface StreamingChatResponseHandler {
     /**
      * This method is invoked when the request fails, before or during streaming, including when the request is
      * invalid (for example when it has no messages, or a parameter the model does not support). It can be called on
-     * the thread that called {@code chat(...)}, before {@code chat(...)} returns.
+     * the thread that called {@code chat(...)}, before {@code chat(...)} returns. If this method throws in that case,
+     * the exception is thrown from {@code chat(...)}; if it throws on another thread, the exception is logged.
      *
      * @param error The error that occurred
      */

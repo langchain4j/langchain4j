@@ -62,6 +62,7 @@ The `ChatResponse` object contains the complete response (`AiMessage`) as well a
 or a parameter the model does not support), is passed to `onError`.
 `onError` can be called on the calling thread, before `chat(...)` returns,
 so prepare anything that `onError` uses before you call `chat(...)`.
+If `onError` throws while it is called on the calling thread, that exception is thrown from `chat(...)`.
 
 Below is an example of how to implement streaming with `StreamingChatModel`:
 ```java

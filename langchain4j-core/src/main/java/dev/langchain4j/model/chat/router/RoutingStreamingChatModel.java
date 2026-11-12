@@ -83,9 +83,11 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
             invocationId = CurrentInvocation.invocationId(options);
             routeName = CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.select(request, options));
         } catch (Throwable e) {
-            onError(handler, e);
+            restoreInterruptIfInterrupted(e);
+            handler.onError(e);
             return;
         }
+        RouteRecordingHandler routeHandler = new RouteRecordingHandler(handler, routeName);
         try {
             CurrentInvocation.runWithIdOrWithout(
                     invocationId,
@@ -93,18 +95,17 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                             .chat(
                                     request,
                                     RouteSelector.withRoute(options, routeName, invocationId),
-                                    HandlerWithoutInvocation.wrap(new RouteRecordingHandler(handler, routeName))));
+                                    HandlerWithoutInvocation.wrap(routeHandler)));
         } catch (Throwable e) {
-            onError(handler, e);
-        }
-    }
-
-    private static void onError(StreamingChatResponseHandler handler, Throwable error) {
-        restoreInterruptIfInterrupted(error);
-        try {
-            handler.onError(error);
-        } catch (Exception e) {
-            log.warn("Exception while calling onError() of the streaming response handler", e);
+            restoreInterruptIfInterrupted(e);
+            if (e == routeHandler.onErrorFailure) {
+                throw e; // the handler's onError threw while the failure was reported on the calling thread
+            }
+            if (routeHandler.errorReported) {
+                log.warn("Ignoring a failure after an error was already reported to the streaming response handler", e);
+                return;
+            }
+            handler.onError(e);
         }
     }
 
@@ -311,6 +312,8 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         private final StreamingChatResponseHandler delegate;
         private final String routeName;
+        private volatile boolean errorReported;
+        private volatile Throwable onErrorFailure;
 
         private RouteRecordingHandler(StreamingChatResponseHandler delegate, String routeName) {
             this.delegate = delegate;
@@ -364,7 +367,13 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         @Override
         public void onError(Throwable error) {
-            delegate.onError(error);
+            errorReported = true;
+            try {
+                delegate.onError(error);
+            } catch (Throwable onErrorThrew) {
+                onErrorFailure = onErrorThrew;
+                throw onErrorThrew;
+            }
         }
     }
 
