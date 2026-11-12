@@ -99,6 +99,8 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
                 builder.type(ModelType.CHAT);
             } else if (actions.contains("embedContent")) {
                 builder.type(ModelType.EMBEDDING);
+            } else if (actions.contains("createDecision")) {
+                builder.type(ModelType.OTHER);
             }
         }
 

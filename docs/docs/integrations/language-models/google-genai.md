@@ -22,6 +22,7 @@ https://github.com/googleapis/java-genai
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
 - [GoogleGenAiImageModel](#googlegenaiimagemodel)
 - [GoogleGenAiTextToSpeechModel](#googlegenaitexttospeechmodel)
+- [GoogleGenAiDecisionModel](#googlegenaidecisionmodel)
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
@@ -671,6 +672,26 @@ TextToSpeechResponse response = model.synthesize("""
 A line that does not start with a speaker name belongs to the turn above it, so the text must start with a speaker: text before the first turn is rejected with an `IllegalArgumentException`. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
 
 To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
+
+## GoogleGenAiDecisionModel
+
+The `GoogleGenAiDecisionModel` evaluates yes/no, choice and scale questions against a shared multimodal or conversation input using Gemini decision models such as `gemini-decision-1`, returning calibrated probabilities.
+
+```java
+DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-decision-1")
+    .build();
+
+DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+    .input("Help! My payouts have been failing for 3 days.")
+    .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+    .build());
+
+double probability = response.yesNo("urgent").probability();
+```
+
+See [Google Gen AI Decision Models](/integrations/decision-models/google-genai) for full details.
 
 ## Batch API
 
