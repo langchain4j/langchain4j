@@ -49,12 +49,11 @@ import java.util.concurrent.Flow.Subscription;
  * with its last step. {@code withTokenUsage(...)}, {@code requests()} and {@code request()} have the same names. A
  * response reports the model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason;
  * instead of {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:
- * {@link MockStreamingChatModel#thatStreams(ChatResponse)}. {@code throwingFromChat()} and
+ * {@link MockStreamingChatModel#thatResponds(ChatResponse)}. {@code throwingFromChat()} and
  * {@code streamingOnCallingThread()} have no replacement, and {@code withListeners(...)} and
  * {@code withSupportedCapabilities(...)} have the same names. Other differences: the new mock also streams partial tool
- * calls and thinking, streams text given as one string or message one character (code point) per token, reports every
- * failure on its streaming thread, and {@code requests()} returns a copy.
- * This class will be removed in 1.26.0 at the earliest.
+ * calls and thinking, streams text in word-like tokens, reports every failure on its streaming thread, and
+ * {@code requests()} returns a copy. This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -81,7 +80,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(List)}, followed by
+     * @deprecated use {@link MockStreamingChatModel#thatResponds(List)}, followed by
      * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -383,9 +382,9 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage...)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatResponds(AiMessage...)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}; for a message with tool calls, script the answer that follows the tool results with
-     * {@link MockStreamingChatModel#thenStreams(String)} instead
+     * {@link MockStreamingChatModel#thenResponds(String)} instead
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(AiMessage aiMessage) {
@@ -393,7 +392,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage...)}, followed by
+     * @deprecated use {@link MockStreamingChatModel#thatResponds(AiMessage...)}, followed by
      * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -402,7 +401,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(List)}, followed by
+     * @deprecated use {@link MockStreamingChatModel#thatResponds(List)}, followed by
      * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
      */
     @Deprecated(since = "1.24.0", forRemoval = true)

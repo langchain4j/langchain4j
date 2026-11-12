@@ -52,6 +52,11 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>mutiny-zero</artifactId>
+        </dependency>
+
         <!-- test dependencies -->
 
         <dependency>
@@ -78,6 +83,19 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams-tck</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Runs the TestNG-based Reactive Streams TCK (PublisherVerification) under the JUnit Platform -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -95,10 +113,9 @@
                         </goals>
                         <configuration>
                             <classpathDependencyExcludes>
-                                <!-- langchain4j and its own compile dependencies, as for a user without it: keep in sync with langchain4j/pom.xml -->
+                                <!-- langchain4j and its own compile dependencies that this module does not have, as for a user without it: keep in sync with langchain4j/pom.xml -->
                                 <classpathDependencyExclude>dev.langchain4j:langchain4j</classpathDependencyExclude>
                                 <classpathDependencyExclude>org.apache.opennlp:opennlp-tools</classpathDependencyExclude>
-                                <classpathDependencyExclude>io.smallrye.reactive:mutiny-zero</classpathDependencyExclude>
                             </classpathDependencyExcludes>
                             <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java,dev/langchain4j/test/mock/**/*Test.java</test>
                             <systemPropertyVariables>

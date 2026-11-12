@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The steps of a mock, taken in order: one per request. A request after the last step fails, unless the script ends
@@ -29,6 +31,11 @@ import java.util.function.Function;
  * default token usage of the mock.
  */
 final class ScriptedResponses {
+
+    // the pre-tokenization pattern of OpenAI's cl100k_base tokenizer
+    private static final Pattern TOKEN = Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)"
+            + "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*"
+            + "|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+");
 
     private static final int MAX_MESSAGE_LENGTH = 200;
 
@@ -169,12 +176,11 @@ final class ScriptedResponses {
     synchronized void repeatLastStep() {
         ensureNotRepeating();
         if (lastStep().callsTools()) {
-            String factory = mockName.contains("Streaming") ? "thatStreams" : "thatResponds";
             throw new IllegalStateException("thenRepeats() cannot repeat a step that calls a tool: an AI Service would"
                     + " call the tool again and again. Script the answer that follows the tool results first. To test a"
                     + " model that keeps calling a tool, for example the limit set with maxToolCallingRoundTrips,"
-                    + " compute the answer: "
-                    + factory + "(request -> AiMessage.from(MockChatModel.toolCall(...))).thenRepeats()");
+                    + " compute the answer: thatResponds(request -> AiMessage.from(MockChatModel.toolCall(...)))"
+                    + ".thenRepeats()");
         }
         repeatsLastStep = true;
     }
@@ -330,12 +336,27 @@ final class ScriptedResponses {
     }
 
     /**
-     * Splits the text into tokens the way the streaming mock streams it: one character (code point) per token.
+     * Splits the text into tokens the way the streaming mock streams it, like the first step of a tokenizer: a word
+     * with the character before it (usually a space), a number of up to three digits, a run of punctuation, or
+     * whitespace. Together the tokens make up exactly the text.
      */
     static List<String> splitIntoTokens(String text) {
         if (isNullOrEmpty(text)) {
             return List.of();
         }
-        return text.codePoints().mapToObj(Character::toString).toList();
+        List<String> tokens = new ArrayList<>();
+        Matcher matcher = TOKEN.matcher(text);
+        int end = 0;
+        while (matcher.find()) {
+            if (matcher.start() > end) {
+                tokens.add(text.substring(end, matcher.start()));
+            }
+            tokens.add(matcher.group());
+            end = matcher.end();
+        }
+        if (end < text.length()) {
+            tokens.add(text.substring(end));
+        }
+        return tokens;
     }
 }

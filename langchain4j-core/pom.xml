@@ -44,6 +44,13 @@
 
         <!-- test dependencies -->
 
+        <!-- the model mocks copied from langchain4j-test (see below) need it -->
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>mutiny-zero</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
