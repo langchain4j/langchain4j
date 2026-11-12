@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -119,7 +120,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     @Override
     public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
-        try {
+        return failOnThrow(() -> {
             if (queryToContents.isEmpty()) {
                 return CompletableFuture.completedFuture(emptyList());
             }
@@ -147,15 +148,14 @@ public class ReRankingContentAggregator implements ContentAggregator {
                     .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
                     .query(query.text())
                     .build();
-            CompletableFuture<ScoringResponse> scoreFuture = scoringModel.scoreAsync(scoringRequest);
+            CompletableFuture<ScoringResponse> scoreFuture = failOnThrow(
+                    scoringModel, "scoreAsync(ScoringRequest)", () -> scoringModel.scoreAsync(scoringRequest));
             CompletableFuture<List<Content>> result =
                     scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
             // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
             propagateCancellation(result, scoreFuture);
             return result;
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

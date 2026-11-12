@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -288,12 +289,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
      */
     private <T> CompletableFuture<T> nativeOrOffload(
             Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
-        CompletableFuture<T> async;
-        try {
-            async = CurrentInvocation.callWith(invocationContextOf(query), asyncCall);
-        } catch (Throwable t) {
-            async = CompletableFuture.failedFuture(t);
-        }
+        CompletableFuture<T> async = failOnThrow(() -> CurrentInvocation.callWith(invocationContextOf(query), asyncCall));
         CompletableFuture<T> result = async.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {

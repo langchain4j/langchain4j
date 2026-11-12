@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -61,12 +62,10 @@ abstract class AbstractChatExecutor implements ChatExecutor {
 
     @Override
     public CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
-        try {
+        return failOnThrow(() -> {
             var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
             return ChatExchanges.exchangeAsync(newChatRequest, executeAndFireResponseReceivedAsync(newChatRequest));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     @Override
@@ -100,12 +99,10 @@ abstract class AbstractChatExecutor implements ChatExecutor {
 
     @Override
     public CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-        try {
+        return failOnThrow(() -> {
             var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
             return executeAndFireResponseReceivedAsync(newChatRequest);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     private CompletableFuture<ChatResponse> executeAndFireResponseReceivedAsync(ChatRequest chatRequest) {
@@ -124,12 +121,10 @@ abstract class AbstractChatExecutor implements ChatExecutor {
     }
 
     private CompletableFuture<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
-        try {
+        return failOnThrow(() -> {
             fireRequestIssuedEvent(chatRequest);
-            return executeAsync(chatRequest);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return failOnThrow(this, "executeAsync(ChatRequest)", () -> executeAsync(chatRequest));
+        });
     }
 
     /**

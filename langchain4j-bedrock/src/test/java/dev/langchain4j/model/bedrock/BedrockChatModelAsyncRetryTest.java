@@ -1,5 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
+import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThat;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,6 +15,9 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.concurrent.CompletableFuture;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.core.exception.SdkServiceException;
 import software.amazon.awssdk.regions.Region;
@@ -69,5 +74,24 @@ class BedrockChatModelAsyncRetryTest {
         assertThatThrownBy(() -> model.chatAsync(request()).get(10, SECONDS))
                 .hasCauseInstanceOf(InvalidRequestException.class);
         verify(asyncClient, times(1)).converse(any(ConverseRequest.class));
+    }
+
+    @Test
+    void doChatAsync_reports_an_unsupported_parameter_through_the_future_without_calling_the_api() {
+        BedrockRuntimeAsyncClient asyncClient = mock(BedrockRuntimeAsyncClient.class);
+        ChatModel model = model(asyncClient, 0);
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(ChatRequestParameters.builder().topK(5).build())
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.doChatAsync(request);
+
+        assertThat(future)
+                .failsWithin(10, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(UnsupportedFeatureException.class);
+        verify(asyncClient, never()).converse(any(ConverseRequest.class));
     }
 }

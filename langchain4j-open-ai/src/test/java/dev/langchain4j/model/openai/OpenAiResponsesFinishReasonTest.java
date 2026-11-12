@@ -12,6 +12,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class OpenAiResponsesFinishReasonTest {
@@ -103,5 +106,32 @@ class OpenAiResponsesFinishReasonTest {
         model.chat("Hello", handler);
 
         assertThat(handler.get().metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+    }
+
+    @Test
+    void doChatAsync_reports_an_unsupported_parameter_through_the_future_without_calling_the_api() {
+        MockHttpClient mockHttpClient = new MockHttpClient(SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body("{}")
+                .build());
+        OpenAiResponsesChatModel model = OpenAiResponsesChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .baseUrl("http://localhost")
+                .apiKey("dummy")
+                .modelName("gpt-5.4-mini")
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .parameters(OpenAiResponsesChatRequestParameters.builder().topK(5).build())
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.doChatAsync(request);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(10))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(UnsupportedFeatureException.class);
+        assertThat(mockHttpClient.requests()).isEmpty();
     }
 }

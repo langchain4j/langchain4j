@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -188,11 +189,33 @@ class ChatModelAsyncDefaultTest {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageContaining("doChatAsync(ChatRequest) returned null");
-        Throwable failure = future.handle((response, error) -> error).join();
+        Throwable failure = unwrapCompletionException(future.handle((response, error) -> error).join());
         ArgumentCaptor<ChatModelErrorContext> errorContext = ArgumentCaptor.forClass(ChatModelErrorContext.class);
         verify(listener).onRequest(any());
         verify(listener).onError(errorContext.capture());
         verify(listener, never()).onResponse(any());
         assertThat(errorContext.getValue().error()).isSameAs(failure);
+    }
+
+    @Test
+    void chatAsync_returns_a_failed_future_and_notifies_listeners_once_when_doChatAsync_throws_an_error() {
+        ChatModelListener listener = mock(ChatModelListener.class);
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin").withListeners(listener));
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(model).doChatAsync(any());
+
+        CompletableFuture<ChatResponse> future =
+                model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        ArgumentCaptor<ChatModelErrorContext> errorContext = ArgumentCaptor.forClass(ChatModelErrorContext.class);
+        verify(listener).onRequest(any());
+        verify(listener).onError(errorContext.capture());
+        verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(error);
     }
 }

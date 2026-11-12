@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -115,18 +116,13 @@ public class LanguageModelQueryRouter implements QueryRouter {
         Prompt prompt;
         try {
             prompt = createPrompt(query);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<ChatResponse> chatFuture;
-        try {
-            chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
-            if (chatFuture == null) {
-                throw new IllegalStateException(chatModel.getClass().getName() + ".chatAsync(ChatRequest) returned null");
-            }
-        } catch (Exception e) {
-            chatFuture = CompletableFuture.failedFuture(e); // handled below like a failed call
-        }
+        CompletableFuture<ChatResponse> chatFuture = failOnThrow(
+                chatModel,
+                "chatAsync(ChatRequest)",
+                () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
         CompletableFuture<Collection<ContentRetriever>> result = chatFuture
                 .thenApply(response -> parse(response.aiMessage().text()))
                 // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the

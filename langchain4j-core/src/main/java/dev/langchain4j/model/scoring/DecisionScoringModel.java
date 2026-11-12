@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -125,28 +126,24 @@ public class DecisionScoringModel implements ScoringModel {
 
     @Override
     public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
-        List<String> documents;
-        String query;
-        DecisionRequestParameters parameters;
-        try {
-            documents = ensureNotNull(request.documents(), "documents");
-            query = ensureNotBlank(request.query(), "query");
-            parameters = DecisionRequestParameters.builder()
-                    .modelName(request.parameters().modelName())
-                    .build();
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return failOnThrow(() -> scoreInBatchesAsync(
+                ensureNotNull(request.documents(), "documents"),
+                ensureNotBlank(request.query(), "query"),
+                request));
+    }
+
+    private CompletableFuture<ScoringResponse> scoreInBatchesAsync(
+            List<String> documents, String query, ScoringRequest request) {
+        DecisionRequestParameters parameters = DecisionRequestParameters.builder()
+                .modelName(request.parameters().modelName())
+                .build();
         List<List<String>> batches = batches(documents);
         List<CompletableFuture<DecisionResponse>> responses = new ArrayList<>(batches.size());
         for (List<String> batch : batches) {
-            CompletableFuture<DecisionResponse> response;
-            try {
-                response = decisionModel.decideAsync(toRequest(batch, query, parameters));
-            } catch (RuntimeException e) {
-                response = CompletableFuture.failedFuture(e);
-            }
-            responses.add(response);
+            responses.add(failOnThrow(
+                    decisionModel,
+                    "decideAsync(DecisionRequest)",
+                    () -> decisionModel.decideAsync(toRequest(batch, query, parameters))));
         }
         CompletableFuture<ScoringResponse> result = new CompletableFuture<>();
         responses.forEach(response -> response.whenComplete((ignored, error) -> {

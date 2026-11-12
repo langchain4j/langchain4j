@@ -1,5 +1,6 @@
 package dev.langchain4j.model.typesafe;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -99,13 +100,15 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        TypeSafeRequest typeSafeRequest = TypeSafeMapper.toTypeSafeRequest(request);
-        CompletableFuture<TypeSafeResponse> responseFuture =
-                withRetryMappingExceptionsAsync(() -> client.decideAsync(typeSafeRequest), maxRetries);
-        CompletableFuture<DecisionResponse> result =
-                responseFuture.thenApply(response -> TypeSafeMapper.toDecisionResponse(response, request));
-        propagateCancellation(result, responseFuture);
-        return result;
+        return failOnThrow(() -> {
+            TypeSafeRequest typeSafeRequest = TypeSafeMapper.toTypeSafeRequest(request);
+            CompletableFuture<TypeSafeResponse> responseFuture =
+                    withRetryMappingExceptionsAsync(() -> client.decideAsync(typeSafeRequest), maxRetries);
+            CompletableFuture<DecisionResponse> result =
+                    responseFuture.thenApply(response -> TypeSafeMapper.toDecisionResponse(response, request));
+            propagateCancellation(result, responseFuture);
+            return result;
+        });
     }
 
     @Override

@@ -20,6 +20,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -174,20 +175,12 @@ public interface ScoringModel {
             provider = provider();
             attributes = new ConcurrentHashMap<>();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
 
-        CompletableFuture<ScoringResponse> source;
-        try {
-            source = doScoreAsync(finalRequest);
-            if (source == null) {
-                throw new IllegalStateException(getClass().getName() + ".doScoreAsync(ScoringRequest) returned null");
-            }
-        } catch (Exception error) {
-            onError(error, finalRequest, provider, attributes, invocationId, listeners);
-            return CompletableFuture.failedFuture(error);
-        }
+        CompletableFuture<ScoringResponse> source =
+                failOnThrow(this, "doScoreAsync(ScoringRequest)", () -> doScoreAsync(finalRequest));
         if (isNullOrEmpty(listeners)) {
             return source;
         }
@@ -212,9 +205,13 @@ public interface ScoringModel {
      * A model backed by remote HTTP I/O opts in by overriding this with a genuinely async call (no thread parked),
      * and should abort its in-flight call when the returned future is cancelled (best-effort). A model that has not
      * opted in fails loudly on the async path rather than silently blocking a carrier thread.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the (already defaults-applied) request to score.
-     * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
+     * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}, never
+     * {@code null}.
      * @since 1.20.0
      */
     @Experimental

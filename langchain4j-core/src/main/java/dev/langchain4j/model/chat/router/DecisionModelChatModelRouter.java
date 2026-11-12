@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -159,18 +160,14 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
                 return CompletableFuture.completedFuture(ChatModelRoutingResult.route(request.routes().get(0).name()));
             }
             decisionRequest = toDecisionRequest(request);
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             return CompletableFuture.failedFuture(e);
         }
         if (decisionRequest == null) {
             return CompletableFuture.completedFuture(ChatModelRoutingResult.defaultRoute());
         }
-        CompletableFuture<DecisionResponse> source;
-        try {
-            source = decisionModel.decideAsync(decisionRequest);
-        } catch (RuntimeException e) {
-            source = CompletableFuture.failedFuture(e);
-        }
+        CompletableFuture<DecisionResponse> source = failOnThrow(
+                decisionModel, "decideAsync(DecisionRequest)", () -> decisionModel.decideAsync(decisionRequest));
         CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
             if (error == null) {
                 return selectOrFallBack(response, request);

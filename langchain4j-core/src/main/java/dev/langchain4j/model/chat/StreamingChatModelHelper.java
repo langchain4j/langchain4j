@@ -84,7 +84,7 @@ public final class StreamingChatModelHelper {
         };
         try {
             streamingChatModel.chat(request).subscribe(subscriber);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             future.completeExceptionally(e);
         }
         return future;

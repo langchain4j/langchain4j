@@ -1,6 +1,7 @@
 package dev.langchain4j.model.decision;
 
 import dev.langchain4j.internal.ObservabilityListeners;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -106,21 +107,12 @@ public interface DecisionModel {
             attributes = new ConcurrentHashMap<>();
             invocationId = CurrentInvocation.invocationId();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
 
-        CompletableFuture<DecisionResponse> source;
-        try {
-            source = doDecideAsync(finalRequest);
-            if (source == null) {
-                throw new IllegalStateException(
-                        getClass().getName() + ".doDecideAsync(DecisionRequest) returned null");
-            }
-        } catch (Exception error) {
-            onError(error, finalRequest, provider, attributes, invocationId, listeners);
-            return CompletableFuture.failedFuture(error);
-        }
+        CompletableFuture<DecisionResponse> source =
+                failOnThrow(this, "doDecideAsync(DecisionRequest)", () -> doDecideAsync(finalRequest));
 
         CompletableFuture<DecisionResponse> validated =
                 source.thenApply(response -> DecisionResponseValidator.validate(finalRequest, response));
@@ -142,9 +134,12 @@ public interface DecisionModel {
     /**
      * The provider hook behind {@link #decideAsync(DecisionRequest)}. The default returns a failed future: a model
      * that is not genuinely asynchronous does not pretend to be.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the request, with the default parameters already applied.
-     * @return a {@link CompletableFuture} of the answers, keyed by question name.
+     * @return a {@link CompletableFuture} of the answers, keyed by question name, never {@code null}.
      */
     default CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "doDecideAsync");

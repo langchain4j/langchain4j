@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -109,11 +110,7 @@ public interface ChatExecutor {
      */
     @Experimental
     default CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
-        try {
-            return ChatExchanges.exchangeAsync(null, executeAsync(chatMessages));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return failOnThrow(() -> ChatExchanges.exchangeAsync(null, executeAsync(chatMessages)));
     }
 
     /**

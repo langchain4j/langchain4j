@@ -1,5 +1,7 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 
@@ -68,11 +70,7 @@ public class DefaultContentAggregator implements ContentAggregator {
     public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
         // Reciprocal-rank fusion is CPU-only, no I/O: complete synchronously so the async RAG flow treats this
         // stage as non-blocking.
-        try {
-            return CompletableFuture.completedFuture(aggregate(queryToContents));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return failOnThrow(() -> CompletableFuture.completedFuture(aggregate(queryToContents)));
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

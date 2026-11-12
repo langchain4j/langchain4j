@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -101,13 +102,10 @@ public class RoutingChatModel implements ChatModel {
     @Override
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
         UUID invocationId = CurrentInvocation.invocationId(options);
-        CompletableFuture<String> route;
-        try {
+        CompletableFuture<String> route = failOnThrow(() -> {
             ensureNotNull(chatRequest, "chatRequest");
-            route = CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.selectAsync(chatRequest, options));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+            return CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.selectAsync(chatRequest, options));
+        });
         CompletableFuture<ChatResponse> result = new CompletableFuture<>();
         propagateCancellation(result, route);
         route.whenComplete((routeName, routingError) -> {
@@ -115,20 +113,15 @@ public class RoutingChatModel implements ChatModel {
                 result.completeExceptionally(unwrapCompletionException(routingError));
                 return;
             }
-            CompletableFuture<ChatResponse> response;
-            try {
+            CompletableFuture<ChatResponse> response = failOnThrow(() -> {
                 ChatModel model = selector.model(routeName);
-                response = CurrentInvocation.callWithIdOrWithout(
-                        invocationId,
-                        () -> model.chatAsync(chatRequest, RouteSelector.withRoute(options, routeName, invocationId)));
-                if (response == null) {
-                    throw new IllegalStateException(
-                            model.getClass().getName() + ".chatAsync(ChatRequest, ChatRequestOptions) returned null");
-                }
-            } catch (Exception e) {
-                result.completeExceptionally(e);
-                return;
-            }
+                ChatRequestOptions routeOptions = RouteSelector.withRoute(options, routeName, invocationId);
+                return failOnThrow(
+                        model,
+                        "chatAsync(ChatRequest, ChatRequestOptions)",
+                        () -> CurrentInvocation.callWithIdOrWithout(
+                                invocationId, () -> model.chatAsync(chatRequest, routeOptions)));
+            });
             propagateCancellation(result, response);
             response.whenComplete((chatResponse, error) -> {
                 if (error != null) {
@@ -143,7 +136,10 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
+        return failOnThrow(
+                this,
+                "chatAsync(ChatRequest, ChatRequestOptions)",
+                () -> chatAsync(chatRequest, ChatRequestOptions.EMPTY));
     }
 
     @Override

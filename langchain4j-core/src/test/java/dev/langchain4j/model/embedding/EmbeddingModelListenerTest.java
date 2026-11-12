@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -426,5 +427,28 @@ class EmbeddingModelListenerTest {
         assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);
         assertThat(wrapper.modelName()).isEqualTo("multimodal-model");
         assertThat(wrapper.dimension()).isEqualTo(42);
+    }
+
+    @Test
+    void embedAsync_should_return_failed_future_and_notify_listeners_once_when_doEmbedAsync_throws_an_error() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(error);
+        ArgumentCaptor<EmbeddingModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(EmbeddingModelErrorContext.class);
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).onRequest(any());
+        inOrder.verify(listener).onError(errorContext.capture());
+        verifyNoMoreInteractions(listener);
+        assertThat(errorContext.getValue().error()).isSameAs(error);
     }
 }

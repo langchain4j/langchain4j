@@ -1,5 +1,6 @@
 package dev.langchain4j.model.decision;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -430,12 +431,41 @@ class DecisionModelTest {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageContaining("doDecideAsync(DecisionRequest) returned null");
-        Throwable failure = future.handle((response, error) -> error).join();
+        Throwable failure = unwrapCompletionException(future.handle((response, error) -> error).join());
         ArgumentCaptor<DecisionModelErrorContext> errorContext =
                 ArgumentCaptor.forClass(DecisionModelErrorContext.class);
         verify(listener).onRequest(any());
         verify(listener).onError(errorContext.capture());
         verify(listener, never()).onResponse(any());
         assertThat(errorContext.getValue().error()).isSameAs(failure);
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_and_notify_listeners_once_when_doDecideAsync_throws_an_error() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        DecisionModel model = DecisionModelMock.thatAlwaysAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withAsyncResponse(request -> {
+                    throw error;
+                })
+                .withListeners(listener);
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        ArgumentCaptor<DecisionModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(DecisionModelErrorContext.class);
+        verify(listener).onRequest(any());
+        verify(listener).onError(errorContext.capture());
+        verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(error);
     }
 }

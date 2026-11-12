@@ -208,7 +208,7 @@ public interface StreamingChatModel {
 
             provider = provider();
             invocationId = CurrentInvocation.invocationId();
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return failedPublisher(error);
         }
 
@@ -329,7 +329,7 @@ public interface StreamingChatModel {
         ChatRequest chatRequest;
         try {
             chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return failedPublisher(error);
         }
 
@@ -376,7 +376,7 @@ public interface StreamingChatModel {
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
         try {
             return chat(ChatRequest.builder().messages(messages).build());
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return failedPublisher(error);
         }
     }
@@ -393,7 +393,7 @@ public interface StreamingChatModel {
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
         try {
             return chat(ChatRequest.builder().messages(messages).build());
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return failedPublisher(error);
         }
     }

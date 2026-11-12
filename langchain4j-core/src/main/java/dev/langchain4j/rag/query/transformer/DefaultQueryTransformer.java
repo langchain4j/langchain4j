@@ -5,6 +5,7 @@ import dev.langchain4j.rag.query.Query;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static java.util.Collections.singletonList;
 
 /**
@@ -32,10 +33,6 @@ public class DefaultQueryTransformer implements QueryTransformer {
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
         // Pass-through, no I/O: complete synchronously so the async RAG flow treats this stage as non-blocking.
-        try {
-            return CompletableFuture.completedFuture(transform(query));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return failOnThrow(() -> CompletableFuture.completedFuture(transform(query)));
     }
 }

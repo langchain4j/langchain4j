@@ -3,6 +3,7 @@ package dev.langchain4j.model.embedding;
 import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -137,12 +138,12 @@ public interface EmbeddingModel {
         try {
             finalRequest = validatedRequest(request);
             listeners = ObservabilityListeners.embedding(listeners());
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
 
         if (isNullOrEmpty(listeners)) {
-            return invokeDoEmbedAsync(finalRequest);
+            return failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
         }
 
         List<TextSegment> textSegments;
@@ -150,7 +151,7 @@ public interface EmbeddingModel {
             textSegments = finalRequest.inputs().stream()
                     .map(input -> TextSegment.from(input.text()))
                     .toList();
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
@@ -166,7 +167,8 @@ public interface EmbeddingModel {
                         .build(),
                 listeners);
 
-        CompletableFuture<EmbeddingResponse> inFlight = invokeDoEmbedAsync(finalRequest);
+        CompletableFuture<EmbeddingResponse> inFlight =
+                failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
         CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
@@ -203,20 +205,6 @@ public interface EmbeddingModel {
         // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
         propagateCancellation(result, inFlight);
         return result;
-    }
-
-    private CompletableFuture<EmbeddingResponse> invokeDoEmbedAsync(EmbeddingRequest finalRequest) {
-        // A provider's doEmbedAsync should return a failed future on error, but guard a synchronous throw so the
-        // async contract holds regardless.
-        try {
-            CompletableFuture<EmbeddingResponse> future = doEmbedAsync(finalRequest);
-            if (future == null) {
-                throw new IllegalStateException(getClass().getName() + ".doEmbedAsync(EmbeddingRequest) returned null");
-            }
-            return future;
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
     }
 
     private EmbeddingRequest validatedRequest(EmbeddingRequest request) {
@@ -320,9 +308,12 @@ public interface EmbeddingModel {
      * ({@code offloadBlocking(true)}), in which case {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads
      * its blocking {@link #embed(EmbeddingRequest)} for it; otherwise the returned future fails rather than a
      * thread being silently blocked.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the request, with parameters already merged and validated.
-     * @return a {@link CompletableFuture} of the response.
+     * @return a {@link CompletableFuture} of the response, never {@code null}.
      * @since 1.20.0
      */
     @Experimental

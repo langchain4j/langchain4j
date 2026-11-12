@@ -3,6 +3,7 @@ package dev.langchain4j.rag.query.transformer;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -84,17 +86,18 @@ public class ExpandingQueryTransformer implements QueryTransformer {
 
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        try {
+        return failOnThrow(() -> {
             Prompt prompt = createPrompt(query);
-            var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+            CompletableFuture<ChatResponse> chatFuture = failOnThrow(
+                    chatModel,
+                    "chatAsync(ChatRequest)",
+                    () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
             CompletableFuture<Collection<Query>> result =
                     chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
             // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
             propagateCancellation(result, chatFuture);
             return result;
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     private Collection<Query> toQueries(Query query, String response) {

@@ -5,6 +5,7 @@ import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -145,20 +146,12 @@ public interface ChatModel {
             invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
             onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
-        } catch (Exception error) {
+        } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
 
-        CompletableFuture<ChatResponse> source;
-        try {
-            source = doChatAsync(finalChatRequest);
-            if (source == null) {
-                throw new IllegalStateException(getClass().getName() + ".doChatAsync(ChatRequest) returned null");
-            }
-        } catch (Exception error) {
-            onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
-            return CompletableFuture.failedFuture(error);
-        }
+        CompletableFuture<ChatResponse> source =
+                failOnThrow(this, "doChatAsync(ChatRequest)", () -> doChatAsync(finalChatRequest));
 
         CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
             if (error != null) {
@@ -182,9 +175,12 @@ public interface ChatModel {
      * implementation. Callers on the asynchronous and reactive path (for example the non-blocking RAG stages) detect
      * this and either offload the blocking {@link #doChat(ChatRequest)} or fail loudly with an actionable message.
      * A model backed by remote HTTP I/O overrides this with a genuinely asynchronous call (no thread parked).
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
-     * @return a {@link CompletableFuture} of the {@link ChatResponse}
+     * @return a {@link CompletableFuture} of the {@link ChatResponse}, never {@code null}
      * @since 1.20.0
      */
     @Experimental
@@ -237,17 +233,11 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<String> chatAsync(String userMessage) {
-        try {
-            ChatRequest chatRequest =
-                    ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
-
-            CompletableFuture<ChatResponse> response = chatAsync(chatRequest);
-            CompletableFuture<String> text = response.thenApply(chatResponse -> chatResponse.aiMessage().text());
-            propagateCancellation(text, response);
-            return text;
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
+        CompletableFuture<ChatResponse> response = failOnThrow(this, "chatAsync(ChatRequest)", () -> chatAsync(
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build()));
+        CompletableFuture<String> text = response.thenApply(chatResponse -> chatResponse.aiMessage().text());
+        propagateCancellation(text, response);
+        return text;
     }
 
     /**
@@ -258,13 +248,8 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
-        try {
-            ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-            return chatAsync(chatRequest);
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
+        return failOnThrow(this, "chatAsync(ChatRequest)", () -> chatAsync(
+                ChatRequest.builder().messages(messages).build()));
     }
 
     /**
@@ -275,13 +260,8 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {
-        try {
-            ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-            return chatAsync(chatRequest);
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
+        return failOnThrow(this, "chatAsync(ChatRequest)", () -> chatAsync(
+                ChatRequest.builder().messages(messages).build()));
     }
 
     default Set<Capability> supportedCapabilities() {
