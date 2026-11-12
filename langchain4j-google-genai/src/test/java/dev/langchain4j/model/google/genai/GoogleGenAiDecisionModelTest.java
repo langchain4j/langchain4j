@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
-import com.google.genai.types.Model;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -38,6 +37,7 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelDescription;
@@ -58,7 +58,6 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -73,7 +72,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -84,6 +86,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiDecisionModelTest {
 
@@ -207,6 +210,7 @@ class GoogleGenAiDecisionModelTest {
                     exchange.getRequestURI().toString(),
                     exchange.getRequestHeaders().getFirst("x-goog-api-key"),
                     exchange.getRequestHeaders().getFirst("User-Agent"),
+                    exchange.getRequestHeaders().getFirst("X-Server-Timeout"),
                     body));
             stub = queuedResponses.isEmpty()
                     ? new StubResponse(500, "application/json", "{\"error\":{\"message\":\"No stubbed response\"}}")
@@ -256,6 +260,59 @@ class GoogleGenAiDecisionModelTest {
                 .hasMessageContaining("OtherModelParameters")
                 .hasMessageContaining("GoogleGenAiDecisionRequestParameters");
         assertThat(model.decideAsync(request))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(recordedRequests).isEmpty();
+    }
+
+    @Test
+    void should_send_custom_parameters_of_the_builder_and_replace_them_per_request() throws Exception {
+        GoogleGenAiDecisionModel model = GoogleGenAiDecisionModel.builder()
+                .apiKey("test-key")
+                .apiEndpoint(baseUrl)
+                .modelName(MODEL_NAME)
+                .customParameters(Map.of("default_parameter", "default", "shared", 1))
+                .maxRetries(0)
+                .build();
+
+        enqueueJson(VALID_RESPONSE);
+        model.decide(SAMPLE_REQUEST);
+        enqueueJson(VALID_RESPONSE);
+        model.decideAsync(SAMPLE_REQUEST).get(5, TimeUnit.SECONDS);
+        enqueueJson(VALID_RESPONSE);
+        model.decide(SAMPLE_REQUEST.toBuilder()
+                .parameters(GoogleGenAiDecisionRequestParameters.builder()
+                        .customParameters(Map.of("request_parameter", List.of("a", "b")))
+                        .build())
+                .build());
+
+        for (int i = 0; i < 2; i++) {
+            JsonNode body = OBJECT_MAPPER.readTree(recordedRequests.get(i).body());
+            assertThat(body.get("default_parameter").asText()).isEqualTo("default");
+            assertThat(body.get("shared").asInt()).isEqualTo(1);
+            assertThat(body.get("model").asText()).isEqualTo(MODEL_NAME);
+            assertThat(body.get("questions").has("q0")).isTrue();
+        }
+        JsonNode replaced = OBJECT_MAPPER.readTree(recordedRequests.get(2).body());
+        assertThat(replaced.has("default_parameter")).isFalse();
+        assertThat(replaced.get("request_parameter")).isEqualTo(OBJECT_MAPPER.readTree("[\"a\", \"b\"]"));
+        assertThat(replaced.get("model").asText()).isEqualTo(MODEL_NAME);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"model", "input", "questions"})
+    void should_reject_custom_parameters_that_the_model_sets_without_calling_the_api(String name) {
+        DecisionRequest request = SAMPLE_REQUEST.toBuilder()
+                .parameters(GoogleGenAiDecisionRequestParameters.builder()
+                        .customParameters(Map.of(name, "x"))
+                        .build())
+                .build();
+
+        assertThatThrownBy(() -> model().decide(request))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'" + name + "'");
+        assertThat(model().decideAsync(request))
                 .failsWithin(Duration.ZERO)
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseExactlyInstanceOf(IllegalArgumentException.class);
@@ -343,10 +400,7 @@ class GoogleGenAiDecisionModelTest {
         assertThat(usage.inputTokenCount()).isEqualTo(42);
         assertThat(usage.outputTokenCount()).isEqualTo(0);
         assertThat(usage.totalTokenCount()).isEqualTo(42);
-        assertThat(usage.cachedContentTokenCount()).isEqualTo(10);
-        assertThat(usage.thoughtsTokenCount()).isEqualTo(0);
-        assertThat(usage.toolUsePromptTokenCount()).isEqualTo(0);
-        assertThat(usage.initialPromptTokenCount()).isEqualTo(42);
+        assertThat(usage.cachedContentTokenCount()).isNull();
     }
 
     @Test
@@ -574,9 +628,10 @@ class GoogleGenAiDecisionModelTest {
         assertThat(input.get(2).get("data").asText()).isEqualTo("d2VicA==");
         assertThat(input.get(2).get("mime_type").asText()).isEqualTo("image/webp");
 
+        // a local file is not read: its URI goes to Gemini as it is
         assertThat(input.get(3).get("type").asText()).isEqualTo("image");
-        assertThat(input.get(3).get("data").asText())
-                .isEqualTo(Base64.getEncoder().encodeToString(jpgBytes));
+        assertThat(input.get(3).get("uri").asText()).isEqualTo(localImage.toUri().toString());
+        assertThat(input.get(3).has("data")).isFalse();
         assertThat(input.get(3).get("mime_type").asText()).isEqualTo("image/jpeg");
 
         assertThat(input.get(4).get("type").asText()).isEqualTo("image");
@@ -654,10 +709,18 @@ class GoogleGenAiDecisionModelTest {
         DecisionRequest request = DecisionRequest.builder()
                 .inputMessages(List.of(
                         SystemMessage.from("You are a support agent."),
-                        UserMessage.from(TextContent.from("Here is the box:"), ImageContent.from("YWJj", "image/png")),
+                        UserMessage.from(
+                                "alice",
+                                TextContent.from("Here is the box:"),
+                                ImageContent.from("YWJj", "image/png")),
                         AiMessage.builder().thinking("internal").build(),
                         AiMessage.from(toolCall),
-                        ToolExecutionResultMessage.from(toolCall, "{\"status\":\"delivered\"}"),
+                        ToolExecutionResultMessage.builder()
+                                .id("call_1")
+                                .toolName("getOrder")
+                                .text("{\"status\":\"delivered\"}")
+                                .isError(true)
+                                .build(),
                         AiMessage.from("Your order was delivered.")))
                 .question("ok", YesNoQuestion.from("Did the assistant check the order?"))
                 .build();
@@ -667,9 +730,27 @@ class GoogleGenAiDecisionModelTest {
         JsonNode input = OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("input");
         assertThat(input).hasSize(3);
         String transcriptPart = input.get(0).get("text").asText();
-        assertThat(transcriptPart).startsWith("messages: [").endsWith("\n");
-        assertThat(transcriptPart).contains("[image 1]");
+        assertThat(transcriptPart).startsWith("messages: ").endsWith("\n");
         assertThat(transcriptPart).doesNotContain("internal");
+        assertThat(OBJECT_MAPPER.readTree(transcriptPart.substring("messages: ".length())))
+                .isEqualTo(OBJECT_MAPPER.readTree("""
+                        [
+                          {"role": "system", "text": "You are a support agent."},
+                          {"role": "user", "name": "alice", "text": "Here is the box:\\n[image 1]"},
+                          {
+                            "role": "assistant",
+                            "tool_calls": [{"id": "call_1", "name": "getOrder", "arguments": "{\\"id\\":42}"}]
+                          },
+                          {
+                            "role": "tool",
+                            "tool_call_id": "call_1",
+                            "name": "getOrder",
+                            "text": "{\\"status\\":\\"delivered\\"}",
+                            "is_error": true
+                          },
+                          {"role": "assistant", "text": "Your order was delivered."}
+                        ]
+                        """));
         assertThat(input.get(1).get("text").asText()).isEqualTo("[image 1]:\n");
         assertThat(input.get(2).get("type").asText()).isEqualTo("image");
         assertThat(input.get(2).get("data").asText()).isEqualTo("YWJj");
@@ -784,13 +865,6 @@ class GoogleGenAiDecisionModelTest {
         assertThatThrownBy(() -> model.decide(missingDataAndUrl))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The image has neither base64 data nor a URL");
-
-        DecisionRequest missingMimeType = DecisionRequest.builder()
-                .inputContents(List.of(
-                        ImageContent.from(Image.builder().base64Data("YWJj").build())))
-                .question("q", YesNoQuestion.from("ok?"))
-                .build();
-        assertThatThrownBy(() -> model.decide(missingMimeType)).isInstanceOf(IllegalArgumentException.class);
 
         assertThat(recordedRequests).isEmpty();
     }
@@ -1102,6 +1176,73 @@ class GoogleGenAiDecisionModelTest {
     }
 
     @Test
+    void should_not_let_the_sdk_retry_or_wait() {
+        for (int i = 0; i < 3; i++) {
+            enqueueJson(503, "{\"error\":{\"message\":\"Temporarily unavailable\"}}");
+        }
+        long start = System.nanoTime();
+
+        for (int i = 0; i < 3; i++) {
+            assertThatThrownBy(() -> model().decide(SAMPLE_REQUEST)).isInstanceOf(InternalServerException.class);
+        }
+
+        assertThat(recordedRequests).hasSize(3);
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(1));
+    }
+
+    @Test
+    void should_limit_every_call_to_20_minutes_by_default_and_use_the_configured_timeout() {
+        enqueueJson(VALID_RESPONSE);
+        model().decide(SAMPLE_REQUEST);
+        enqueueJson(VALID_RESPONSE);
+        GoogleGenAiDecisionModel.builder()
+                .apiKey("test-key")
+                .apiEndpoint(baseUrl)
+                .modelName(MODEL_NAME)
+                .timeout(Duration.ofSeconds(30))
+                .maxRetries(0)
+                .build()
+                .decide(SAMPLE_REQUEST);
+
+        assertThat(recordedRequests.get(0).serverTimeout()).isEqualTo("1200");
+        assertThat(recordedRequests.get(1).serverTimeout()).isEqualTo("30");
+    }
+
+    @Test
+    void should_map_expired_timeout_to_timeout_exception() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        HttpServer slowServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        slowServer.setExecutor(Executors.newCachedThreadPool());
+        slowServer.createContext("/", exchange -> {
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.close();
+        });
+        slowServer.start();
+        try {
+            GoogleGenAiDecisionModel model = GoogleGenAiDecisionModel.builder()
+                    .apiKey("test-key")
+                    .apiEndpoint("http://127.0.0.1:" + slowServer.getAddress().getPort())
+                    .modelName(MODEL_NAME)
+                    .timeout(Duration.ofMillis(200))
+                    .maxRetries(0)
+                    .build();
+
+            assertThatThrownBy(() -> model.decide(SAMPLE_REQUEST)).isInstanceOf(TimeoutException.class);
+            assertThat(model.decideAsync(SAMPLE_REQUEST))
+                    .failsWithin(Duration.ofSeconds(5))
+                    .withThrowableOfType(ExecutionException.class)
+                    .withCauseInstanceOf(TimeoutException.class);
+        } finally {
+            release.countDown();
+            slowServer.stop(0);
+        }
+    }
+
+    @Test
     void should_retry_transient_server_error_and_decide_asynchronously_with_listeners() throws Exception {
         enqueueJson(503, "{\"error\":{\"message\":\"Temporarily unavailable\"}}");
         enqueueJson(VALID_RESPONSE);
@@ -1148,21 +1289,25 @@ class GoogleGenAiDecisionModelTest {
     }
 
     @Test
-    void should_map_create_decision_models_in_model_catalog() throws Exception {
-        GoogleGenAiModelCatalog catalog =
-                GoogleGenAiModelCatalog.builder().apiKey("test-key").build();
-        Method mapper = GoogleGenAiModelCatalog.class.getDeclaredMethod("mapToModelDescription", Model.class);
-        mapper.setAccessible(true);
-
-        Model decisionModelInfo = Model.builder()
-                .name("models/gemini-decision-1")
-                .displayName("Gemini Decision 1")
-                .inputTokenLimit(262144)
-                .outputTokenLimit(1)
-                .supportedActions(List.of("createDecision"))
+    void should_map_create_decision_models_in_model_catalog() {
+        enqueueJson("""
+                {"models": [{
+                  "name": "models/gemini-decision-1",
+                  "displayName": "Gemini Decision 1",
+                  "inputTokenLimit": 262144,
+                  "outputTokenLimit": 1,
+                  "supportedGenerationMethods": ["createDecision"]
+                }]}
+                """);
+        GoogleGenAiModelCatalog catalog = GoogleGenAiModelCatalog.builder()
+                .apiKey("test-key")
+                .apiEndpoint(baseUrl)
                 .build();
 
-        ModelDescription description = (ModelDescription) mapper.invoke(catalog, decisionModelInfo);
+        List<ModelDescription> models = catalog.listModels();
+
+        assertThat(models).hasSize(1);
+        ModelDescription description = models.get(0);
         assertThat(description.name()).isEqualTo(MODEL_NAME);
         assertThat(description.type()).isEqualTo(ModelType.OTHER);
         assertThat(description.maxInputTokens()).isEqualTo(262144);
@@ -1170,7 +1315,8 @@ class GoogleGenAiDecisionModelTest {
 
     private record StubResponse(int statusCode, String contentType, String body) {}
 
-    private record RecordedRequest(String method, String path, String apiKey, String userAgent, String body) {}
+    private record RecordedRequest(
+            String method, String path, String apiKey, String userAgent, String serverTimeout, String body) {}
 
     private static class OtherModelParameters extends DefaultDecisionRequestParameters {
         OtherModelParameters() {

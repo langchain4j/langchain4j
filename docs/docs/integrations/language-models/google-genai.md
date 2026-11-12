@@ -72,6 +72,40 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .build();
 ```
 
+### API version
+
+The clients that LangChain4j builds call version `v1beta` of the Gemini Developer API. To call another version, set
+`apiVersion(...)` on the builder, or the `GOOGLE_GENAI_API_VERSION` environment variable:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .apiVersion("v1")
+    .build();
+```
+
+Some features, such as speech generation and explicit context caching, and model aliases such as `gemini-flash-latest`,
+are available on `v1beta` only.
+
+### Using your own `Client`
+
+Every builder of this module also takes a preconfigured `com.google.genai.Client` with `.client(...)`. The API version
+is then the one of your client, and the Google GenAI SDK uses `v1` by default on the Gemini Developer API. To use the
+features that are available on `v1beta` only, set the API version on your client:
+
+```java
+Client client = Client.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .httpOptions(HttpOptions.builder().apiVersion("v1beta").build())
+    .build();
+
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .client(client)
+    .modelName("gemini-2.5-flash")
+    .build();
+```
+
 ## Models available
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.

@@ -10,7 +10,6 @@ import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toBlo
 import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toCreateDecisionRequest;
 import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toDecisionResponse;
 
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.gaos.models.decisions.CreateDecisionRequest;
 import com.google.genai.gaos.models.decisions.CreateDecisionResponse;
@@ -29,7 +28,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import java.time.Duration;
@@ -38,13 +36,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * A {@link DecisionModel} backed by the <a href="https://aistudio.google.com/docs/decisions-api">Gemini Decisions
  * API</a> (such as {@code gemini-decision-1}), using the official Google GenAI Java SDK. It answers yes/no, choice and
- * scale questions about a shared input in a single call, with calibrated probabilities.
+ * scale questions about a shared input in a single call, with calibrated probabilities. The Gemini Decisions API is
+ * available on the Gemini Developer API only, not on Vertex AI.
  * <pre>{@code
  * DecisionModel model = GoogleGenAiDecisionModel.builder()
  *         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
@@ -77,9 +77,12 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleGenAiDecisionModel.class);
     private static final String GEMINI_API_DECISIONS_VERSION = "v1beta";
+    // with attempts(1) alone, the SDK still sleeps up to 2 s after a 408, 429 or 5xx response
+    private static final HttpRetryOptions NO_SDK_RETRIES =
+            HttpRetryOptions.builder().attempts(1).httpStatusCodes(List.of()).build();
 
     private final Client client;
-    private final String apiVersion;
+    private final @Nullable String apiVersion;
     private final GoogleGenAiDecisionRequestParameters defaultRequestParameters;
     private final int maxRetries;
     private final boolean logRequests;
@@ -91,21 +94,20 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
                 ? builder.client
                 : GoogleGenAiClientFactory.createClient(
                         builder.apiKey,
-                        builder.googleCredentials,
-                        builder.projectId,
-                        builder.location,
-                        builder.timeout,
+                        null,
+                        null,
+                        null,
+                        getOrDefault(builder.timeout, GoogleGenAiClientFactory.DEFAULT_TIMEOUT),
                         builder.customHeaders,
                         builder.apiEndpoint,
-                        HttpRetryOptions.builder().attempts(1).build());
+                        null,
+                        NO_SDK_RETRIES);
         this.apiVersion =
                 getOrDefault(builder.apiVersion, this.client.vertexAI() ? null : GEMINI_API_DECISIONS_VERSION);
 
-        DecisionRequestParameters commonParameters =
-                getOrDefault(builder.defaultRequestParameters, () -> DecisionRequestParameters.EMPTY);
         this.defaultRequestParameters = GoogleGenAiDecisionRequestParameters.builder()
-                .overrideWith(commonParameters)
-                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .modelName(builder.modelName)
+                .customParameters(builder.customParameters)
                 .build();
 
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -168,10 +170,9 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
     }
 
     private CompletableFuture<CreateDecisionResponse> decideAsync(CreateDecisionRequest createRequest) {
-        CompletableFuture<CreateDecisionResponse> responseFuture = client.async
-                .decisions
-                .create(apiVersion, createRequest, null)
-                .thenApply(op -> unwrapResponse(op.createDecisionResponse()));
+        var sdkFuture = client.async.decisions.create(apiVersion, createRequest, null);
+        CompletableFuture<CreateDecisionResponse> responseFuture =
+                sdkFuture.thenApply(op -> unwrapResponse(op.createDecisionResponse()));
         CompletableFuture<CreateDecisionResponse> result = responseFuture.exceptionally(error -> {
             if (unwrapCompletionException(error) instanceof GaosApiException gaosError) {
                 CreateDecisionResponse blockedResponse = toBlockedResponse(gaosError);
@@ -183,7 +184,7 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
                     ? completionException
                     : new CompletionException(error);
         });
-        propagateCancellation(result, responseFuture);
+        propagateCancellation(result, sdkFuture);
         return result;
     }
 
@@ -213,74 +214,74 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
 
     public static class Builder {
 
-        private Client client;
-        private String apiKey;
-        private GoogleCredentials googleCredentials;
-        private String projectId;
-        private String location;
-        private String apiEndpoint;
-        private String apiVersion;
-        private Duration timeout;
-        private Map<String, String> customHeaders;
-        private String modelName;
-        private DecisionRequestParameters defaultRequestParameters;
-        private Integer maxRetries;
-        private Boolean logRequests;
-        private Boolean logResponses;
-        private List<DecisionModelListener> listeners;
+        private @Nullable Client client;
+        private @Nullable String apiKey;
+        private @Nullable String apiEndpoint;
+        private @Nullable String apiVersion;
+        private @Nullable Duration timeout;
+        private @Nullable Map<String, String> customHeaders;
+        private @Nullable String modelName;
+        private @Nullable Map<String, Object> customParameters;
+        private @Nullable Integer maxRetries;
+        private @Nullable Boolean logRequests;
+        private @Nullable Boolean logResponses;
+        private @Nullable List<DecisionModelListener> listeners;
 
         /**
-         * Sets a preconfigured Google Gen AI {@link Client}. Other client settings ({@code apiKey},
-         * {@code googleCredentials}, {@code projectId}, {@code location}, {@code timeout}, {@code customHeaders},
-         * {@code apiEndpoint}) are then ignored. Note that the SDK client's own {@link HttpRetryOptions} run in
-         * addition to {@link #maxRetries(Integer)}: set {@code HttpRetryOptions.builder().attempts(1).build()} on the
-         * client (or {@code maxRetries(0)} here) to avoid stacking retries.
+         * Sets a preconfigured Google Gen AI {@link Client}. The other client settings of this builder
+         * ({@code apiKey}, {@code timeout}, {@code customHeaders} and {@code apiEndpoint}) are then ignored. The
+         * SDK client's own {@link HttpRetryOptions} run in addition to {@link #maxRetries(Integer)}: set
+         * {@code HttpRetryOptions.builder().attempts(1).httpStatusCodes(List.of()).build()} on the client (or
+         * {@code maxRetries(0)} here) to avoid stacking retries. When not set ({@code null}), a client is created
+         * from the settings of this builder.
          */
-        public Builder client(Client client) {
+        public Builder client(@Nullable Client client) {
             this.client = client;
             return this;
         }
 
-        public Builder apiKey(String apiKey) {
+        /**
+         * The Gemini API key. When not set ({@code null}), the Google Gen AI SDK reads it from the
+         * {@code GOOGLE_API_KEY} or {@code GEMINI_API_KEY} environment variable.
+         */
+        public Builder apiKey(@Nullable String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
-        public Builder googleCredentials(GoogleCredentials googleCredentials) {
-            this.googleCredentials = googleCredentials;
-            return this;
-        }
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder location(String location) {
-            this.location = location;
-            return this;
-        }
-
-        public Builder apiEndpoint(String apiEndpoint) {
+        /**
+         * Overrides the base URL of the API, for example to go through a proxy. When not set ({@code null}), the
+         * SDK's default endpoint is used.
+         */
+        public Builder apiEndpoint(@Nullable String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
             return this;
         }
 
         /**
-         * Overrides the API version segment used when routing requests (defaults to {@code v1beta} on the Gemini
-         * Developer API, and to the SDK's Vertex AI routing when using Vertex AI).
+         * The version of the Gemini Developer API to call, for example when the Decisions API moves to a newer
+         * version. It replaces the API version of a {@link #client(Client)}. When not set ({@code null}),
+         * {@code v1beta} is used.
          */
-        public Builder apiVersion(String apiVersion) {
+        public Builder apiVersion(@Nullable String apiVersion) {
             this.apiVersion = apiVersion;
             return this;
         }
 
-        public Builder timeout(Duration timeout) {
+        /**
+         * The maximum duration of one call to the API: connecting, sending the input, waiting for Gemini and
+         * receiving the answer. Each retry gets the full timeout. When not set ({@code null}), 20 minutes.
+         */
+        public Builder timeout(@Nullable Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public Builder customHeaders(Map<String, String> customHeaders) {
+        /**
+         * HTTP headers added to every request. A {@code User-Agent} header is added to the SDK's own User-Agent.
+         * When not set ({@code null}), no custom headers are added.
+         */
+        public Builder customHeaders(@Nullable Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
@@ -289,13 +290,21 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
          * The model to use when a request does not specify one, for example {@code gemini-decision-1}. The model name
          * must be set either here or on each request.
          */
-        public Builder modelName(String modelName) {
+        public Builder modelName(@Nullable String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        public Builder defaultRequestParameters(DecisionRequestParameters defaultRequestParameters) {
-            this.defaultRequestParameters = defaultRequestParameters;
+        /**
+         * Custom parameters added to the body of every request, for example to use a feature of the Gemini Decisions
+         * API that this class does not support yet. {@code model}, {@code input} and {@code questions} are set by
+         * this class and cannot be custom parameters: the request is rejected with an
+         * {@link IllegalArgumentException} before anything is sent. They can be replaced for a single request with
+         * {@link GoogleGenAiDecisionRequestParameters.Builder#customParameters(Map)}. When not set ({@code null}),
+         * no custom parameters are added.
+         */
+        public Builder customParameters(@Nullable Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 
@@ -303,28 +312,41 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
          * The maximum number of retries for transient errors such as timeouts, rate limits and server errors.
          * Default value is 2.
          */
-        public Builder maxRetries(Integer maxRetries) {
+        public Builder maxRetries(@Nullable Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
+        /**
+         * Whether to log each request at INFO level. Default value is {@code false}.
+         */
+        public Builder logRequests(@Nullable Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
+        /**
+         * Whether to log each response at INFO level. Default value is {@code false}.
+         */
+        public Builder logResponses(@Nullable Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
-        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+        /**
+         * Sets both {@link #logRequests(Boolean)} and {@link #logResponses(Boolean)}.
+         */
+        public Builder logRequestsAndResponses(@Nullable Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
             return this;
         }
 
-        public Builder listeners(List<DecisionModelListener> listeners) {
+        /**
+         * The listeners notified of every request, response and error, for example for observability. When not set
+         * ({@code null}), there are none.
+         */
+        public Builder listeners(@Nullable List<DecisionModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }

@@ -10,8 +10,8 @@ sidebar_position: 5
 The Gemini Decisions API (`POST /v1beta/decisions`) evaluates yes/no, choice and scale questions against a shared
 text, structured, media or conversation input in a single call, returning calibrated probabilities.
 `GoogleGenAiDecisionModel` in `langchain4j-google-genai` implements the [`DecisionModel`](/tutorials/decision-models)
-API using the official Google Gen AI Java SDK (`com.google.genai:google-genai`), supporting both the Gemini Developer
-API and Vertex AI.
+API using the official Google Gen AI Java SDK (`com.google.genai:google-genai`). The Gemini Decisions API is available
+on the Gemini Developer API only, not on Vertex AI.
 
 :::note
 This integration is experimental and may change in future releases.
@@ -23,13 +23,13 @@ This integration is experimental and may change in future releases.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
-## Usage
+Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
 
-### Gemini Developer API
+## Usage
 
 ```java
 DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
@@ -54,25 +54,15 @@ response.choice("team").value();          // "billing"
 response.yesNo("urgent").probability();   // 0.93
 ```
 
-### Vertex AI
-
-To run against Vertex AI instead of the Gemini Developer API, configure `projectId` and `location` (and optionally
-`googleCredentials`, or rely on Application Default Credentials):
-
-```java
-DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
-        .projectId(System.getenv("GCP_PROJECT_ID"))
-        .location("us-central1")
-        .modelName("gemini-decision-1")
-        .build();
-```
-
 The model name must be set, either on the builder or on each request (with `GoogleGenAiDecisionRequestParameters` or
 `DecisionRequestParameters`). An unknown model fails with a `ModelNotFoundException`.
 
-You can also pass a preconfigured `com.google.genai.Client` with `.client(client)` (set `attempts(1)` on its
-`HttpRetryOptions` or `.maxRetries(0)` on the model builder to avoid stacking SDK and LangChain4j retries), or customize
-`timeout`, `maxRetries`, `customHeaders`, `apiEndpoint`, `apiVersion`, `logRequests`, `logResponses`, and `listeners`.
+You can also pass a preconfigured `com.google.genai.Client` with `.client(client)` (set
+`HttpRetryOptions.builder().attempts(1).httpStatusCodes(List.of())` on it, or `.maxRetries(0)` on the model builder,
+to avoid stacking SDK and LangChain4j retries), or customize
+`timeout`, `maxRetries`, `customHeaders`, `customParameters` (see [Custom parameters](#custom-parameters)),
+`apiEndpoint`, `apiVersion`, `logRequests`, `logResponses`, and `listeners`. By default, each call is limited to
+20 minutes (`timeout(...)`), and each retry gets the full timeout.
 Both `decide()` and `decideAsync()` are supported.
 
 ## Input
@@ -97,9 +87,11 @@ DecisionRequest request = DecisionRequest.builder()
 Images, audio, video and PDF files can be given as:
 - base64 data (or binary data on `Audio`);
 - a `data:` URL, such as `data:image/png;base64,...`;
-- a local `file:` URI;
-- a URL that Gemini reads itself (passed to Gemini without downloading): a publicly accessible `https` URL, the URI of
-  a file uploaded with `GoogleGenAiFiles` (Gemini Developer API), or a `gs://` URI (Vertex AI).
+- a URL that Gemini reads itself: a publicly accessible `https` URL, or the URI of a file uploaded with
+  `GoogleGenAiFiles`. LangChain4j does not download URLs or read local files: URLs are sent to Gemini as they are.
+
+YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with `GoogleGenAiFiles`, or give
+it as a public or signed `https` URL, or as base64 data.
 
 The MIME type is taken from the content, or guessed from the file extension of the URL when not set (`PdfFile` defaults
 to `application/pdf`). Set the MIME type explicitly when the URL has no file extension, such as Files API URIs.
@@ -164,7 +156,43 @@ if (response.isRefused("urgent")) {
 
 When the input was not blocked, `blockReason()` and `blockMessage()` return `null`.
 
+## Custom parameters
+
+To send a parameter that `GoogleGenAiDecisionModel` does not support yet, set it with `customParameters(...)`. It is
+added to the JSON body of every request:
+
+```java
+DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .modelName("gemini-decision-1")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `GoogleGenAiDecisionRequestParameters`. If not empty, they replace
+(are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input("Help! My payouts have been failing for 3 days.")
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+        .parameters(GoogleGenAiDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+`model`, `input` and `questions` are set by `GoogleGenAiDecisionModel` and cannot be custom parameters: such a request
+fails with an `IllegalArgumentException` before anything is sent.
+
 ## Token usage
 
-`response.tokenUsage()` returns a `GoogleGenAiTokenUsage`, exposing `inputTokenCount()`, `outputTokenCount()`,
-`totalTokenCount()`, and `cachedContentTokenCount()`.
+`response.tokenUsage()` is a `GoogleGenAiTokenUsage` with the input, output and total token counts reported by Gemini.
+Gemini counts input tokens only, so the output token count is 0. When Gemini rejects blocked input with an error (see
+[Blocked input](#blocked-input)), the response has no token usage.
+
+```java
+GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.tokenUsage();
+Integer inputTokens = tokenUsage.inputTokenCount();
+```

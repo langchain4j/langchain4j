@@ -27,4 +27,4 @@ Notes:
   sent as a JSON transcript (see [Conversations](/tutorials/decision-models#conversations)).
 - Images on Ollama need a model with vision, such as Clef.
 - Google Gen AI refuses either the whole input or nothing: when it blocks the input, every question is refused.
-- Every implementation reports token usage. Google Gen AI and OpenAI also report cached input tokens.
+- Every implementation reports token usage. OpenAI also reports cached input tokens.

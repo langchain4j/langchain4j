@@ -1,9 +1,9 @@
 package dev.langchain4j.model.google.genai;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.genai.gaos.models.decisions.Answer;
 import com.google.genai.gaos.models.decisions.BlockReason;
@@ -29,7 +29,6 @@ import com.google.genai.gaos.models.interactions.ImageContentMimeType;
 import com.google.genai.gaos.models.interactions.MediaResolution;
 import com.google.genai.gaos.models.interactions.Usage;
 import com.google.genai.gaos.models.interactions.VideoContentMimeType;
-import com.google.genai.gaos.utils.JSON;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -49,9 +48,7 @@ import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ContentsInput;
@@ -91,7 +88,7 @@ class GoogleGenAiDecisionMapper {
     private static final double PROBABILITY_TOLERANCE = 1e-6;
     private static final String PROVIDER_NAME = "The Gemini Decisions API";
     private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
-    private static final CustomMimeTypesFileTypeDetector MIME_TYPE_DETECTOR = new CustomMimeTypesFileTypeDetector();
+    private static final Set<String> FIELDS_SET_BY_THE_MODEL = Set.of("model", "input", "questions");
     private static final Set<ContentType> SUPPORTED_CONVERSATION_MEDIA =
             Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF);
     // Safety/policy error.code values returned with HTTP 400 by the Gemini Decisions API (POST /v1beta/decisions)
@@ -107,16 +104,58 @@ class GoogleGenAiDecisionMapper {
                     + "GoogleGenAiDecisionModel.builder().modelName(...) or on the request with "
                     + "DecisionRequestParameters.builder().modelName(...)");
         }
+        Map<String, Object> customParameters =
+                request.parameters() instanceof GoogleGenAiDecisionRequestParameters parameters
+                        ? parameters.customParameters()
+                        : Map.of();
+        for (String name : customParameters.keySet()) {
+            if (FIELDS_SET_BY_THE_MODEL.contains(name)) {
+                throw new IllegalArgumentException("'" + name + "' is set by GoogleGenAiDecisionModel and cannot be "
+                        + "a custom parameter");
+            }
+        }
         Map<String, com.google.genai.gaos.models.decisions.Question> questions = new LinkedHashMap<>();
         questionNamesByKey(request)
                 .forEach((key, name) ->
                         questions.put(key, toQuestion(request.questions().get(name))));
 
-        return CreateDecisionRequest.builder()
-                .model(request.modelName())
-                .input(toInput(request.input()))
-                .questions(questions)
-                .build();
+        Input input = toInput(request.input());
+        if (customParameters.isEmpty()) {
+            return CreateDecisionRequest.builder()
+                    .model(request.modelName())
+                    .input(input)
+                    .questions(questions)
+                    .build();
+        }
+        return new CreateDecisionRequestWithCustomParameters(input, request.modelName(), questions, customParameters);
+    }
+
+    /**
+     * The request of the SDK has no place for other fields, so the custom parameters are added by this subclass, which
+     * the SDK serializes as it is.
+     */
+    static class CreateDecisionRequestWithCustomParameters extends CreateDecisionRequest {
+
+        private final Map<String, Object> customParameters;
+
+        CreateDecisionRequestWithCustomParameters(
+                Input input,
+                String model,
+                Map<String, com.google.genai.gaos.models.decisions.Question> questions,
+                Map<String, Object> customParameters) {
+            super(input, model, questions);
+            this.customParameters = customParameters;
+        }
+
+        @JsonAnyGetter
+        public Map<String, Object> customParameters() {
+            return customParameters;
+        }
+
+        @Override
+        public String toString() {
+            return super.toString() + " customParameters=" + customParameters;
+        }
     }
 
     /**
@@ -378,18 +417,13 @@ class GoogleGenAiDecisionMapper {
             byte @Nullable [] binaryData,
             @Nullable String defaultMimeType) {
         if (!isNullOrBlank(base64Data)) {
-            String resolvedMime = !isNullOrBlank(mimeType) ? mimeType : defaultMimeType;
-            if (isNullOrBlank(resolvedMime)) {
-                throw new IllegalArgumentException("The MIME type of base64 " + type + " content must be set");
-            }
-            return new MediaData(base64Data, null, resolvedMime);
+            return new MediaData(base64Data, null, isNullOrBlank(mimeType) ? defaultMimeType : mimeType);
         }
         if (binaryData != null) {
-            String resolvedMime = !isNullOrBlank(mimeType) ? mimeType : defaultMimeType;
-            if (isNullOrBlank(resolvedMime)) {
-                throw new IllegalArgumentException("The MIME type of binary " + type + " content must be set");
-            }
-            return new MediaData(Base64.getEncoder().encodeToString(binaryData), null, resolvedMime);
+            return new MediaData(
+                    Base64.getEncoder().encodeToString(binaryData),
+                    null,
+                    isNullOrBlank(mimeType) ? defaultMimeType : mimeType);
         }
         if (url == null) {
             throw new IllegalArgumentException("The " + type + " has neither base64 data nor a URL");
@@ -403,17 +437,6 @@ class GoogleGenAiDecisionMapper {
             }
             String resolvedMime = !isNullOrBlank(mimeType) ? mimeType : matcher.group(1);
             return new MediaData(matcher.group(2), null, resolvedMime);
-        }
-        if ("file".equalsIgnoreCase(scheme)) {
-            byte[] bytes = Utils.readBytes(url.toString());
-            String resolvedMime = !isNullOrBlank(mimeType)
-                    ? mimeType
-                    : (defaultMimeType != null
-                            ? defaultMimeType
-                            : getOrDefault(
-                                    MIME_TYPE_DETECTOR.probeContentType(url),
-                                    () -> GoogleGenAiContentMapper.detectMimeType(url)));
-            return new MediaData(Base64.getEncoder().encodeToString(bytes), null, resolvedMime);
         }
         String resolvedMime = !isNullOrBlank(mimeType)
                 ? mimeType
@@ -491,31 +514,15 @@ class GoogleGenAiDecisionMapper {
             return null;
         }
         String body = error.bodyAsString().orElse(null);
-        if (isNullOrBlank(body)) {
+        if (isNullOrBlank(body)
+                || !(GoogleGenAiExceptionMapper.errorField(body, "code") instanceof String code)
+                || !BLOCK_CODES.contains(code)) {
             return null;
         }
-        JsonNode root;
-        try {
-            root = JSON.getMapper().readTree(body);
-        } catch (Exception e) {
-            return null;
-        }
-        if (root == null || !root.isObject()) {
-            return null;
-        }
-        JsonNode errorNode = root.get("error");
-        if (errorNode == null || !errorNode.isObject()) {
-            return null;
-        }
-        JsonNode codeNode = errorNode.get("code");
-        if (codeNode == null || !codeNode.isTextual() || !BLOCK_CODES.contains(codeNode.asText())) {
-            return null;
-        }
-        JsonNode messageNode = errorNode.get("message");
-        String message = messageNode != null && messageNode.isTextual() ? messageNode.asText() : null;
+        String message = GoogleGenAiExceptionMapper.errorField(body, "message") instanceof String text ? text : null;
         return CreateDecisionResponse.builder()
                 .promptFeedback(PromptFeedback.builder()
-                        .blockReason(BlockReason.of(codeNode.asText()))
+                        .blockReason(BlockReason.of(code))
                         .blockReasonMessage(message)
                         .build())
                 .build();
@@ -747,28 +754,10 @@ class GoogleGenAiDecisionMapper {
     }
 
     private static GoogleGenAiTokenUsage toTokenUsage(Usage usage) {
-        Integer inputTokens = usage.totalInputTokens().orElse(null);
-        Integer outputTokens = usage.totalOutputTokens().orElse(null);
-        Integer cachedTokens = usage.totalCachedTokens().orElse(null);
-        Integer thoughtTokens = usage.totalThoughtTokens().orElse(null);
-        Integer toolUseTokens = usage.totalToolUseTokens().orElse(null);
-        Integer totalTokens = usage.totalTokens().orElseGet(() -> {
-            if (inputTokens == null && outputTokens == null) {
-                return null;
-            }
-            return getOrDefault(inputTokens, 0)
-                    + getOrDefault(outputTokens, 0)
-                    + getOrDefault(thoughtTokens, 0)
-                    + getOrDefault(toolUseTokens, 0);
-        });
         return GoogleGenAiTokenUsage.builder()
-                .inputTokenCount(inputTokens)
-                .outputTokenCount(outputTokens)
-                .totalTokenCount(totalTokens)
-                .cachedContentTokenCount(cachedTokens)
-                .thoughtsTokenCount(thoughtTokens)
-                .toolUsePromptTokenCount(toolUseTokens)
-                .initialPromptTokenCount(usage.initialInputTokens().orElse(null))
+                .inputTokenCount(usage.totalInputTokens().orElse(null))
+                .outputTokenCount(usage.totalOutputTokens().orElse(null))
+                .totalTokenCount(usage.totalTokens().orElse(null))
                 .build();
     }
 }

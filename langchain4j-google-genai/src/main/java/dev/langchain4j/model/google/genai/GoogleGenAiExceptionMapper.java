@@ -3,10 +3,8 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.genai.errors.ApiException;
 import com.google.genai.gaos.models.errors.GaosApiException;
-import com.google.genai.gaos.utils.JSON;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.InternalServerException;
@@ -17,7 +15,11 @@ import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.Json;
+import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
+import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 @Internal
 class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
@@ -50,11 +52,17 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
         } else if (unwrapped.getCause() instanceof ApiException apiException) {
             return mapHttpStatusCode(apiException, apiException.code());
         }
-        if (unwrapped instanceof SocketTimeoutException || unwrapped.getCause() instanceof SocketTimeoutException) {
+        if (isTimeout(unwrapped) || isTimeout(unwrapped.getCause())) {
             return new TimeoutException(unwrapped);
         }
 
         return super.mapException(unwrapped);
+    }
+
+    private static boolean isTimeout(@Nullable Throwable t) {
+        // OkHttp reports an expired call timeout (HttpOptions.timeout) as InterruptedIOException("timeout")
+        return t instanceof SocketTimeoutException
+                || (t instanceof InterruptedIOException && "timeout".equals(t.getMessage()));
     }
 
     protected RuntimeException map2xxGaosException(GaosApiException gaosException) {
@@ -88,18 +96,22 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
 
     private static String extractErrorMessage(GaosApiException exception) {
         String body = exception.bodyAsString().orElse(null);
-        if (!isNullOrBlank(body)) {
-            try {
-                JsonNode root = JSON.getMapper().readTree(body);
-                JsonNode messageNode = root.path("error").path("message");
-                if (messageNode.isTextual() && !isNullOrBlank(messageNode.asText())) {
-                    return messageNode.asText();
-                }
-            } catch (Exception ignored) {
-                // fall back to raw body
-            }
-            return body;
+        if (isNullOrBlank(body)) {
+            return exception.getMessage();
         }
-        return exception.getMessage();
+        return errorField(body, "message") instanceof String message && !isNullOrBlank(message) ? message : body;
+    }
+
+    /**
+     * A field of the {@code error} object of a Gemini error body, such as {@code {"error": {"message": "..."}}}, or
+     * {@code null} when the body has no such field.
+     */
+    static @Nullable Object errorField(String body, String field) {
+        try {
+            Map<?, ?> root = Json.fromJson(body, Map.class);
+            return root != null && root.get("error") instanceof Map<?, ?> error ? error.get(field) : null;
+        } catch (RuntimeException notJson) {
+            return null;
+        }
     }
 }
