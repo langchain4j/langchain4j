@@ -46,8 +46,9 @@ public class MockStreamingChatModelTest {
     void should_complete_once_when_subscriber_requests_one_event_at_a_time() {
 
         MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hi"));
-        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
         AtomicInteger completions = new AtomicInteger();
+        CompletableFuture<Void> done = new CompletableFuture<>();
 
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hello")).build())
                 .subscribe(new Flow.Subscriber<>() {
@@ -68,17 +69,64 @@ public class MockStreamingChatModelTest {
 
                     @Override
                     public void onError(Throwable error) {
-                        throw new AssertionError(error);
+                        done.completeExceptionally(error);
                     }
 
                     @Override
                     public void onComplete() {
                         completions.incrementAndGet();
+                        done.complete(null);
                     }
                 });
 
+        assertThat(done).succeedsWithin(5, SECONDS);
         assertThat(events).hasSize(3).last().isInstanceOf(CompleteResponse.class);
         assertThat(completions).hasValue(1);
+    }
+
+    @Test
+    void should_publish_on_a_new_thread_of_the_mock_for_each_subscription() {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hi").thenRepeats();
+
+        Thread first = publishingThread(model);
+        Thread second = publishingThread(model);
+
+        assertThat(first).isNotSameAs(Thread.currentThread()).isNotSameAs(second);
+        assertThat(first.getName()).isEqualTo("MockStreamingChatModel");
+        assertThat(second.getName()).isEqualTo("MockStreamingChatModel");
+    }
+
+    private static Thread publishingThread(MockStreamingChatModel model) {
+        List<Thread> threads = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
+                .subscribe(new Flow.Subscriber<>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent event) {
+                        threads.add(Thread.currentThread());
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        done.completeExceptionally(error);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        threads.add(Thread.currentThread());
+                        done.complete(null);
+                    }
+                });
+        assertThat(done).succeedsWithin(5, SECONDS);
+        assertThat(threads).hasSize(4).containsOnly(threads.get(0));
+        return threads.get(0);
     }
 
     @Test
@@ -288,7 +336,8 @@ public class MockStreamingChatModelTest {
     }
 
     private static List<ChatModelStreamingEvent> collect(MockStreamingChatModel model) {
-        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
                 .subscribe(new Flow.Subscriber<>() {
 
@@ -304,12 +353,15 @@ public class MockStreamingChatModelTest {
 
                     @Override
                     public void onError(Throwable error) {
-                        throw new AssertionError(error);
+                        done.completeExceptionally(error);
                     }
 
                     @Override
-                    public void onComplete() {}
+                    public void onComplete() {
+                        done.complete(null);
+                    }
                 });
+        assertThat(done).succeedsWithin(5, SECONDS);
         return events;
     }
 
@@ -491,6 +543,7 @@ public class MockStreamingChatModelTest {
 
         RuntimeException failure = new IllegalStateException("down");
         List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
 
         MockStreamingChatModel.thatFails(failure)
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -509,13 +562,17 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onError(Throwable error) {
                         signals.add(error);
+                        done.complete(null);
                     }
 
                     @Override
                     public void onComplete() {
                         signals.add("complete");
+                        done.complete(null);
                     }
                 });
+
+        assertThat(done).succeedsWithin(5, SECONDS);
 
         assertThat(signals).containsExactly("subscribed", failure);
     }
@@ -983,6 +1040,7 @@ public class MockStreamingChatModelTest {
     void should_signal_a_demand_that_is_not_positive_to_the_subscriber() {
 
         List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
 
         MockStreamingChatModel.thatStreams("Hi")
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -1002,21 +1060,26 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onError(Throwable error) {
                         signals.add(error);
+                        done.complete(null);
                     }
 
                     @Override
                     public void onComplete() {
                         signals.add("complete");
+                        done.complete(null);
                     }
                 });
+
+        assertThat(done).succeedsWithin(5, SECONDS);
 
         assertThat(signals).singleElement().isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void should_stop_emitting_after_the_subscription_was_cancelled() {
+    void should_stop_emitting_after_the_subscription_was_cancelled() throws Exception {
 
         List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
 
         MockStreamingChatModel.thatStreams("Hello")
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -1034,6 +1097,7 @@ public class MockStreamingChatModelTest {
                     public void onNext(ChatModelStreamingEvent event) {
                         signals.add(event);
                         subscription.cancel();
+                        streamingThread.complete(Thread.currentThread());
                     }
 
                     @Override
@@ -1047,6 +1111,8 @@ public class MockStreamingChatModelTest {
                     }
                 });
 
+        // once the streaming thread has ended, every signal it would send has been sent
+        streamingThread.get(5, SECONDS).join(5_000);
         assertThat(signals).singleElement().isInstanceOf(PartialResponse.class);
     }
 
@@ -1055,6 +1121,7 @@ public class MockStreamingChatModelTest {
 
         AssertionError failure = new AssertionError("unexpected request");
         List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
 
         MockStreamingChatModel.thatStreams(request -> {
                     throw failure;
@@ -1076,23 +1143,28 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onError(Throwable error) {
                         signals.add(error);
+                        done.complete(null);
                     }
 
                     @Override
                     public void onComplete() {
                         signals.add("complete");
+                        done.complete(null);
                     }
                 });
+
+        assertThat(done).succeedsWithin(5, SECONDS);
 
         assertThat(signals).containsExactly("subscribed", failure);
     }
 
     @Test
-    void should_cancel_the_stream_when_the_subscriber_throws_from_on_next() {
+    void should_cancel_the_stream_when_the_subscriber_throws_from_on_next() throws Exception {
 
         List<Object> signals = new CopyOnWriteArrayList<>();
         RuntimeException failure = new IllegalStateException("broken subscriber");
         List<Flow.Subscription> subscriptions = new ArrayList<>();
+        CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
 
         MockStreamingChatModel.thatStreams("Hello")
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -1106,6 +1178,7 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onNext(ChatModelStreamingEvent event) {
                         signals.add(event);
+                        streamingThread.complete(Thread.currentThread());
                         throw failure;
                     }
 
@@ -1121,7 +1194,9 @@ public class MockStreamingChatModelTest {
                 });
 
         Flow.Subscription subscription = subscriptions.get(0);
-        assertThatThrownBy(() -> subscription.request(1)).isSameAs(failure);
+        subscription.request(1);
+        // the failure ends the streaming thread, like an uncaught exception on a provider's I/O thread
+        streamingThread.get(5, SECONDS).join(5_000);
         subscription.request(10);
 
         assertThat(signals).singleElement().isInstanceOf(PartialResponse.class);
@@ -1185,6 +1260,30 @@ public class MockStreamingChatModelTest {
                 .hasMessage("Expected exactly 1 chat request, but received 0");
     }
 
+    @Test
+    void should_return_the_last_request() throws Exception {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hi").thenRepeats();
+
+        assertThatThrownBy(model::lastRequest)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Expected at least 1 chat request, but received none");
+        chat(model);
+        collect(model);
+
+        assertThat(model.lastRequest()).isSameAs(model.requests().get(1));
+    }
+
+    @Test
+    void should_stream_exactly_the_given_tokens_given_as_a_list() throws Exception {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens(List.of("Hel", "lo"))
+                .thenStreamsTokens(List.of("Wor", "ld"));
+
+        assertThat(stream(model).tokens()).containsExactly("Hel", "lo");
+        assertThat(stream(model).tokens()).containsExactly("Wor", "ld");
+    }
+
     private record Streamed(List<String> tokens, ChatResponse response, Throwable error) {}
 
     private static Streamed stream(MockStreamingChatModel model) throws Exception {
@@ -1209,7 +1308,11 @@ public class MockStreamingChatModelTest {
         return result.get(5, SECONDS);
     }
 
+    /**
+     * Subscribes to the events of the next answer, requesting all of them, and waits for the end of the stream.
+     */
     private static void subscribe(MockStreamingChatModel model, List<Object> signals) {
+        CompletableFuture<Void> done = new CompletableFuture<>();
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
                 .subscribe(new Flow.Subscriber<>() {
 
@@ -1226,11 +1329,15 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onError(Throwable error) {
                         signals.add(error);
+                        done.complete(null);
                     }
 
                     @Override
-                    public void onComplete() {}
+                    public void onComplete() {
+                        done.complete(null);
+                    }
                 });
+        assertThat(done).succeedsWithin(5, SECONDS);
     }
 
     private static ChatResponse completeResponse(List<ChatModelStreamingEvent> events) {

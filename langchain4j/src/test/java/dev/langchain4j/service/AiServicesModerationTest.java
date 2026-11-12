@@ -18,6 +18,7 @@ import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
@@ -136,7 +137,7 @@ class AiServicesModerationTest {
     void should_reject_moderation_on_reactive_return_type() {
         // moderation is not supported on the reactive (Flow.Publisher) path: fail fast at invocation time
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .moderationModel(moderationModelReturning(Moderation.notFlagged()))
                 .build();
 

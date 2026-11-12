@@ -51,6 +51,15 @@ public class MockModerationModel implements ModerationModel {
     }
 
     /**
+     * The last request received so far.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public ModerationRequest lastRequest() {
+        return requests.last();
+    }
+
+    /**
      * A model that does not flag anything.
      */
     public static MockModerationModel thatNeverFlags() {

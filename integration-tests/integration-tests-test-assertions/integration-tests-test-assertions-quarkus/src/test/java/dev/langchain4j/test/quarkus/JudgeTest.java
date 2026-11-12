@@ -148,7 +148,7 @@ class JudgeTest {
                         JudgeCriterion.from("says that the return period is 30 days"),
                         JudgeCriterion.from("is polite").notSatisfiedWhen("it is rude"));
 
-        DecisionRequest request = last(supportJudgeModel);
+        DecisionRequest request = supportJudgeModel.lastRequest();
         assertThat(request.questions()).hasSize(2);
         YesNoQuestion first = (YesNoQuestion) request.questions().get("condition1");
         assertThat(first.text())
@@ -172,7 +172,7 @@ class JudgeTest {
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("mentions free return shipping")
                 .hasMessageContaining("P(yes) = 0.200, threshold = 0.900");
-        assertThat(((YesNoQuestion) last(supportJudgeModel).questions().get("condition1")).text())
+        assertThat(((YesNoQuestion) supportJudgeModel.lastRequest().questions().get("condition1")).text())
                 .startsWith(TestJudges.QUESTION_PREFIX);
 
         assertThatThrownBy(() -> supportJudge
@@ -181,12 +181,8 @@ class JudgeTest {
                         .satisfies("says that the return period is 30 days"))
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("threshold = 0.990");
-        assertThat(((YesNoQuestion) last(supportJudgeModel).questions().get("condition1")).text())
+        assertThat(((YesNoQuestion) supportJudgeModel.lastRequest().questions().get("condition1")).text())
                 .as("withThreshold keeps the custom question")
                 .startsWith(TestJudges.QUESTION_PREFIX);
-    }
-
-    private static DecisionRequest last(MockDecisionModel model) {
-        return model.requests().get(model.requests().size() - 1);
     }
 }

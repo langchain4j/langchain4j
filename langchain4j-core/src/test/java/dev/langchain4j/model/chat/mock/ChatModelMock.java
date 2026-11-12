@@ -50,6 +50,7 @@ import java.util.function.Function;
  * {@code HttpException} with status 429 stays an {@code HttpException}, so throw the exception you expect, for
  * example a {@code RateLimitException}), tool calls without an id get the ids {@code tool_call_1},
  * {@code tool_call_2}, ..., and {@code requests()} returns a copy.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)

@@ -160,7 +160,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void canceledReactiveInvocationFiresInvocationSummaryEventWithTheEventsCollectedSoFar() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
                 .registerListener(invocationSummaryListener)
                 .build();
@@ -181,7 +181,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void reactiveInvocationCanceledFromWithinOnSubscribeFiresInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
                 .registerListener(invocationSummaryListener)
                 .build();
@@ -203,7 +203,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void rejectedSecondReactiveSubscriptionDoesNotEndTheFirstSubscriptionsInvocationSummary() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
                 // With a chat memory, the publisher can only be subscribed to once
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
@@ -232,7 +232,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void completedReactiveInvocationFiresASingleInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .registerListener(invocationSummaryListener)
                 .build();
 
@@ -608,7 +608,7 @@ class AiServicesInvocationSummaryEventTest {
     @Test
     void eachCanceledReactiveSubscriptionFiresItsOwnInvocationSummaryEvent() {
         var assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hello")))
                 .retrievalAugmentor(neverCompletingAugmentor())
                 .registerListener(invocationSummaryListener)
                 .build();

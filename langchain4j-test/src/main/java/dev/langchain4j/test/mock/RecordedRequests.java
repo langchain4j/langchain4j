@@ -29,10 +29,20 @@ final class RecordedRequests<T> {
 
     synchronized T only() {
         if (requests.size() != 1) {
-            String hint = requests.isEmpty() ? "" : ". To check each of them, use requests(), for example requests().get(0)";
+            String hint = requests.isEmpty()
+                    ? ""
+                    : ". To check the last one, use lastRequest(); to check each of them, use requests(), for example"
+                            + " requests().get(0)";
             throw new IllegalStateException(
                     "Expected exactly 1 " + kind + " request, but received " + requests.size() + hint);
         }
         return requests.get(0);
+    }
+
+    synchronized T last() {
+        if (requests.isEmpty()) {
+            throw new IllegalStateException("Expected at least 1 " + kind + " request, but received none");
+        }
+        return requests.get(requests.size() - 1);
     }
 }

@@ -4,6 +4,7 @@ import static dev.langchain4j.model.chat.router.RouterTestModels.withoutAsyncSup
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 
@@ -704,7 +705,7 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_pass_demand_to_selected_model_after_async_routing() {
+    void should_pass_demand_to_selected_model_after_async_routing() throws Exception {
 
         CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
@@ -718,7 +719,8 @@ class RoutingChatModelTest {
                 return route;
             }
         };
-        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
+        CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
 
         routingStreamingModel(asyncRouter)
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
@@ -731,6 +733,7 @@ class RoutingChatModelTest {
                     @Override
                     public void onNext(ChatModelStreamingEvent item) {
                         events.add(item);
+                        streamingThread.complete(Thread.currentThread());
                     }
 
                     @Override
@@ -744,6 +747,14 @@ class RoutingChatModelTest {
 
         assertThat(events).isEmpty();
         route.complete(ChatModelRoutingResult.route("simple"));
+
+        // the mock streams on its own thread, which waits once the requested event was sent
+        Thread thread = streamingThread.get(5, SECONDS);
+        long deadline = System.nanoTime() + SECONDS.toNanos(5);
+        while (thread.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
+            Thread.onSpinWait();
+        }
+        assertThat(thread.getState()).isEqualTo(Thread.State.WAITING);
         assertThat(events).singleElement().isInstanceOf(PartialResponse.class);
     }
 
@@ -871,7 +882,8 @@ class RoutingChatModelTest {
 
         assertThat(routed).isEmpty();
 
-        List<ChatModelStreamingEvent> events = new ArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
         publisher.subscribe(new Flow.Subscriber<>() {
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
@@ -885,13 +897,16 @@ class RoutingChatModelTest {
 
             @Override
             public void onError(Throwable throwable) {
-                throw new AssertionError(throwable);
+                done.completeExceptionally(throwable);
             }
 
             @Override
-            public void onComplete() {}
+            public void onComplete() {
+                done.complete(null);
+            }
         });
 
+        assertThat(done).succeedsWithin(Duration.ofSeconds(5));
         assertThat(routed).hasSize(1);
         assertThat(events).last().isInstanceOf(CompleteResponse.class);
         assertThat(((CompleteResponse) events.get(events.size() - 1)).chatResponse().aiMessage().attributes())

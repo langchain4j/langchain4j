@@ -10,6 +10,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.BeforeToolExecutionEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.CompleteToolCallEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -95,7 +96,7 @@ class AiServiceStreamingPublisherConcurrencyTest {
             }
 
             // Round 1: many concurrent tool calls. Round 2: the final textual answer.
-            StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+            MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                     AiMessage.from(toolRequests), AiMessage.from("done"));
 
             BusyTools tools = new BusyTools();

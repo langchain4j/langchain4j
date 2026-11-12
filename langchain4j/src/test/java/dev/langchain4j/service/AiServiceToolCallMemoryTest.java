@@ -195,8 +195,8 @@ class AiServiceToolCallMemoryTest {
         return MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL));
     }
 
-    private static StreamingEventChatModelMock streamingBookingModel() {
-        return StreamingEventChatModelMock.thatStreams(AiMessage.from(BOOK_HOTEL));
+    private static MockStreamingChatModel streamingBookingModel() {
+        return MockStreamingChatModel.thatStreams(AiMessage.from(BOOK_HOTEL));
     }
 
     private static void assertToolResultIsInMemory(ChatMemory memory) {
@@ -591,7 +591,7 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(
+                .streamingChatModel(MockStreamingChatModel.thatStreams(
                         AiMessage.from(GET_TEMPERATURE), AiMessage.from(GET_TEMPERATURE)))
                 .chatMemory(memory)
                 .tools(new Weather())

@@ -1,6 +1,5 @@
 package dev.langchain4j.test.mock;
 
-import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -9,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -35,6 +35,7 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
@@ -74,12 +75,13 @@ import org.jspecify.annotations.Nullable;
  * instructions to the user message instead of asking for a JSON schema response format. To test the response-format
  * path, stub {@code supportedCapabilities()} on a Mockito spy of the mock.
  * <p>
- * {@code chat(request, handler)} returns immediately and calls the handler on another thread, also for a failure, so a
- * test has to wait for {@code onCompleteResponse} or {@code onError}, for example with a {@code CompletableFuture}. The
- * {@code Publisher} returned by {@code chat(request)} emits its events on the thread that requests them. Each
- * subscription to that {@code Publisher} is one request: the mock records the request and takes the next step when the
- * {@code Publisher} is subscribed to, not when {@code chat(request)} returns, so a retry that subscribes again gets the
- * next step.
+ * Like a provider, the mock streams on its own thread, never on the thread that calls it. {@code chat(request, handler)}
+ * returns immediately and calls the handler on another thread, also for a failure, so a test has to wait for
+ * {@code onCompleteResponse} or {@code onError}, for example with a {@code CompletableFuture}. The {@code Publisher}
+ * returned by {@code chat(request)} emits its events on a new thread for each subscription, as many as the subscriber
+ * requested. Each subscription to that {@code Publisher} is one request: the mock records the request and takes the next
+ * step when the {@code Publisher} is subscribed to, not when {@code chat(request)} returns, so a retry that subscribes
+ * again gets the next step.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
@@ -118,6 +120,17 @@ public class MockStreamingChatModel implements StreamingChatModel {
     public MockStreamingChatModel thenStreamsTokens(String... tokens) {
         script.add(Step.streaming(tokens));
         return this;
+    }
+
+    /**
+     * Adds a step: the next request is answered by streaming exactly the given tokens, see
+     * {@link #thenStreamsTokens(String...)}.
+     *
+     * @throws IllegalArgumentException if a token is empty
+     * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
+     */
+    public MockStreamingChatModel thenStreamsTokens(List<String> tokens) {
+        return thenStreamsTokens(ensureNotNull(tokens, "tokens").toArray(String[]::new));
     }
 
     /**
@@ -244,87 +257,121 @@ public class MockStreamingChatModel implements StreamingChatModel {
 
     /**
      * Emits {@link PartialThinking} and {@link PartialResponse} events, then {@link PartialToolCall} and
-     * {@link CompleteToolCall} events, then the {@link CompleteResponse}, on the thread that requests them, as many as
-     * the subscriber requested. A failure is reported with {@code onError}, never thrown.
+     * {@link CompleteToolCall} events, then the {@link CompleteResponse}, on a new thread for each subscription, as many
+     * as the subscriber requested. A failure is reported with {@code onError}, never thrown.
      */
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return subscriber -> {
-            Step step;
-            List<ChatModelStreamingEvent> events;
-            try {
-                step = script.answer(script.take(requests, chatRequest), chatRequest);
-                events = toEvents(step);
-            } catch (RuntimeException | Error e) {
-                // for example an AssertionError thrown by a function that computes the answer: subscribe must not throw
-                failWithoutEvents(subscriber, e);
-                return;
-            }
-            RuntimeException failure = step.failure();
-            if (events.isEmpty() && failure != null) {
-                failWithoutEvents(subscriber, failure); // a failure needs no demand, like a provider's error response
-                return;
-            }
-            subscriber.onSubscribe(new Subscription() {
-
-                private int next;
-                private long demand;
-                private boolean emitting;
-                private volatile boolean done;
-
-                @Override
-                public synchronized void request(long n) {
-                    if (done) {
-                        return;
-                    }
-                    if (n <= 0) {
-                        done = true;
-                        subscriber.onError(new IllegalArgumentException("Demand must be positive, got " + n));
-                        return;
-                    }
-                    demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
-                    if (emitting) {
-                        return; // called from onNext: the loop below emits the additional demand
-                    }
-                    emitting = true;
-                    try {
-                        emit();
-                    } finally {
-                        emitting = false;
-                    }
-                }
-
-                private void emit() {
-                    while (!done && demand > 0 && next < events.size()) {
-                        demand--;
-                        try {
-                            subscriber.onNext(events.get(next++));
-                        } catch (RuntimeException | Error e) {
-                            done = true; // a subscriber that throws cancels the stream, as with a real model
-                            throw e;
-                        }
-                    }
-                    if (!done && next == events.size()) {
-                        done = true;
-                        if (failure != null) {
-                            subscriber.onError(failure);
-                        } else {
-                            subscriber.onComplete();
-                        }
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                    done = true;
-                }
-            });
+            Step step = script.take(requests, chatRequest);
+            Emission emission = new Emission(subscriber);
+            subscriber.onSubscribe(emission);
+            MockThreads.newThreadPerTask(MOCK_NAME).execute(() -> emission.emit(() -> script.answer(step, chatRequest)));
         };
     }
 
-    private static void failWithoutEvents(Subscriber<? super ChatModelStreamingEvent> subscriber, Throwable failure) {
-        subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
-        subscriber.onError(failure);
+    /**
+     * The subscription of one subscriber: it emits the events of one answer on the mock's thread, each one only after
+     * the subscriber requested it.
+     */
+    private static final class Emission implements Subscription {
+
+        private final Subscriber<? super ChatModelStreamingEvent> subscriber;
+        private long demand;
+        private boolean cancelled;
+        private @Nullable IllegalArgumentException invalidDemand;
+
+        private Emission(Subscriber<? super ChatModelStreamingEvent> subscriber) {
+            this.subscriber = subscriber;
+        }
+
+        @Override
+        public synchronized void request(long n) {
+            if (n <= 0) {
+                invalidDemand = new IllegalArgumentException("Demand must be positive, got " + n);
+            } else {
+                demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
+            }
+            notifyAll();
+        }
+
+        @Override
+        public synchronized void cancel() {
+            cancelled = true;
+            notifyAll();
+        }
+
+        private void emit(Supplier<Step> answer) {
+            Step step;
+            List<ChatModelStreamingEvent> events;
+            try {
+                step = answer.get();
+                events = toEvents(step);
+            } catch (RuntimeException | Error e) {
+                // for example an AssertionError thrown by a function that computes the answer
+                subscriber.onError(e);
+                return;
+            }
+            try {
+                for (ChatModelStreamingEvent event : events) {
+                    if (!awaitDemand()) {
+                        return;
+                    }
+                    subscriber.onNext(event);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (RuntimeException | Error e) {
+                cancel(); // a subscriber that throws cancels the stream, as with a real model
+                throw e;
+            }
+            if (endsWithoutTerminal()) {
+                return;
+            }
+            if (step.failure() != null) {
+                subscriber.onError(step.failure()); // a failure needs no demand, like a provider's error response
+            } else {
+                subscriber.onComplete();
+            }
+        }
+
+        /**
+         * Waits until the subscriber requests the next event, and returns {@code false} if the stream ends instead.
+         */
+        private boolean awaitDemand() throws InterruptedException {
+            synchronized (this) {
+                while (demand == 0 && !cancelled && invalidDemand == null) {
+                    wait();
+                }
+                if (invalidDemand == null && !cancelled) {
+                    demand--;
+                    return true;
+                }
+            }
+            endsWithoutTerminal();
+            return false;
+        }
+
+        /**
+         * Returns {@code true} if the stream ends without a terminal signal of the answer: the subscriber cancelled it,
+         * or it requested a demand that is not positive, which is reported with {@code onError}.
+         */
+        private boolean endsWithoutTerminal() {
+            IllegalArgumentException error;
+            synchronized (this) {
+                if (cancelled) {
+                    return true;
+                }
+                if (invalidDemand == null) {
+                    return false;
+                }
+                error = invalidDemand;
+                cancelled = true;
+            }
+            subscriber.onError(error);
+            return true;
+        }
     }
 
     /**
@@ -420,6 +467,15 @@ public class MockStreamingChatModel implements StreamingChatModel {
         return requests.only();
     }
 
+    /**
+     * The last request received so far. For example, the request that follows the tool results.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public ChatRequest lastRequest() {
+        return requests.last();
+    }
+
     private static class SimpleStreamingHandle implements StreamingHandle {
 
         private volatile boolean isCancelled;
@@ -457,6 +513,16 @@ public class MockStreamingChatModel implements StreamingChatModel {
     }
 
     /**
+     * A model that answers the first request by streaming exactly the given tokens, see
+     * {@link #thatStreamsTokens(String...)}.
+     *
+     * @throws IllegalArgumentException if a token is empty
+     */
+    public static MockStreamingChatModel thatStreamsTokens(List<String> tokens) {
+        return thatStreamsTokens(ensureNotNull(tokens, "tokens").toArray(String[]::new));
+    }
+
+    /**
      * A model that streams the given messages in order, one per request, one character per token. Add further steps
      * with {@code then...} methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for
      * example several tool calls in one answer, built with {@link MockChatModel#toolCall(String, Map)}.
@@ -489,7 +555,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * A model that computes the answer to the first request from the request and streams it, one character per token.
      * Add the next steps with {@code then...} methods, or compute the answer to every request:
      * {@code thatStreams(request -> ...).thenRepeats()}. If the function throws, the request fails with that exception,
-     * unchanged. With {@code chat(request, handler)}, the function runs on the thread that streams the answer.
+     * unchanged. The function runs on the thread that streams the answer.
      */
     public static MockStreamingChatModel thatStreams(Function<ChatRequest, AiMessage> answers) {
         return new MockStreamingChatModel(List.of(Step.computing(answers)));

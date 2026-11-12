@@ -570,6 +570,21 @@ class MockChatModelTest {
     }
 
     @Test
+    void should_return_the_last_request() {
+
+        MockChatModel model = MockChatModel.thatResponds("Hi").thenRepeats();
+
+        assertThatThrownBy(model::lastRequest)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Expected at least 1 chat request, but received none");
+        model.chat("first");
+        model.chat("second");
+
+        assertThat(model.lastRequest()).isSameAs(model.requests().get(1));
+        assertThat(((UserMessage) model.lastRequest().messages().get(0)).singleText()).isEqualTo("second");
+    }
+
+    @Test
     void should_not_accept_null_arguments() {
 
         assertThatThrownBy(() -> MockChatModel.thatFails(null)).isInstanceOf(IllegalArgumentException.class);

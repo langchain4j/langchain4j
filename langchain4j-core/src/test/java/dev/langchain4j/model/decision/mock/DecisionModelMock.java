@@ -33,6 +33,7 @@ import java.util.function.ToDoubleFunction;
  * and asynchronous calls complete on another thread. A response reports the model name of the request. Another
  * difference: {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} takes a {@code ToDoubleFunction},
  * so a lambda compiles unchanged, but a variable of type {@code Function<YesNoQuestion, Double>} does not.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)

@@ -53,6 +53,7 @@ import java.util.concurrent.Flow.Subscription;
  * {@code throwingFromChat()} have no replacement. Other differences: the new mock also streams partial tool calls
  * and thinking, streams text given as one string or message one character (code point) per token, reports every
  * failure on its streaming thread, and {@code requests()} returns a copy.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -68,7 +69,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private boolean throwFromChat;
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(String...)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(List)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -338,7 +339,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(String...)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(List)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)

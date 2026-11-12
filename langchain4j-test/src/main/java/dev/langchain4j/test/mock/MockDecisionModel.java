@@ -78,6 +78,15 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
+     * The last request received so far.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public DecisionRequest lastRequest() {
+        return requests.last();
+    }
+
+    /**
      * Answers every request with the given answers, keyed by question name. A question without an answer makes the
      * request fail, see {@link MockDecisionModel}. {@link #thatAnswersQuestions(Function)} and
      * {@link #thatAnswersYesNoQuestions(ToDoubleFunction)} need no question names.

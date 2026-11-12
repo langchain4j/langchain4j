@@ -121,6 +121,15 @@ public class MockEmbeddingModel implements EmbeddingModel {
     }
 
     /**
+     * The last request received so far.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public EmbeddingRequest lastRequest() {
+        return requests.last();
+    }
+
+    /**
      * A model that returns the given vector for every text. All texts are then equally close to each other, so a test
      * with this model cannot depend on their ranking.
      */

@@ -238,6 +238,15 @@ public class MockChatModel implements ChatModel {
     }
 
     /**
+     * The last request received so far. For example, the request that follows the tool results.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public ChatRequest lastRequest() {
+        return requests.last();
+    }
+
+    /**
      * A model that answers the first request with the given text. Add the next steps with {@code then...} methods, or
      * answer every request with this text: {@code thatResponds("Hello!").thenRepeats()}.
      */

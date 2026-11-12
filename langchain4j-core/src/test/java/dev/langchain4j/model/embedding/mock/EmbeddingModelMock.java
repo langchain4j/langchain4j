@@ -19,6 +19,7 @@ import java.util.List;
  * share. It supports asynchronous calls, which complete on another thread. It accepts the per-call parameters
  * {@code modelName} and {@code inputType}, which this class rejects, and a response reports the model name.
  * {@code withProvider(...)} has no replacement.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)

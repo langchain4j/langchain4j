@@ -14,6 +14,7 @@ import java.util.function.Function;
  *
  * @deprecated use {@link MockModerationModel} (package {@code dev.langchain4j.test.mock}) from the
  * {@code langchain4j-test} module. {@code requests()} has the same name and returns a copy.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Deprecated(since = "1.24.0", forRemoval = true)
 public class ModerationModelMock implements ModerationModel {

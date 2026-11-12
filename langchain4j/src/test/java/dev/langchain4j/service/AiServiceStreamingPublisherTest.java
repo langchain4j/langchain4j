@@ -23,6 +23,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -41,6 +42,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -197,7 +199,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void streams_text_tokens_without_tools() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         StringStreamer assistant = AiServices.builder(StringStreamer.class)
                 .streamingChatModel(model)
@@ -213,7 +215,7 @@ class AiServiceStreamingPublisherTest {
     void completes_the_text_stream_when_the_subscriber_requests_one_item_at_a_time() throws Exception {
         // The last event is always a FinalResponseEvent, which contributes no string. It must still be drained, or
         // onComplete stays stuck behind it once the subscriber has taken the last string and stops requesting.
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         StringStreamer assistant = AiServices.builder(StringStreamer.class)
                 .streamingChatModel(model)
@@ -263,7 +265,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void streams_events_without_tools() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -293,7 +295,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void streams_events_across_tool_rounds_in_order() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -387,7 +389,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void streams_only_final_answer_text_across_tool_rounds() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         StringStreamer assistant = AiServices.builder(StringStreamer.class)
@@ -403,7 +405,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void executes_async_tool() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -418,12 +420,12 @@ class AiServiceStreamingPublisherTest {
                 .singleElement()
                 .satisfies(e -> assertThat(e.toolExecution().result()).isEqualTo("42"));
         assertThat(finalText(collected)).isEqualTo("It is 42 degrees");
-        assertToolResultsSentToLlm(model, 1, "42");
+        assertToolResultsSentToLlm(model.requests(), 1, "42");
     }
 
     @Test
     void executes_multiple_tools_in_one_round_sequentially() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest(), humidityRequest()),
                 AiMessage.from("42 degrees, 69 percent"));
         MultipleTools tools = new MultipleTools();
@@ -443,7 +445,7 @@ class AiServiceStreamingPublisherTest {
         assertThat(tools.invoked).containsExactly("currentTemperature", "currentHumidity");
         assertThat(afterToolExecutions(collected)).hasSize(2);
         assertThat(finalText(collected)).isEqualTo("42 degrees, 69 percent");
-        assertToolResultsSentToLlm(model, 1, "42", "69");
+        assertToolResultsSentToLlm(model.requests(), 1, "42", "69");
     }
 
     @Test
@@ -466,12 +468,12 @@ class AiServiceStreamingPublisherTest {
 
         assertThat(collected.error).isNull();
         assertThat(finalText(collected)).isEqualTo("It is 42 degrees");
-        assertToolResultsSentToLlm(model, 1, "42");
+        assertToolResultsSentToLlm(model.requests(), 1, "42");
     }
 
     @Test
     void executes_multiple_tools_concurrently() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest(), humidityRequest()),
                 AiMessage.from("42 degrees, 69 percent"));
         MultipleTools tools = new MultipleTools();
@@ -488,12 +490,12 @@ class AiServiceStreamingPublisherTest {
         assertThat(tools.invoked).containsExactlyInAnyOrder("currentTemperature", "currentHumidity");
         assertThat(afterToolExecutions(collected)).hasSize(2);
         assertThat(finalText(collected)).isEqualTo("42 degrees, 69 percent");
-        assertToolResultsSentToLlm(model, 1, "42", "69");
+        assertToolResultsSentToLlm(model.requests(), 1, "42", "69");
     }
 
     @Test
     void executes_mixed_sync_and_async_tools_in_one_round() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest(), humidityRequest()),
                 AiMessage.from("42 degrees, 69 percent"));
 
@@ -507,12 +509,12 @@ class AiServiceStreamingPublisherTest {
         assertThat(collected.error).isNull();
         assertThat(afterToolExecutions(collected)).hasSize(2);
         assertThat(finalText(collected)).isEqualTo("42 degrees, 69 percent");
-        assertToolResultsSentToLlm(model, 1, "42", "69");
+        assertToolResultsSentToLlm(model.requests(), 1, "42", "69");
     }
 
     @Test
     void executes_two_sequential_tool_rounds() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()),
                 AiMessage.from(humidityRequest()),
                 AiMessage.from("42 degrees, 69 percent"));
@@ -534,7 +536,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void fails_stream_when_tool_throws_by_default() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("unreachable"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -560,7 +562,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void works_with_chat_memory_across_a_tool_round() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -573,7 +575,7 @@ class AiServiceStreamingPublisherTest {
 
         assertThat(collected.error).isNull();
         assertThat(finalText(collected)).isEqualTo("It is 42 degrees");
-        assertToolResultsSentToLlm(model, 1, "42");
+        assertToolResultsSentToLlm(model.requests(), 1, "42");
     }
 
     // --- review fixes: reactive-publisher subscription contract (#1 onSubscribe/cancellation, #2 re-subscription,
@@ -582,7 +584,7 @@ class AiServiceStreamingPublisherTest {
     @Test
     void reactive_stream_delivers_a_subscription_synchronously_and_is_cancellable_during_the_rag_prologue()
             throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         // A RAG augmentor whose augmentAsync hangs until we release it, simulating an in-flight retrieval.
         CompletableFuture<AugmentationResult> augmentation = new CompletableFuture<>();
@@ -652,7 +654,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void reactive_stream_with_chat_memory_rejects_a_second_subscription() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -678,7 +680,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void reactive_stream_fires_started_event_per_subscription_not_on_invocation() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
         AtomicInteger started = new AtomicInteger();
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -696,7 +698,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void fails_when_max_tool_calling_round_trips_exceeded() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from(temperatureRequest()));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -713,7 +715,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void uses_tool_provider_with_async_capable_executor() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         ToolExecutor asyncExecutor = new ToolExecutor() {
@@ -744,12 +746,12 @@ class AiServiceStreamingPublisherTest {
                 .singleElement()
                 .satisfies(e -> assertThat(e.toolExecution().result()).isEqualTo("42"));
         assertThat(finalText(collected)).isEqualTo("It is 42 degrees");
-        assertToolResultsSentToLlm(model, 1, "42");
+        assertToolResultsSentToLlm(model.requests(), 1, "42");
     }
 
     @Test
     void fails_when_tool_executor_does_not_support_async_execution() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
         // a sync-only ToolExecutor (does not override executeAsync) is incompatible with the reactive path
@@ -777,8 +779,8 @@ class AiServiceStreamingPublisherTest {
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
-        StreamingEventChatModelMock model =
-                StreamingEventChatModelMock.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
 
         ToolArgumentsErrorHandler errorHandler = (error, context) -> ToolErrorHandlerResult.text("Invalid JSON, try again");
 
@@ -796,7 +798,7 @@ class AiServiceStreamingPublisherTest {
             assertThat(e.toolExecution().result()).isEqualTo("Invalid JSON, try again");
         });
         // the customized error text is sent to the LLM so it can retry
-        assertToolResultsSentToLlm(model, 1, "Invalid JSON, try again");
+        assertToolResultsSentToLlm(model.requests(), 1, "Invalid JSON, try again");
         assertThat(finalText(collected)).isEqualTo("sunny");
     }
 
@@ -807,8 +809,8 @@ class AiServiceStreamingPublisherTest {
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
-        StreamingEventChatModelMock model =
-                StreamingEventChatModelMock.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
 
         // by default (new async modes), an argument-parse error is sent to the LLM so it can retry
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -828,7 +830,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void fails_stream_when_tool_execution_error_handler_rethrows() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("unreachable"));
 
         // a handler that rethrows turns a tool failure into a fatal invocation failure (not sent to the LLM)
@@ -849,7 +851,7 @@ class AiServiceStreamingPublisherTest {
     @Test
     void compensated_tool_emits_a_tool_compensated_event_in_the_stream() throws Exception {
         CompensatingTools tools = new CompensatingTools();
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.builder()
                         .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
                         .build(),
@@ -879,7 +881,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void fails_stream_when_hallucinated_tool_is_requested() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(toolRequest("1", "nonExistentTool")), AiMessage.from("unreachable"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -895,7 +897,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void emits_retrieved_contents_event() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         // A genuinely async content retriever (overrides retrieveAsync): the reactive RAG path stays non-blocking
         ContentRetriever asyncRetriever = new ContentRetriever() {
@@ -932,7 +934,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void adapts_string_stream_via_publisher_adapter() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         BoxStringStreamer assistant = AiServices.builder(BoxStringStreamer.class)
                 .streamingChatModel(model)
@@ -948,7 +950,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void adapts_event_stream_via_publisher_adapter() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         BoxEventStreamer assistant = AiServices.builder(BoxEventStreamer.class)
                 .streamingChatModel(model)
@@ -984,7 +986,7 @@ class AiServiceStreamingPublisherTest {
             }
         }
 
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(toolRequest("1", "slowTool")), AiMessage.from("unreachable"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
@@ -1060,7 +1062,7 @@ class AiServiceStreamingPublisherTest {
             }
         }
 
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from(toolRequest("1", "credit")), AiMessage.from("unreachable"));
 
         // A chat memory whose async add can be frozen. Round assembly (which sets inflightRound and wires the
@@ -1221,7 +1223,7 @@ class AiServiceStreamingPublisherTest {
                 }
             }
 
-            StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+            MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                     AiMessage.builder()
                             .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
                             .build(),
@@ -1348,8 +1350,8 @@ class AiServiceStreamingPublisherTest {
     }
 
     private static void assertToolResultsSentToLlm(
-            StreamingEventChatModelMock model, int requestIndex, String... expectedResultTexts) {
-        assertThat(model.requests().get(requestIndex).messages())
+            List<ChatRequest> requests, int requestIndex, String... expectedResultTexts) {
+        assertThat(requests.get(requestIndex).messages())
                 .filteredOn(message -> message instanceof ToolExecutionResultMessage)
                 .extracting(message -> ((ToolExecutionResultMessage) message).text())
                 .containsExactlyInAnyOrder(expectedResultTexts);
@@ -1377,7 +1379,7 @@ class AiServiceStreamingPublisherTest {
     void streaming_buffer_size_must_be_positive() {
         // Validation happens eagerly at build() time (not in the streamingBufferSize(...) setter).
         assertThatThrownBy(() -> AiServices.builder(EventStreamer.class)
-                        .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
+                        .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hi")))
                         .streamingBufferSize(0)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class);
@@ -1388,8 +1390,8 @@ class AiServiceStreamingPublisherTest {
         // A long response (one PartialResponseEvent per character) + a tiny buffer + a subscriber that requests
         // only once: the bounded back-pressure buffer overflows and the stream fails fast (rather than dropping
         // events or buffering unbounded).
-        StreamingEventChatModelMock model =
-                StreamingEventChatModelMock.thatStreams(AiMessage.from("This response is far longer than the buffer."));
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatStreams(AiMessage.from("This response is far longer than the buffer."));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -1456,7 +1458,7 @@ class AiServiceStreamingPublisherTest {
         // hang - the failure must reach the subscriber as onError after onSubscribe, translated to the user-facing
         // UnsupportedFeatureException (consistent with the rest of the async path).
         SystemMessagedStringStreamer assistant = AiServices.builder(SystemMessagedStringStreamer.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
+                .streamingChatModel(MockStreamingChatModel.thatStreams(AiMessage.from("Hi")))
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
                         .chatMemoryStore(new SyncOnlyChatMemoryStore())

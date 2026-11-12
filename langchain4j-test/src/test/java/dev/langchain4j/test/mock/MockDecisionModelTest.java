@@ -72,6 +72,24 @@ class MockDecisionModelTest {
     }
 
     @Test
+    void should_return_the_last_request() {
+
+        MockDecisionModel model = MockDecisionModel.thatAnswers(Map.of("spam", YesNoAnswer.from(0.9)));
+        DecisionRequest second = DecisionRequest.builder()
+                .input("Hello")
+                .question("spam", REQUEST.questions().get("spam"))
+                .build();
+
+        assertThatThrownBy(model::lastRequest)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Expected at least 1 decision request, but received none");
+        model.decide(REQUEST);
+        model.decide(second);
+
+        assertThat(model.lastRequest()).isSameAs(model.requests().get(1));
+    }
+
+    @Test
     void should_answer_asynchronously_on_another_thread() {
 
         // given

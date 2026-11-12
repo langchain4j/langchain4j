@@ -54,7 +54,10 @@ class MockEmbeddingModelTest {
         model.embed("second");
 
         assertThat(model.requests()).hasSize(2);
-        assertThatThrownBy(model::request).hasMessage("Expected exactly 1 embedding request, but received 2. To check each of them, use requests(), for example requests().get(0)");
+        assertThatThrownBy(model::request)
+                .hasMessage("Expected exactly 1 embedding request, but received 2. To check the last one, use"
+                        + " lastRequest(); to check each of them, use requests(), for example requests().get(0)");
+        assertThat(model.lastRequest()).isSameAs(model.requests().get(1));
     }
 
     @Test

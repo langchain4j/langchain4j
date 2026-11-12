@@ -12,6 +12,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -95,7 +96,7 @@ class AiServiceStreamingPublisherGuardrailTest {
 
     @Test
     void passing_output_guardrail_emits_no_partials_and_emits_the_final_response() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         PassingEventStreamer assistant = AiServices.builder(PassingEventStreamer.class)
                 .streamingChatModel(model)
@@ -113,7 +114,7 @@ class AiServiceStreamingPublisherGuardrailTest {
 
     @Test
     void rewriting_output_guardrail_emits_no_partials_only_the_rewritten_final_response() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         RewritingEventStreamer assistant = AiServices.builder(RewritingEventStreamer.class)
                 .streamingChatModel(model)
@@ -131,7 +132,7 @@ class AiServiceStreamingPublisherGuardrailTest {
 
     @Test
     void fatal_output_guardrail_fails_the_stream_and_emits_no_final_response() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         FatalEventStreamer assistant = AiServices.builder(FatalEventStreamer.class)
                 .streamingChatModel(model)
@@ -148,7 +149,7 @@ class AiServiceStreamingPublisherGuardrailTest {
 
     @Test
     void string_publisher_emits_the_rewritten_final_text_from_an_output_guardrail() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         RewritingStringStreamer assistant = AiServices.builder(RewritingStringStreamer.class)
                 .streamingChatModel(model)
@@ -163,7 +164,7 @@ class AiServiceStreamingPublisherGuardrailTest {
 
     @Test
     void string_publisher_emits_the_final_text_when_a_passing_output_guardrail_does_not_rewrite() throws Exception {
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(AiMessage.from("Hello"));
 
         PassingStringStreamer assistant = AiServices.builder(PassingStringStreamer.class)
                 .streamingChatModel(model)
@@ -210,7 +211,7 @@ class AiServiceStreamingPublisherGuardrailTest {
         // call. The tool-aware reprompt executor must resolve that tool — re-calling the streaming model via the
         // async tool loop — so the guardrail only ever sees the final textual answer.
         WeatherTool tool = new WeatherTool();
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.from("bad answer"),
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -239,7 +240,7 @@ class AiServiceStreamingPublisherGuardrailTest {
         // intermediate text remains observable via its IntermediateResponseEvent, and the answer via the
         // FinalResponseEvent.
         WeatherTool tool = new WeatherTool();
-        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(
                 AiMessage.builder()
                         .text("Let me check. ")
                         .toolExecutionRequests(List.of(ToolExecutionRequest.builder()

@@ -98,6 +98,15 @@ public class MockScoringModel implements ScoringModel {
     }
 
     /**
+     * The last request received so far.
+     *
+     * @throws IllegalStateException if the mock received no request
+     */
+    public ScoringRequest lastRequest() {
+        return requests.last();
+    }
+
+    /**
      * A model that gives every document the given score.
      */
     public static MockScoringModel thatScores(double score) {
