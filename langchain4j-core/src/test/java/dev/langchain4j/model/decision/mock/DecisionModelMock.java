@@ -30,7 +30,9 @@ import java.util.function.ToDoubleFunction;
  * completed when returned), unless created with {@link #withoutAsyncSupport()}.
  *
  * @deprecated use {@link MockDecisionModel} (package {@code dev.langchain4j.test.mock}) from the
- * {@code langchain4j-test} module. {@code requests()} and {@code request()} have the same names.
+ * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
+ * script runs out; end the script with {@link MockDecisionModel#thenRepeats()} to answer every further request with
+ * its last step. {@code requests()} and {@code request()} have the same names.
  * {@code withTokenUsage(...)}, {@code withModelName(...)}, {@code withProvider(...)}, {@code withoutAsyncSupport()} and
  * {@code withAsyncResponse(...)} have no replacement, {@code withListeners(...)} has the same name,
  * and asynchronous calls complete on another thread. A response reports the model name of the request. Another
@@ -52,7 +54,8 @@ public class DecisionModelMock implements DecisionModel {
     private List<DecisionModelListener> listeners = List.of();
 
     /**
-     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)}
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
@@ -163,7 +166,7 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Always answers with the given answers, keyed by question name.
      *
-     * @deprecated use {@link MockDecisionModel#thatAnswers(Map)}
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Map)} followed by {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysAnswers(Map<String, ? extends DecisionAnswer> answers) {
@@ -174,7 +177,8 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Answers with the answers computed from each request, keyed by question name.
      *
-     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)}
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Function)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswers(
@@ -185,7 +189,8 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Answers every question of each request with the answer computed from the question.
      *
-     * @deprecated use {@link MockDecisionModel#thatAnswersQuestions(Function)}
+     * @deprecated use {@link MockDecisionModel#thatAnswersQuestions(Function)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswersQuestions(Function<Question, ? extends DecisionAnswer> answer) {
@@ -202,7 +207,8 @@ public class DecisionModelMock implements DecisionModel {
      *
      * @throws IllegalStateException when a request contains a question that is not a yes/no question.
      *
-     * @deprecated use {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)}
+     * @deprecated use {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswersYesNoQuestions(Function<YesNoQuestion, Double> probability) {
@@ -216,7 +222,8 @@ public class DecisionModelMock implements DecisionModel {
     }
 
     /**
-     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)}
+     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysThrowsException() {
@@ -224,7 +231,8 @@ public class DecisionModelMock implements DecisionModel {
     }
 
     /**
-     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)}
+     * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)} followed by
+     * {@link MockDecisionModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
