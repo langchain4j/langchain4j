@@ -8,6 +8,8 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -218,12 +220,10 @@ class DefaultGuardrailServiceTests {
                         guardrail -> assertThat(guardrail).isInstanceOf(OG2.class));
     }
 
-    @Test
-    void builderGuardrailsTakePrecedenceOverMethodAndClassAnnotations() {
-        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ConflictingAnnotationsAssistant.class)
-                .inputGuardrailClasses(IG2.class, IG1.class)
-                .outputGuardrailClasses(OG2.class, OG1.class)
-                .build();
+    @ParameterizedTest
+    @MethodSource("builderGuardrailsWithConflictingAnnotations")
+    void builderGuardrailsTakePrecedenceOverMethodAndClassAnnotations(String testDescription, GuardrailService gs) {
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(Stream.of("chat", "chat2")).allSatisfy(method -> {
             assertThat(guardrailService.getInputGuardrails(method))
@@ -237,23 +237,30 @@ class DefaultGuardrailServiceTests {
         // No output guardrails config on the builder, so maxRetries still comes from the annotations
         assertThat(guardrailService.getOutputConfig("chat"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .extracting(OutputGuardrailsConfig::maxRetries)
                 .isEqualTo(5);
         assertThat(guardrailService.getOutputConfig("chat2"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .extracting(OutputGuardrailsConfig::maxRetries)
                 .isEqualTo(7);
     }
 
     @Test
-    void builderOutputGuardrailsConfigTakesPrecedenceOverMethodAndClassAnnotations() {
+    void builderGuardrailsConfigTakesPrecedenceOverMethodAndClassAnnotations() {
+        var inputGuardrailsConfig = InputGuardrailsConfig.builder().build();
         var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ConflictingAnnotationsAssistant.class)
-                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
-                        .maxRetries(10)
-                        .build())
+                .inputGuardrailsConfig(inputGuardrailsConfig)
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(10).build())
                 .build();
 
         // No guardrails on the builder, so the guardrails still come from the annotations
+        assertThat(guardrailService.getInputGuardrails("chat"))
+                .map(Object::getClass)
+                .containsExactly(IG2.class);
+        assertThat(guardrailService.getInputGuardrails("chat2"))
+                .map(Object::getClass)
+                .containsExactly(IG1.class);
         assertThat(guardrailService.getOutputGuardrails("chat"))
                 .map(Object::getClass)
                 .containsExactly(OG2.class);
@@ -261,11 +268,52 @@ class DefaultGuardrailServiceTests {
                 .map(Object::getClass)
                 .containsExactly(OG1.class);
 
-        assertThat(Stream.of("chat", "chat2"))
-                .allSatisfy(method -> assertThat(guardrailService.getOutputConfig(method))
-                        .get()
-                        .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
-                        .isEqualTo(10));
+        assertThat(Stream.of("chat", "chat2")).allSatisfy(method -> {
+            assertThat(guardrailService.getInputConfig(method)).containsSame(inputGuardrailsConfig);
+            assertThat(guardrailService.getOutputConfig(method))
+                    .get()
+                    .extracting(OutputGuardrailsConfig::maxRetries)
+                    .isEqualTo(10);
+        });
+    }
+
+    @Test
+    void builderGuardrailsAndConfigTakePrecedenceOverMethodAndClassAnnotations() {
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ConflictingAnnotationsAssistant.class)
+                .inputGuardrailClasses(IG2.class, IG1.class)
+                .outputGuardrailClasses(OG2.class, OG1.class)
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(10).build())
+                .build();
+
+        assertThat(Stream.of("chat", "chat2")).allSatisfy(method -> {
+            assertThat(guardrailService.getInputGuardrails(method))
+                    .map(Object::getClass)
+                    .containsExactly(IG2.class, IG1.class);
+            assertThat(guardrailService.getOutputGuardrails(method))
+                    .map(Object::getClass)
+                    .containsExactly(OG2.class, OG1.class);
+            assertThat(guardrailService.getOutputConfig(method))
+                    .get()
+                    .extracting(OutputGuardrailsConfig::maxRetries)
+                    .isEqualTo(10);
+        });
+    }
+
+    static Stream<Arguments> builderGuardrailsWithConflictingAnnotations() {
+        return Stream.of(
+                Arguments.of(
+                        "guardrail classes on the builder",
+                        GuardrailService.builder(ConflictingAnnotationsAssistant.class)
+                                .inputGuardrailClasses(IG2.class, IG1.class)
+                                .outputGuardrailClasses(OG2.class, OG1.class)
+                                .build()),
+                Arguments.of(
+                        "guardrail instances on the builder",
+                        GuardrailService.builder(ConflictingAnnotationsAssistant.class)
+                                .inputGuardrails(new IG2(), new IG1())
+                                .outputGuardrails(new OG2(), new OG1())
+                                .build()));
     }
 
     static Stream<Arguments> classLevelGuardrailBuilders() {

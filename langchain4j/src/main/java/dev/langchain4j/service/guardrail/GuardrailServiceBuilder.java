@@ -181,10 +181,9 @@ final class GuardrailServiceBuilder implements Builder {
         // Anything set here in this builder is relevant at the AiService level, NOT at the method level
         // Setting guardrails at the method level can only be done via the annotations
 
-        // Next, compute method-level guardrails based on the annotations
-        // Go method-by-method, if there are annotations on the method, then use them
-        // Otherwise use the annotations on the class
-        // If there aren't any annotations on the class, then use the ones set on this builder
+        // Next, compute the guardrails of each method
+        // Guardrails and their config are resolved independently: first what is set on this builder,
+        // then the annotation on the method, then the annotation on the class
         var inputGuardrailsByMethod = new HashMap<Object, InputGuardrailExecutor>();
         var outputGuardrailsByMethod = new HashMap<Object, OutputGuardrailExecutor>();
         var factory = ClassMetadataProvider.getClassMetadataProviderFactory();

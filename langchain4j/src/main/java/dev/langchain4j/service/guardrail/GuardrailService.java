@@ -307,10 +307,17 @@ public interface GuardrailService {
 
         /**
          * Builds and returns an instance of {@link GuardrailService}.
-         * This method configures input and output guardrails at the service level
-         * using the provided class-level or method-level annotations. If no
-         * method-level annotations are present, it defers to class-level annotations,
-         * and if those are absent, it uses the settings defined in the builder.
+         * <p>
+         * For each AI service method, the guardrails and their configuration are resolved independently of each
+         * other, and separately for input and output guardrails, in the following order of precedence:
+         * <ol>
+         *     <li>guardrails or configuration set on this builder</li>
+         *     <li>{@link InputGuardrails} / {@link OutputGuardrails} annotation on the AI service method</li>
+         *     <li>{@link InputGuardrails} / {@link OutputGuardrails} annotation on the AI service class</li>
+         * </ol>
+         * Only the first one found is used: they are not combined. Guardrails set on this builder count only when
+         * there is at least one: {@code null} or an empty list does not disable the guardrails declared in
+         * annotations.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.
