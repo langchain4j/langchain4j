@@ -25,7 +25,7 @@
     <properties>
         <!-- the nightly build overrides these with the latest releases, see ../README.md -->
         <quarkus.version>3.33.3.1</quarkus.version>
-        <quarkus-langchain4j.version>1.14.2</quarkus-langchain4j.version>
+        <quarkus-langchain4j.version>1.15.1</quarkus-langchain4j.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
