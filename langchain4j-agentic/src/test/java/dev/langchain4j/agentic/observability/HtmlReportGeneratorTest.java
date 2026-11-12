@@ -19,8 +19,7 @@ import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -240,18 +239,14 @@ class HtmlReportGeneratorTest {
     void generates_execution_with_the_model_of_each_ai_agent() {
         Assistant assistant = AgenticServices.agentBuilder(
                         Assistant.class)
-                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
-                                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
                                         .arguments("{}")
-                                        .build()))
-                                .modelName("answering-model")
-                                .build())
-                        .thenResponds(ChatResponse.builder()
-                                .aiMessage(AiMessage.from("It is noon"))
-                                .modelName("answering-model")
-                                .build()))
+                                        .build()),
+                                AiMessage.from("It is noon"))
+                        .withModelNames("answering-model", "answering-model"))
                 .tools(new Clock())
                 .build();
         AgentMonitor monitor = new AgentMonitor();
@@ -281,20 +276,15 @@ class HtmlReportGeneratorTest {
     @Test
     void does_not_show_a_model_next_to_the_tokens_of_llm_calls_answered_by_different_models() {
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
-                                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                                AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
                                         .arguments("{}")
-                                        .build()))
-                                .modelName("tool-calling-model")
-                                .tokenUsage(new TokenUsage(100, 20))
-                                .build())
-                        .thenResponds(ChatResponse.builder()
-                                .aiMessage(AiMessage.from("It is noon"))
-                                .modelName("answering-model")
-                                .tokenUsage(new TokenUsage(30, 5))
-                                .build()))
+                                        .build()),
+                                AiMessage.from("It is noon"))
+                        .withModelNames("tool-calling-model", "answering-model")
+                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
                 .tools(new Clock())
                 .build();
         AgentMonitor monitor = new AgentMonitor();

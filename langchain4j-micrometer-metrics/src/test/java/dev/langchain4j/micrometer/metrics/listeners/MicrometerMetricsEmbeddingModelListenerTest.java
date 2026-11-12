@@ -3,8 +3,6 @@ package dev.langchain4j.micrometer.metrics.listeners;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,7 +15,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.test.mock.MockEmbeddingModel;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
@@ -71,7 +69,7 @@ class MicrometerMetricsEmbeddingModelListenerTest {
 
     @Test
     void should_record_unknown_provider_name_when_model_provider_is_null() {
-        EmbeddingModel modelWithoutProvider = reportingProvider(null);
+        EmbeddingModel modelWithoutProvider = new EmbeddingModelMock().withProvider(null);
 
         listener.onResponse(EmbeddingModelResponseContext.builder()
                 .embeddingRequest(embeddingRequest("text-embedding-3-small"))
@@ -262,12 +260,6 @@ class MicrometerMetricsEmbeddingModelListenerTest {
     }
 
     private static EmbeddingModel embeddingModel() {
-        return reportingProvider(ModelProvider.MICROSOFT_FOUNDRY);
-    }
-
-    private static EmbeddingModel reportingProvider(ModelProvider provider) {
-        MockEmbeddingModel model = spy(MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)); // reports the given provider
-        doReturn(provider).when(model).provider();
-        return model;
+        return new EmbeddingModelMock().withProvider(ModelProvider.MICROSOFT_FOUNDRY);
     }
 }

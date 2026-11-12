@@ -7,7 +7,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class AsyncReturnTypeAdapterTest {
     @Test
     void ai_service_returns_completion_stage() throws Exception {
         CompletionStageAssistant assistant = AiServices.builder(CompletionStageAssistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .build();
 
         CompletionStage<String> stage = assistant.chat("What is the capital of Germany?");
@@ -61,7 +61,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void async_ai_service_executes_completion_stage_returning_tool() throws Exception {
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
@@ -84,7 +84,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void sync_ai_service_joins_completion_stage_returning_tool() {
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
@@ -105,7 +105,7 @@ class AsyncReturnTypeAdapterTest {
     @Test
     void ai_service_returns_custom_async_type_via_spi() throws Exception {
         BoxAssistant assistant = AiServices.builder(BoxAssistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .build();
 
         FutureBox<String> box = assistant.chat("What is the capital of Germany?");
@@ -123,7 +123,7 @@ class AsyncReturnTypeAdapterTest {
 
     @Test
     void async_ai_service_executes_custom_async_type_returning_tool_via_spi() throws Exception {
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(temperatureToolRequest()), AiMessage.from("It is 42 degrees"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)

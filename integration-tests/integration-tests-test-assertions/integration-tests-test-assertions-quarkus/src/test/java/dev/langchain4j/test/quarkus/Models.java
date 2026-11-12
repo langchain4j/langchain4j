@@ -1,38 +1,42 @@
 package dev.langchain4j.test.quarkus;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import io.quarkus.test.junit.QuarkusMock;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Installs the model mocks of langchain4j-test as the model beans of the application for the current test.
+ * Installs the shared model mocks of langchain4j-core as the model beans of the application for the current test.
  */
 final class Models {
 
+    private static final AtomicInteger IDS = new AtomicInteger();
+
     private Models() {}
 
-    static MockChatModel useChatModel(MockChatModel chatModel) {
+    static ChatModelMock useChatModel(ChatModelMock chatModel) {
         QuarkusMock.installMockForType(chatModel, ChatModel.class);
         return chatModel;
     }
 
-    static MockChatModel useChatModelResponding(AiMessage... responses) {
-        return useChatModel(MockChatModel.thatResponds(List.of(responses)));
+    static ChatModelMock useChatModelResponding(AiMessage... responses) {
+        return useChatModel(ChatModelMock.thatAlwaysResponds(responses));
     }
 
-    static MockStreamingChatModel useStreamingChatModel(MockStreamingChatModel streamingChatModel) {
+    static StreamingChatModelMock useStreamingChatModel(StreamingChatModelMock streamingChatModel) {
         QuarkusMock.installMockForType(streamingChatModel, StreamingChatModel.class);
         return streamingChatModel;
     }
 
-    /**
-     * An answer that calls the given tool. The mock gives the call an id when it answers.
-     */
     static AiMessage toolCall(String toolName, String arguments) {
-        return AiMessage.from(MockChatModel.toolCall(toolName, arguments));
+        return AiMessage.from(ToolExecutionRequest.builder()
+                .id("call-" + IDS.incrementAndGet())
+                .name(toolName)
+                .arguments(arguments)
+                .build());
     }
 }

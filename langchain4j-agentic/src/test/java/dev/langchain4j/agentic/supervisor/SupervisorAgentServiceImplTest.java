@@ -11,7 +11,7 @@ import dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -124,10 +124,10 @@ class SupervisorAgentServiceImplTest {
     }
 
     public interface AgentWithChatModelSubtypeSupplier extends SupervisorAgent {
-        MockChatModel SUPPLIED_MODEL = MockChatModel.thatResponds("done");
+        ChatModelMock SUPPLIED_MODEL = ChatModelMock.thatAlwaysResponds("done");
 
         @ChatModelSupplier
-        static MockChatModel chatModel() {
+        static ChatModelMock chatModel() {
             return SUPPLIED_MODEL;
         }
     }

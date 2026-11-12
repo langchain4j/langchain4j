@@ -5,7 +5,9 @@ import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -29,7 +31,8 @@ import java.util.function.ToDoubleFunction;
  *
  * @deprecated use {@link MockDecisionModel} (package {@code dev.langchain4j.test.mock}) from the
  * {@code langchain4j-test} module. {@code requests()} and {@code request()} have the same names.
- * {@code withTokenUsage(...)}, {@code withoutAsyncSupport()} and {@code withAsyncResponse(...)} have no replacement,
+ * {@code withTokenUsage(...)}, {@code withModelName(...)}, {@code withProvider(...)}, {@code withoutAsyncSupport()} and
+ * {@code withAsyncResponse(...)} have no replacement, {@code withListeners(...)} has the same name,
  * and asynchronous calls complete on another thread. A response reports the model name of the request. Another
  * difference: {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} takes a {@code ToDoubleFunction},
  * so a lambda compiles unchanged, but a variable of type {@code Function<YesNoQuestion, Double>} does not.
@@ -42,8 +45,11 @@ public class DecisionModelMock implements DecisionModel {
     private final Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers;
     private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
     private TokenUsage tokenUsage;
+    private String modelName;
+    private ModelProvider provider = ModelProvider.OTHER;
     private boolean asyncSupported = true;
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
+    private List<DecisionModelListener> listeners = List.of();
 
     /**
      * @deprecated use {@link MockDecisionModel#thatAnswers(Function)}
@@ -59,6 +65,33 @@ public class DecisionModelMock implements DecisionModel {
     public DecisionModelMock withTokenUsage(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
         return this;
+    }
+
+    /**
+     * Reports the given model name in every response.
+     *
+     * @deprecated has no replacement: a response of {@link MockDecisionModel} reports the model name of the request
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public DecisionModelMock withModelName(String modelName) {
+        this.modelName = modelName;
+        return this;
+    }
+
+    /**
+     * Returns the given provider from {@link #provider()}.
+     *
+     * @deprecated has no replacement: stub {@code provider()} on a Mockito spy of {@link MockDecisionModel}
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public DecisionModelMock withProvider(ModelProvider provider) {
+        this.provider = ensureNotNull(provider, "provider");
+        return this;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return provider;
     }
 
     /**
@@ -105,6 +138,7 @@ public class DecisionModelMock implements DecisionModel {
     private DecisionResponse respond(DecisionRequest request) {
         return DecisionResponse.builder()
                 .answers(answers.apply(request))
+                .modelName(modelName)
                 .tokenUsage(tokenUsage)
                 .build();
     }
@@ -197,5 +231,19 @@ public class DecisionModelMock implements DecisionModel {
         return new DecisionModelMock(request -> {
             throw new RuntimeException(message);
         });
+    }
+
+    /**
+     * @deprecated use {@link MockDecisionModel#withListeners(DecisionModelListener...)}
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public DecisionModelMock withListeners(DecisionModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<DecisionModelListener> listeners() {
+        return listeners;
     }
 }

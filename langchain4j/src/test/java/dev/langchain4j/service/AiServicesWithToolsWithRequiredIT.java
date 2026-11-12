@@ -18,7 +18,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -265,7 +265,7 @@ class AiServicesWithToolsWithRequiredIT {
 
         ToolWithPrimitiveParameter tool = spy(new ToolWithPrimitiveParameter());
 
-        ChatModel chatModelMock = spy(MockChatModel.thatResponds(AiMessage.from(ToolExecutionRequest.builder()
+        ChatModel chatModelMock = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(ToolExecutionRequest.builder()
                 .id("1")
                 .name("process")
                 .arguments("{\"arg0\":\"Klaus\"}")

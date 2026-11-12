@@ -9,9 +9,7 @@ import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -25,17 +23,15 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class NestedInvocationsTest {
 
-    MockChatModel agentModel = MockChatModel.thatResponds(callToolsThenAnswer(
+    ChatModelMock agentModel = ChatModelMock.thatResponds(callToolsThenAnswer(
                     results -> "According to our policy: " + results.get(0),
                     toolCall("askPolicyExpert", "{\"question\":\"Can I cancel MS-777 for free?\"}")))
-            .thenRepeats();
+            .withTokenUsage(new TokenUsage(10, 1));
 
     @Test
     void should_capture_invocation_started_by_a_tool_as_nested() {
-        MockChatModel expertModel = MockChatModel.thatResponds(ChatResponse.builder()
-                .aiMessage(AiMessage.from("Yes, up to 7 days before the start date."))
-                .tokenUsage(new TokenUsage(1000, 100))
-                .build());
+        ChatModelMock expertModel = ChatModelMock.thatAlwaysResponds("Yes, up to 7 days before the start date.")
+                .withTokenUsage(new TokenUsage(1000, 100));
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
                 agentModel, bookings(), CustomerSupport.policyExpert(expertModel));
 
@@ -67,7 +63,7 @@ class NestedInvocationsTest {
     @Test
     void should_not_include_sources_of_nested_invocations() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                agentModel, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("Yes.")));
+                agentModel, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("Yes.")));
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Can I cancel MS-777 for free?")).invocation();
 
@@ -83,12 +79,12 @@ class NestedInvocationsTest {
     @Test
     void should_not_rethrow_failure_of_nested_invocation_handled_by_the_tool() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                MockChatModel.thatResponds(callToolsThenAnswer(
+                ChatModelMock.thatResponds(callToolsThenAnswer(
                         "Sorry, I cannot check the policy right now.",
-                        toolCall("askPolicyExpert", "{\"question\":\"Can I bring my dog?\"}"))).thenRepeats(),
+                        toolCall("askPolicyExpert", "{\"question\":\"Can I bring my dog?\"}"))),
                 bookings(),
                 CustomerSupport.policyExpert(
-                        MockChatModel.thatFails(new RuntimeException("Policy model overloaded"))));
+                        ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Policy model overloaded")));
 
         // the tool failure is reported to the agent's model, which answers anyway
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Can I bring my dog?")).invocation();
@@ -125,13 +121,13 @@ class NestedInvocationsTest {
     @Test
     void should_tell_that_tools_of_nested_invocations_are_not_included() {
         CustomerSupportAgent agent = CustomerSupport.customerSupportAgent(
-                MockChatModel.thatResponds(callToolsThenAnswer(
-                        "MS-777 is cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))).thenRepeats(),
+                ChatModelMock.thatResponds(callToolsThenAnswer(
+                        "MS-777 is cancelled.", toolCall("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))),
                 bookings(),
-                CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
+                CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
         Triage triage = AiServices.builder(Triage.class)
-                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer(
-                        results -> results.get(0), toolCall("escalate", "{\"message\":\"Cancel MS-777\"}"))).thenRepeats())
+                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer(
+                        results -> results.get(0), toolCall("escalate", "{\"message\":\"Cancel MS-777\"}"))))
                 .tools(new Escalation(agent))
                 .build();
 

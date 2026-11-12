@@ -44,7 +44,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -1051,7 +1051,7 @@ class AiServicesWithToolsIT {
                     .build();
         };
 
-        MockChatModel chatModelMock = MockChatModel.thatResponds("does not matter");
+        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -1385,7 +1385,7 @@ class AiServicesWithToolsIT {
             return ToolProviderResult.builder().build();
         };
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds("does not matter").thenRepeats());
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds("does not matter"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -1887,7 +1887,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1955,7 +1955,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -2027,7 +2027,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -2072,7 +2072,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNull tools = spy(new ToolReturningNull());
 
-        ChatModel chatModel = spy(MockChatModel.thatResponds(
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("doSomething")
@@ -2118,7 +2118,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNull tools = spy(new ToolReturningNull());
 
-        ChatModel chatModel = spy(MockChatModel.thatResponds(
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("doSomething")
@@ -2164,7 +2164,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningObjectThatIsImage tools = spy(new ToolReturningObjectThatIsImage());
 
-        ChatModel chatModel = spy(MockChatModel.thatResponds(
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -2213,7 +2213,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNullImage tools = spy(new ToolReturningNullImage());
 
-        ChatModel chatModel = spy(MockChatModel.thatResponds(
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -2260,7 +2260,7 @@ class AiServicesWithToolsIT {
 
         ToolThrowingException tools = spy(new ToolThrowingException());
 
-        ChatModel chatModel = spy(MockChatModel.thatResponds(
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -2457,7 +2457,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 // First LLM response: credit Dmytro's account
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2504,7 +2504,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -2579,7 +2579,7 @@ class AiServicesWithToolsIT {
 
         CompensatingBankService bankService = new CompensatingBankService();
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -2673,7 +2673,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("rentCar");
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Paris\"}").build(),
@@ -2709,7 +2709,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("bookHotel");
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Rome\"}").build(),
@@ -2745,7 +2745,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("bookFlight");
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Tokyo\"}").build(),
@@ -2781,7 +2781,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 // Round 1: credit succeeds
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2841,7 +2841,7 @@ class AiServicesWithToolsIT {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Berlin\"}").build(),
@@ -2902,7 +2902,7 @@ class AiServicesWithToolsIT {
         BankAccountService bankService = spy(new BankAccountService());
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 // Round 1: LLM calls credit (succeeds)
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2985,7 +2985,7 @@ class AiServicesWithToolsIT {
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatModel(MockChatModel.thatResponds("ok"))
+                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
                         .tools(new MisconfiguredService())
                         .compensateOnToolErrors(true)
                         .build())
@@ -3010,7 +3010,7 @@ class AiServicesWithToolsIT {
         // Should NOT throw — the user never enabled compensateOnToolErrors,
         // so the mismatched @CompensateFor should be silently ignored
         AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds("ok"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
                 .tools(new MisconfiguredService())
                 .build();
     }
@@ -3059,7 +3059,7 @@ class AiServicesWithToolsIT {
         // given
         ExtendedBankAccountService bankService = spy(new ExtendedBankAccountService());
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -3133,7 +3133,7 @@ class AiServicesWithToolsIT {
 
         FaultyCompensationService travelService = new FaultyCompensationService();
 
-        ChatModel chatModel = MockChatModel.thatResponds(
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Paris\"}").build(),

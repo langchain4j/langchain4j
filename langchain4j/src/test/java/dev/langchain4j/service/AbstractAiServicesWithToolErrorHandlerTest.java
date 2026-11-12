@@ -14,7 +14,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatRequestOptions;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -89,7 +89,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
 
         AiServices<Assistant> assistantBuilder =
@@ -132,7 +132,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
 
         AiServices<Assistant> assistantBuilder =
@@ -171,7 +171,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .name(toolNameThrowingExceptionWithoutCause())
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the image")));
 
         AiServices<Assistant> assistantBuilder =
@@ -224,7 +224,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the weather")));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
@@ -282,7 +282,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 .arguments("{\"arg0\":\"Paris\"}")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(AiMessage.from(toolRequest1, toolRequest2)));
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequest1, toolRequest2)));
 
         AiServices<Assistant> assistantBuilder = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -314,12 +314,11 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(AiMessage.from(toolExecutionRequest)));
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
 
         AiServices<Assistant> assistantBuilder =
                 AiServices.builder(Assistant.class).chatModel(spyModel);
@@ -349,18 +348,16 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // given
         ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
-                .id("2")
                 .name("getWeather")
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolExecutionRequest1), AiMessage.from(toolExecutionRequest2), AiMessage.from("sunny")));
 
         String customizedErrorMessage = "Invalid JSON, try again";
@@ -410,12 +407,11 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
-        ChatModel spyModel = spy(MockChatModel.thatResponds(AiMessage.from(toolExecutionRequest)));
+        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest)));
 
         CustomToolException customException = new CustomToolException("Can't parse JSON arguments");
 

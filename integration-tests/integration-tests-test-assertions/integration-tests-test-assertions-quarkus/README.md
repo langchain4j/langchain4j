@@ -7,6 +7,6 @@ quarkus-langchain4j extension: its AI Services are created with `AiServices.buil
 and a REST resource that returns `String`, `Uni<String>` and `Multi<String>`.
 
 The models are CDI beans. In the tests they are produced by `TestModels` and replaced per test with
-`QuarkusMock.installMockForType(...)` by the mocks of langchain4j-test (`MockChatModel`,
-`MockStreamingChatModel`, `MockDecisionModel`). Because the application gets its models from a model provider that is
+`QuarkusMock.installMockForType(...)` by the shared mocks of langchain4j-core (`ChatModelMock`,
+`StreamingChatModelMock`, `DecisionModelMock`). Because the application gets its models from a model provider that is
 not on the classpath here, the module has no `quarkus:build` goal: only `@QuarkusTest` starts the application.

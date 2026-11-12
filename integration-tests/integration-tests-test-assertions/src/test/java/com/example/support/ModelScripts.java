@@ -1,26 +1,28 @@
 package com.example.support;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.test.mock.MockChatModel;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * Scripts for MockChatModel / MockStreamingChatModel: what the mocked model answers in each step of an invocation.
+ * Scripts for ChatModelMock / StreamingChatModelMock: what the mocked model answers in each step of an invocation.
  */
 final class ModelScripts {
 
     private ModelScripts() {}
 
-    /**
-     * An answer that calls the given tool. The mock gives the call an id when it answers.
-     */
     static AiMessage toolCall(String toolName, String arguments) {
-        return AiMessage.from(MockChatModel.toolCall(toolName, arguments));
+        return AiMessage.from(ToolExecutionRequest.builder()
+                .id(UUID.randomUUID().toString())
+                .name(toolName)
+                .arguments(arguments)
+                .build());
     }
 
     /**

@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
-import static dev.langchain4j.test.mock.MockChatModel.thatResponds;
+import static dev.langchain4j.model.chat.mock.ChatModelMock.thatAlwaysResponds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,8 +18,8 @@ import dev.langchain4j.agentic.declarative.ToolsSupplier;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.MemoryId;
@@ -47,7 +47,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_discover_and_execute_static_tools() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         Assistant agent = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
                 .tools(new WeatherTools())
@@ -60,7 +60,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_discover_and_execute_tools_from_a_provider() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         ToolSpecification weather = ToolSpecification.builder().name("weather").build();
         Assistant agent = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
@@ -78,7 +78,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_discover_and_execute_tools_from_a_map() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         ToolSpecification weather = ToolSpecification.builder().name("weather").build();
         Assistant agent = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
@@ -94,7 +94,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_keep_all_tools_visible_when_search_is_not_configured() {
-        MockChatModel model = MockChatModel.thatResponds("sunny");
+        ChatModelMock model = new ChatModelMock("sunny");
         Assistant agent = AgenticServices.agentBuilder(Assistant.class)
                 .chatModel(model)
                 .tools(new WeatherTools())
@@ -106,7 +106,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_discover_and_execute_tools_with_an_untyped_agent() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         UntypedAgent agent = AgenticServices.agentBuilder()
                 .chatModel(model)
                 .userMessage("{{request}}")
@@ -121,7 +121,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_configure_search_once_for_a_declarative_agent() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         DeclarativeAssistant agent = AgenticServices.createAgenticSystem(DeclarativeAssistant.class, model);
 
         assertThat(agent.answer("weather")).isEqualTo("sunny");
@@ -131,7 +131,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_configure_search_once_for_a_declarative_subagent() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         WeatherWorkflow workflow = AgenticServices.createAgenticSystem(WeatherWorkflow.class, model);
 
         assertThat(workflow.answer("weather")).isEqualTo("sunny");
@@ -141,7 +141,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_allow_the_builder_to_override_the_declarative_strategy() {
-        MockChatModel model = thatResponds(searchCall("discover"), weatherCall(), AiMessage.from("sunny"));
+        ChatModelMock model = thatAlwaysResponds(searchCall("discover"), weatherCall(), AiMessage.from("sunny"));
         DeclarativeAssistant agent = AgenticServices.agentBuilder(DeclarativeAssistant.class)
                 .chatModel(model)
                 .toolSearchStrategy(
@@ -154,7 +154,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_configure_search_through_an_agent_configurator() {
-        MockChatModel model = searchModel();
+        ChatModelMock model = searchModel();
         ConfiguredWorkflow workflow =
                 AgenticServices.createAgenticSystem(ConfiguredWorkflow.class, model, new AgentConfigurator(ctx -> {
                     if (ctx.agentServiceClass() == ConfiguredAssistant.class) {
@@ -168,7 +168,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_search_again_when_an_agent_with_scope_dependent_context_is_invoked_again() {
-        MockChatModel model = thatResponds(
+        ChatModelMock model = thatAlwaysResponds(
                 searchCall("tool_search_tool"),
                 weatherCall(),
                 AiMessage.from("sunny"),
@@ -194,7 +194,7 @@ class AgentToolSearchTest {
 
     @Test
     void should_retain_discovered_tools_only_in_their_chat_memory() {
-        MockChatModel model = thatResponds(
+        ChatModelMock model = thatAlwaysResponds(
                 searchCall("tool_search_tool"),
                 weatherCall(),
                 AiMessage.from("sunny"),
@@ -217,7 +217,8 @@ class AgentToolSearchTest {
 
     @Test
     void should_discover_and_execute_tools_while_streaming() throws Exception {
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(List.of(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny")));
+        StreamingChatModelMock model = new StreamingChatModelMock(
+                List.of(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny")));
         StreamingAssistant agent = AgenticServices.agentBuilder(StreamingAssistant.class)
                 .streamingChatModel(model)
                 .tools(new WeatherTools())
@@ -230,7 +231,8 @@ class AgentToolSearchTest {
 
     @Test
     void should_apply_the_declarative_strategy_to_a_streaming_agent() throws Exception {
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(List.of(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny")));
+        StreamingChatModelMock model = new StreamingChatModelMock(
+                List.of(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny")));
         DeclarativeStreamingAssistant agent = AgenticServices.agentBuilder(DeclarativeStreamingAssistant.class)
                 .streamingChatModel(model)
                 .build();
@@ -256,8 +258,8 @@ class AgentToolSearchTest {
         };
         DeclarativeUtil.addSupplierParameterResolver(resolver);
         try {
-            MockChatModel model =
-                    thatResponds(searchCall("resolved_search"), weatherCall(), AiMessage.from("sunny"));
+            ChatModelMock model =
+                    thatAlwaysResponds(searchCall("resolved_search"), weatherCall(), AiMessage.from("sunny"));
             ResolvedAssistant agent = AgenticServices.agentBuilder(ResolvedAssistant.class)
                     .chatModel(model)
                     .tools(new WeatherTools())
@@ -279,8 +281,8 @@ class AgentToolSearchTest {
                 .hasMessage("Method " + method + " must return " + ToolSearchStrategy.class.getName());
     }
 
-    private static MockChatModel searchModel() {
-        return thatResponds(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny"));
+    private static ChatModelMock searchModel() {
+        return thatAlwaysResponds(searchCall("tool_search_tool"), weatherCall(), AiMessage.from("sunny"));
     }
 
     private static AiMessage searchCall(String name) {

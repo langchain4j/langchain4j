@@ -16,7 +16,7 @@ import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import java.io.IOException;
@@ -101,7 +101,7 @@ public abstract class McpHeadersTestBase {
 
     @Test
     void toolCallsViaAiService() {
-        ChatModel mockChatModel = MockChatModel.thatResponds((request) -> {
+        ChatModel mockChatModel = ChatModelMock.thatResponds((request) -> {
             if (request.messages().size() == 1) {
                 // this is the initial chat request, respond with tool requesting response
                 return AiMessage.from(ToolExecutionRequest.builder()
@@ -117,7 +117,7 @@ public abstract class McpHeadersTestBase {
                         .get();
                 return AiMessage.aiMessage(toolResult.text());
             }
-        }).thenRepeats();
+        });
 
         DummyAiService service = AiServices.builder(DummyAiService.class)
                 .chatModel(mockChatModel)

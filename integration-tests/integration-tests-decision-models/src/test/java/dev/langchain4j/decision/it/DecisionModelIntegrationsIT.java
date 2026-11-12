@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -57,8 +57,8 @@ class DecisionModelIntegrationsIT {
     @Test
     void should_route_chat_requests_by_description() {
 
-        ChatModel small = MockChatModel.thatResponds("small").thenRepeats();
-        ChatModel large = MockChatModel.thatResponds("large").thenRepeats();
+        ChatModel small = ChatModelMock.thatAlwaysResponds("small");
+        ChatModel large = ChatModelMock.thatAlwaysResponds("large");
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", "Greetings, small talk and short factual questions", small)
                 .route("complex", "Writing or debugging code, multi-step reasoning, detailed analysis", large)
@@ -76,9 +76,9 @@ class DecisionModelIntegrationsIT {
 
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", List.of("Greetings and small talk", "Store opening hours", "Order tracking"),
-                        MockChatModel.thatResponds("small").thenRepeats())
+                        ChatModelMock.thatAlwaysResponds("small"))
                 .route("complex", List.of("Software debugging", "Contract law", "Tax planning"),
-                        MockChatModel.thatResponds("large").thenRepeats())
+                        ChatModelMock.thatAlwaysResponds("large"))
                 .router(new DecisionModelChatModelRouter(decisionModel))
                 .defaultRoute("complex")
                 .build();

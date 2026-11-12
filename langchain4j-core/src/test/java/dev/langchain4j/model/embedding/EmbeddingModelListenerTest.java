@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -15,12 +14,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
-import dev.langchain4j.test.mock.MockEmbeddingModel;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
@@ -245,7 +243,7 @@ class EmbeddingModelListenerTest {
     void embedAsync_should_notify_listeners_on_request_and_error_when_not_supported() {
         // given
         EmbeddingModelListener listener = spy(new SuccessfulListener());
-        EmbeddingModel model = withoutAsyncSupport(MockEmbeddingModel.thatEmbeds(1f, 2f, 3f).withListeners(listener));
+        EmbeddingModel model = new EmbeddingModelMock().withListeners(listener);
 
         // when
         CompletableFuture<EmbeddingResponse> future =
@@ -384,13 +382,5 @@ class EmbeddingModelListenerTest {
         assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);
         assertThat(wrapper.modelName()).isEqualTo("multimodal-model");
         assertThat(wrapper.dimension()).isEqualTo(42);
-    }
-
-    private static MockEmbeddingModel withoutAsyncSupport(MockEmbeddingModel model) {
-        MockEmbeddingModel withoutAsync = spy(model); // an embedding model without asynchronous support
-        doAnswer(invocation -> AsyncNotSupported.failedFuture(MockEmbeddingModel.class, "doEmbedAsync"))
-                .when(withoutAsync)
-                .doEmbedAsync(any());
-        return withoutAsync;
     }
 }

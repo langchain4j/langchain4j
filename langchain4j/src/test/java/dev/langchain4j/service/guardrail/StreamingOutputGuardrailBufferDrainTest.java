@@ -6,7 +6,7 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -39,7 +39,7 @@ class StreamingOutputGuardrailBufferDrainTest {
 
     @Test
     void should_drain_buffered_tokens_to_BiConsumer_handler_when_output_guardrails_active() throws Exception {
-        StreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hello", " ", "world", "!");
+        StreamingChatModel model = StreamingChatModelMock.thatAlwaysStreams("Hello", " ", "world", "!");
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
@@ -62,7 +62,7 @@ class StreamingOutputGuardrailBufferDrainTest {
 
     @Test
     void should_drain_buffered_tokens_to_Consumer_handler_when_output_guardrails_active() throws Exception {
-        StreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hello", " ", "world", "!");
+        StreamingChatModel model = StreamingChatModelMock.thatAlwaysStreams("Hello", " ", "world", "!");
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)

@@ -8,7 +8,7 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -26,7 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class AiServicesWithCustomContentInjectorTest {
 
     @Spy
-    ChatModel chatModel = MockChatModel.thatResponds("{\"value\":\"test\"}");
+    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("{\"value\":\"test\"}");
 
     @AfterEach
     void afterEach() {

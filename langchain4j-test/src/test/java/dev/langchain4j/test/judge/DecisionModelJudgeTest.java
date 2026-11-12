@@ -5,9 +5,7 @@ import static dev.langchain4j.data.message.ImageContent.DetailLevel.HIGH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,7 +18,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.MessagesInput;
@@ -61,7 +59,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_ask_one_yes_no_question_per_criterion_in_one_call() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -81,7 +79,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_ask_custom_question() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
         DecisionModelJudge customJudge = Judge.from(judge)
                 .withQuestion(criterion -> YesNoQuestion.builder()
                         .text("Would a support agent accept this response? It must: " + criterion.text())
@@ -101,7 +99,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_keep_custom_question_when_threshold_changes() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.6);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.6);
 
         assertThatThrownBy(() -> Judge.from(judge)
                         .withQuestion(criterion -> YesNoQuestion.builder()
@@ -118,7 +116,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_reject_null_question() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         assertThatThrownBy(() -> Judge.from(judge).withQuestion(null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -133,7 +131,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_fail_below_default_threshold() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
                 Map.of("condition1", YesNoAnswer.from(0.5), "condition2", YesNoAnswer.from(0.49)));
 
         assertThatThrownBy(() -> Judge.from(judge)
@@ -147,7 +145,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_use_custom_threshold() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.6);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.6);
 
         Judge.from(judge).withThreshold(0.6).assertThat(TEXT).satisfies("is polite");
 
@@ -161,7 +159,7 @@ class DecisionModelJudgeTest {
     @ParameterizedTest
     @ValueSource(doubles = {0.0, -0.1, 1.1, Double.NaN})
     void decision_model_judge_should_reject_invalid_threshold(double threshold) {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         assertThatThrownBy(() -> Judge.from(judge).withThreshold(threshold))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -170,14 +168,14 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_accept_threshold_of_one() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 1.0);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 1.0);
 
         Judge.from(judge).withThreshold(1.0).assertThat(TEXT).satisfies("is polite");
     }
 
     @Test
     void decision_model_judge_should_throw_on_refusal() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
                 Map.of("condition1", RefusalAnswer.of(), "condition2", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(() -> Judge.from(judge)
@@ -189,7 +187,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_send_user_message_as_context() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -202,7 +200,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_send_conversation_as_messages_with_text_as_last_assistant_message() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -222,7 +220,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_use_custom_question_with_conversation() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .withQuestion(criterion -> YesNoQuestion.builder()
@@ -238,7 +236,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_reject_conversation_with_separate_sources() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         assertThatThrownBy(() -> Judge.from(judge)
                         .assertThat(TEXT)
@@ -268,7 +266,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_throw_on_content_filter() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(request -> {
+        DecisionModelMock judge = new DecisionModelMock(request -> {
             throw new ContentFilteredException("blocked by the content filter of the provider");
         });
 
@@ -280,7 +278,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_throw_when_a_criterion_is_not_answered() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
 
         assertThatThrownBy(() -> Judge.from(judge)
                         .assertThat(TEXT)
@@ -292,7 +290,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_return_verdicts_with_probabilities() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(
                 Map.of("condition1", YesNoAnswer.from(0.8), "condition2", YesNoAnswer.from(0.2)));
 
         List<JudgeVerdict> verdicts = Judge.from(judge).evaluate(request(TEXT, "is polite", "is short")).verdicts();
@@ -306,7 +304,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_use_pass_and_fail_definitions() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -325,7 +323,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_send_sources() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -340,7 +338,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_send_images_without_a_chosen_detail_level_with_auto_detail() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
         ImageContent notChosen = ImageContent.from("https://example.com/invoice.png");
         ImageContent chosen = ImageContent.from("https://example.com/receipt.png", ImageContent.DetailLevel.HIGH);
 
@@ -378,7 +376,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_accept_a_conversation_with_empty_sources() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         Judge.from(judge)
                 .assertThat(TEXT)
@@ -404,13 +402,8 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_report_the_token_usage_of_the_decision() {
-        MockDecisionModel judge = spy(MockDecisionModel.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9))));
-        doAnswer(invocation -> DecisionResponse.builder() // reports the token usage of the decision
-                        .answers(((DecisionResponse) invocation.callRealMethod()).answers())
-                        .tokenUsage(new TokenUsage(7, 3))
-                        .build())
-                .when(judge)
-                .doDecide(any());
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)))
+                .withTokenUsage(new TokenUsage(7, 3));
 
         JudgeResponse response = Judge.from(judge).evaluate(request(TEXT, "is polite"));
 
@@ -419,7 +412,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_report_no_token_usage_when_the_model_does_not() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
 
         assertThat(Judge.from(judge).evaluate(request(TEXT, "is polite")).tokenUsage()).isNull();
     }
@@ -427,7 +420,7 @@ class DecisionModelJudgeTest {
 
     @Test
     void decision_model_judge_should_reject_an_unknown_context_before_calling_the_model() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
+        DecisionModelMock judge = DecisionModelMock.thatAlwaysAnswers(Map.of("condition1", YesNoAnswer.from(0.9)));
         JudgeContext unknown = new JudgeContext() {};
 
         assertThatThrownBy(() -> Judge.from(judge)

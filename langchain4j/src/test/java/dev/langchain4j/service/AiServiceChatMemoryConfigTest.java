@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AiServiceChatMemoryConfigTest {
     @Spy
-    ChatModel chatModel = MockChatModel.thatResponds("Berlin").thenRepeats();
+    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -100,7 +100,7 @@ class AiServiceChatMemoryConfigTest {
     @Test
     void should_preserve_memory_for_same_id() {
         // given
-        ChatModel chatModel = MockChatModel.thatResponds("response").thenRepeats();
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("response");
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))

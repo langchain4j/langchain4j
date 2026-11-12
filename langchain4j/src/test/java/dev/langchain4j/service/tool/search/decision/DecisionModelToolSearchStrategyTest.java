@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -27,7 +27,7 @@ class DecisionModelToolSearchStrategyTest {
             "create_invoice", 0.3);
 
     // answers each tool question with the relevance of the tool whose name is in the question
-    final MockDecisionModel decisionModel = MockDecisionModel.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
+    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
             .filter(entry -> question.text().contains(entry.getKey()))
             .mapToDouble(Map.Entry::getValue)
             .findFirst()
@@ -137,7 +137,7 @@ class DecisionModelToolSearchStrategyTest {
     void should_propagate_decision_model_errors() {
 
         DecisionModelToolSearchStrategy strategy = new DecisionModelToolSearchStrategy(
-                MockDecisionModel.thatFails(new RuntimeException("down")));
+                DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
 
         assertThatThrownBy(() -> strategy.search(searchRequest("{\"query\": \"weather\"}")))
                 .hasMessage("down");

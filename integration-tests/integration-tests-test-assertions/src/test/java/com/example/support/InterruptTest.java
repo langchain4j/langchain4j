@@ -5,7 +5,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +25,7 @@ class InterruptTest {
         CountDownLatch modelCalled = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AsyncCustomerSupportAgent agent = CustomerSupport.asyncCustomerSupportAgent(
-                MockChatModel.thatResponds(request -> {
+                ChatModelMock.thatResponds(request -> {
                     modelCalled.countDown();
                     try {
                         release.await();

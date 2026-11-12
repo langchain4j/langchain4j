@@ -12,7 +12,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.CompletableFuture;
@@ -25,11 +25,11 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class FailureTest {
 
-    MockChatModel overloadedModel = MockChatModel.thatFails(new RuntimeException("Model overloaded")).thenRepeats();
+    ChatModelMock overloadedModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Model overloaded");
 
     CustomerSupportAgent agent(ChatModel model) {
         return CustomerSupport.customerSupportAgent(
-                model, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
+                model, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
     }
 
     @Test
@@ -77,12 +77,12 @@ class FailureTest {
     @Test
     void should_check_what_happened_before_the_failure() {
         // the model asks for a tool, then fails
-        CustomerSupportAgent agent = agent(MockChatModel.thatResponds(request -> {
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds(request -> {
             if (request.messages().get(request.messages().size() - 1) instanceof ToolExecutionResultMessage) {
                 throw new IllegalStateException("Connection reset");
             }
             return toolCall("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}");
-        }).thenRepeats());
+        }));
 
         AiServiceInvocation invocation =
                 captureExpectingFailure(() -> agent.chat("klaus", "Show MS-777")).invocation();
@@ -124,7 +124,8 @@ class FailureTest {
 
     @Test
     void should_match_failure_by_cause() {
-        CustomerSupportAgent agent = agent(MockChatModel.thatFails(new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
+        CustomerSupportAgent agent = agent(new ChatModelMock(
+                new RuntimeException("Request failed", new SocketTimeoutException("Read timed out"))));
 
         AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chat("klaus", "Hi")).invocation();
 
@@ -135,7 +136,7 @@ class FailureTest {
 
     @Test
     void should_fail_failure_assertions_on_a_successful_invocation() {
-        CustomerSupportAgent agent = agent(MockChatModel.thatResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Hi")).invocation();
 
         assertThatThrownBy(() -> assertThat(invocation).hasFailedWith(RuntimeException.class))
@@ -148,7 +149,7 @@ class FailureTest {
 
     @Test
     void capture_expecting_failure_should_fail_when_nothing_failed() {
-        CustomerSupportAgent agent = agent(MockChatModel.thatResponds("Hello"));
+        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
 
         assertThatThrownBy(() -> captureExpectingFailure(() -> agent.chat("klaus", "Hi")))
                 .isInstanceOf(AssertionError.class)
@@ -181,7 +182,7 @@ class FailureTest {
 
     @Test
     void should_rethrow_exception_thrown_by_the_captured_code_itself() {
-        CustomerSupportAgent agent = agent(MockChatModel.thatResponds("Hello").thenRepeats());
+        CustomerSupportAgent agent = agent(ChatModelMock.thatAlwaysResponds("Hello"));
 
         assertThatThrownBy(() -> capture(() -> {
                     String answer = agent.chat("klaus", "Hi");
@@ -201,9 +202,9 @@ class FailureTest {
 
     @Test
     void should_rethrow_assertion_error_thrown_in_a_mock_model_even_when_failure_is_expected() {
-        CustomerSupportAgent agent = agent(MockChatModel.thatResponds(request -> {
+        CustomerSupportAgent agent = agent(ChatModelMock.thatResponds(request -> {
             throw new AssertionError("The prompt should mention the booking number");
-        }).thenRepeats());
+        }));
 
         assertThatThrownBy(() -> capture(() -> agent.chat("klaus", "Hi")))
                 .isInstanceOf(AssertionError.class)
@@ -237,7 +238,7 @@ class FailureTest {
     @Test
     void should_rethrow_failure_of_returned_future_that_is_not_an_ai_service_failure() {
         AsyncCustomerSupportAgent agent =
-                CustomerSupport.asyncCustomerSupportAgent(MockChatModel.thatResponds("Hello"), bookings());
+                CustomerSupport.asyncCustomerSupportAgent(ChatModelMock.thatAlwaysResponds("Hello"), bookings());
 
         assertThatThrownBy(() -> capture(() -> agent.chat("Hi").thenCompose(answer ->
                         CompletableFuture.<String>failedFuture(new IllegalStateException("post-processing failed")))))
@@ -248,7 +249,7 @@ class FailureTest {
     @Test
     void should_capture_failed_structured_output() {
         BookingRequestExtractor extractor =
-                CustomerSupport.bookingRequestExtractor(MockChatModel.thatResponds(AiMessage.from("I am not JSON")));
+                CustomerSupport.bookingRequestExtractor(ChatModelMock.thatAlwaysResponds(AiMessage.from("I am not JSON")));
 
         AiServiceInvocation invocation =
                 captureExpectingFailure(() -> extractor.extract("Cancel MS-777")).invocation();

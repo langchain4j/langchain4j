@@ -169,56 +169,7 @@
                         <configuration>
                             <excludes>
                                 <exclude>junit-platform.properties</exclude>
-                                <!-- the model mocks copied below are published only in langchain4j-test: a module that uses -->
-                                <!-- test classes of this test-jar which need the mocks must also depend on langchain4j-test -->
-                                <exclude>dev/langchain4j/test/mock/**</exclude>
                             </excludes>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- The model mocks live in langchain4j-test, but this module cannot depend on it: langchain4j-test depends on -->
-            <!-- this module. So their sources are copied into the test sources of this module, as langchain4j-core does. -->
-            <!-- Maven does not see this copy as a dependency, so a change in the mocks alone does not select this module in incremental builds -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-langchain4j-test-mocks</id>
-                        <phase>generate-test-sources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/generated-test-sources/langchain4j-test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/../langchain4j-test/src/main/java</directory>
-                                    <includes>
-                                        <include>dev/langchain4j/test/mock/**</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>add-test-source</goal>
-                        </goals>
-                        <phase>generate-test-sources</phase>
-                        <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-test-sources/langchain4j-test</source>
-                            </sources>
                         </configuration>
                     </execution>
                 </executions>
@@ -235,12 +186,6 @@
                             <!-- For getting test source -->
                             <goal>test-jar-no-fork</goal>
                         </goals>
-                        <configuration>
-                            <!-- The copied mock sources are published only in langchain4j-test -->
-                            <excludes>
-                                <exclude>dev/langchain4j/test/mock/**</exclude>
-                            </excludes>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

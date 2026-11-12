@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
@@ -137,7 +137,7 @@ class DecisionServicesTest {
 
     static final ImageContent PHOTO = ImageContent.from("iVBORw0KGgo=", "image/png");
 
-    MockDecisionModel damaged = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+    DecisionModelMock damaged = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
     DamageInspector inspector = DecisionServices.builder(DamageInspector.class)
             .decisionModel(damaged)

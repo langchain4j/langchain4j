@@ -3,15 +3,9 @@ package dev.langchain4j.model.scoring;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -19,7 +13,7 @@ import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
-import dev.langchain4j.test.mock.MockScoringModel;
+import dev.langchain4j.model.scoring.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -28,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.ToDoubleFunction;
 import org.junit.jupiter.api.Test;
 
 class ScoringModelListenerTest {
@@ -85,11 +77,10 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         TokenUsage tokenUsage = new TokenUsage(42);
-        ScoringModel model = reporting(
-                        MockScoringModel.thatScores(document -> document.equals("a") ? 0.9 : 0.1),
-                        tokenUsage,
-                        "default-model",
-                        ModelProvider.COHERE)
+        ScoringModel model = ScoringModelMock.thatScores(document -> document.equals("a") ? 0.9 : 0.1)
+                .withModelName("default-model")
+                .withTokenUsage(tokenUsage)
+                .withProvider(ModelProvider.COHERE)
                 .withListeners(listener);
 
         // when
@@ -123,7 +114,8 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = reporting(MockScoringModel.thatScores(0.5), null, "default-model", null)
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+                .withModelName("default-model")
                 .withListeners(listener);
 
         // when
@@ -143,7 +135,8 @@ class ScoringModelListenerTest {
 
         // given: like the in-repo providers, the mock implements scoreAll by calling score(ScoringRequest)
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = reporting(MockScoringModel.thatScores(0.5), new TokenUsage(3), null, null)
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+                .withTokenUsage(new TokenUsage(3))
                 .withListeners(listener);
 
         // when
@@ -167,8 +160,11 @@ class ScoringModelListenerTest {
 
         // given: a model that implements only the abstract scoreAll, like an existing third-party implementation
         RecordingListener listener = new RecordingListener();
-        ScoreAllOnlyModel model = new ScoreAllOnlyModel(
-                document -> document.equals("a") ? 0.9 : 0.1, new TokenUsage(5), "default-model", listener);
+        ScoringModelMock model = ScoringModelMock.thatScores(document -> document.equals("a") ? 0.9 : 0.1)
+                .implementingOnlyScoreAll()
+                .withTokenUsage(new TokenUsage(5))
+                .withModelName("default-model")
+                .withListeners(listener);
 
         // when
         ScoringResponse response = model.score(ScoringRequest.builder()
@@ -180,7 +176,7 @@ class ScoringModelListenerTest {
         assertThat(response.scores()).containsExactly(0.9, 0.1);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(5));
         assertThat(response.modelName()).isEqualTo("default-model");
-        assertThat(model.scoreAllCalls).containsExactly(List.of(TextSegment.from("a"), TextSegment.from("b")));
+        assertThat(model.scoreAllCalls()).containsExactly(List.of(TextSegment.from("a"), TextSegment.from("b")));
         assertThat(listener.events).containsExactly("onRequest", "onResponse");
     }
 
@@ -190,7 +186,7 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         ScoringModel model =
-                MockScoringModel.thatFails(new RuntimeException("boom")).withListeners(listener);
+                ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom").withListeners(listener);
 
         // when-then
         assertThatThrownBy(() -> model.scoreAll(List.of(TextSegment.from("a")), "query"))
@@ -211,7 +207,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = MockScoringModel.thatScores(0.5).withListeners(new FailingListener(), listener);
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(new FailingListener(), listener);
 
         // when
         Response<List<Double>> response = model.scoreAll(List.of(TextSegment.from("a")), "query");
@@ -226,7 +222,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = MockScoringModel.thatFails(new RuntimeException("boom"))
+        ScoringModel model = ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom")
                 .withListeners(new FailingListener(), listener);
 
         // when-then
@@ -240,7 +236,9 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = reporting(MockScoringModel.thatScores(0.5), new TokenUsage(7), "default-model", null)
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+                .withModelName("default-model")
+                .withTokenUsage(new TokenUsage(7))
                 .withListeners(listener);
         ScoringRequest request = ScoringRequest.builder()
                 .documents(List.of("a", "b"))
@@ -265,7 +263,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = MockScoringModel.thatFails(new RuntimeException("boom"))
+        ScoringModel model = ScoringModelMock.thatAlwaysThrowsExceptionWithMessage("boom")
                 .withListeners(new FailingListener(), listener);
 
         // when
@@ -284,11 +282,8 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        MockScoringModel model = spy(MockScoringModel.thatScores(0.5)); // a model without asynchronous support
-        doAnswer(invocation -> AsyncNotSupported.failedFuture(MockScoringModel.class, "doScoreAsync"))
-                .when(model)
-                .doScoreAsync(any());
-        model.withListeners(listener);
+        ScoringModel model =
+                ScoringModelMock.thatAlwaysScores(0.5).withoutAsyncSupport().withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -307,7 +302,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoringModel model = MockScoringModel.thatScores(0.5).withListeners(listener);
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(null);
@@ -323,9 +318,7 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        MockScoringModel model = spy(MockScoringModel.thatScores(0.5)); // a model that reports no provider
-        doReturn(null).when(model).provider();
-        model.withListeners(listener);
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withProvider(null).withListeners(listener);
         ScoringRequest request =
                 ScoringRequest.builder().documents(List.of("a")).query("query").build();
 
@@ -346,9 +339,8 @@ class ScoringModelListenerTest {
         // given
         RecordingListener listener = new RecordingListener();
         CompletableFuture<ScoringResponse> inFlight = new CompletableFuture<>();
-        MockScoringModel model = spy(MockScoringModel.thatScores(0.5)); // its answer never arrives
-        doReturn(inFlight).when(model).doScoreAsync(any());
-        model.withListeners(listener);
+        ScoringModel model =
+                ScoringModelMock.thatAlwaysScores(0.5).withAsyncResult(() -> inFlight).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -366,9 +358,11 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        MockScoringModel model = spy(MockScoringModel.thatScores(0.5)); // its doScoreAsync throws
-        doThrow(new RuntimeException("boom")).when(model).doScoreAsync(any());
-        model.withListeners(listener);
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+                .withAsyncResult(() -> {
+                    throw new RuntimeException("boom");
+                })
+                .withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -385,9 +379,8 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        MockScoringModel model = spy(MockScoringModel.thatScores(0.5)); // its doScoreAsync returns null
-        doReturn(null).when(model).doScoreAsync(any());
-        model.withListeners(listener);
+        ScoringModel model =
+                ScoringModelMock.thatAlwaysScores(0.5).withAsyncResult(() -> null).withListeners(listener);
 
         // when
         CompletableFuture<ScoringResponse> future = model.scoreAsync(
@@ -405,7 +398,8 @@ class ScoringModelListenerTest {
 
         // given
         RecordingListener listener = new RecordingListener();
-        ScoreAllOnlyModel model = new ScoreAllOnlyModel(document -> 0.5, null, null, listener);
+        ScoringModelMock model =
+                ScoringModelMock.thatAlwaysScores(0.5).implementingOnlyScoreAll().withListeners(listener);
 
         // when-then
         assertThatThrownBy(() -> model.score(ScoringRequest.builder()
@@ -413,7 +407,7 @@ class ScoringModelListenerTest {
                         .query("query")
                         .build()))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThat(model.scoreAllCalls).isEmpty();
+        assertThat(model.scoreAllCalls()).isEmpty();
         assertThat(listener.events).containsExactly("onRequest", "onError");
     }
 
@@ -429,83 +423,12 @@ class ScoringModelListenerTest {
                 attributes.put("seen-by-second", attributes.get("id"));
             }
         };
-        ScoringModel model = MockScoringModel.thatScores(0.5).withListeners(first, second);
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5).withListeners(first, second);
 
         // when
         model.scoreAll(List.of(TextSegment.from("a")), "query");
 
         // then
         assertThat(first.responseContext.attributes()).containsEntry("seen-by-second", "12345");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static MockScoringModel reporting(
-            MockScoringModel model, TokenUsage tokenUsage, String defaultModelName, ModelProvider provider) {
-        MockScoringModel reporting = spy(model); // a model with token usage, a default model name and a provider
-        doReturn(ScoringRequestParameters.builder().modelName(defaultModelName).build())
-                .when(reporting)
-                .defaultRequestParameters();
-        doAnswer(invocation -> withTokenUsage((ScoringResponse) invocation.callRealMethod(), tokenUsage))
-                .when(reporting)
-                .doScore(any());
-        doAnswer(invocation -> ((CompletableFuture<ScoringResponse>) invocation.callRealMethod())
-                        .thenApply(response -> withTokenUsage(response, tokenUsage)))
-                .when(reporting)
-                .doScoreAsync(any());
-        if (provider != null) {
-            doReturn(provider).when(reporting).provider();
-        }
-        return reporting;
-    }
-
-    private static ScoringResponse withTokenUsage(ScoringResponse response, TokenUsage tokenUsage) {
-        return ScoringResponse.builder()
-                .scores(response.scores())
-                .modelName(response.modelName())
-                .tokenUsage(tokenUsage)
-                .build();
-    }
-
-    /**
-     * A model that implements only the abstract {@code scoreAll}, like an existing third-party implementation. This
-     * shape is what the tests using it check, so it is written here instead of using {@link MockScoringModel}.
-     */
-    private static class ScoreAllOnlyModel implements ScoringModel {
-
-        private final ToDoubleFunction<String> scores;
-        private final TokenUsage tokenUsage;
-        private final String defaultModelName;
-        private final List<ScoringModelListener> listeners;
-        private final List<List<TextSegment>> scoreAllCalls = new CopyOnWriteArrayList<>();
-
-        ScoreAllOnlyModel(
-                ToDoubleFunction<String> scores,
-                TokenUsage tokenUsage,
-                String defaultModelName,
-                ScoringModelListener listener) {
-            this.scores = scores;
-            this.tokenUsage = tokenUsage;
-            this.defaultModelName = defaultModelName;
-            this.listeners = List.of(listener);
-        }
-
-        @Override
-        public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
-            scoreAllCalls.add(segments);
-            List<Double> result = segments.stream()
-                    .map(segment -> scores.applyAsDouble(segment.text()))
-                    .toList();
-            return Response.from(result, tokenUsage);
-        }
-
-        @Override
-        public ScoringRequestParameters defaultRequestParameters() {
-            return ScoringRequestParameters.builder().modelName(defaultModelName).build();
-        }
-
-        @Override
-        public List<ScoringModelListener> listeners() {
-            return listeners;
-        }
     }
 }

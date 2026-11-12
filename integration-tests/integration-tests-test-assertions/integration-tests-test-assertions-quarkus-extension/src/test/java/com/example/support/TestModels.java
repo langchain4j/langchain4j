@@ -2,13 +2,14 @@ package com.example.support;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.function.Supplier;
 
 /**
- * The models of the AI Services, using the mocks of langchain4j-test. The AI Services get them with
+ * The models of the AI Services, using the shared mocks of langchain4j-core. The AI Services get them with
  * {@code @RegisterAiService(chatLanguageModelSupplier = ...)} or
  * {@code @RegisterAiService(streamingChatLanguageModelSupplier = ...)}.
  */
@@ -23,7 +24,9 @@ public final class TestModels {
 
         @Override
         public ChatModel get() {
-            return MockChatModel.thatResponds(SupportScript::respond).thenRepeats().withTokenUsage(TOKEN_USAGE_PER_CALL);
+            return ChatModelMock.thatResponds(SupportScript::respond)
+                    .withTokenUsage(TOKEN_USAGE_PER_CALL)
+                    .withFinishReason(FinishReason.STOP);
         }
     }
 
@@ -31,7 +34,9 @@ public final class TestModels {
 
         @Override
         public StreamingChatModel get() {
-            return MockStreamingChatModel.thatStreams(STREAMED_ANSWER).thenRepeats().withTokenUsage(TOKEN_USAGE_PER_CALL);
+            return StreamingChatModelMock.thatAlwaysStreams("Hello ", "from ", "Miles of Smiles")
+                    .withTokenUsage(TOKEN_USAGE_PER_CALL)
+                    .withFinishReason(FinishReason.STOP);
         }
     }
 }

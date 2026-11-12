@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.query.transformer;
 
-import static dev.langchain4j.rag.query.transformer.TransformerTestModels.userMessageText;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,7 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
@@ -33,7 +32,7 @@ class ExpandingQueryTransformerTest {
 
         Query query = Query.from(userMessage.singleText(), metadata);
 
-        MockChatModel model = MockChatModel.thatResponds(queriesString);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
@@ -46,7 +45,7 @@ class ExpandingQueryTransformerTest {
                         Query.from("query 1", metadata),
                         Query.from("query 2", metadata),
                         Query.from("query 3", metadata));
-        assertThat(userMessageText(model))
+        assertThat(model.userMessageText())
                 .isEqualTo(
                         """
                 Generate 3 different versions of a provided user query. \
@@ -67,7 +66,7 @@ class ExpandingQueryTransformerTest {
         Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);
 
-        MockChatModel model = MockChatModel.thatResponds("query 1\nquery 2\nquery 3");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("query 1\nquery 2\nquery 3");
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
@@ -83,7 +82,7 @@ class ExpandingQueryTransformerTest {
         // given
         int n = 5;
 
-        MockChatModel model = MockChatModel.thatResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, n);
 
@@ -93,7 +92,7 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(userMessageText(model)).contains("Generate 5 different versions");
+        assertThat(model.userMessageText()).contains("Generate 5 different versions");
     }
 
     @Test
@@ -102,7 +101,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
 
-        MockChatModel model = MockChatModel.thatResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, promptTemplate);
 
@@ -112,7 +111,7 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(userMessageText(model)).isEqualTo("Generate 7 variations of query");
+        assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
     }
 
     @Test
@@ -121,7 +120,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate {{n}} variations of {{query}}");
 
-        MockChatModel model = MockChatModel.thatResponds("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
                 .chatModel(model)
@@ -135,6 +134,6 @@ class ExpandingQueryTransformerTest {
         transformer.transform(query);
 
         // then
-        assertThat(userMessageText(model)).isEqualTo("Generate 7 variations of query");
+        assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
     }
 }

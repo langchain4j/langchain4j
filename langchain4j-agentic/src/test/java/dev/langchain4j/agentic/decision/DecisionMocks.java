@@ -1,11 +1,6 @@
 package dev.langchain4j.agentic.decision;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
-import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -16,18 +11,17 @@ import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Factories of {@link MockDecisionModel}s answering the questions of the agents of {@link DecisionAgents}.
+ * Factories of {@link DecisionModelMock}s answering the questions of the agents of {@link DecisionAgents}.
  */
 final class DecisionMocks {
 
     private DecisionMocks() {}
 
     /** Answers every choice question with the given option and probability, the rest of the probability shared. */
-    static MockDecisionModel choosing(String option, double probability) {
-        return MockDecisionModel.thatAnswersQuestions(question -> {
+    static DecisionModelMock choosing(String option, double probability) {
+        return DecisionModelMock.thatAnswersQuestions(question -> {
             if (question instanceof ChoiceQuestion choice) {
                 return choiceAnswer(choice, option, probability);
             }
@@ -48,13 +42,13 @@ final class DecisionMocks {
     }
 
     /** Answers every yes/no question with the given probability of "yes". */
-    static MockDecisionModel answeringYes(double probability) {
-        return MockDecisionModel.thatAnswersYesNoQuestions(question -> probability);
+    static DecisionModelMock answeringYes(double probability) {
+        return DecisionModelMock.thatAnswersYesNoQuestions(question -> probability);
     }
 
     /** Answers every scale question with the given level, with the given probability. */
-    static MockDecisionModel scaling(String level, double probability) {
-        return MockDecisionModel.thatAnswersQuestions(question -> {
+    static DecisionModelMock scaling(String level, double probability) {
+        return DecisionModelMock.thatAnswersQuestions(question -> {
             if (question instanceof ScaleQuestion scale) {
                 return scaleAnswer(scale, level, probability);
             }
@@ -77,8 +71,8 @@ final class DecisionMocks {
     }
 
     /** Answers a triage: the team as a choice, the urgency as a yes/no and the sentiment as a choice. */
-    static MockDecisionModel triaging(String team, double urgency, String sentiment) {
-        return MockDecisionModel.thatAnswersQuestions(question -> {
+    static DecisionModelMock triaging(String team, double urgency, String sentiment) {
+        return DecisionModelMock.thatAnswersQuestions(question -> {
             if (question instanceof YesNoQuestion) {
                 return YesNoAnswer.from(urgency);
             }
@@ -90,26 +84,5 @@ final class DecisionMocks {
 
     static DecisionAnswer yes(double probability) {
         return YesNoAnswer.from(probability);
-    }
-
-    /** The given model, reporting the given token usage in every response. */
-    @SuppressWarnings("unchecked")
-    static MockDecisionModel withTokenUsage(MockDecisionModel model, TokenUsage tokenUsage) {
-        MockDecisionModel reporting = spy(model);
-        doAnswer(invocation -> withTokenUsage((DecisionResponse) invocation.callRealMethod(), tokenUsage))
-                .when(reporting)
-                .doDecide(any());
-        doAnswer(invocation -> ((CompletableFuture<DecisionResponse>) invocation.callRealMethod())
-                        .thenApply(response -> withTokenUsage(response, tokenUsage)))
-                .when(reporting)
-                .doDecideAsync(any());
-        return reporting;
-    }
-
-    private static DecisionResponse withTokenUsage(DecisionResponse response, TokenUsage tokenUsage) {
-        return DecisionResponse.builder()
-                .answers(response.answers())
-                .tokenUsage(tokenUsage)
-                .build();
     }
 }

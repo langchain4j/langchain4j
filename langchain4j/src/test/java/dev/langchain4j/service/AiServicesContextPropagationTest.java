@@ -3,28 +3,24 @@ package dev.langchain4j.service;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.test.mock.MockEmbeddingModel;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
-import dev.langchain4j.test.mock.MockModerationModel;
+import dev.langchain4j.model.moderation.mock.ModerationModelMock;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -112,7 +108,7 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(executorProvider);
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(toolCall("1"), toolCall("2"), AiMessage.from("Berlin")))
+                .chatModel(ChatModelMock.thatAlwaysResponds(toolCall("1"), toolCall("2"), AiMessage.from("Berlin")))
                 .tools(tools)
                 .build();
 
@@ -134,7 +130,7 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(null));
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(toolCall("1"), AiMessage.from("Berlin")))
+                .chatModel(ChatModelMock.thatAlwaysResponds(toolCall("1"), AiMessage.from("Berlin")))
                 .tools(tools)
                 .build();
 
@@ -158,7 +154,7 @@ class AiServicesContextPropagationTest {
         // model's own thread rather than continued on the caller's thread
         CountDownLatch invocationReturned = new CountDownLatch(1);
         AtomicInteger modelCalls = new AtomicInteger();
-        MockChatModel chatModel = MockChatModel.thatResponds(request -> {
+        ChatModelMock chatModel = new ChatModelMock(request -> {
             if (modelCalls.incrementAndGet() > 1) {
                 return AiMessage.from("Berlin");
             }
@@ -168,7 +164,7 @@ class AiServicesContextPropagationTest {
                 Thread.currentThread().interrupt();
             }
             return toolCall("1");
-        }).thenRepeats();
+        });
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -192,7 +188,7 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatModel(MockStreamingChatModel.thatStreams(toolCall("1"), AiMessage.from("Berlin")))
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin")))
                 .tools(tools)
                 .build();
         Flow.Publisher<AiServiceStreamingEvent> events =
@@ -229,11 +225,11 @@ class AiServicesContextPropagationTest {
     @Test
     void should_run_tools_of_a_token_stream_with_the_captured_context() throws Exception {
 
-        // given: MockStreamingChatModel streams on a thread of its own
+        // given: StreamingChatModelMock streams on a thread of its own
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .streamingChatModel(MockStreamingChatModel.thatStreams(toolCall("1"), AiMessage.from("Berlin")))
+                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin")))
                 .tools(tools)
                 .executeToolsConcurrently(executor)
                 .build();
@@ -259,7 +255,7 @@ class AiServicesContextPropagationTest {
         Tools tools = new Tools();
         AiServiceContext context = AiServiceContext.create(Assistant.class);
         context.streamingChatModel =
-                MockStreamingChatModel.thatStreams(toolCall("1"), AiMessage.from("Berlin"));
+                StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin"));
         context.toolService.tools(List.of(tools));
         UserMessage userMessage = UserMessage.from(USER_MESSAGE);
         InvocationContext invocationContext = withRequestId("request-42", () -> CapturedContextSupport.captureInto(
@@ -298,7 +294,7 @@ class AiServicesContextPropagationTest {
         // two tool calls in one response, so that they run concurrently
         AiMessage twoToolCalls = AiMessage.from(toolRequest("1"), toolRequest("2"));
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(twoToolCalls, AiMessage.from("Berlin")))
+                .chatModel(ChatModelMock.thatAlwaysResponds(twoToolCalls, AiMessage.from("Berlin")))
                 .tools(tools)
                 .executeToolsConcurrently(executor)
                 .build();
@@ -334,7 +330,7 @@ class AiServicesContextPropagationTest {
             return List.of(Content.from("Berlin is the capital of Germany"));
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(asyncQueryTransformer)
                         .contentRetriever(blockingRetriever)
@@ -353,22 +349,23 @@ class AiServicesContextPropagationTest {
     @Test
     void should_run_offloaded_embedding_of_the_content_retriever_with_the_captured_context() throws Exception {
 
-        // given: MockEmbeddingModel is blocking only, so the retriever offloads the embedding of the query
+        // given: EmbeddingModelMock is blocking only, so the retriever offloads the embedding of the query
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
-        MockEmbeddingModel embeddingModel = spy(MockEmbeddingModel.thatEmbeds(text -> {
-            requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
-            return new float[] {1f, 2f, 3f};
-        })); // blocking only, without asynchronous support
-        doAnswer(invocation -> AsyncNotSupported.failedFuture(MockEmbeddingModel.class, "doEmbedAsync"))
-                .when(embeddingModel)
-                .doEmbedAsync(any());
+        EmbeddingModelMock embeddingModel = new EmbeddingModelMock() {
+
+            @Override
+            public EmbeddingResponse doEmbed(EmbeddingRequest request) {
+                requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+                return super.doEmbed(request);
+            }
+        };
         InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         TextSegment segment = TextSegment.from("Berlin is the capital of Germany");
         embeddingStore.add(embeddingModel.embed(segment).content(), segment);
         requestIdsSeen.clear();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .contentRetriever(EmbeddingStoreContentRetriever.builder()
                         .embeddingStore(embeddingStore)
                         .embeddingModel(embeddingModel)
@@ -390,12 +387,16 @@ class AiServicesContextPropagationTest {
         // given: moderation is only supported for blocking methods, and runs on the executor
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
-        MockModerationModel moderationModel = MockModerationModel.thatModerates(request -> {
-            requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
-            return Moderation.notFlagged();
-        });
+        ModerationModelMock moderationModel = new ModerationModelMock(Moderation.notFlagged()) {
+
+            @Override
+            public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+                requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+                return super.doModerate(moderationRequest);
+            }
+        };
         ModeratedAssistant assistant = AiServices.builder(ModeratedAssistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .moderationModel(moderationModel)
                 .build();
 
@@ -414,10 +415,10 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(request -> request.messages().get(request.messages().size() - 1)
+                .chatModel(ChatModelMock.thatResponds(request -> request.messages().get(request.messages().size() - 1)
                                 instanceof dev.langchain4j.data.message.ToolExecutionResultMessage
                         ? AiMessage.from("Berlin")
-                        : toolCall("1")).thenRepeats())
+                        : toolCall("1")))
                 .tools(tools)
                 .build();
 
@@ -441,7 +442,7 @@ class AiServicesContextPropagationTest {
             return List.of(Content.from("Berlin is the capital of Germany"));
         };
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds("Berlin"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(query -> List.of(retriever, retriever))
                         .executor(executor)
@@ -461,7 +462,7 @@ class AiServicesContextPropagationTest {
 
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
-        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
         Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when
@@ -478,7 +479,7 @@ class AiServicesContextPropagationTest {
 
         // given
         ExecutorProvider.set(new FailingExecutorProvider());
-        MockChatModel chatModel = MockChatModel.thatResponds("Berlin");
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
         Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
         // when-then
@@ -493,7 +494,7 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(() -> Runnable::run);
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(toolCall("1"), AiMessage.from("Berlin")))
+                .chatModel(ChatModelMock.thatAlwaysResponds(toolCall("1"), AiMessage.from("Berlin")))
                 .tools(tools)
                 .build();
 
@@ -513,7 +514,7 @@ class AiServicesContextPropagationTest {
         ExecutorProvider.set(new CapturingExecutorProvider(executor));
         InnerTools innerTools = new InnerTools();
         Assistant inner = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(
+                .chatModel(ChatModelMock.thatAlwaysResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("recordInner")
@@ -524,7 +525,7 @@ class AiServicesContextPropagationTest {
                 .build();
         OuterTools outerTools = new OuterTools(inner);
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(MockChatModel.thatResponds(
+                .chatModel(ChatModelMock.thatAlwaysResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("askInner")

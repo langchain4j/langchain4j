@@ -11,7 +11,7 @@ import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
@@ -40,7 +40,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void guardrailAfterCleanJsonExtractionCanStillReprompt() {
-        var chatModel = MockChatModel.thatResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new StartsWithDear(), new EndsWithSignature()).execute(request);
@@ -52,7 +52,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void guardrailAfterCleanJsonExtractionCanStillRepromptAsync() {
-        var chatModel = MockChatModel.thatResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new Async(new StartsWithDear()), new Async(new EndsWithSignature()))
@@ -66,7 +66,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectIsReturnedAfterRepromptingInvalidJson() {
-        var chatModel = MockChatModel.thatResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request("Not JSON at all", chatModel);
 
         var result = executor(new JsonExtractorOutputGuardrail<>(Email.class)).execute(request);
@@ -78,7 +78,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectSurvivesLaterPlainSuccess() {
-        var chatModel = MockChatModel.thatResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request(INITIAL_RESPONSE, chatModel);
 
         var result = executor(new JsonExtractorOutputGuardrail<>(Email.class), new AlwaysSuccess())
@@ -92,7 +92,7 @@ class JsonExtractorOutputGuardrailChainTests {
 
     @Test
     void deserializedObjectIsKeptAlongsideEarlierRewrite() {
-        var chatModel = MockChatModel.thatResponds(REPROMPTED_RESPONSE);
+        var chatModel = ChatModelMock.thatAlwaysResponds(REPROMPTED_RESPONSE);
         var request = request("""
                 {"body": "Dear Bob, my phone is 555-1234"}""", chatModel);
 
@@ -109,7 +109,7 @@ class JsonExtractorOutputGuardrailChainTests {
         return OutputGuardrailExecutor.builder().guardrails(guardrails).build();
     }
 
-    private static OutputGuardrailRequest request(String response, MockChatModel chatModel) {
+    private static OutputGuardrailRequest request(String response, ChatModelMock chatModel) {
         var chatExecutor = ChatExecutor.builder(chatModel)
                 .chatRequest(ChatRequest.builder()
                         .messages(INVOCATION_CONTEXT.userMessage())
@@ -130,9 +130,8 @@ class JsonExtractorOutputGuardrailChainTests {
                 .build();
     }
 
-    private static List<String> repromptTexts(MockChatModel chatModel) {
-        return chatModel.requests().stream()
-                .map(request -> request.messages())
+    private static List<String> repromptTexts(ChatModelMock chatModel) {
+        return chatModel.getRequests().stream()
                 .map(messages -> ((UserMessage) messages.get(messages.size() - 1)).singleText())
                 .toList();
     }

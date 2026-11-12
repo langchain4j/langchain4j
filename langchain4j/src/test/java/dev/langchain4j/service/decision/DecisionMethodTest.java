@@ -1,12 +1,8 @@
 package dev.langchain4j.service.decision;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
 
-import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,7 +22,7 @@ class DecisionMethodTest {
         DecisionResult<YesNoAnswer> isSpamWithResponse(@V("message") String message);
     }
 
-    private static DecisionServiceConfig config(MockDecisionModel model, ThresholdProvider thresholdProvider) {
+    private static DecisionServiceConfig config(DecisionModelMock model, ThresholdProvider thresholdProvider) {
         return DecisionServiceConfig.builder()
                 .serviceInterface(SpamFilter.class)
                 .decisionModel(model)
@@ -36,13 +32,8 @@ class DecisionMethodTest {
 
     @Test
     void should_return_the_result_and_the_response_of_the_model() throws Exception {
-        MockDecisionModel model = spy(MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.7)); // reports usage
-        doAnswer(invocation -> DecisionResponse.builder()
-                        .answers(((DecisionResponse) invocation.callRealMethod()).answers())
-                        .tokenUsage(new TokenUsage(10, 1))
-                        .build())
-                .when(model)
-                .doDecide(any());
+        DecisionModelMock model =
+                DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7).withTokenUsage(new TokenUsage(10, 1));
         DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpam", String.class));
         DecisionRequest request = method.toRequest(new Object[] {"Buy now!"});
 
@@ -56,7 +47,7 @@ class DecisionMethodTest {
 
     @Test
     void should_apply_the_thresholds() throws Exception {
-        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.7);
+        DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7);
         DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpam", String.class));
         DecisionRequest request = method.toRequest(new Object[] {"Buy now!"});
 
@@ -67,7 +58,7 @@ class DecisionMethodTest {
 
     @Test
     void should_return_the_same_content_as_invoke() throws Exception {
-        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.7);
+        DecisionModelMock model = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7);
         DecisionMethod method = DecisionMethod.from(SpamFilter.class.getMethod("isSpamWithResponse", String.class));
         Object[] args = {"Buy now!"};
 

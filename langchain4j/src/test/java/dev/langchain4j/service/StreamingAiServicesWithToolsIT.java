@@ -38,7 +38,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -1105,13 +1105,12 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         StreamingChatModel spyModel =
-                spy(MockStreamingChatModel.thatStreams(AiMessage.from(toolExecutionRequest)));
+                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 
@@ -1173,18 +1172,16 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
-                .id("2")
                 .name("getWeather")
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        StreamingChatModel spyModel = spy(MockStreamingChatModel.thatStreams(
+        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(
                 AiMessage.from(toolExecutionRequest1), AiMessage.from(toolExecutionRequest2), AiMessage.from("sunny")));
 
         class WeatherTool {
@@ -1275,13 +1272,12 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         StreamingChatModel spyModel =
-                spy(MockStreamingChatModel.thatStreams(AiMessage.from(toolExecutionRequest)));
+                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 
@@ -1484,7 +1480,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = MockStreamingChatModel.thatStreams(List.of(
+        StreamingChatModel streamingModel = new StreamingChatModelMock(List.of(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1557,7 +1553,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = MockStreamingChatModel.thatStreams(
+        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1636,7 +1632,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = MockStreamingChatModel.thatStreams(
+        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1686,7 +1682,7 @@ class StreamingAiServicesWithToolsIT {
 
         ToolReturningImage tools = spy(new ToolReturningImage());
 
-        StreamingChatModel streamingModel = spy(MockStreamingChatModel.thatStreams(
+        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatAlwaysStreams(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")

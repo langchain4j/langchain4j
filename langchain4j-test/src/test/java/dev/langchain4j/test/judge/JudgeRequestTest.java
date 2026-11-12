@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class JudgeRequestTest {
 
     @Test
     void evaluate_should_reject_invalid_arguments() {
-        MockDecisionModel judge = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        DecisionModelMock judge = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 
         assertThatThrownBy(() -> Judge.from(judge).evaluate(null))
                 .isInstanceOf(IllegalArgumentException.class)

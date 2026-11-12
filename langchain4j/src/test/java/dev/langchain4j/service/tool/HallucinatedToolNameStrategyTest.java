@@ -9,8 +9,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
@@ -46,8 +46,8 @@ public class HallucinatedToolNameStrategyTest {
     @Test
     void should_fail_on_hallucinated_tool_execution() {
 
-        ChatModel chatModel = MockChatModel.thatResponds(ignore -> AiMessage.from(
-                ToolExecutionRequest.builder().id("id").name("unknown").build())).thenRepeats();
+        ChatModel chatModel = new ChatModelMock(ignore -> AiMessage.from(
+                ToolExecutionRequest.builder().id("id").name("unknown").build()));
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
@@ -68,7 +68,7 @@ public class HallucinatedToolNameStrategyTest {
     @Test
     void should_retry_on_hallucinated_tool_execution() {
 
-        ChatModel chatModel = MockChatModel.thatResponds(chatRequest -> {
+        ChatModel chatModel = new ChatModelMock(chatRequest -> {
             List<ToolExecutionResultMessage> toolResults = chatRequest.messages().stream()
                     .filter(ToolExecutionResultMessage.class::isInstance)
                     .map(ToolExecutionResultMessage.class::cast)
@@ -88,7 +88,7 @@ public class HallucinatedToolNameStrategyTest {
                         .build());
             }
             return AiMessage.from(text);
-        }).thenRepeats();
+        });
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
@@ -147,7 +147,7 @@ public class HallucinatedToolNameStrategyTest {
                 .arguments("{\"arg0\":\"mock_action\"}")
                 .build();
         AiMessage aiMessage = AiMessage.from("does not matter", List.of(toolExecutionRequest));
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(aiMessage);
+        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(aiMessage);
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
@@ -203,7 +203,7 @@ public class HallucinatedToolNameStrategyTest {
 
         AiMessage aiMessage3 = AiMessage.from("6.97070153193991E8");
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(aiMessage1, aiMessage2, aiMessage3);
+        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(aiMessage1, aiMessage2, aiMessage3);
         Calculator calculator = spy(new Calculator());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);

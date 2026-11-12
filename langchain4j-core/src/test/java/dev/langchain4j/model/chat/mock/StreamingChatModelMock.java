@@ -15,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -49,8 +50,9 @@ import java.util.concurrent.Flow.Subscription;
  * {@code withTokenUsage(...)}, {@code requests()} and {@code request()} have the same names. A response reports the
  * model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of
  * {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:
- * {@link MockStreamingChatModel#thatStreams(ChatResponse)}. {@code withSupportedCapabilities(...)} and
- * {@code throwingFromChat()} have no replacement. Other differences: the new mock also streams partial tool calls
+ * {@link MockStreamingChatModel#thatStreams(ChatResponse)}. {@code withSupportedCapabilities(...)},
+ * {@code throwingFromChat()} and {@code streamingOnCallingThread()} have no replacement, and
+ * {@code withListeners(...)} has the same name. Other differences: the new mock also streams partial tool calls
  * and thinking, streams text given as one string or message one character (code point) per token, reports every
  * failure on its streaming thread, and {@code requests()} returns a copy.
  * This class will be removed in 1.26.0 at the earliest.
@@ -67,6 +69,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private List<TokenUsage> tokenUsages = List.of();
     private FinishReason finishReason;
     private boolean throwFromChat;
+    private boolean streamingOnCallingThread;
+    private List<ChatModelListener> listeners = List.of();
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(List)} followed by
@@ -120,6 +124,34 @@ public class StreamingChatModelMock implements StreamingChatModel {
      */
     public StreamingChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
         this.tokenUsages = List.of(tokenUsages);
+        return this;
+    }
+
+    /**
+     * Notifies the given listeners of each call, like a real model does.
+     *
+     * @deprecated use {@link MockStreamingChatModel#withListeners(ChatModelListener...)}
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public StreamingChatModelMock withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    /**
+     * Streams on the thread that calls {@code chat(ChatRequest, StreamingChatResponseHandler)}, before that call
+     * returns, as some in-process models do, instead of on a separate thread.
+     *
+     * @deprecated has no replacement: {@link MockStreamingChatModel} always streams on its own thread, like a provider
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
+    public StreamingChatModelMock streamingOnCallingThread() {
+        this.streamingOnCallingThread = true;
         return this;
     }
 
@@ -248,10 +280,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
         } else {
             AiMessage aiMessage = nextAiMessage();
 
-            var executor = Executors.newSingleThreadExecutor();
-
-            try {
-                executor.execute(() -> {
+            var executor = streamingOnCallingThread ? null : Executors.newSingleThreadExecutor();
+            Runnable streaming = () -> {
 
                     StreamingHandle streamingHandle = new SimpleStreamingHandle();
 
@@ -273,7 +303,13 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     ChatResponse chatResponse = chatResponse(aiMessage, tokenUsage);
 
                     onCompleteResponse(handler, chatResponse);
-                });
+            };
+            if (executor == null) {
+                streaming.run();
+                return;
+            }
+            try {
+                executor.execute(streaming);
             } finally {
                 executor.shutdown();
             }

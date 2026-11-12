@@ -25,7 +25,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -157,10 +157,10 @@ class DecisionSchedulerPlannerResumeTest {
      * A model answering each request with the goal probability and the scores computed from its state. The score of
      * a subagent is found by its name, and a subagent without a score is useless.
      */
-    private static MockDecisionModel model(
+    private static DecisionModelMock model(
             Function<Map<String, Object>, Double> goalProbability,
             Function<Map<String, Object>, Map<String, Double>> scores) {
-        return MockDecisionModel.thatAnswers(request -> {
+        return DecisionModelMock.thatAnswers(request -> {
             Map<String, Object> state = state(request);
             Map<String, DecisionAnswer> answers = new LinkedHashMap<>();
             request.questions().forEach((name, question) -> answers.put(
@@ -179,7 +179,7 @@ class DecisionSchedulerPlannerResumeTest {
      * A model asking for the tracker first, then for the operator, then for the writer, and considering the goal
      * reached once the reply is written.
      */
-    private static MockDecisionModel modelAskingTheOperatorAfterTheTracker() {
+    private static DecisionModelMock modelAskingTheOperatorAfterTheTracker() {
         return model(state -> state.containsKey("reply") ? 0.9 : 0.1, state -> {
             if (!state.containsKey("orderStatus")) {
                 return Map.of("tracker", 0.9);
@@ -188,7 +188,7 @@ class DecisionSchedulerPlannerResumeTest {
         });
     }
 
-    private static DecisionSchedulerPlanner.Builder planner(MockDecisionModel model) {
+    private static DecisionSchedulerPlanner.Builder planner(DecisionModelMock model) {
         return DecisionSchedulerPlanner.builder()
                 .decisionModel(model)
                 .goal(GOAL)
@@ -196,7 +196,7 @@ class DecisionSchedulerPlannerResumeTest {
                 .activationThreshold(0.5);
     }
 
-    private static ResumableDesk scheduler(MockDecisionModel model, Object... subagents) {
+    private static ResumableDesk scheduler(DecisionModelMock model, Object... subagents) {
         return AgenticServices.plannerBuilder(ResumableDesk.class)
                 .subAgents(subagents)
                 .outputKey("reply")
@@ -209,7 +209,7 @@ class DecisionSchedulerPlannerResumeTest {
     @Test
     void shouldSuspendWithoutAskingTheModelWhileAHumanAnswerIsPending() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelAskingTheOperatorAfterTheTracker();
+        DecisionModelMock model = modelAskingTheOperatorAfterTheTracker();
         ResumableDesk desk = scheduler(model, tracker(), operator, writer());
 
         suspensionOf(() -> desk.handle("s1", TICKET));
@@ -222,7 +222,7 @@ class DecisionSchedulerPlannerResumeTest {
     @Test
     void shouldDecideOnTheAnswerOfTheHumanWhenResumedAfterACrash() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelAskingTheOperatorAfterTheTracker();
+        DecisionModelMock model = modelAskingTheOperatorAfterTheTracker();
         ResumableDesk desk = scheduler(model, tracker(), operator, writer());
 
         suspensionOf(() -> desk.handle("s2", TICKET));
@@ -245,7 +245,7 @@ class DecisionSchedulerPlannerResumeTest {
     @Test
     void shouldSuspendAgainWhenResumedBeforeTheHumanAnswered() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelAskingTheOperatorAfterTheTracker();
+        DecisionModelMock model = modelAskingTheOperatorAfterTheTracker();
         ResumableDesk desk = scheduler(model, tracker(), operator, writer());
 
         suspensionOf(() -> desk.handle("s3", TICKET));
@@ -283,7 +283,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldHaveNoExecutionStateBeforeASubagentIsSelected() {
-        DecisionSchedulerPlanner planner = planner(MockDecisionModel.thatFails(new RuntimeException("unused")))
+        DecisionSchedulerPlanner planner = planner(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused"))
                 .build();
 
         assertThat(planner.executionState()).isEmpty();
@@ -291,7 +291,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldRunAgainTheSubagentInFlightWithoutANewDecision() {
-        MockDecisionModel model = model(state -> 0.1, state -> Map.of("tracker", 0.9, "writer", 0.6));
+        DecisionModelMock model = model(state -> 0.1, state -> Map.of("tracker", 0.9, "writer", 0.6));
         AgentInstance desk = (AgentInstance) scheduler(model, tracker(), writer());
         DefaultAgenticScope scope = scopeWithTheTicket("s4");
         InitPlanningContext initPlanningContext = new InitPlanningContext(scope, desk, desk.subagents());
@@ -319,7 +319,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldResumeAfterTheSubagentsAreDeclaredInAnotherOrder() {
-        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("unused"));
+        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused");
         // the state was saved by a scheduler declaring the tracker before the writer
         AgentInstance desk = (AgentInstance) scheduler(model, writer(), tracker());
         DefaultAgenticScope scope = scopeWithTheTicket("s8");
@@ -340,7 +340,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldNotOfferAgainTheSpentSubagentsAfterARestore() {
-        MockDecisionModel model = model(state -> 0.1, state -> Map.of("tracker", 0.9, "writer", 0.9));
+        DecisionModelMock model = model(state -> 0.1, state -> Map.of("tracker", 0.9, "writer", 0.9));
         AgentInstance desk = (AgentInstance) scheduler(model, tracker(), writer());
         DefaultAgenticScope scope = scopeWithTheTicket("s5");
 
@@ -365,7 +365,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldKeepCountingTheInvocationsAfterARestore() {
-        MockDecisionModel model = model(state -> 0.1, state -> Map.of("rewriter", 0.9));
+        DecisionModelMock model = model(state -> 0.1, state -> Map.of("rewriter", 0.9));
         AgentInstance desk = (AgentInstance) scheduler(model, rewriter());
         DefaultAgenticScope scope = scopeWithTheTicket("s6");
 
@@ -390,7 +390,7 @@ class DecisionSchedulerPlannerResumeTest {
 
     @Test
     void shouldFailToResumeWhenTheSubagentInFlightNoLongerExists() {
-        MockDecisionModel model = model(state -> 0.1, state -> Map.of("tracker", 0.9));
+        DecisionModelMock model = model(state -> 0.1, state -> Map.of("tracker", 0.9));
         AgentInstance desk = (AgentInstance) scheduler(model, tracker(), writer());
         DefaultAgenticScope scope = scopeWithTheTicket("s7");
 

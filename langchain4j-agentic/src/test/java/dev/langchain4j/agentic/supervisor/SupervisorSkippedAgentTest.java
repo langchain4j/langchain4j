@@ -7,7 +7,7 @@ import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ class SupervisorSkippedAgentTest {
 
     @Test
     void supervisor_is_told_why_an_agent_was_skipped() {
-        MockChatModel plannerModel = MockChatModel.thatResponds(
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from("""
                 {"agentName": "bookFlight", "arguments": {"destination": "Rome"}}
                 """),
@@ -60,7 +60,7 @@ class SupervisorSkippedAgentTest {
 
     @Test
     void supervisor_offers_only_the_agents_whose_condition_holds() {
-        MockChatModel plannerModel = MockChatModel.thatResponds(
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from("""
                 {"agentName": "approveBudget", "arguments": {}}
                 """),
@@ -105,7 +105,7 @@ class SupervisorSkippedAgentTest {
 
     @Test
     void skip_before_done_does_not_replace_the_last_response() {
-        MockChatModel plannerModel = MockChatModel.thatResponds(
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from("""
                 {"agentName": "draftTrip", "arguments": {"destination": "Rome"}}
                 """),

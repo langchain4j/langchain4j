@@ -7,7 +7,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
@@ -36,10 +36,10 @@ class ParallelCaptureTest {
     static final CountDownLatch OVERLAPPED = new CountDownLatch(1);
 
     // the model waits until two model calls run at the same time, so that the invocations of the tests overlap
-    static final MockChatModel MODEL = MockChatModel.thatResponds(ParallelCaptureTest::answerOnceOverlapped).thenRepeats();
+    static final ChatModelMock MODEL = ChatModelMock.thatResponds(ParallelCaptureTest::answerOnceOverlapped);
 
     static final CustomerSupportAgent AGENT = CustomerSupport.customerSupportAgent(
-            MODEL, bookings(), CustomerSupport.policyExpert(MockChatModel.thatResponds("unused")));
+            MODEL, bookings(), CustomerSupport.policyExpert(ChatModelMock.thatAlwaysResponds("unused")));
 
     static AiMessage answerOnceOverlapped(ChatRequest request) {
         if (RUNNING.incrementAndGet() > 1) {

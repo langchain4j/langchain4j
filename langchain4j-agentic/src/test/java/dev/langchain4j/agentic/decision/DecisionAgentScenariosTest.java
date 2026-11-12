@@ -25,8 +25,8 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -119,7 +119,7 @@ class DecisionAgentScenariosTest {
     @Test
     void scorer_stops_the_loop_when_the_story_is_good_enough() {
         Iterator<String> levels = List.of("POOR", "FAIR", "EXCELLENT").iterator();
-        MockDecisionModel scoringModel = MockDecisionModel.thatAnswersQuestions(
+        DecisionModelMock scoringModel = DecisionModelMock.thatAnswersQuestions(
                 question -> DecisionMocks.scaleAnswer((ScaleQuestion) question, levels.next(), 1.0));
         StyleScorer scorer = AgenticServices.decisionAgentBuilder(StyleScorer.class)
                 .decisionModel(scoringModel)
@@ -184,7 +184,7 @@ class DecisionAgentScenariosTest {
 
     @Test
     void supervisor_consults_the_oracle_before_crediting() {
-        MockDecisionModel eligibilityModel = answeringYes(0.95);
+        DecisionModelMock eligibilityModel = answeringYes(0.95);
         CreditEligibility eligibility = AgenticServices.decisionAgentBuilder(CreditEligibility.class)
                 .decisionModel(eligibilityModel)
                 .build();
@@ -198,7 +198,7 @@ class DecisionAgentScenariosTest {
                 .inputKey(Double.class, "amount")
                 .outputKey("receipt")
                 .build();
-        MockChatModel plannerModel = MockChatModel.thatResponds(AiMessage.from("""
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(AiMessage.from("""
                 {"agentName": "isEligible", "arguments": {"customerProfile": "Mario, income 3000 USD, no debts", "amount": 1000}}
                 """), AiMessage.from("""
                 {"agentName": "credit", "arguments": {"amount": 1000}}
@@ -263,7 +263,7 @@ class DecisionAgentScenariosTest {
 
     @Test
     void sensing_agent_fires_when_its_inputs_appear_and_gates_the_specialist() {
-        MockDecisionModel reviewModel = answeringYes(0.9);
+        DecisionModelMock reviewModel = answeringYes(0.9);
         Object specialistReview = AgenticServices.decisionAgentBuilder(DecisionAgents.SpamCheck.class)
                 .decisionModel(reviewModel)
                 .name("needsReview")
@@ -296,7 +296,7 @@ class DecisionAgentScenariosTest {
 
     @Test
     void image_check_sends_the_image_as_a_content() {
-        MockDecisionModel imageModel = answeringYes(0.9);
+        DecisionModelMock imageModel = answeringYes(0.9);
         BannerCheck check = AgenticServices.decisionAgentBuilder(BannerCheck.class)
                 .decisionModel(imageModel)
                 .build();

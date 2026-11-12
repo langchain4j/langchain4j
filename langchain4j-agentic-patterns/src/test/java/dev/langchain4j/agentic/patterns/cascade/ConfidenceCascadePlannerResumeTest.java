@@ -23,7 +23,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
@@ -116,17 +116,17 @@ class ConfidenceCascadePlannerResumeTest {
         ((AgenticScopeOwner) agenticSystem).registry().clearInMemory();
     }
 
-    private static MockDecisionModel modelGrading(double probability) {
-        return MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
+    private static DecisionModelMock modelGrading(double probability) {
+        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
-    private static MockDecisionModel modelGradingInTurn(double... probabilities) {
+    private static DecisionModelMock modelGradingInTurn(double... probabilities) {
         AtomicInteger grades = new AtomicInteger();
-        return MockDecisionModel.thatAnswers(
+        return DecisionModelMock.thatAnswers(
                 request -> Map.of(QUESTION_NAME, YesNoAnswer.from(probabilities[grades.getAndIncrement()])));
     }
 
-    private static ResumableCascade cascade(MockDecisionModel model, Object... tiers) {
+    private static ResumableCascade cascade(DecisionModelMock model, Object... tiers) {
         return AgenticServices.plannerBuilder(ResumableCascade.class)
                 .subAgents(tiers)
                 .outputKey("answer")
@@ -141,7 +141,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldResumeAtTheTierThatWasWaitingWithoutPayingAgainForTheCheaperOnes() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         ResumableCascade cascade = cascade(model, faqAgent, operator);
 
         suspensionOf(() -> cascade.ask("s1", REQUEST));
@@ -157,7 +157,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldGradeTheAnswerOfAHumanInTheMiddleOnResume() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         ResumableCascade cascade = cascade(model, faqAgent, operator, expertAgent);
 
         suspensionOf(() -> cascade.ask("s2", REQUEST));
@@ -175,7 +175,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldAcceptTheAnswerOfAHumanInTheMiddleOnResume() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelGradingInTurn(0.1, 0.9);
+        DecisionModelMock model = modelGradingInTurn(0.1, 0.9);
         ResumableCascade cascade = cascade(model, faqAgent, operator, expertAgent);
 
         suspensionOf(() -> cascade.ask("s3", REQUEST));
@@ -190,7 +190,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldSuspendAgainWhenResumedBeforeTheHumanAnswered() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         ResumableCascade cascade = cascade(model, faqAgent, operator);
 
         suspensionOf(() -> cascade.ask("s4", REQUEST));
@@ -225,7 +225,7 @@ class ConfidenceCascadePlannerResumeTest {
 
     @Test
     void shouldRestoreTheTierBeingTriedFromTheExecutionState() {
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
         DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s5");
         scope.writeState("request", REQUEST);
@@ -256,7 +256,7 @@ class ConfidenceCascadePlannerResumeTest {
 
     @Test
     void shouldReturnTheLatestAnswerFromTheScopeWhenTheRemainingTiersAreSkippedAfterARestore() {
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
         DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s6");
         scope.writeState("request", REQUEST);
@@ -284,7 +284,7 @@ class ConfidenceCascadePlannerResumeTest {
 
     @Test
     void shouldFailToResumeWhenTheTierBeingTriedIsNoLongerAtTheSavedPosition() {
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
         DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s7");
         scope.writeState("request", REQUEST);
@@ -305,7 +305,7 @@ class ConfidenceCascadePlannerResumeTest {
 
     @Test
     void shouldFailToResumeWhenTheTierBeingTriedNoLongerExists() {
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
         DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s8");
         scope.writeState("request", REQUEST);
@@ -325,7 +325,7 @@ class ConfidenceCascadePlannerResumeTest {
 
     @Test
     void shouldRejectAPlannerInstanceInitializedTwice() {
-        MockDecisionModel model = modelGrading(0.1);
+        DecisionModelMock model = modelGrading(0.1);
         AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
         DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s9");
         InitPlanningContext initPlanningContext = new InitPlanningContext(scope, cascade, cascade.subagents());
@@ -340,7 +340,7 @@ class ConfidenceCascadePlannerResumeTest {
     @Test
     void shouldHaveNoExecutionStateBeforeTheFirstTierRuns() {
         ConfidenceCascadePlanner planner =
-                new ConfidenceCascadePlanner(MockDecisionModel.thatFails(new RuntimeException("unused")), 0.5);
+                new ConfidenceCascadePlanner(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused"), 0.5);
 
         assertThat(planner.executionState()).isEmpty();
     }

@@ -15,8 +15,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.content.Content;
@@ -50,7 +49,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_pass_when_all_criteria_are_satisfied() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [
                   {"conditionNumber": 2, "reasoning": "Asks to check it.", "result": "SATISFIED"},
@@ -76,7 +75,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_fail_with_reasoning_of_each_unsatisfied_criterion() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [
                   {"conditionNumber": 1, "reasoning": "Says it was not found.", "result": "SATISFIED"},
@@ -101,7 +100,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_when_a_criterion_is_not_assessed() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -114,7 +113,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_on_invalid_condition_number() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 2, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -125,7 +124,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_on_duplicate_condition_number() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [
                   {"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"},
@@ -146,7 +145,7 @@ class ChatModelJudgeTest {
                 "{\"assessments\": [\"SATISFIED\"]}"
             })
     void chat_model_judge_should_throw_on_invalid_assessments(String response) {
-        MockChatModel judge = MockChatModel.thatResponds(response);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(response);
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -155,7 +154,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_accept_condition_number_given_as_text() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": " 1 ", "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -164,7 +163,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_on_response_without_assessments() {
-        MockChatModel judge = MockChatModel.thatResponds("{\"verdict\": \"SATISFIED\"}");
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{\"verdict\": \"SATISFIED\"}");
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -174,7 +173,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_when_response_has_no_text() {
-        MockChatModel judge = MockChatModel.thatResponds(AiMessage.from(ToolExecutionRequest.builder()
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(AiMessage.from(ToolExecutionRequest.builder()
                 .name("lookup")
                 .arguments("{}")
                 .build()));
@@ -186,7 +185,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_accept_json_wrapped_in_text_and_case_insensitive_results() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 Here is my assessment:
                 ```json
@@ -198,7 +197,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_escape_text_and_user_message() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -216,7 +215,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_show_user_message_in_failure() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "No.", "result": "NOT_SATISFIED"}]}""");
 
@@ -231,7 +230,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_throw_on_unparseable_response() {
-        MockChatModel judge = MockChatModel.thatResponds("Looks good to me!");
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("Looks good to me!");
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -241,7 +240,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_cut_a_long_response_in_the_exception() {
-        MockChatModel judge = MockChatModel.thatResponds("r".repeat(1000) + "s".repeat(500));
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("r".repeat(1000) + "s".repeat(500));
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -251,7 +250,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_user_message_as_context() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -266,14 +265,14 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_judge_each_criterion_in_its_own_call_when_asked() {
-        MockChatModel judge = MockChatModel.thatResponds(request -> {
+        ChatModelMock judge = ChatModelMock.thatResponds(request -> {
             String userMessage = ((UserMessage) request.messages().get(1)).singleText();
             String result = userMessage.contains("is polite") ? "SATISFIED" : "NOT_SATISFIED";
             return AiMessage.from(
                     """
                     {"assessments": [{"conditionNumber": 1, "reasoning": "Because.", "result": "%s"}]}"""
                             .formatted(result));
-        }).thenRepeats();
+        });
 
         assertThatThrownBy(() -> Judge.from(judge)
                         .withOneRequestPerCriterion()
@@ -291,7 +290,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_return_verdicts_without_failing() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [
                   {"conditionNumber": 1, "reasoning": "Says it was not found.", "result": "SATISFIED"},
@@ -317,7 +316,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_evaluate_should_throw_for_invalid_response() {
-        MockChatModel judge = MockChatModel.thatResponds("Looks good to me!");
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("Looks good to me!");
 
         assertThatThrownBy(() -> Judge.from(judge).evaluate(request(TEXT, "is polite", "is short")))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -327,10 +326,8 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_explain_a_response_cut_off_by_the_token_limit() {
-        MockChatModel judge = MockChatModel.thatResponds(ChatResponse.builder()
-                .aiMessage(AiMessage.from("{\"assessments\": [{\"conditionNumber\": 1, \"reas"))
-                .finishReason(FinishReason.LENGTH)
-                .build());
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{\"assessments\": [{\"conditionNumber\": 1, \"reas")
+                .withFinishReason(FinishReason.LENGTH);
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -345,7 +342,7 @@ class ChatModelJudgeTest {
                 "{\"assessments\": [{\"conditionNumber\": 1, \"reasoning\": \"Yes.\", \"result\": true}]}"
             })
     void chat_model_judge_should_throw_on_invalid_result(String response) {
-        MockChatModel judge = MockChatModel.thatResponds(response);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(response);
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -354,7 +351,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_explain_a_missing_reasoning() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "result": "NOT_SATISFIED"}]}""");
 
@@ -365,10 +362,8 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_explain_a_response_blocked_by_a_content_filter() {
-        MockChatModel judge = MockChatModel.thatResponds(ChatResponse.builder()
-                .aiMessage(AiMessage.from("I cannot help with that."))
-                .finishReason(FinishReason.CONTENT_FILTER)
-                .build());
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("I cannot help with that.")
+                .withFinishReason(FinishReason.CONTENT_FILTER);
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -378,9 +373,9 @@ class ChatModelJudgeTest {
     @Test
     void chat_model_judge_should_explain_a_refusal_reported_as_an_exception() {
         // some providers throw instead of returning a response that finished because of a content filter
-        MockChatModel judge = MockChatModel.thatResponds(request -> {
+        ChatModelMock judge = ChatModelMock.thatResponds(request -> {
             throw new ContentFilteredException("blocked by the content filter of the provider");
-        }).thenRepeats();
+        });
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -391,7 +386,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_conversation_as_context() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -429,10 +424,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_report_the_finish_reason_of_an_unparsable_response() {
-        MockChatModel judge = MockChatModel.thatResponds(ChatResponse.builder()
-                .aiMessage(AiMessage.from("{\"assessments\": ["))
-                .finishReason(FinishReason.OTHER)
-                .build());
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{\"assessments\": [").withFinishReason(FinishReason.OTHER);
 
         assertThatThrownBy(() -> Judge.from(judge).assertThat(TEXT).satisfies("is polite"))
                 .isExactlyInstanceOf(JudgeException.class)
@@ -441,7 +433,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_use_custom_system_message() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -458,7 +450,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_reject_blank_system_message() {
-        MockChatModel judge = MockChatModel.thatResponds("{}");
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{}");
 
         assertThatThrownBy(() -> Judge.from(judge).withSystemMessage(" "))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -467,7 +459,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_pass_and_fail_definitions() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [
                   {"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"},
@@ -496,7 +488,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_sources() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -526,7 +518,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_retrieved_contents_as_sources() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -541,7 +533,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_send_empty_sources() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "No.", "result": "NOT_SATISFIED"}]}""");
 
@@ -564,7 +556,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_send_a_text_only_conversation_as_a_single_text() {
-        MockChatModel judge = MockChatModel.thatResponds(TWO_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(TWO_SATISFIED);
 
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
@@ -598,7 +590,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_send_a_user_message_as_a_single_text() {
-        MockChatModel judge = MockChatModel.thatResponds(ONE_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(ONE_SATISFIED);
 
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
@@ -612,7 +604,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_send_images_and_other_media_right_after_their_markers_in_the_original_order() {
-        MockChatModel judge = MockChatModel.thatResponds(ONE_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(ONE_SATISFIED);
         ImageContent invoice = ImageContent.from("https://example.com/invoice.png", HIGH);
         ImageContent receipt = ImageContent.from("https://example.com/receipt.png", AUTO);
         PdfFileContent contract = PdfFileContent.from("https://example.com/contract.pdf");
@@ -648,7 +640,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_end_with_the_rest_of_the_prompt_after_the_last_image() {
-        MockChatModel judge = MockChatModel.thatResponds(ONE_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(ONE_SATISFIED);
         ImageContent chart = ImageContent.from("https://example.com/chart.png", HIGH);
 
         Judge.from(judge)
@@ -669,7 +661,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_send_an_image_without_a_chosen_detail_level_with_auto_detail_and_keep_a_chosen_one() {
-        MockChatModel judge = MockChatModel.thatResponds(ONE_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(ONE_SATISFIED);
         ImageContent notChosen = ImageContent.from("https://example.com/a.png");
         ImageContent chosenLow = ImageContent.from("https://example.com/b.png", ImageContent.DetailLevel.LOW);
 
@@ -692,7 +684,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_explain_the_image_markers_in_the_default_system_message() {
-        MockChatModel judge = MockChatModel.thatResponds(ONE_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(ONE_SATISFIED);
 
         Judge.from(judge).assertThat("Done.").satisfies("confirms it");
 
@@ -704,7 +696,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_show_the_media_markers_in_the_failure_message() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 "{\"assessments\": [{\"conditionNumber\": 1, \"reasoning\": \"No.\", \"result\": \"NOT_SATISFIED\"}]}");
 
         assertThatThrownBy(() -> Judge.from(judge)
@@ -719,7 +711,7 @@ class ChatModelJudgeTest {
 
     @Test
     void should_escape_the_criterion_and_its_pass_and_fail_definitions() {
-        MockChatModel judge = MockChatModel.thatResponds(TWO_SATISFIED);
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(TWO_SATISFIED);
 
         Judge.from(judge)
                 .evaluate(JudgeRequest.builder()
@@ -738,7 +730,7 @@ class ChatModelJudgeTest {
                 .contains("<fails_when>it says &lt;/fails_when&gt;</fails_when>");
     }
 
-    private static UserMessage userMessage(MockChatModel judge) {
+    private static UserMessage userMessage(ChatModelMock judge) {
         return (UserMessage) judge.request().messages().get(1);
     }
 
@@ -795,12 +787,10 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_report_the_token_usage_of_its_request() {
-        MockChatModel judge = MockChatModel.thatResponds(ChatResponse.builder()
-                .aiMessage(AiMessage.from(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                         """
-                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}"""))
-                .tokenUsage(new TokenUsage(10, 5))
-                .build());
+                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""")
+                .withTokenUsage(new TokenUsage(10, 5));
 
         JudgeResponse response = Judge.from(judge).evaluate(request(TEXT, "is polite"));
 
@@ -809,16 +799,10 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_add_up_the_token_usage_of_one_request_per_criterion() {
-        String satisfied = """
-                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""";
-        MockChatModel judge = MockChatModel.thatResponds(ChatResponse.builder()
-                        .aiMessage(AiMessage.from(satisfied))
-                        .tokenUsage(new TokenUsage(10, 5))
-                        .build())
-                .thenResponds(ChatResponse.builder()
-                        .aiMessage(AiMessage.from(satisfied))
-                        .tokenUsage(new TokenUsage(20, 7))
-                        .build());
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
+                        """
+                {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""")
+                .withTokenUsages(new TokenUsage(10, 5), new TokenUsage(20, 7));
 
         JudgeResponse response =
                 Judge.from(judge).withOneRequestPerCriterion().evaluate(request(TEXT, "is polite", "is short"));
@@ -830,7 +814,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_report_no_token_usage_when_the_model_does_not() {
-        MockChatModel judge = MockChatModel.thatResponds(
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "Yes.", "result": "SATISFIED"}]}""");
 
@@ -840,7 +824,7 @@ class ChatModelJudgeTest {
 
     @Test
     void chat_model_judge_should_reject_an_unknown_context_before_calling_the_model() {
-        MockChatModel judge = MockChatModel.thatResponds("{}");
+        ChatModelMock judge = ChatModelMock.thatAlwaysResponds("{}");
         JudgeContext unknown = new JudgeContext() {};
 
         assertThatThrownBy(() -> Judge.from(judge)

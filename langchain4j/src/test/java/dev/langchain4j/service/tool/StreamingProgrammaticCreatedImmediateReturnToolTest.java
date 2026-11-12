@@ -6,7 +6,7 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -53,7 +53,7 @@ class StreamingProgrammaticCreatedImmediateReturnToolTest {
                 .name("calculate")
                 .arguments("{\"expression\": \"2+2\"}")
                 .build());
-        MockStreamingChatModel mockModel = MockStreamingChatModel.thatStreams(toolCallMessage);
+        StreamingChatModelMock mockModel = StreamingChatModelMock.thatAlwaysStreams(toolCallMessage);
 
         ToolProvider provider = request -> ToolProviderResult.builder()
                 .add(tool, executor, ReturnBehavior.IMMEDIATE)

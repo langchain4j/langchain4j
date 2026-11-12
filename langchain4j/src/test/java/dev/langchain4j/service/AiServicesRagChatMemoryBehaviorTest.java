@@ -8,8 +8,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -60,7 +60,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_store_augmented_message_in_memory_by_default() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        MockChatModel chatModel = MockChatModel.thatResponds("answer").thenRepeats();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -79,7 +79,7 @@ class AiServicesRagChatMemoryBehaviorTest {
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(2);
 
-        List<List<ChatMessage>> requests = messagesOfRequests(chatModel);
+        List<List<ChatMessage>> requests = chatModel.getRequests();
         assertThat(requests).hasSize(1);
 
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
@@ -97,7 +97,7 @@ class AiServicesRagChatMemoryBehaviorTest {
         messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
 
-        requests = messagesOfRequests(chatModel);
+        requests = chatModel.getRequests();
         assertThat(requests).hasSize(2);
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
@@ -115,7 +115,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_store_only_original_message_in_memory_when_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        MockChatModel chatModel = MockChatModel.thatResponds("answer").thenRepeats();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("answer");
 
         RetrievalAugmentor retrievalAugmentor = (AugmentationRequest request) -> {
             UserMessage original = (UserMessage) request.chatMessage();
@@ -135,7 +135,7 @@ class AiServicesRagChatMemoryBehaviorTest {
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(2);
 
-        List<List<ChatMessage>> requests = messagesOfRequests(chatModel);
+        List<List<ChatMessage>> requests = chatModel.getRequests();
         assertThat(requests).hasSize(1);
 
         assertThat(messages.get(0)).isInstanceOf(UserMessage.class);
@@ -153,7 +153,7 @@ class AiServicesRagChatMemoryBehaviorTest {
         messages = chatMemory.messages();
         assertThat(messages).hasSize(4);
 
-        requests = messagesOfRequests(chatModel);
+        requests = chatModel.getRequests();
         assertThat(requests).hasSize(2);
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
@@ -171,7 +171,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_replay_augmented_message_on_second_model_call_when_tool_loop_runs_and_storage_is_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -195,7 +195,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_keep_replaying_augmented_message_on_second_model_call_when_storage_is_enabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -218,7 +218,7 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_keep_original_message_in_memory_after_tool_loop_when_storage_is_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -252,7 +252,7 @@ class AiServicesRagChatMemoryBehaviorTest {
                 .name("lookup")
                 .arguments("{\"arg0\":\"world\"}")
                 .build();
-        MockChatModel chatModel = MockChatModel.thatResponds(
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(tool1), AiMessage.from(tool2), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -282,7 +282,7 @@ class AiServicesRagChatMemoryBehaviorTest {
                 .name("lookup")
                 .arguments("{\"arg0\":\"hello\"}")
                 .build();
-        MockStreamingChatModel delegate = MockStreamingChatModel.thatStreams(
+        StreamingChatModelMock delegate = StreamingChatModelMock.thatAlwaysStreams(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("answer"));
 
         List<ChatRequest> capturedRequests = new ArrayList<>();
@@ -329,9 +329,5 @@ class AiServicesRagChatMemoryBehaviorTest {
     private static UserMessage lastUserMessage(List<ChatMessage> messages) {
         return UserMessage.findLast(messages)
                 .orElseThrow(() -> new AssertionError("Expected at least one UserMessage"));
-    }
-
-    private static List<List<ChatMessage>> messagesOfRequests(MockChatModel chatModel) {
-        return chatModel.requests().stream().map(request -> request.messages()).toList();
     }
 }

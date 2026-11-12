@@ -19,7 +19,7 @@ import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
@@ -33,13 +33,13 @@ import org.junit.jupiter.api.Test;
 class SupervisorSubagentsDescriptionTest {
 
     /** A planner model that immediately reports the task as done. */
-    private static MockChatModel donePlannerModel() {
-        return MockChatModel.thatResponds("""
+    private static ChatModelMock donePlannerModel() {
+        return ChatModelMock.thatAlwaysResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to do"}}
                 """);
     }
 
-    private static String systemMessage(MockChatModel plannerModel) {
+    private static String systemMessage(ChatModelMock plannerModel) {
         return plannerModel.requests().get(0).messages().stream()
                 .filter(SystemMessage.class::isInstance)
                 .map(message -> ((SystemMessage) message).text())
@@ -59,7 +59,7 @@ class SupervisorSubagentsDescriptionTest {
 
     @Test
     void supervisor_tells_its_model_explicitly_that_a_subagent_has_no_description() {
-        MockChatModel plannerModel = donePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -147,7 +147,7 @@ class SupervisorSubagentsDescriptionTest {
 
     @Test
     void supervisor_with_described_subagents_plans_normally() {
-        MockChatModel plannerModel = donePlannerModel();
+        ChatModelMock plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)

@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.router;
 
-import static dev.langchain4j.model.chat.router.RouterTestModels.withoutAsyncSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.model.decision.request.MessagesInput;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -16,7 +15,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
@@ -32,12 +31,12 @@ class DecisionModelChatModelRouterTest {
             new ChatModelRoute("simple", "Greetings and short factual questions"),
             new ChatModelRoute("complex", "Multi-step reasoning and code"));
 
-    MockDecisionModel decisionModel;
+    DecisionModelMock decisionModel;
 
-    MockDecisionModel choosing(String option, double probability) {
+    DecisionModelMock choosing(String option, double probability) {
         Map<String, Double> probabilities = new LinkedHashMap<>();
         probabilities.put(option, probability);
-        decisionModel = MockDecisionModel.thatAnswers(Map.of(
+        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
                 "route",
                 ChoiceAnswer.builder().value(option).probabilities(probabilities).build()));
         return decisionModel;
@@ -93,7 +92,7 @@ class DecisionModelChatModelRouterTest {
     void should_use_default_route_when_decision_model_refuses_to_choose() {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(
-                MockDecisionModel.thatAnswers(Map.of("route", RefusalAnswer.of())));
+                DecisionModelMock.thatAlwaysAnswers(Map.of("route", RefusalAnswer.of())));
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join())
@@ -103,7 +102,7 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_not_select_a_route_when_decision_model_fails() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(MockDecisionModel.thatFails(new RuntimeException("Something went wrong, but this is an expected exception")));
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException());
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
@@ -275,7 +274,7 @@ class DecisionModelChatModelRouterTest {
         probabilities.put("simple", 0.4);
         probabilities.put("complex#1", 0.3);
         probabilities.put("complex#2", 0.3);
-        decisionModel = MockDecisionModel.thatAnswers(Map.of(
+        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
                 "route", ChoiceAnswer.builder().value("simple").probabilities(probabilities).build()));
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
                 .decisionModel(decisionModel)
@@ -313,7 +312,7 @@ class DecisionModelChatModelRouterTest {
     void should_fail_when_decision_model_fails_with_fail_strategy() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
-                .decisionModel(MockDecisionModel.thatFails(new RuntimeException("down")))
+                .decisionModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"))
                 .fallbackStrategy(DecisionModelChatModelRouter.FallbackStrategy.FAIL)
                 .build();
 
@@ -329,7 +328,7 @@ class DecisionModelChatModelRouterTest {
     void should_fail_when_min_probability_is_set_but_no_probabilities_are_reported() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
-                .decisionModel(MockDecisionModel.thatAnswers(Map.of(
+                .decisionModel(DecisionModelMock.thatAlwaysAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build())))
                 .minProbability(0.5)
                 .build();
@@ -358,8 +357,9 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_propagate_missing_async_support() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(withoutAsyncSupport(MockDecisionModel.thatAnswers(
-                Map.of("route", ChoiceAnswer.builder().value("simple").build()))));
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysAnswers(Map.of(
+                        "route", ChoiceAnswer.builder().value("simple").build()))
+                .withoutAsyncSupport());
 
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))))
                 .failsWithin(Duration.ofSeconds(1))

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class AiServiceAsyncPrologueErrorTest {
     @Test
     void async_prologue_failure_is_delivered_via_the_future_not_thrown() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(MockChatModel.thatResponds("hi"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("hi"))
                 .build();
 
         // Must NOT throw synchronously.
@@ -46,7 +46,7 @@ class AiServiceAsyncPrologueErrorTest {
     @Test
     void reactive_prologue_failure_is_delivered_via_onError_not_thrown() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .chatModel(MockChatModel.thatResponds("hi"))
+                .chatModel(ChatModelMock.thatAlwaysResponds("hi"))
                 .build();
 
         // Must NOT throw synchronously.

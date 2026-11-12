@@ -10,8 +10,8 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -100,7 +100,7 @@ class OutputGuardrailChatRequestTest {
             throws Exception {
         return switch (mode) {
             case SYNC -> {
-                var model = MockChatModel.thatResponds(List.of(answers));
+                var model = ChatModelMock.thatAlwaysResponds(answers);
                 assertThat(AiServices.builder(SyncAssistant.class)
                                 .chatModel(model)
                                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
@@ -112,7 +112,7 @@ class OutputGuardrailChatRequestTest {
                 yield model.requests();
             }
             case ASYNC -> {
-                var model = MockChatModel.thatResponds(List.of(answers));
+                var model = ChatModelMock.thatAlwaysResponds(answers);
                 assertThat(AiServices.builder(AsyncAssistant.class)
                                 .chatModel(model)
                                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
@@ -125,7 +125,7 @@ class OutputGuardrailChatRequestTest {
                 yield model.requests();
             }
             case TOKEN_STREAM -> {
-                var model = MockStreamingChatModel.thatStreams(List.of(answers));
+                var model = StreamingChatModelMock.thatAlwaysStreams(answers);
                 var future = new CompletableFuture<String>();
                 AiServices.builder(TokenStreamAssistant.class)
                         .streamingChatModel(model)
@@ -141,7 +141,7 @@ class OutputGuardrailChatRequestTest {
                 yield model.requests();
             }
             case PUBLISHER -> {
-                var model = MockStreamingChatModel.thatStreams(List.of(answers));
+                var model = StreamingChatModelMock.thatAlwaysStreams(answers);
                 assertThat(subscribeAndAwait(AiServices.builder(PublisherAssistant.class)
                                 .streamingChatModel(model)
                                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))

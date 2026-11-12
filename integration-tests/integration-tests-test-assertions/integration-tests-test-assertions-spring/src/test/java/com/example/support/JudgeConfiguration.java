@@ -1,7 +1,7 @@
 package com.example.support;
 
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.test.judge.DecisionModelJudge;
 import dev.langchain4j.test.judge.Judge;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -16,13 +16,13 @@ public class JudgeConfiguration {
     public static final String QUESTION_PREFIX = "Would a Miles of Smiles support lead accept this response? It must: ";
 
     @Bean
-    MockDecisionModel judgeModel() {
-        return MockDecisionModel.thatAnswersYesNoQuestions(
+    DecisionModelMock judgeModel() {
+        return DecisionModelMock.thatAnswersYesNoQuestions(
                 question -> question.text().contains("14 days") ? 0.95 : 0.1);
     }
 
     @Bean
-    DecisionModelJudge supportLeadJudge(MockDecisionModel judgeModel) {
+    DecisionModelJudge supportLeadJudge(DecisionModelMock judgeModel) {
         return Judge.from(judgeModel).withQuestion(criterion -> YesNoQuestion.builder()
                 .text(QUESTION_PREFIX + criterion.text())
                 .yesWhen(criterion.satisfiedWhen() != null ? criterion.satisfiedWhen() : "it clearly does")
