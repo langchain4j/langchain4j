@@ -339,18 +339,17 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     /**
-     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope. As after a
-     * completed call, the failure of an asynchronous agent completing afterwards is reported, and a persistent scope
-     * is saved again with its result. The suspension of an asynchronous agent is reported only when the scope then
-     * has a pending response that is not among the {@code notifiedResponseIds}: an agent leaves its pending response
-     * just before it completes, so the root call may have suspended on it, and notified it, while the agent was still
-     * running.
-     *
-     * @param notifiedResponseIds the ids of the pending responses when the root call notified its suspension, taken
-     *                            before notifying it
+     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope, and notifies
+     * the listener of the suspension. As after a completed call, the failure of an asynchronous agent completing
+     * afterwards is reported, and a persistent scope is saved again with its result. The suspension of an asynchronous
+     * agent is reported only when the scope then has a pending response that was not pending yet when the root call
+     * notified its suspension: an agent leaves its pending response just before it completes, so the root call may
+     * have suspended on it, and notified it, while the agent was still running. The pending responses are taken
+     * before notifying, so that one left while the listener runs is notified again rather than never.
      */
-    public void rootCallSuspended(
-            AgenticScopeRegistry registry, AgentListener agentListener, Set<String> notifiedResponseIds) {
+    public void rootCallSuspended(AgenticScopeRegistry registry, AgentListener agentListener) {
+        Set<String> notifiedResponseIds = pendingResponseIds();
+        onAgenticSystemSuspended(agentListener, this);
         Map.copyOf(state).forEach((key, value) -> {
             if (value instanceof AsyncResponse<?> unread) {
                 unread.onComplete(completed -> {
