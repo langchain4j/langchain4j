@@ -116,10 +116,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- the same version as watsonx-ai.version in langchain4j-watsonx/pom.xml -->
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai-jackson3</artifactId>
-            <version>${watsonx-ai.version}</version>
+            <version>0.50.0</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>

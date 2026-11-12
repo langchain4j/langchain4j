@@ -12,6 +12,10 @@
     <artifactId>langchain4j-watsonx</artifactId>
     <name>LangChain4j :: Integration :: Watsonx</name>
 
+    <properties>
+        <watsonx-ai.version>0.50.0</watsonx-ai.version>
+    </properties>
+
     <dependencies>
 
         <dependency>

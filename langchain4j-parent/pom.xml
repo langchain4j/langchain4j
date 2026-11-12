@@ -77,7 +77,6 @@
         <testng.version>7.12.0</testng.version>
         <testng-engine.version>1.0.5</testng-engine.version>
         <tinylog.version>2.7.0</tinylog.version>
-        <watsonx-ai.version>0.50.0</watsonx-ai.version>
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.15.Final</hibernate.version>
         <jsoup.version>1.23.2</jsoup.version>
