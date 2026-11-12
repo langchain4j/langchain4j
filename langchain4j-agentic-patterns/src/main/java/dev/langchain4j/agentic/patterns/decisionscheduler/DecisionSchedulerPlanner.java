@@ -10,7 +10,6 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
-import dev.langchain4j.agentic.patterns.internal.DecisionQuestionNames;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -61,10 +60,7 @@ import org.slf4j.LoggerFactory;
  * The texts of both questions and the levels can be replaced through the builder.
  * The planner identifies a subagent by its name, which is also the name of its question. Several subagents can have
  * the same name: each of them is then identified by its {@link AgentInstance#agentId() id} instead, and the decision
- * model tells them apart by their descriptions. The question of such a subagent is named after its id with each
- * {@code $} replaced by {@code _}, for example {@code medical_0} for {@code medical$0}, since some decision models
- * accept only {@code [A-Za-z0-9_-]} in question names; {@code _1}, {@code _2}... is appended when another question
- * already has that name. A subagent without a description is described by its name.
+ * model tells them apart by their descriptions. A subagent without a description is described by its name.
  * <p>
  * If the probability that the goal has been reached is at least the goal threshold the planner stops. Otherwise it
  * invokes the candidate with the highest score, the first declared one when several have the same score, provided
@@ -182,10 +178,7 @@ public class DecisionSchedulerPlanner implements Planner {
     // subagents are identified by their ids, the others by their names
     private final Set<String> sharedNames = new HashSet<>();
 
-    // the name of the question of each subagent, keyed by the key of the subagent
-    private Map<String, String> questionNames = Map.of();
-
-    /** A subagent with the key identifying it. */
+    /** A subagent with the key identifying it, which is also the name of its question. */
     private record Subagent(String key, AgentInstance agent, List<String> mandatoryArguments, Set<String> arguments) {
 
         static Subagent of(String key, AgentInstance agent) {
@@ -295,9 +288,6 @@ public class DecisionSchedulerPlanner implements Planner {
             String key = key(agent.name(), agent.agentId());
             subagents.put(key, Subagent.of(key, agent));
         });
-        Map<String, AgentInstance> agents = new LinkedHashMap<>();
-        subagents.forEach((key, subagent) -> agents.put(key, subagent.agent()));
-        this.questionNames = DecisionQuestionNames.of(agents, Set.of(GOAL_QUESTION_NAME));
 
         // a key that no subagent writes is likely misspelled, and the output meant to be left out would be sent
         Set<String> outputKeys = subagents.values().stream()
@@ -415,8 +405,7 @@ public class DecisionSchedulerPlanner implements Planner {
         if (askGoal) {
             request.question(GOAL_QUESTION_NAME, goalQuestion);
         }
-        candidates.forEach(candidate ->
-                request.question(questionNames.get(candidate.key()), usefulnessQuestion(candidate.agent())));
+        candidates.forEach(candidate -> request.question(candidate.key(), usefulnessQuestion(candidate.agent())));
         DecisionResponse response = decisionModel.decide(request.build());
 
         Double goalProbability =
@@ -428,9 +417,7 @@ public class DecisionSchedulerPlanner implements Planner {
 
         Map<String, Double> scores = new LinkedHashMap<>();
         candidates.forEach(candidate ->
-                scores.put(
-                        candidate.key(),
-                        response.scale(questionNames.get(candidate.key())).mean() / (usefulnessLevels.size() - 1)));
+                scores.put(candidate.key(), response.scale(candidate.key()).mean() / (usefulnessLevels.size() - 1)));
         // the first declared candidate wins a tie
         Subagent best = candidates.get(0);
         for (Subagent candidate : candidates) {

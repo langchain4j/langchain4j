@@ -17,8 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * One-off measurements on Gemini, to be deleted before merge: one-sided yes/no criteria, and whether the model reads
- * question keys.
+ * One-off measurement on Gemini, to be deleted before merge: one-sided yes/no criteria.
  */
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiYesNoCriteriaMeasurementIT {
@@ -74,6 +73,28 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
                     "yes",
                     "The customer threatens legal action or to cancel their contract.",
                     false),
+            // yesWhen is not met, but the question itself says yes: expected yes
+            new Case(
+                    "Y7",
+                    "The export produces a corrupted PDF.",
+                    "Is this a bug report?",
+                    "yes",
+                    "The app crashes.",
+                    true),
+            new Case(
+                    "Y8",
+                    "I'd like to return this jacket, I don't like the color.",
+                    "Is this a return request?",
+                    "yes",
+                    "The customer wants to exchange an item for another size.",
+                    true),
+            new Case(
+                    "Y9",
+                    "Please call me back on +49 170 1234567, my name is Anna Berger.",
+                    "Does the message contain personal data?",
+                    "yes",
+                    "The message contains an email address.",
+                    true),
             // noWhen narrows the question: expected no
             new Case(
                     "N1",
@@ -117,30 +138,29 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
                     "Is this a security incident?",
                     "no",
                     "The user explains that the activity was their own.",
-                    true));
-
-    private record KeyProbe(String id, String input, String instructions, String key) {}
-
-    // vague instructions: only the key says what is asked, so the answers differ only if the model reads keys
-    private static final List<KeyProbe> VAGUE_KEY_PROBES = List.of(
-            new KeyProbe("V1", "I want my money back for the broken blender.", "Does this apply to the message?",
-                    "asks_for_refund"),
-            new KeyProbe("V2", "Your support team was super helpful, thanks!", "Does this apply to the message?",
-                    "is_complaint"),
-            new KeyProbe("V3", "Click this link to claim your free iPhone now!!!", "Does this apply to the message?",
-                    "is_spam"),
-            new KeyProbe("V4", "What time do you open on Saturday?", "Does this apply to the message?",
-                    "mentions_a_refund"));
-
-    // clear instructions with a misleading key: the answers differ only if the key distracts the model
-    private static final List<KeyProbe> MISLEADING_KEY_PROBES = List.of(
-            new KeyProbe("M1", "I want my money back.", "Does the customer ask for a refund?", "is_spam"),
-            new KeyProbe("M2", "Free crypto giveaway, send 1 BTC to get 2 back!", "Is this message spam?",
-                    "asks_for_refund"),
-            new KeyProbe("M3", "The app crashes every time I open the camera.", "Is this a bug report?",
-                    "is_praise"),
-            new KeyProbe("M4", "Thanks, the new version works great!", "Is this message praise?",
-                    "is_bug_report"));
+                    true),
+            // noWhen is not met, but the question itself says no: expected no
+            new Case(
+                    "N7",
+                    "What are your opening hours?",
+                    "Is this message abusive?",
+                    "no",
+                    "The insults target the product, not a person.",
+                    false),
+            new Case(
+                    "N8",
+                    "Can you recommend a good hiking trail near Munich?",
+                    "Is this a billing question?",
+                    "no",
+                    "The customer only asks for a copy of an invoice.",
+                    false),
+            new Case(
+                    "N9",
+                    "Thanks for the quick delivery, everything works great!",
+                    "Is this a complaint?",
+                    "no",
+                    "The customer asks a neutral question.",
+                    false));
 
     private final HttpClient httpClient =
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
@@ -152,6 +172,8 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
         WAYS.forEach(way -> results.put(way, new ArrayList<>()));
         List<String> errors = new ArrayList<>();
         int totalTokens = 0;
+        double noiseFloor = 0;
+        String noiseFloorCall = "-";
 
         StringBuilder header = new StringBuilder("case  expected  ");
         for (int i = 0; i < WAYS.size(); i++) {
@@ -163,12 +185,16 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
             for (String way : WAYS) {
                 double pYes;
                 try {
+                    // every request is sent twice, to measure how much two identical calls differ
                     Map<?, ?> payload = decide(testCase.input(), "q", question(testCase, way));
+                    Map<?, ?> repeated = decide(testCase.input(), "q", question(testCase, way));
                     pYes = pYes(payload, "q");
-                    if (payload.get("usage") instanceof Map<?, ?> usage
-                            && usage.get("total_input_tokens") instanceof Number tokens) {
-                        totalTokens += tokens.intValue();
+                    double difference = Math.abs(pYes - pYes(repeated, "q"));
+                    if (difference > noiseFloor) {
+                        noiseFloor = difference;
+                        noiseFloorCall = testCase.id() + " " + way;
                     }
+                    totalTokens += inputTokens(payload) + inputTokens(repeated);
                 } catch (Exception e) {
                     System.out.println(format("%s %s failed: %s", testCase.id(), way, e.getMessage()));
                     errors.add(testCase.id() + " " + way + ": " + e.getMessage());
@@ -187,6 +213,9 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
         System.out.println();
         System.out.println("===== summary (paste this back) =====");
         System.out.println(format("model: %s, cases: %d, input tokens: %d", MODEL_NAME, CASES.size(), totalTokens));
+        System.out.println(format(
+                "noise floor: largest p(yes) difference between two identical calls %.3f (%s)",
+                noiseFloor, noiseFloorCall));
         for (String way : WAYS) {
             List<Double> values =
                     results.get(way).stream().filter(value -> value != null).toList();
@@ -213,46 +242,11 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
         assertThat(errors).isEmpty();
     }
 
-    @Test
-    void measure_whether_question_keys_matter() throws Exception {
-        List<String> errors = new ArrayList<>();
-        System.out.println("probe  key                 p(yes) with key  p(yes) with q0  delta");
-        Map<String, List<Double>> deltas = new LinkedHashMap<>();
-        deltas.put("vague", new ArrayList<>());
-        deltas.put("misleading", new ArrayList<>());
-        for (String group : List.of("vague", "misleading")) {
-            for (KeyProbe probe : group.equals("vague") ? VAGUE_KEY_PROBES : MISLEADING_KEY_PROBES) {
-                try {
-                    Map<String, Object> question = new LinkedHashMap<>();
-                    question.put("type", "noul");
-                    question.put("instructions", probe.instructions());
-                    double withKey = pYes(decide(probe.input(), probe.key(), question), probe.key());
-                    double withQ0 = pYes(decide(probe.input(), "q0", question), "q0");
-                    deltas.get(group).add(withKey - withQ0);
-                    System.out.println(format(
-                            "%-6s %-19s %-16.3f %-15.3f %+.3f", probe.id(), probe.key(), withKey, withQ0,
-                            withKey - withQ0));
-                } catch (Exception e) {
-                    System.out.println(format("%s failed: %s", probe.id(), e.getMessage()));
-                    errors.add(probe.id() + ": " + e.getMessage());
-                }
-            }
-        }
-
-        System.out.println();
-        System.out.println("===== question keys summary =====");
-        System.out.println("model: " + MODEL_NAME);
-        deltas.forEach((group, values) -> System.out.println(format(
-                "%-10s probes %d  mean |delta| %.3f  max |delta| %.3f  deltas %s",
-                group,
-                values.size(),
-                values.stream().mapToDouble(Math::abs).average().orElse(Double.NaN),
-                values.stream().mapToDouble(Math::abs).max().orElse(Double.NaN),
-                values.stream().map(value -> format("%+.2f", value)).toList())));
-        System.out.println("=================================");
-
-        // only HTTP and setup errors fail the test, never the measured values
-        assertThat(errors).isEmpty();
+    private static int inputTokens(Map<?, ?> payload) {
+        return payload.get("usage") instanceof Map<?, ?> usage
+                        && usage.get("total_input_tokens") instanceof Number tokens
+                ? tokens.intValue()
+                : 0;
     }
 
     private static double pYes(Map<?, ?> payload, String key) {

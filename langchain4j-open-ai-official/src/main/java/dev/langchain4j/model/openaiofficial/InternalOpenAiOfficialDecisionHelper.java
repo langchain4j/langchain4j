@@ -144,10 +144,10 @@ class InternalOpenAiOfficialDecisionHelper {
         Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
         List<DecisionInputPart> parts = new ArrayList<>();
         parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
-        for (int i = 0; i < transcript.images().size(); i++) {
-            parts.add(textPart("[image " + (i + 1) + "]:"));
-            parts.add(toInputPart(transcript.images().get(i)));
-        }
+        transcript.media().forEach((marker, content) -> {
+            parts.add(textPart(marker + ":"));
+            parts.add(toInputPart(content));
+        });
         return parts;
     }
 

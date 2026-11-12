@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -347,5 +348,11 @@ class DecisionModelInputUtilsTest {
         assertThatThrownBy(() -> DecisionModelInputUtils.transcript(withPdf, "The test model", Set.of()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("The test model supports only text in a conversation, but it contains PDF");
+
+        Content notAnImage = () -> ContentType.IMAGE;
+        List<ChatMessage> withCustomContent = List.of(UserMessage.from(notAnImage));
+        assertThatThrownBy(() -> DecisionModelInputUtils.transcript(withCustomContent, "The test model"))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The test model supports only text and images in a conversation, but it contains IMAGE");
     }
 }
