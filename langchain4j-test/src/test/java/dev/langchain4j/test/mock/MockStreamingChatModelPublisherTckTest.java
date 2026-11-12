@@ -42,7 +42,7 @@ public class MockStreamingChatModelPublisherTckTest extends PublisherVerificatio
     public Publisher<ChatModelStreamingEvent> createPublisher(long elements) {
         // the tokens are followed by the complete response, so even 0 elements give 1 event
         int tokens = (int) Math.max(0, elements - 1);
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens(Collections.nCopies(tokens, "token"))
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(Collections.nCopies(tokens, "token"))
                 .thenRepeats();
         return toPublisher(model.doChat(REQUEST));
     }

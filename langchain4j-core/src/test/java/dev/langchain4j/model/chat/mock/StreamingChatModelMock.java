@@ -71,7 +71,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     private List<ChatModelListener> listeners = List.of();
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(List)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreams(List)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -364,7 +364,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(String...)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreams(String...)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -373,7 +373,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreamsTokens(List)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreams(List)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}
      */
     @Deprecated(since = "1.24.0", forRemoval = true)

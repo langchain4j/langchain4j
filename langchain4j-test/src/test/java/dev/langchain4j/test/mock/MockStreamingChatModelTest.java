@@ -250,7 +250,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_stream_given_tokens() throws Exception {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo");
         List<String> tokens = new CopyOnWriteArrayList<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
@@ -279,7 +279,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_publish_given_tokens() {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo");
 
         List<ChatModelStreamingEvent> events = collect(model);
 
@@ -294,7 +294,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_publish_the_given_tokens_again_for_every_request() {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo").thenRepeats();
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo").thenRepeats();
 
         collect(model);
         List<ChatModelStreamingEvent> events = collect(model);
@@ -332,7 +332,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_stream_exactly_the_given_tokens_in_a_later_step() throws Exception {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi").thenStreamsTokens("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi").thenStreams("Hel", "lo");
 
         stream(model);
         Streamed second = stream(model);
@@ -425,7 +425,7 @@ public class MockStreamingChatModelTest {
                 .tokenUsage(new TokenUsage(1, 1))
                 .build();
         MockStreamingChatModel model = MockStreamingChatModel.thatResponds(request -> AiMessage.from("computed"))
-                .thenStreamsTokens("Sun", "ny")
+                .thenStreams("Sun", "ny")
                 .thenResponds(given)
                 .withTokenUsage(tokenUsage);
 
@@ -479,7 +479,7 @@ public class MockStreamingChatModelTest {
     void should_call_a_tool_and_then_stream() throws Exception {
 
         MockStreamingChatModel model = MockStreamingChatModel.thatCallsTool("cancelBooking", Map.of("id", 7))
-                .thenStreamsTokens("can", "celled");
+                .thenStreams("can", "celled");
 
         ToolExecutionRequest toolCall =
                 chatResponse(model).aiMessage().toolExecutionRequests().get(0);
@@ -494,7 +494,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_take_the_steps_in_order_and_fail_after_the_last_one() throws Exception {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("fi", "rst")
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("fi", "rst")
                 .thenCallsTool("getWeather", Map.of())
                 .thenResponds(AiMessage.from("third"));
 
@@ -509,7 +509,7 @@ public class MockStreamingChatModelTest {
 
         RuntimeException failure = new IllegalStateException("connection reset");
         MockStreamingChatModel model =
-                MockStreamingChatModel.thatStreamsTokens("Hel", "lo").andFails(failure).thenRepeats();
+                MockStreamingChatModel.thatStreams("Hel", "lo").andFails(failure).thenRepeats();
 
         Streamed first = stream(model);
         assertThat(first.tokens()).containsExactly("Hel", "lo");
@@ -525,7 +525,7 @@ public class MockStreamingChatModelTest {
     void should_publish_the_tokens_and_then_the_error_when_the_stream_breaks() {
 
         RuntimeException failure = new IllegalStateException("connection reset");
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo").andFails(failure);
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo").andFails(failure);
 
         List<Object> signals = new ArrayList<>();
         subscribe(model, signals);
@@ -849,7 +849,7 @@ public class MockStreamingChatModelTest {
     void should_report_a_failure_after_the_tokens_only_once_they_were_requested() throws Exception {
 
         RuntimeException failure = new IllegalStateException("connection reset");
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo").andFails(failure);
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo").andFails(failure);
         List<Object> signals = new CopyOnWriteArrayList<>();
         CompletableFuture<Flow.Subscription> subscribed = new CompletableFuture<>();
         CompletableFuture<Void> done = new CompletableFuture<>();
@@ -961,9 +961,9 @@ public class MockStreamingChatModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MockStreamingChatModel.thatResponds((String) null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> MockStreamingChatModel.thatStreamsTokens("Hel", null))
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams("Hel", null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> MockStreamingChatModel.thatStreamsTokens((String[]) null))
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams((String[]) null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -978,7 +978,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_stop_after_the_handle_was_cancelled_during_the_last_token() throws Exception {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens("Hel", "lo");
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo");
         List<String> signals = new CopyOnWriteArrayList<>();
         CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
 
@@ -1011,10 +1011,10 @@ public class MockStreamingChatModelTest {
     @Test
     void should_not_accept_an_empty_token() {
 
-        assertThatThrownBy(() -> MockStreamingChatModel.thatStreamsTokens("Hel", "", "lo"))
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams("Hel", "", "lo"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("A token cannot be empty");
-        assertThatThrownBy(() -> MockStreamingChatModel.thatResponds("Hi").thenStreamsTokens(""))
+        assertThatThrownBy(() -> MockStreamingChatModel.thatResponds("Hi").thenStreams(""))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("A token cannot be empty");
     }
@@ -1022,7 +1022,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_stream_an_answer_without_text_when_given_no_tokens() throws Exception {
 
-        Streamed streamed = stream(MockStreamingChatModel.thatStreamsTokens());
+        Streamed streamed = stream(MockStreamingChatModel.thatStreams());
 
         assertThat(streamed.tokens()).isEmpty();
         assertThat(streamed.error()).isNull();
@@ -1037,7 +1037,7 @@ public class MockStreamingChatModelTest {
         assertThatThrownBy(() -> MockStreamingChatModel.thatResponds(""))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot stream the text \"\"")
-                .hasMessageContaining("use thatStreamsTokens()")
+                .hasMessageContaining("use thatStreams()")
                 .hasMessageContaining("thatResponds(ChatResponse)");
         assertThatThrownBy(() -> MockStreamingChatModel.thatResponds("Hi").thenResponds(""))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -1175,7 +1175,7 @@ public class MockStreamingChatModelTest {
     @Test
     void should_not_accept_a_failure_after_a_step_without_text() {
 
-        assertThatThrownBy(() -> MockStreamingChatModel.thatStreamsTokens().andFails(new RuntimeException()))
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams().andFails(new RuntimeException()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("no text or thinking to stream");
     }
@@ -1421,8 +1421,8 @@ public class MockStreamingChatModelTest {
     @Test
     void should_stream_exactly_the_given_tokens_given_as_a_list() throws Exception {
 
-        MockStreamingChatModel model = MockStreamingChatModel.thatStreamsTokens(List.of("Hel", "lo"))
-                .thenStreamsTokens(List.of("Wor", "ld"));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams(List.of("Hel", "lo"))
+                .thenStreams(List.of("Wor", "ld"));
 
         assertThat(stream(model).tokens()).containsExactly("Hel", "lo");
         assertThat(stream(model).tokens()).containsExactly("Wor", "ld");
