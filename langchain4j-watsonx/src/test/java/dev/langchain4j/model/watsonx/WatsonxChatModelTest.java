@@ -676,8 +676,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("a", "b")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                     .build();
@@ -903,6 +901,47 @@ public class WatsonxChatModelTest {
                         .defaultRequestParameters(
                                 ChatRequestParameters.builder().topK(10).build())
                         .build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void should_throw_exception_when_repetition_or_length_penalty_is_set() {
+
+        var repetitionPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .repetitionPenalty(1.1)
+                        .build());
+        assertTrue(repetitionPenalty.getMessage().startsWith("'repetitionPenalty' is not supported"));
+
+        var lengthPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .lengthPenalty(1.2)
+                        .build());
+        assertTrue(lengthPenalty.getMessage().startsWith("'lengthPenalty' is not supported"));
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatRequestParameters.builder().repetitionPenalty(1.1).build());
+
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl("https://test.com")
+                .modelName("modelId")
+                .projectId("project-id")
+                .apiKey("api-key")
+                .repetitionPenalty(null)
+                .lengthPenalty(null)
+                .build();
+        assertNotNull(chatModel);
     }
 
     @Test

@@ -220,6 +220,29 @@ public class WatsonxDeploymentChatModelTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
+    void should_throw_exception_when_repetition_or_length_penalty_is_set() {
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .repetitionPenalty(1.1)
+                        .build());
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .lengthPenalty(1.2)
+                        .build());
+    }
+
+    @Test
     void should_throw_exception_for_chat_request_with_model_name() {
 
         var chatModel = WatsonxDeploymentChatModel.builder()
