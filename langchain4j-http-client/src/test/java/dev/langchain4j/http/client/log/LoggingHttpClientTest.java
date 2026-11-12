@@ -1,5 +1,12 @@
 package dev.langchain4j.http.client.log;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -9,23 +16,15 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.slf4j.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockingDetails;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.Logger;
 
 class LoggingHttpClientTest {
 
@@ -113,6 +112,42 @@ class LoggingHttpClientTest {
         CompletableFuture<SuccessfulHttpResponse> future = client.executeAsync(REQUEST);
 
         assertThatThrownBy(() -> future.get(5, SECONDS)).hasCause(failure);
+    }
+
+    @ParameterizedTest(name = "logResponses={0}, mayInterruptIfRunning={1}")
+    @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+    void executeAsync_forwards_cancellation_to_delegate(boolean logResponses, boolean mayInterruptIfRunning) {
+        CompletableFuture<SuccessfulHttpResponse> delegateFuture = new CompletableFuture<>();
+        HttpClient delegate = new HttpClient() {
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+                return delegateFuture;
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+                throw new UnsupportedOperationException();
+            }
+        };
+
+        CompletableFuture<SuccessfulHttpResponse> result =
+                new LoggingHttpClient(delegate, false, logResponses).executeAsync(REQUEST);
+
+        boolean cancelled = result.cancel(mayInterruptIfRunning);
+
+        assertThat(cancelled).isTrue();
+        assertThat(result).isCancelled();
+        assertThat(delegateFuture).isCancelled();
     }
 
     // ---------- streaming (handler-based execute) ----------
