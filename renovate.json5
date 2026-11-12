@@ -71,6 +71,18 @@
             "allowedVersions": "(,4.2)"
         },
         {
+            // the Azure SDK is still on Reactor Core 3.7 and Reactor Netty 1.2 (Reactor Netty 1.3 needs Netty 4.2);
+            // lift these two caps and the Netty one above when azure-sdk-bom brings azure-core 1.61+ (Reactor Core 3.8)
+            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
+            "matchPackageNames": ["io.projectreactor:reactor-core"],
+            "allowedVersions": "(,3.8)"
+        },
+        {
+            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
+            "matchPackageNames": ["io.projectreactor.netty:*"],
+            "allowedVersions": "(,1.3)"
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
