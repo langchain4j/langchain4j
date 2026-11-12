@@ -951,3 +951,8 @@ availableModels.forEach(model -> {
     System.out.println("Supported Generation Methods: " + model.supportedGenerationMethods());
 });
 ```
+
+## Decision Models
+
+The Gemini Decisions API answers yes/no, choice and scale questions with calibrated probabilities, see
+[Google GenAI decision models](/integrations/decision-models/google-genai).
