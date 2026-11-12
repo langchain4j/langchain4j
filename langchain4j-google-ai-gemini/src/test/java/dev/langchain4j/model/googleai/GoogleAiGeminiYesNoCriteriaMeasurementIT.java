@@ -17,16 +17,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * One-off measurement on Gemini, to be deleted before merge: one-sided yes/no criteria.
+ * One-off measurement on Gemini, to be deleted before merge: one-sided yes/no criteria, round 2.
+ * A one-sided criterion is a sufficient condition: when it does not hold, the question itself decides.
  */
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiYesNoCriteriaMeasurementIT {
 
     private static final String ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/decisions";
     private static final String MODEL_NAME = "gemini-decision-1";
-    private static final List<String> WAYS = List.of("native", "appended", "none");
+    private static final List<String> WAYS = List.of("native", "none", "native+hint", "also", "native+fill");
 
-    private record Case(String id, String input, String question, String side, String criterion, boolean expected) {}
+    /**
+     * @param expected the right answer, or null when the right answer is unclear (not scored)
+     */
+    private record Case(String id, String input, String question, String side, String criterion, Boolean expected) {}
 
     private static final List<Case> CASES = List.of(
             // yesWhen widens the question: expected yes
@@ -51,14 +55,22 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
                     "yes",
                     "The message mentions any kind of account or card identifier, even without the number itself.",
                     true),
-            // yesWhen is not met: expected no
+            new Case(
+                    "Y12",
+                    "I've been charged twice for the same subscription this month.",
+                    "Is this a refund request?",
+                    "yes",
+                    "The customer reports being charged more than they should, even without asking for money back.",
+                    true),
+            // yesWhen is not met and the question itself is unclear: not scored (round 1 expected no)
             new Case(
                     "Y4",
                     "How much does shipping to Austria cost?",
                     "Is this a sales lead?",
                     "yes",
                     "The person states a concrete plan to buy a product within the next month.",
-                    false),
+                    null),
+            // yesWhen is not met and the question itself says no: expected no
             new Case(
                     "Y5",
                     "I love the new design!",
@@ -95,6 +107,20 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
                     "yes",
                     "The message contains an email address.",
                     true),
+            new Case(
+                    "Y10",
+                    "My order hasn't arrived after two weeks and nobody replies to my emails, this is unacceptable.",
+                    "Is this a complaint?",
+                    "yes",
+                    "The customer mentions a damaged product.",
+                    true),
+            new Case(
+                    "Y11",
+                    "What does the premium plan cost for 50 users?",
+                    "Is this a sales question?",
+                    "yes",
+                    "The person asks for a discount.",
+                    true),
             // noWhen narrows the question: expected no
             new Case(
                     "N1",
@@ -117,7 +143,7 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
                     "no",
                     "The user explains that the activity was their own.",
                     false),
-            // noWhen is not met: expected yes
+            // noWhen is not met and the question itself says yes: expected yes
             new Case(
                     "N4",
                     "You idiot, you sent me the wrong item again.",
@@ -168,78 +194,85 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
 
     @Test
     void measure_one_sided_yes_no_criteria() throws Exception {
-        Map<String, List<Double>> results = new LinkedHashMap<>();
-        WAYS.forEach(way -> results.put(way, new ArrayList<>()));
+        Map<String, List<Double>> pYesByWay = new LinkedHashMap<>();
+        WAYS.forEach(way -> pYesByWay.put(way, new ArrayList<>()));
         List<String> errors = new ArrayList<>();
         int totalTokens = 0;
-        double noiseFloor = 0;
-        String noiseFloorCall = "-";
 
         StringBuilder header = new StringBuilder("case  expected  ");
-        for (int i = 0; i < WAYS.size(); i++) {
-            header.append(i == 0 ? "" : "  ").append(format("%-12s", WAYS.get(i)));
+        for (String way : WAYS) {
+            header.append(format("%-13s", way));
         }
         System.out.println(header);
         for (Case testCase : CASES) {
-            List<String> cells = new ArrayList<>();
+            StringBuilder row = new StringBuilder(format("%-5s %-9s ", testCase.id(), expected(testCase)));
             for (String way : WAYS) {
-                double pYes;
                 try {
-                    // every request is sent twice, to measure how much two identical calls differ
                     Map<?, ?> payload = decide(testCase.input(), "q", question(testCase, way));
-                    Map<?, ?> repeated = decide(testCase.input(), "q", question(testCase, way));
-                    pYes = pYes(payload, "q");
-                    double difference = Math.abs(pYes - pYes(repeated, "q"));
-                    if (difference > noiseFloor) {
-                        noiseFloor = difference;
-                        noiseFloorCall = testCase.id() + " " + way;
-                    }
-                    totalTokens += inputTokens(payload) + inputTokens(repeated);
+                    double pYes = pYes(payload, "q");
+                    totalTokens += inputTokens(payload);
+                    pYesByWay.get(way).add(pYes);
+                    String verdict = testCase.expected() == null ? "" : isRight(testCase, pYes) ? "ok" : "WRONG";
+                    row.append(format("%-13s", format("%.3f %s", pYes, verdict)));
                 } catch (Exception e) {
                     System.out.println(format("%s %s failed: %s", testCase.id(), way, e.getMessage()));
                     errors.add(testCase.id() + " " + way + ": " + e.getMessage());
-                    results.get(way).add(null);
-                    cells.add(format("%-12s", "ERROR"));
-                    continue;
+                    pYesByWay.get(way).add(null);
+                    row.append(format("%-13s", "ERROR"));
                 }
-                double pCorrect = testCase.expected() ? pYes : 1 - pYes;
-                results.get(way).add(pCorrect);
-                cells.add(format("%-12s", format("%.3f %s", pYes, pCorrect > 0.5 ? "ok" : "WRONG")));
             }
-            System.out.println(
-                    format("%-5s %-9s %s", testCase.id(), testCase.expected() ? "yes" : "no", String.join("  ", cells)));
+            System.out.println(row);
         }
 
+        long scored = CASES.stream().filter(testCase -> testCase.expected() != null).count();
         System.out.println();
-        System.out.println("===== summary (paste this back) =====");
-        System.out.println(format("model: %s, cases: %d, input tokens: %d", MODEL_NAME, CASES.size(), totalTokens));
+        System.out.println("===== summary round 2 (paste this back) =====");
         System.out.println(format(
-                "noise floor: largest p(yes) difference between two identical calls %.3f (%s)",
-                noiseFloor, noiseFloorCall));
+                "model: %s, cases: %d (%d scored), input tokens: %d",
+                MODEL_NAME, CASES.size(), scored, totalTokens));
         for (String way : WAYS) {
-            List<Double> values =
-                    results.get(way).stream().filter(value -> value != null).toList();
-            long right = values.stream().filter(value -> value > 0.5).count();
-            double mean = values.isEmpty()
-                    ? Double.NaN
-                    : values.stream().mapToDouble(Double::doubleValue).sum() / values.size();
-            int wayErrors = results.get(way).size() - values.size();
+            int right = 0;
+            double sum = 0;
+            int answered = 0;
+            List<String> wrong = new ArrayList<>();
+            for (int i = 0; i < CASES.size(); i++) {
+                Case testCase = CASES.get(i);
+                Double pYes = pYesByWay.get(way).get(i);
+                if (testCase.expected() == null || pYes == null) {
+                    continue;
+                }
+                answered++;
+                sum += testCase.expected() ? pYes : 1 - pYes;
+                if (isRight(testCase, pYes)) {
+                    right++;
+                } else {
+                    wrong.add(testCase.id());
+                }
+            }
             System.out.println(format(
-                    "%-9s right %2d/%d  mean p(correct) %.3f  errors %d", way, right, values.size(), mean, wayErrors));
+                    "%-12s right %2d/%d  mean p(correct) %.3f  wrong %s",
+                    way, right, answered, answered == 0 ? Double.NaN : sum / answered, wrong));
         }
         for (String way : WAYS) {
             List<String> perCase = new ArrayList<>();
-            List<Double> values = results.get(way);
-            for (int i = 0; i < values.size(); i++) {
-                Double value = values.get(i);
-                perCase.add(CASES.get(i).id() + "=" + (value == null ? "ERR" : format("%.2f", value)));
+            for (int i = 0; i < CASES.size(); i++) {
+                Double pYes = pYesByWay.get(way).get(i);
+                perCase.add(CASES.get(i).id() + "=" + (pYes == null ? "ERR" : format("%.2f", pYes)));
             }
-            System.out.println(format("%-9s per case: %s", way, String.join(" ", perCase)));
+            System.out.println(format("%-12s p(yes): %s", way, String.join(" ", perCase)));
         }
-        System.out.println("=====================================");
+        System.out.println("=============================================");
 
         // only HTTP and setup errors fail the test, never the measured values
         assertThat(errors).isEmpty();
+    }
+
+    private static String expected(Case testCase) {
+        return testCase.expected() == null ? "unclear" : testCase.expected() ? "yes" : "no";
+    }
+
+    private static boolean isRight(Case testCase, double pYes) {
+        return testCase.expected() == (pYes > 0.5);
     }
 
     private static int inputTokens(Map<?, ?> payload) {
@@ -254,17 +287,36 @@ class GoogleAiGeminiYesNoCriteriaMeasurementIT {
     }
 
     private static Map<String, Object> question(Case testCase, String way) {
+        boolean yesSide = testCase.side().equals("yes");
+        String side = yesSide ? "yes" : "no";
+        String criterionKey = yesSide ? "true_description" : "false_description";
         Map<String, Object> question = new LinkedHashMap<>();
         question.put("type", "noul");
         switch (way) {
             case "native" -> {
                 question.put("instructions", testCase.question());
-                String key = testCase.side().equals("yes") ? "true_description" : "false_description";
-                question.put("criteria", Map.of(key, testCase.criterion()));
+                question.put("criteria", Map.of(criterionKey, testCase.criterion()));
             }
-            case "appended" -> {
-                String label = testCase.side().equals("yes") ? "Answer yes when: " : "Answer no when: ";
-                question.put("instructions", testCase.question() + "\n" + label + testCase.criterion());
+            case "native+hint" -> {
+                question.put(
+                        "instructions",
+                        testCase.question() + "\nThe criterion for " + side + " is one reason to answer " + side
+                                + ", not the only one. Otherwise, answer the question as asked.");
+                question.put("criteria", Map.of(criterionKey, testCase.criterion()));
+            }
+            case "also" -> question.put(
+                    "instructions", testCase.question() + "\nAlso answer " + side + " when: " + testCase.criterion());
+            case "native+fill" -> {
+                question.put("instructions", testCase.question());
+                Map<String, String> criteria = new LinkedHashMap<>();
+                if (yesSide) {
+                    criteria.put("true_description", testCase.criterion());
+                    criteria.put("false_description", "The answer to the question itself is no.");
+                } else {
+                    criteria.put("true_description", "The answer to the question itself is yes.");
+                    criteria.put("false_description", testCase.criterion());
+                }
+                question.put("criteria", criteria);
             }
             default -> question.put("instructions", testCase.question());
         }
