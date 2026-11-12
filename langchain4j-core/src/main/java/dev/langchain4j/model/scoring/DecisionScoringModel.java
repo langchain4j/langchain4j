@@ -126,14 +126,12 @@ public class DecisionScoringModel implements ScoringModel {
 
     @Override
     public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
-        return failOnThrow(() -> scoreInBatchesAsync(
-                ensureNotNull(request.documents(), "documents"),
-                ensureNotBlank(request.query(), "query"),
-                request));
+        return failOnThrow(() -> scoreInBatchesAsync(request));
     }
 
-    private CompletableFuture<ScoringResponse> scoreInBatchesAsync(
-            List<String> documents, String query, ScoringRequest request) {
+    private CompletableFuture<ScoringResponse> scoreInBatchesAsync(ScoringRequest request) {
+        List<String> documents = ensureNotNull(request.documents(), "documents");
+        String query = ensureNotBlank(request.query(), "query");
         DecisionRequestParameters parameters = DecisionRequestParameters.builder()
                 .modelName(request.parameters().modelName())
                 .build();

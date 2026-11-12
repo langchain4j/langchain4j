@@ -34,6 +34,9 @@ public interface HttpClient {
      * {@link SuccessfulHttpResponse} once the full response has been received, without blocking the
      * calling thread. The future completes exceptionally with an {@link HttpException} for non-2XX
      * responses, or with the underlying error (e.g. a timeout or network failure) otherwise.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request (for
+     * example an invalid URL or header), completes the returned future exceptionally.
      *
      * @param request the HTTP request to be executed.
      * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
@@ -101,6 +104,9 @@ public interface HttpClient {
      * that contains the status code and the response body. Some implementations first emit an
      * {@link HttpErrorResponseReceived} as soon as the response headers arrive, so that the subscriber can
      * react to the status code without waiting for the body.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request (for
+     * example an invalid URL or header), reaches the subscriber's {@code onError}, after {@code onSubscribe}.
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *

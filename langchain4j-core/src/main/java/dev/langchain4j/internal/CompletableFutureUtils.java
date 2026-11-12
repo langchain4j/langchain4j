@@ -1,5 +1,7 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+
 import dev.langchain4j.Internal;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -70,6 +72,7 @@ public class CompletableFutureUtils {
         try {
             future = operation.get();
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
         if (future == null) {

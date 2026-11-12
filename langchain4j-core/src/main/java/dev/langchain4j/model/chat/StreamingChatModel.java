@@ -24,7 +24,9 @@ import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -52,8 +54,8 @@ public interface StreamingChatModel {
      * <p>
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
-     * before this method returns. Only a {@code null} handler makes this method throw, because there is no handler to
-     * report to.
+     * before this method returns. With a {@code null} handler, a failure found before the request is sent is thrown
+     * instead, because there is no handler to report it to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
@@ -67,8 +69,8 @@ public interface StreamingChatModel {
      * <p>
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
-     * before this method returns. Only a {@code null} handler makes this method throw, because there is no handler to
-     * report to.
+     * before this method returns. With a {@code null} handler, a failure found before the request is sent is thrown
+     * instead, because there is no handler to report it to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -94,6 +96,7 @@ public interface StreamingChatModel {
             attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
             invocationId = CurrentInvocation.invocationId(effectiveOptions);
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             if (handler == null) {
                 throw error;
             }
@@ -101,6 +104,8 @@ public interface StreamingChatModel {
             return;
         }
 
+        AtomicBoolean responseNotified = new AtomicBoolean();
+        AtomicBoolean completed = new AtomicBoolean();
         AtomicBoolean errorReported = new AtomicBoolean();
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
@@ -147,13 +152,21 @@ public interface StreamingChatModel {
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
+                responseNotified.set(true);
                 handler.onCompleteResponse(completeResponse);
+                completed.set(true);
             }
 
             @Override
             public void onError(Throwable error) {
-                errorReported.set(true);
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                if (completed.get() || !errorReported.compareAndSet(false, true)) {
+                    logIgnoredError(error);
+                    return;
+                }
+                if (!responseNotified.get()) {
+                    ChatModelListenerUtils.onError(
+                            error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                }
                 handler.onError(error);
             }
         };
@@ -162,14 +175,12 @@ public interface StreamingChatModel {
             onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
             doChat(finalChatRequest, observingHandler);
         } catch (Throwable error) {
-            if (errorReported.get()) {
-                // the model already reported a failure (for example the handler's onError threw), so this is not
-                // reported a second time
-                logIgnoredError(error);
-                return;
-            }
-            if (handler == null) {
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+            restoreInterruptIfInterrupted(error);
+            if (handler == null && !completed.get() && !errorReported.get()) {
+                if (!responseNotified.get()) {
+                    ChatModelListenerUtils.onError(
+                            error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                }
                 throw error;
             }
             withLoggingExceptions(() -> observingHandler.onError(error));
@@ -251,6 +262,7 @@ public interface StreamingChatModel {
             provider = provider();
             invocationId = CurrentInvocation.invocationId();
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return failedPublisher(error);
         }
 
@@ -265,7 +277,12 @@ public interface StreamingChatModel {
                 try {
                     onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
                     innerPublisher = doChat(finalChatRequest);
+                    if (innerPublisher == null) {
+                        throw new IllegalStateException(
+                                StreamingChatModel.this.getClass().getName() + ".doChat(ChatRequest) returned null");
+                    }
                 } catch (Throwable error) {
+                    restoreInterruptIfInterrupted(error);
                     ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
                     downstream.onSubscribe(EMPTY_SUBSCRIPTION);
                     downstream.onError(error);
@@ -317,6 +334,9 @@ public interface StreamingChatModel {
      * The default implementation returns an immediately-failing Publisher carrying {@link AsyncNotSupportedException} to signal that this model has no
      * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
      * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request, is
+     * signaled to the subscriber's {@code onError} after {@code onSubscribe}.
      *
      * @since 1.20.0
      */
@@ -347,6 +367,7 @@ public interface StreamingChatModel {
         try {
             chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             if (handler == null) {
                 throw error;
             }
@@ -367,6 +388,7 @@ public interface StreamingChatModel {
         try {
             chatRequest = ChatRequest.builder().messages(messages).build();
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             if (handler == null) {
                 throw error;
             }
@@ -397,6 +419,7 @@ public interface StreamingChatModel {
         try {
             chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return failedPublisher(error);
         }
 
@@ -444,6 +467,7 @@ public interface StreamingChatModel {
         try {
             return chat(ChatRequest.builder().messages(messages).build());
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return failedPublisher(error);
         }
     }
@@ -461,18 +485,12 @@ public interface StreamingChatModel {
         try {
             return chat(ChatRequest.builder().messages(messages).build());
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return failedPublisher(error);
         }
     }
 
     default Set<Capability> supportedCapabilities() {
         return Set.of();
-    }
-
-    private static <T> Publisher<T> failedPublisher(Throwable error) {
-        return subscriber -> {
-            subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
-            subscriber.onError(error);
-        };
     }
 }

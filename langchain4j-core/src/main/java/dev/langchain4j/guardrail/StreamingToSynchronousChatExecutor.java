@@ -112,8 +112,6 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
                         LOG.error("While handling the following error...", error);
                         LOG.error("...the following error happened", e);
                     }
-                } else {
-                    LOG.warn("Ignored error", error);
                 }
             } finally {
                 this.error.compareAndSet(null, error);

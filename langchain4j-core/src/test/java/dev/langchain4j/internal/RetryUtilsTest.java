@@ -247,6 +247,33 @@ class RetryUtilsTest {
     }
 
     @Test
+    void withRetryAsync_fails_instead_of_throwing_when_the_first_attempt_returns_null() {
+
+        CompletableFuture<String> result = fastPolicy().withRetryAsync(() -> null, 0, ExceptionMapper.DEFAULT);
+
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void withRetryAsync_fails_instead_of_hanging_when_a_retry_returns_null() {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            if (attempts.incrementAndGet() == 1) {
+                                return CompletableFuture.failedFuture(new HttpException(503, "unavailable"));
+                            }
+                            return null;
+                        },
+                        1,
+                        ExceptionMapper.DEFAULT);
+
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
+        assertThat(attempts).hasValue(2);
+    }
+
+    @Test
     void withRetryAsync_does_not_retry_a_non_retriable_failure() {
         AtomicInteger attempts = new AtomicInteger();
 

@@ -24,7 +24,9 @@ import static dev.langchain4j.http.client.HttpMethod.GET;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mockingDetails;
 
 class LoggingHttpClientTest {
@@ -350,5 +352,63 @@ class LoggingHttpClientTest {
     private static final class DummyParser implements ServerSentEventParser {
         @Override
         public void parse(java.io.InputStream httpResponseBody, ServerSentEventListener listener) {}
+    }
+
+    @Test
+    void executeAsync_returns_a_failed_future_when_the_delegate_throws_or_returns_null() {
+        HttpClient throwing = mock(HttpClient.class);
+        IllegalArgumentException failure = new IllegalArgumentException("invalid url");
+        when(throwing.executeAsync(any())).thenThrow(failure);
+        HttpClient returningNull = mock(HttpClient.class);
+        when(returningNull.executeAsync(any())).thenReturn(null);
+        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/test").build();
+
+        assertThat(new LoggingHttpClient(throwing, true, true).executeAsync(request))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(failure);
+        assertThat(new LoggingHttpClient(returningNull, true, true).executeAsync(request))
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("executeAsync(HttpRequest) returned null");
+    }
+
+    @Test
+    void stream_signals_a_failure_of_the_delegate_to_the_subscriber() {
+        HttpClient throwing = mock(HttpClient.class);
+        IllegalArgumentException failure = new IllegalArgumentException("invalid url");
+        when(throwing.stream(any(), any())).thenThrow(failure);
+        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/test").build();
+        List<Object> signals = new ArrayList<>();
+
+        new LoggingHttpClient(throwing, true, true)
+                .stream(request, mock(ServerSentEventParser.class))
+                .subscribe(new Flow.Subscriber<HttpStreamingEvent>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        signals.add("onSubscribe");
+                    }
+
+                    @Override
+                    public void onNext(HttpStreamingEvent event) {
+                        signals.add(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        signals.add(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        signals.add("onComplete");
+                    }
+                });
+
+        assertThat(signals).containsExactly("onSubscribe", failure);
     }
 }

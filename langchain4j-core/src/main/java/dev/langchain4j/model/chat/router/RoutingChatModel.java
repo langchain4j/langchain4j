@@ -136,10 +136,7 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        return failOnThrow(
-                this,
-                "chatAsync(ChatRequest, ChatRequestOptions)",
-                () -> chatAsync(chatRequest, ChatRequestOptions.EMPTY));
+        return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
     }
 
     @Override

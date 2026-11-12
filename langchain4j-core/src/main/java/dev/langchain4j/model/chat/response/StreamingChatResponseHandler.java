@@ -212,7 +212,9 @@ public interface StreamingChatResponseHandler {
     void onCompleteResponse(ChatResponse completeResponse);
 
     /**
-     * This method is invoked when an error occurs during streaming.
+     * This method is invoked when the request fails, before or during streaming, including when the request is
+     * invalid (for example when it has no messages, or a parameter the model does not support). It can be called on
+     * the thread that called {@code chat(...)}, before {@code chat(...)} returns.
      *
      * @param error The error that occurred
      */

@@ -152,6 +152,24 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void onPartialResponseAndErrorBlockingShouldReturnWhenTheErrorHandlerThrows() {
+        // given
+        StreamingChatModel model = new DummyModel(List.<Object>of());
+        List<Throwable> errors = new ArrayList<>();
+
+        // when an invalid request (a null message) reaches an error handler that throws
+        assertThatCode(() -> onPartialResponseAndErrorBlocking(model, null, token -> {}, error -> {
+                    errors.add(error);
+                    throw new IllegalStateException(error);
+                }))
+                .doesNotThrowAnyException();
+
+        // then the helper returns instead of waiting forever
+        assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void onPartialResponseAndErrorBlockingWithError() throws InterruptedException {
         // given
         List<Object> tokens = new ArrayList<>();

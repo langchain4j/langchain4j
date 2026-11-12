@@ -784,6 +784,93 @@ class RoutingChatModelTest {
     }
 
     @Test
+    void should_report_a_null_streaming_request_to_the_handler_instead_of_throwing() {
+
+        List<Throwable> errors = new ArrayList<>();
+
+        routingStreamingModel(byLength()).chat((ChatRequest) null, ChatRequestOptions.EMPTY, new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+            }
+        });
+
+        assertThat(errors)
+                .singleElement()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasFieldOrPropertyWithValue("message", "request cannot be null");
+        assertThat(smallStreaming.requests()).isEmpty();
+        assertThat(largeStreaming.requests()).isEmpty();
+    }
+
+    @Test
+    void should_report_an_error_thrown_by_the_streaming_router_to_the_handler() {
+
+        Error failure = new NoClassDefFoundError("com/example/Missing");
+        List<Throwable> errors = new ArrayList<>();
+
+        routingStreamingModel(request -> {
+                    throw failure;
+                })
+                .chat("Hi!", new StreamingChatResponseHandler() {
+                    @Override
+                    public void onCompleteResponse(ChatResponse completeResponse) {}
+
+                    @Override
+                    public void onError(Throwable error) {
+                        errors.add(error);
+                    }
+                });
+
+        assertThat(errors).containsExactly(failure);
+    }
+
+    @Test
+    void should_still_reject_a_null_streaming_handler() {
+
+        assertThatThrownBy(() -> routingStreamingModel(byLength()).chat("Hi!", (StreamingChatResponseHandler) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("handler cannot be null");
+    }
+
+    @Test
+    void should_signal_a_null_reactive_streaming_request_to_the_subscriber_instead_of_throwing() {
+
+        List<Object> signals = new ArrayList<>();
+
+        routingStreamingModel(byLength()).chat((ChatRequest) null).subscribe(new Flow.Subscriber<ChatModelStreamingEvent>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent item) {
+                signals.add(item);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).hasSize(2);
+        assertThat(signals.get(0)).isEqualTo("onSubscribe");
+        assertThat((Throwable) signals.get(1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("request cannot be null");
+    }
+
+    @Test
     void should_report_error_of_selected_streaming_model_to_handler() {
 
         StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));

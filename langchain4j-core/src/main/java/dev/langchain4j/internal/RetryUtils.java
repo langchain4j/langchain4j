@@ -269,12 +269,7 @@ public final class RetryUtils {
                 return;
             }
 
-            CompletableFuture<T> attempt;
-            try {
-                attempt = action.get();
-            } catch (Throwable t) {
-                attempt = CompletableFuture.failedFuture(t);
-            }
+            CompletableFuture<T> attempt = CompletableFutureUtils.failOnThrow(action);
 
             CompletableFutureUtils.propagateCancellation(result, attempt);
 

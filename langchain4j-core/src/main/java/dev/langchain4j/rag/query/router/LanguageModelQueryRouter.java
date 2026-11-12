@@ -44,6 +44,12 @@ import java.util.concurrent.CompletionException;
  * <br>
  * - {@link #fallbackStrategy}: The strategy applied if the call to the LLM fails of if LLM does not return a valid response.
  * Please check {@link FallbackStrategy} for more details. Default value: {@link FallbackStrategy#DO_NOT_ROUTE}
+ * <br>
+ * <br>
+ * On the asynchronous path ({@link #routeAsync(Query)}), a chat model without native asynchronous support makes
+ * routing fail with an {@link AsyncNotSupportedException} instead of applying the fallback strategy. To use such a
+ * chat model there, set {@code offloadBlocking(true)} on the {@code DefaultRetrievalAugmentor}: it then routes with
+ * {@link #route(Query)} on another thread.
  *
  * @see DefaultQueryRouter
  */
@@ -185,6 +191,9 @@ public class LanguageModelQueryRouter implements QueryRouter {
     /**
      * Strategy applied if the call to the LLM fails of if LLM does not return a valid response.
      * It could be because it was formatted improperly, or it is unclear where to route.
+     * <p>
+     * It is not applied when {@link #routeAsync(Query)} fails because the chat model has no native asynchronous
+     * support: see {@link LanguageModelQueryRouter}.
      */
     public enum FallbackStrategy {
 

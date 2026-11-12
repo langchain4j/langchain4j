@@ -62,4 +62,21 @@ class CompletableFutureUtilsTest {
                 .isInstanceOf(IllegalStateException.class)
                 .withMessage("The asynchronous operation returned null");
     }
+
+    @Test
+    void failOnThrow_should_restore_the_interrupt_flag_when_the_operation_throws_an_interrupted_exception() {
+
+        InterruptedException interrupted = new InterruptedException("interrupted");
+
+        CompletableFuture<String> future = failOnThrow(() -> sneakyThrow(interrupted));
+        boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
+
+        assertThat(interruptFlagRestored).isTrue();
+        assertThat(future).failsWithin(1, SECONDS).withThrowableThat().havingCause().isSameAs(interrupted);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, E extends Throwable> T sneakyThrow(Throwable throwable) throws E {
+        throw (E) throwable;
+    }
 }

@@ -801,12 +801,7 @@ public class DefaultMcpClient implements McpClient {
     private CompletableFuture<ToolExecutionResult> doExecuteToolAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        Map<String, Object> arguments;
-        try {
-            arguments = parseToolArguments(executionRequest);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        Map<String, Object> arguments = parseToolArguments(executionRequest);
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =

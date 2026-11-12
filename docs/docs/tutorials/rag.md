@@ -1021,6 +1021,9 @@ It routes each `Query` to all configured `ContentRetriever`s.
 
 #### Language Model Query Router
 `LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
+In an asynchronous or reactive AI Service, its chat model needs native asynchronous support;
+with any other chat model, set `offloadBlocking(true)` on the `DefaultRetrievalAugmentor`,
+otherwise routing fails with an `AsyncNotSupportedException`.
 
 #### Decision Model Query Router
 `DecisionModelQueryRouter` uses a [decision model](/tutorials/decision-models) to decide which `ContentRetriever`s

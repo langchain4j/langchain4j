@@ -58,6 +58,11 @@ above: `onUnmappedRawEvent(Object)` is invoked. See [Unmapped Raw Events](#unmap
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
 
+`chat(...)` does not throw: every failure, including an invalid request (for example no messages,
+or a parameter the model does not support), is passed to `onError`.
+`onError` can be called on the calling thread, before `chat(...)` returns,
+so prepare anything that `onError` uses before you call `chat(...)`.
+
 Below is an example of how to implement streaming with `StreamingChatModel`:
 ```java
 StreamingChatModel model = OpenAiStreamingChatModel.builder()

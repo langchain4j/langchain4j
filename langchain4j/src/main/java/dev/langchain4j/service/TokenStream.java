@@ -218,7 +218,9 @@ public interface TokenStream {
     TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
 
     /**
-     * The provided consumer will be invoked when an error occurs during streaming.
+     * The provided consumer will be invoked when an error occurs, before or during streaming. A failure of the model
+     * call, including an invalid request, is passed to this consumer and is not thrown from {@link #start()}. The
+     * consumer can be called before {@link #start()} returns.
      *
      * @param errorHandler lambda that will be invoked when an error occurs
      * @return token stream instance used to configure or start stream processing
@@ -236,6 +238,9 @@ public interface TokenStream {
      * Completes the current token stream building and starts processing.
      * <p>
      * Will send a request to LLM and start response streaming.
+     * <p>
+     * A failure of the model call, including an invalid request, is passed to {@link #onError(Consumer)} (possibly
+     * before this method returns) and is not thrown from this method.
      * <p>
      * Each call is a separate AI Service invocation with its own invocation id. A second call reuses the retrieved
      * contents, the result of the input guardrails and the messages prepared when the AI Service method was called:

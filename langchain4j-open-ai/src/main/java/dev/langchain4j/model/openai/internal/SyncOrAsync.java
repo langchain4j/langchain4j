@@ -19,6 +19,9 @@ public interface SyncOrAsync<ResponseContent> {
 
     /**
      * The default implementation returns a failed future carrying an {@link AsyncNotSupportedException}.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request,
+     * completes the returned future exceptionally.
      *
      * @return a {@link CompletableFuture} of the parsed and raw response, completed without blocking the caller.
      * @since 1.20.0

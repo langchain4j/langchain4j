@@ -147,25 +147,26 @@ public interface EmbeddingModel {
         }
 
         List<TextSegment> textSegments;
+        Map<Object, Object> attributes;
+        UUID invocationId;
         try {
             textSegments = finalRequest.inputs().stream()
                     .map(input -> TextSegment.from(input.text()))
                     .toList();
+            attributes = new java.util.concurrent.ConcurrentHashMap<>();
+            invocationId = CurrentInvocation.invocationId();
+            EmbeddingModelListenerUtils.onRequest(
+                    EmbeddingModelRequestContext.builder()
+                            .textSegments(textSegments)
+                            .embeddingRequest(finalRequest)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .invocationId(invocationId)
+                            .build(),
+                    listeners);
         } catch (Throwable error) {
             return CompletableFuture.failedFuture(error);
         }
-        Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
-        UUID invocationId = CurrentInvocation.invocationId();
-
-        EmbeddingModelListenerUtils.onRequest(
-                EmbeddingModelRequestContext.builder()
-                        .textSegments(textSegments)
-                        .embeddingRequest(finalRequest)
-                        .embeddingModel(this)
-                        .attributes(attributes)
-                        .invocationId(invocationId)
-                        .build(),
-                listeners);
 
         CompletableFuture<EmbeddingResponse> inFlight =
                 failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));

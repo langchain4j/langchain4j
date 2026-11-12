@@ -71,14 +71,16 @@ class OutputGuardrailOnStreamedResponseTests extends BaseGuardrailTests {
     void streamingPartialResponsesNotShownOnError() {
         var repromptPartials = new ArrayList<String>();
         var repromptComplete = new AtomicReference<ChatResponse>();
+        var repromptError = new AtomicReference<Throwable>();
 
-        assertThatExceptionOfType(OutputGuardrailException.class).isThrownBy(() -> this.aiService
+        this.aiService
                 .reprompt("1")
                 .onPartialResponse(repromptPartials::add)
-                .onError(t -> fail(t.getMessage()))
+                .onError(repromptError::set)
                 .onCompleteResponse(repromptComplete::set)
-                .start());
+                .start();
 
+        assertThat(repromptError.get()).isInstanceOf(OutputGuardrailException.class);
         assertThat(repromptPartials).isEmpty();
         assertThat(repromptComplete.get()).isNull();
     }

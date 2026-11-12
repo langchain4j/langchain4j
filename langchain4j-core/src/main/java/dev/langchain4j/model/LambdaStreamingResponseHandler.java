@@ -116,8 +116,11 @@ public class LambdaStreamingResponseHandler {
 
             @Override
             public void onError(Throwable error) {
-                onError.accept(error);
-                completionLatch.countDown();
+                try {
+                    onError.accept(error);
+                } finally {
+                    completionLatch.countDown();
+                }
             }
         };
 

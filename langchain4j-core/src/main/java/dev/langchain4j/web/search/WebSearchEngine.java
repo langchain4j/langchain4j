@@ -39,6 +39,9 @@ public interface WebSearchEngine {
      * <p>
      * An implementation that honors cancellation should abort its in-flight call when the returned future is
      * cancelled (best-effort).
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request,
+     * completes the returned future exceptionally.
      *
      * @param webSearchRequest the search request
      * @return a {@link CompletableFuture} of the web search results

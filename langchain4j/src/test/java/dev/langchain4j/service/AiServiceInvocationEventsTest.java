@@ -5,6 +5,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -29,6 +32,7 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.mock.ModerationModelMock;
@@ -69,6 +73,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -82,6 +87,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServiceInvocationEventsTest {
@@ -405,6 +411,49 @@ class AiServiceInvocationEventsTest {
         assertThat(answer.get(5, SECONDS)).isEqualTo("good");
         assertSingleTerminalEvent(AiServiceCompletedEvent.class);
         assertRequestsAndResponsesArePaired();
+    }
+
+    @Test
+    void should_report_a_reprompt_that_fails_synchronously_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doThrow(failure)
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    @Test
+    void should_report_a_reprompt_that_fails_through_on_error_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doAnswer(invocation -> {
+                    invocation.getArgument(1, StreamingChatResponseHandler.class).onError(failure);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    private void assertRepromptFailureIsReportedOnce(StreamingChatModelMock model, RuntimeException failure)
+            throws Exception {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .outputGuardrails(repromptingOnce())
+                .registerListeners(listeners())
+                .build();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+
+        assistant.chat("Hello").onCompleteResponse(response -> {}).onError(errors::add).start();
+
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        assertThat(errors).hasSize(1);
+        assertThat(Stream.iterate(errors.get(0), Objects::nonNull, Throwable::getCause)).contains(failure);
     }
 
     @Test

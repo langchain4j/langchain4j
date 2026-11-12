@@ -1,6 +1,8 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -73,31 +75,32 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
-        ensureNotNull(request, "request");
         ensureNotNull(handler, "handler");
-        UUID invocationId = CurrentInvocation.invocationId(options);
+        UUID invocationId;
         String routeName;
         try {
+            ensureNotNull(request, "request");
+            invocationId = CurrentInvocation.invocationId(options);
             routeName = CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.select(request, options));
-        } catch (Exception e) {
+        } catch (Throwable e) {
             onError(handler, e);
             return;
         }
         try {
-            String selectedRoute = routeName;
             CurrentInvocation.runWithIdOrWithout(
                     invocationId,
-                    () -> selector.model(selectedRoute)
+                    () -> selector.model(routeName)
                             .chat(
                                     request,
-                                    RouteSelector.withRoute(options, selectedRoute, invocationId),
-                                    HandlerWithoutInvocation.wrap(new RouteRecordingHandler(handler, selectedRoute))));
-        } catch (Exception e) {
+                                    RouteSelector.withRoute(options, routeName, invocationId),
+                                    HandlerWithoutInvocation.wrap(new RouteRecordingHandler(handler, routeName))));
+        } catch (Throwable e) {
             onError(handler, e);
         }
     }
 
     private static void onError(StreamingChatResponseHandler handler, Throwable error) {
+        restoreInterruptIfInterrupted(error);
         try {
             handler.onError(error);
         } catch (Exception e) {
@@ -112,7 +115,9 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-        ensureNotNull(request, "request");
+        if (request == null) {
+            return failedPublisher(new IllegalArgumentException("request cannot be null"));
+        }
         UUID invocationId = CurrentInvocation.invocationId();
         return downstream -> {
             DeferredSubscription subscription = new DeferredSubscription(downstream);

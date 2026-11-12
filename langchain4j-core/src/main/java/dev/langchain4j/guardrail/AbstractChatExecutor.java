@@ -121,9 +121,9 @@ abstract class AbstractChatExecutor implements ChatExecutor {
     }
 
     private CompletableFuture<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
-        return failOnThrow(() -> {
+        return failOnThrow(this, "executeAsync(ChatRequest)", () -> {
             fireRequestIssuedEvent(chatRequest);
-            return failOnThrow(this, "executeAsync(ChatRequest)", () -> executeAsync(chatRequest));
+            return executeAsync(chatRequest);
         });
     }
 

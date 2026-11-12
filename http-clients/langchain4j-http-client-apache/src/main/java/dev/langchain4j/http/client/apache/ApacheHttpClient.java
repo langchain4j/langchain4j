@@ -2,6 +2,7 @@ package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -249,15 +250,22 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 }
             };
-            java.util.concurrent.Future<Void> future = asyncClient()
-                    .execute(
-                            SimpleRequestProducer.create(toSimpleApacheRequest(request)),
-                            new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
-                                if (!tube.cancelled() && tube.outstandingRequests() > 0) {
-                                    tube.send(new HttpErrorResponseReceived(statusCode, headers));
-                                }
-                            }),
-                            null);
+            java.util.concurrent.Future<Void> future;
+            try {
+                future = asyncClient()
+                        .execute(
+                                SimpleRequestProducer.create(toSimpleApacheRequest(request)),
+                                new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
+                                    if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                                        tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                                    }
+                                }),
+                                null);
+            } catch (Throwable error) {
+                restoreInterruptIfInterrupted(error);
+                tube.fail(error);
+                return;
+            }
             tube.whenTerminates(() -> future.cancel(true));
             // Tube does not replay termination to an action registered after it.
             if (tube.cancelled()) {

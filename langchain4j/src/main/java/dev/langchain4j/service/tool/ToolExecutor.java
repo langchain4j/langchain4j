@@ -60,9 +60,14 @@ public interface ToolExecutor {
      * <p>
      * Override this method to use this tool with an asynchronous AI Service. If the tool performs I/O that
      * can be initiated without holding a thread (e.g. it delegates to an asynchronous client), return that
-     * future. If blocking execution is acceptable, it can return
-     * {@code CompletableFuture.completedFuture(executeWithContext(request, context))}, and
-     * {@code CompletableFuture.failedFuture(e)} when {@code executeWithContext} throws.
+     * future. If blocking execution is acceptable, it can run the tool synchronously:
+     * <pre>{@code
+     * try {
+     *     return CompletableFuture.completedFuture(executeWithContext(request, context));
+     * } catch (Exception e) {
+     *     return CompletableFuture.failedFuture(e);
+     * }
+     * }</pre>
      * <p>
      * Implementations never throw: every failure, including invalid arguments, completes the returned future
      * exceptionally. The AI Service applies the configured tool error handlers to a failed future. For
@@ -80,7 +85,8 @@ public interface ToolExecutor {
         return AsyncNotSupported.failedFuture(getClass().getName()
                 + " does not support asynchronous execution. To use this tool with an AI Service method"
                 + " returning a CompletableFuture, override ToolExecutor.executeAsync()."
-                + " If blocking execution is acceptable, it can simply return"
-                + " CompletableFuture.completedFuture(executeWithContext(request, context)).");
+                + " If blocking execution is acceptable, it can return"
+                + " CompletableFuture.completedFuture(executeWithContext(request, context)),"
+                + " or CompletableFuture.failedFuture(e) when executeWithContext throws.");
     }
 }

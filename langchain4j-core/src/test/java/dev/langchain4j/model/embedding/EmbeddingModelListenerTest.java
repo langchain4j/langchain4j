@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -450,5 +451,22 @@ class EmbeddingModelListenerTest {
         inOrder.verify(listener).onError(errorContext.capture());
         verifyNoMoreInteractions(listener);
         assertThat(errorContext.getValue().error()).isSameAs(error);
+    }
+
+    @Test
+    void embedAsync_should_return_failed_future_without_calling_the_model_when_a_listener_on_request_throws_an_error() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(listener).onRequest(any());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(error);
+        verify(model, never()).doEmbedAsync(any());
     }
 }

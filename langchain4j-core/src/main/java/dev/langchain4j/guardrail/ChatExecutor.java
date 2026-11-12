@@ -242,6 +242,10 @@ public interface ChatExecutor {
 
         /**
          * Sets a custom error handler to manage exceptions or errors that occur during the execution.
+         * <p>
+         * The error handler is called first; then {@link ChatExecutor#execute()} fails with the same error, and the
+         * future returned by {@link ChatExecutor#executeAsync()} completes exceptionally with it. So a caller that also
+         * handles the thrown error or the failed future sees the error twice.
          *
          * @param errorHandler a {@link Consumer} of {@link Throwable} that processes the error
          * @return the current {@link StreamingToSynchronousBuilder} instance for method chaining
