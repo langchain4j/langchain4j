@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 /**
  * The context in which a {@link Planner} decides its next action.
@@ -45,11 +46,11 @@ public record PlanningContext(
     }
 
     /**
-     * Reports the response of a chat model that the planner called itself to decide what to do. The response is
-     * notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners} of the agent
-     * running the planner, so that its token usage is counted on the invocation of that agent, for instance by the
-     * {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon as the model
-     * returns, once for each call.
+     * Reports the response of a chat model that the planner called itself to decide what to do. Its token usage and
+     * its model name are notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners}
+     * of the agent running the planner, so that the token usage is counted on the invocation of that agent, for
+     * instance by the {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon
+     * as the model returns, once for each call.
      * <p>
      * It does nothing when this context has no {@link #plannerAgent() planner agent}, or when the response is
      * {@code null}.
@@ -57,7 +58,9 @@ public record PlanningContext(
      * @param chatResponse the response returned by the chat model
      */
     public void reportChatModelResponse(ChatResponse chatResponse) {
-        reportModelResponse(chatResponse, null);
+        if (chatResponse != null) {
+            reportModelResponse(chatResponse.tokenUsage(), chatResponse.modelName());
+        }
     }
 
     /**
@@ -67,14 +70,15 @@ public record PlanningContext(
      * @param decisionResponse the response returned by the decision model
      */
     public void reportDecisionModelResponse(DecisionResponse decisionResponse) {
-        reportModelResponse(null, decisionResponse);
+        if (decisionResponse != null) {
+            reportModelResponse(decisionResponse.tokenUsage(), decisionResponse.modelName());
+        }
     }
 
-    private void reportModelResponse(ChatResponse chatResponse, DecisionResponse decisionResponse) {
-        if (plannerAgent instanceof InternalAgent agent && (chatResponse != null || decisionResponse != null)) {
+    private void reportModelResponse(TokenUsage tokenUsage, String modelName) {
+        if (plannerAgent instanceof InternalAgent agent) {
             onPlannerModelResponse(
-                    agent.listener(),
-                    new PlannerModelResponse(agenticScope, plannerAgent, chatResponse, decisionResponse));
+                    agent.listener(), new PlannerModelResponse(agenticScope, plannerAgent, tokenUsage, modelName));
         }
     }
 }

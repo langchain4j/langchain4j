@@ -45,8 +45,8 @@ public interface AgentListener {
      * decide what to do, as reported by the planner through the
      * {@link dev.langchain4j.agentic.planner.PlanningContext#reportChatModelResponse reportChatModelResponse} or
      * {@link dev.langchain4j.agentic.planner.PlanningContext#reportDecisionModelResponse reportDecisionModelResponse}
-     * method of its {@code PlanningContext}. The model calls of the subagents are not notified here, but by their
-     * own invocations.
+     * method of its {@code PlanningContext}. The notification carries the token usage and the model name of that
+     * response. The model calls of the subagents are not notified here, but by their own invocations.
      * It is called on the thread running the planner, before the planner acts on the response, so also when the
      * invocation of the agent later fails.
      */

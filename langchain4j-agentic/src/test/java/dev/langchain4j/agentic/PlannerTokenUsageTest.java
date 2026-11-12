@@ -159,8 +159,6 @@ class PlannerTokenUsageTest {
                 .containsExactly(new TokenUsage(100, 20), new TokenUsage(30, 5));
         assertThat(responses).extracting(PlannerModelResponse::modelName).containsOnly("planning-model");
         PlannerModelResponse first = responses.get(0);
-        assertThat(first.chatResponse().aiMessage().text()).isEqualTo("go on");
-        assertThat(first.decisionResponse()).isNull();
         assertThat(first.agenticScope()).isNotNull();
         assertThat(first.agentId()).isEqualTo(first.agent().agentId());
     }
@@ -177,8 +175,7 @@ class PlannerTokenUsageTest {
 
         assertThat(responses).hasSize(1);
         PlannerModelResponse response = responses.get(0);
-        assertThat(response.chatResponse()).isNull();
-        assertThat(response.decisionResponse().yesNo("invoke").probability()).isEqualTo(0.9);
+        assertThat(response.agentName()).isEqualTo("pattern");
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(40, 2));
         assertThat(response.modelName()).isEqualTo("decision-model");
     }
@@ -360,17 +357,18 @@ class PlannerTokenUsageTest {
     void supervisor_reports_each_planning_call_to_its_listeners() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(INVOKE_ASSISTANT, DONE)
+                .withModelNames("planning-model", "planning-model")
                 .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
 
         supervisor(model, SupervisorResponseStrategy.SUMMARY, SupervisorContextStrategy.CHAT_MEMORY, recording(responses))
                 .invoke("What time is it?");
 
+        // the call choosing the assistant, then the one ending the invocation
         assertThat(responses).extracting(PlannerModelResponse::agentName).containsExactly("supervisor", "supervisor");
         assertThat(responses)
                 .extracting(PlannerModelResponse::tokenUsage)
                 .containsExactly(new TokenUsage(100, 20), new TokenUsage(30, 5));
-        assertThat(responses.get(0).chatResponse().aiMessage()).isEqualTo(INVOKE_ASSISTANT);
-        assertThat(responses.get(1).chatResponse().aiMessage()).isEqualTo(DONE);
+        assertThat(responses).extracting(PlannerModelResponse::modelName).containsOnly("planning-model");
     }
 
     @Test
@@ -428,9 +426,10 @@ class PlannerTokenUsageTest {
                         monitor)
                 .invoke("What time is it?");
 
+        // the first planning call, the summarization call and the second planning call, in this order
         assertThat(responses)
-                .extracting(response -> response.chatResponse().aiMessage())
-                .containsExactly(INVOKE_ASSISTANT, summary, DONE);
+                .extracting(PlannerModelResponse::tokenUsage)
+                .containsExactly(new TokenUsage(100, 20), new TokenUsage(10, 2), new TokenUsage(30, 5));
         assertThat(responses).extracting(PlannerModelResponse::agentName).containsOnly("supervisor");
         assertThat(topLevelInvocation(monitor).tokenUsage()).contains(new TokenUsage(140, 27));
     }
