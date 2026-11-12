@@ -65,6 +65,7 @@ abstract class OllamaBaseChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 // Ollama-specific parameters
                 .mirostat(getOrDefault(builder.mirostat, ollamaParameters.mirostat()))
                 .mirostatEta(getOrDefault(builder.mirostatEta, ollamaParameters.mirostatEta()))

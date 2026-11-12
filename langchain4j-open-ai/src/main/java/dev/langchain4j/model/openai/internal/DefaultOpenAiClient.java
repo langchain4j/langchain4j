@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.mergeCustomHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -56,6 +59,8 @@ import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
 
 import java.util.function.Supplier;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultOpenAiClient extends OpenAiClient {
 
@@ -118,6 +123,17 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
     }
 
+    /**
+     * The model's headers, with the per-request custom headers applied on top (see {@code perRequestHeaders}).
+     */
+    private Map<String, String> buildRequestHeaders(Map<String, String> customHeaders) {
+        Map<String, String> modelHeaders = buildRequestHeaders();
+        if (customHeaders.isEmpty()) {
+            return modelHeaders;
+        }
+        return mergeCustomHeaders(modelHeaders, perRequestHeaders(modelHeaders, customHeaders));
+    }
+
     private Map<String, String> buildRequestHeaders() {
         Map<String, String> dynamicHeaders = customHeadersSupplier.get();
         if (isNullOrEmpty(dynamicHeaders)) {
@@ -157,13 +173,21 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
     @Override
     public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request) {
+        return chatCompletion(request, (HttpParameters) null);
+    }
+
+    @Override
+    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(
+            ChatCompletionRequest request, @Nullable HttpParameters httpParameters) {
+
+        Map<String, String> customHeaders = customHeadersOf(httpParameters);
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(buildRequestHeaders())
+                .addHeaders(buildRequestHeaders(customHeaders))
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
                         .build()))
                 .build();
@@ -173,7 +197,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .url(baseUrl, "chat/completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(buildRequestHeaders())
+                .addHeaders(buildRequestHeaders(customHeaders))
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
                         .build()))
                 .build();
@@ -184,13 +208,19 @@ public class DefaultOpenAiClient extends OpenAiClient {
     @Override
     public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
+        return chatCompletionPublisher(request, options, null);
+    }
+
+    @Override
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
+            ChatCompletionRequest request, ChatCompletionOptions options, @Nullable HttpParameters httpParameters) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
                 .addQueryParams(customQueryParams)
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(buildRequestHeaders())
+                .addHeaders(buildRequestHeaders(customHeadersOf(httpParameters)))
                 .body(Json.toJson(request))
                 .build();
 

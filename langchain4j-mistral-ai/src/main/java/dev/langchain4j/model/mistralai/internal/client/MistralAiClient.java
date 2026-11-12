@@ -1,5 +1,10 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestCustomHeadersNotSupported;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -12,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 @Internal
 public abstract class MistralAiClient {
@@ -22,6 +29,27 @@ public abstract class MistralAiClient {
             MistralAiChatCompletionRequest request) {
         MistralAiChatCompletionResponse parsedResponse = chatCompletion(request);
         return new ParsedAndRawResponse<>(parsedResponse, null);
+    }
+
+    /**
+     * Like {@link #chatCompletionWithRawResponse(MistralAiChatCompletionRequest)}, but also sends the given per-request
+     * HTTP parameters (custom HTTP headers) with this request only. A custom header wins over all other headers with
+     * the same name (ignoring case), except {@code User-Agent}: its value is appended to the existing one, separated by
+     * a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it fails with an {@link UnsupportedFeatureException} when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
+            MistralAiChatCompletionRequest request, @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return chatCompletionWithRawResponse(request);
+        }
+        throw perRequestCustomHeadersNotSupported(getClass());
     }
 
     public abstract void streamingChatCompletion(
@@ -35,6 +63,31 @@ public abstract class MistralAiClient {
         } else {
             streamingChatCompletion(request, handler);
         }
+    }
+
+    /**
+     * Like {@link #streamingChatCompletion(MistralAiChatCompletionRequest, StreamingChatResponseHandler, boolean)},
+     * but also sends the given per-request HTTP parameters (custom HTTP headers) with this request only.
+     * A custom header wins over all other headers with the same name (ignoring case), except {@code User-Agent}:
+     * its value is appended to the existing one, separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it reports an {@link UnsupportedFeatureException} to the handler when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public void streamingChatCompletion(
+            MistralAiChatCompletionRequest request,
+            StreamingChatResponseHandler handler,
+            boolean returnThinking,
+            @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            streamingChatCompletion(request, handler, returnThinking);
+            return;
+        }
+        withLoggingExceptions(() -> handler.onError(perRequestCustomHeadersNotSupported(getClass())));
     }
 
     public abstract MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request);

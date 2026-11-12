@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
@@ -36,6 +37,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
+import dev.langchain4j.model.openai.internal.SyncOrAsyncOrStreaming;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
@@ -112,6 +114,7 @@ public class OpenAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -170,7 +173,7 @@ public class OpenAiChatModel implements ChatModel {
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
-                () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+                () -> chatCompletion(openAiRequest, parameters).executeRaw(), maxRetries);
 
         return toChatResponse(parsedAndRawResponse);
     }
@@ -186,12 +189,19 @@ public class OpenAiChatModel implements ChatModel {
                 .build();
 
         CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.chatCompletion(openAiRequest).executeRawAsync(), maxRetries);
+                () -> chatCompletion(openAiRequest, parameters).executeRawAsync(), maxRetries);
 
         CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse);
 
         propagateCancellation(result, rawFuture);
         return result;
+    }
+
+    private SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(
+            ChatCompletionRequest openAiRequest, OpenAiChatRequestParameters parameters) {
+        return customHeadersOf(parameters).isEmpty()
+                ? client.chatCompletion(openAiRequest)
+                : client.chatCompletion(openAiRequest, parameters.httpParameters());
     }
 
     private ChatResponse toChatResponse(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {

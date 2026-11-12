@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
@@ -38,7 +39,9 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.ChatCompletionOptions;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.SyncOrAsyncOrStreaming;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import java.time.Duration;
@@ -111,6 +114,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
@@ -155,7 +159,20 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         MappingTrackingStreamingChatResponseHandler trackingHandler =
                 new MappingTrackingStreamingChatResponseHandler(handler);
 
-        client.chatCompletion(openAiRequest)
+        SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion;
+        if (customHeadersOf(parameters).isEmpty()) {
+            chatCompletion = client.chatCompletion(openAiRequest);
+        } else {
+            try {
+                chatCompletion = client.chatCompletion(openAiRequest, parameters.httpParameters());
+            } catch (RuntimeException e) {
+                RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
+                withLoggingExceptions(() -> handler.onError(mappedException));
+                return;
+            }
+        }
+
+        chatCompletion
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     trackingHandler.resetMappingTracking();
                     openAiResponseBuilder.append(parsedAndRawResponse);
@@ -192,7 +209,9 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
         ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
-        return client.chatCompletionPublisher(openAiRequest, options);
+        return customHeadersOf(parameters).isEmpty()
+                ? client.chatCompletionPublisher(openAiRequest, options)
+                : client.chatCompletionPublisher(openAiRequest, options, parameters.httpParameters());
     }
 
     private ChatCompletionRequest createOpenAiRequest(ChatRequest request, OpenAiChatRequestParameters parameters) {

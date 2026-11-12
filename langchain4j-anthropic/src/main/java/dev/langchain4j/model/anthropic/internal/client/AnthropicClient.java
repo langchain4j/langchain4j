@@ -1,5 +1,10 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestCustomHeadersNotSupported;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -25,6 +30,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 @Internal
 public abstract class AnthropicClient {
@@ -49,6 +56,48 @@ public abstract class AnthropicClient {
     }
 
     /**
+     * Like {@link #createMessageWithRawResponse(AnthropicCreateMessageRequest)}, but also sends the given per-request
+     * HTTP parameters (custom HTTP headers) with this request only. A custom header wins over all other headers with
+     * the same name (ignoring case), except {@code User-Agent}: its value is appended to the existing one, separated by
+     * a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it fails with an {@link UnsupportedFeatureException} when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public ParsedAndRawResponse createMessageWithRawResponse(
+            AnthropicCreateMessageRequest request, @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return createMessageWithRawResponse(request);
+        }
+        throw perRequestCustomHeadersNotSupported(getClass());
+    }
+
+    /**
+     * Like {@link #createMessageWithRawResponseAsync(AnthropicCreateMessageRequest)}, but also sends the given
+     * per-request HTTP parameters (custom HTTP headers) with this request only. A custom header wins over all other
+     * headers with the same name (ignoring case), except {@code User-Agent}: its value is appended to the existing one,
+     * separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it returns a future failed with an {@link UnsupportedFeatureException} when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request, @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return createMessageWithRawResponseAsync(request);
+        }
+        return CompletableFuture.failedFuture(perRequestCustomHeadersNotSupported(getClass()));
+    }
+
+    /**
      * @since 1.2.0
      */
     public void createMessage(
@@ -59,6 +108,31 @@ public abstract class AnthropicClient {
     }
 
     public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingChatResponseHandler handler);
+
+    /**
+     * Like {@link #createMessage(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions,
+     * StreamingChatResponseHandler)}, but also sends the given per-request HTTP parameters (custom HTTP headers) with
+     * this request only. A custom header wins over all other headers with the same name (ignoring case), except
+     * {@code User-Agent}: its value is appended to the existing one, separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it reports an {@link UnsupportedFeatureException} to the handler when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public void createMessage(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            @Nullable HttpParameters httpParameters,
+            StreamingChatResponseHandler handler) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            createMessage(request, options, handler);
+            return;
+        }
+        withLoggingExceptions(() -> handler.onError(perRequestCustomHeadersNotSupported(getClass())));
+    }
 
     /**
      * Non-blocking reactive streaming counterpart of {@link #createMessage(AnthropicCreateMessageRequest,
@@ -72,6 +146,30 @@ public abstract class AnthropicClient {
     public Publisher<ChatModelStreamingEvent> createMessagePublisher(
             AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {
         return AsyncNotSupported.failingPublisher(getClass(), "createMessagePublisher");
+    }
+
+    /**
+     * Like {@link #createMessagePublisher(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions, int)},
+     * but also sends the given per-request HTTP parameters (custom HTTP headers) with this request only.
+     * A custom header wins over all other headers with the same name (ignoring case), except {@code User-Agent}:
+     * its value is appended to the existing one, separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default: when there are headers to send,
+     * it returns a {@code Publisher} that fails with an {@link UnsupportedFeatureException}.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public Publisher<ChatModelStreamingEvent> createMessagePublisher(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            int bufferSize,
+            @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return createMessagePublisher(request, options, bufferSize);
+        }
+        return AsyncNotSupported.failingPublisher(perRequestCustomHeadersNotSupported(getClass()));
     }
 
     public MessageTokenCountResponse countTokens(AnthropicCountTokensRequest request) {

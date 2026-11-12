@@ -1,5 +1,7 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.mergeCustomHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -23,6 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import dev.langchain4j.internal.CustomHeadersUtils;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 @Internal
 public class DefaultMistralAiClient extends MistralAiClient {
@@ -30,6 +35,8 @@ public class DefaultMistralAiClient extends MistralAiClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String apiKey;
+    private static final String USER_AGENT = "langchain4j-mistral-ai";
+
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
     public static Builder builder() {
@@ -67,6 +74,15 @@ public class DefaultMistralAiClient extends MistralAiClient {
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
+    /**
+     * The per-request custom headers to add last; a per-request {@code User-Agent} is appended to the model's one.
+     */
+    private static Map<String, String> perRequestHeaders(
+            Map<String, String> builderHeaders, @Nullable HttpParameters httpParameters) {
+        Map<String, String> modelHeaders = mergeCustomHeaders(Map.of("User-Agent", USER_AGENT), builderHeaders);
+        return CustomHeadersUtils.perRequestHeaders(modelHeaders, customHeadersOf(httpParameters));
+    }
+
     private java.util.Map<String, String> buildRequestHeaders() {
         Map<String, String> dynamicHeaders = customHeadersSupplier.get();
         if (isNullOrEmpty(dynamicHeaders)) {
@@ -83,13 +99,21 @@ public class DefaultMistralAiClient extends MistralAiClient {
     @Override
     public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
             MistralAiChatCompletionRequest request) {
+        return chatCompletionWithRawResponse(request, (HttpParameters) null);
+    }
+
+    @Override
+    public ParsedAndRawResponse<MistralAiChatCompletionResponse> chatCompletionWithRawResponse(
+            MistralAiChatCompletionRequest request, @Nullable HttpParameters httpParameters) {
+        Map<String, String> builderHeaders = buildRequestHeaders();
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "langchain4j-mistral-ai")
-                .addHeaders(buildRequestHeaders())
+                .addHeader("User-Agent", USER_AGENT)
+                .addHeaders(builderHeaders)
+                .addHeaders(perRequestHeaders(builderHeaders, httpParameters))
                 .body(toJson(request))
                 .build();
 
@@ -107,15 +131,26 @@ public class DefaultMistralAiClient extends MistralAiClient {
     @Override
     public void streamingChatCompletion(
             MistralAiChatCompletionRequest request, StreamingChatResponseHandler handler, boolean returnThinking) {
+        streamingChatCompletion(request, handler, returnThinking, (HttpParameters) null);
+    }
+
+    @Override
+    public void streamingChatCompletion(
+            MistralAiChatCompletionRequest request,
+            StreamingChatResponseHandler handler,
+            boolean returnThinking,
+            @Nullable HttpParameters httpParameters) {
         ensureNotEmpty(request.getMessages(), "messages");
 
+        Map<String, String> builderHeaders = buildRequestHeaders();
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "chat/completions")
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "langchain4j-mistral-ai")
-                .addHeaders(buildRequestHeaders())
+                .addHeader("User-Agent", USER_AGENT)
+                .addHeaders(builderHeaders)
+                .addHeaders(perRequestHeaders(builderHeaders, httpParameters))
                 .body(toJson(request))
                 .build();
 
