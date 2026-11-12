@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -68,8 +69,10 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationServiceBuilder.spaceId(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.timeout(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.version(any())).thenReturn(mockTokenizationServiceBuilder);
-        when(mockTokenizationServiceBuilder.logRequests(any())).thenReturn(mockTokenizationServiceBuilder);
-        when(mockTokenizationServiceBuilder.logResponses(any())).thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockTokenizationServiceBuilder);
+        when(mockTokenizationServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.authenticator(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.apiKey(any())).thenReturn(mockTokenizationServiceBuilder);
         when(mockTokenizationServiceBuilder.httpClient(any())).thenReturn(mockTokenizationServiceBuilder);

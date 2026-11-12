@@ -49,6 +49,12 @@
             "groupName": "a2a-java SDK"
         },
         {
+            // the watsonx.ai SDK is released together with its JSON bindings; updated separately, the Jackson 3
+            // integration tests would run one SDK version against the JSON binding of another
+            "matchPackageNames": ["com.ibm.watsonx:*"],
+            "groupName": "watsonx.ai SDK"
+        },
+        {
             // "_special_" versions are IBM hotfix builds, not regular releases
             "matchPackageNames": ["com.ibm.db2:jcc"],
             "allowedVersions": "!/_special_/"
