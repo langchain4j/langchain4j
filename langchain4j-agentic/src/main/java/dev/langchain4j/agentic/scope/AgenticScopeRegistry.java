@@ -51,6 +51,13 @@ public class AgenticScopeRegistry {
         return agenticScope;
     }
 
+    /**
+     * @return the scope with the given memory id when it is in memory, without loading it from the store
+     */
+    public DefaultAgenticScope getInMemory(Object memoryId) {
+        return inMemoryAgenticScope.get(new AgenticScopeKey(agentId, memoryId));
+    }
+
     public DefaultAgenticScope create(Object memoryId) {
         DefaultAgenticScope agenticScope = new DefaultAgenticScope(memoryId, hasStore() ? DefaultAgenticScope.Kind.PERSISTENT : DefaultAgenticScope.Kind.REGISTERED);
         register(agenticScope);
@@ -73,6 +80,7 @@ public class AgenticScopeRegistry {
         DefaultAgenticScope agenticScope = inMemoryAgenticScope.remove(key);
         boolean removed = agenticScope != null;
         if (removed) {
+            agenticScope.markEvicted();
             beforeAgenticScopeDestroyed(listener, agenticScope);
         }
         if (hasStore()) {

@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,6 +17,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +98,32 @@ class AiServicesTest {
         assertThat(assistant.getChatMemory("known")).isNull();
         assertThat(assistant.evictChatMemory("unknown")).isFalse();
         verify(chatModel, times(1)).chat(any(ChatRequest.class));
+    }
+
+    interface AssistantWithSingleMemoryAccess extends ChatMemoryAccess {
+
+        String chat(String message);
+    }
+
+    @Test
+    void should_fail_with_a_clear_error_when_evicting_the_single_chat_memory_of_an_AI_service() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        AssistantWithSingleMemoryAccess assistant = AiServices.builder(AssistantWithSingleMemoryAccess.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Hi"))
+                .chatMemory(chatMemory)
+                .build();
+        assistant.chat("Hello");
+
+        // when-then
+        assertThatThrownBy(() -> assistant.evictChatMemory("default"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("Cannot evict the chat memory of the memory id 'default': this AI service has a single"
+                        + " chat memory, shared by all the memory ids. Configure it with chatMemoryProvider(...)"
+                        + " instead of chatMemory(...) to have a chat memory for each memory id, which can be"
+                        + " evicted.");
+        assertThat(chatMemory.messages()).hasSize(2);
     }
 
     @Test
@@ -254,5 +282,47 @@ class AiServicesTest {
                         systemMessage("You are a helpful assistant. Always be concise."),
                         userMessage("What is 2 + 2?"))
                 .build());
+    }
+
+    interface ChatResponseAssistant {
+
+        ChatResponse chat(String message);
+    }
+
+    @Test
+    void should_not_append_output_format_instructions_when_return_type_is_ChatResponse() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+
+        ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        ChatResponse chatResponse = assistant.chat("Hello");
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
+        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+    }
+
+    @Test
+    void should_not_send_json_schema_when_return_type_is_ChatResponse() {
+
+        // given
+        ChatModel chatModel =
+                spy(ChatModelMock.thatAlwaysResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
+
+        ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        // when
+        ChatResponse chatResponse = assistant.chat("Hello");
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
+        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 }

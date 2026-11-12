@@ -3,7 +3,13 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.model.google.genai.GoogleGenAiContentMapper.detectMimeType;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.genai.types.Candidate;
+import com.google.genai.types.Content;
+import com.google.genai.types.ExecutableCode;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
 import java.net.URI;
+import java.util.List;
 import java.util.Locale;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -40,6 +46,29 @@ class GoogleGenAiContentMapperLocaleTest {
                 languageTag,
                 () -> assertThat(detectMimeType(URI.create("https://example.com/scan.TIFF")))
                         .isEqualTo("image/tiff"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"tr-TR", "az-AZ", "lt-LT", "en-US"})
+    void code_language_should_be_lowercased_locale_independently(String languageTag) {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(List.of(Part.builder()
+                                        .executableCode(ExecutableCode.builder()
+                                                .language("JAVASCRIPT")
+                                                .code("console.log(1)"))
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+
+        withDefaultLocale(
+                languageTag,
+                () -> assertThat(GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true)
+                                .aiMessage()
+                                .text())
+                        .startsWith("Code executed:\n```javascript\n"));
     }
 
     private static void withDefaultLocale(String languageTag, Runnable action) {

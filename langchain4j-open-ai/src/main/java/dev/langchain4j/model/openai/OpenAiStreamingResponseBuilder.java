@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.providerErrorMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static java.util.stream.Collectors.toList;
 
@@ -64,6 +65,7 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
     private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
     private final List<LogProb> logProbs = new CopyOnWriteArrayList<>();
+    private final AtomicReference<String> providerErrorMessage = new AtomicReference<>();
 
     private final boolean returnThinking;
     private final boolean accumulateToolCallId;
@@ -91,8 +93,16 @@ public class OpenAiStreamingResponseBuilder {
             if (parsedAndRawResponse.rawHttpResponse() != null) {
                 rawHttpResponse.set(parsedAndRawResponse.rawHttpResponse());
             }
-            if (parsedAndRawResponse.rawServerSentEvent() != null) {
-                rawServerSentEvents.add(parsedAndRawResponse.rawServerSentEvent());
+            ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
+            if (rawServerSentEvent != null) {
+                rawServerSentEvents.add(rawServerSentEvent);
+                ChatCompletionResponse parsedResponse = parsedAndRawResponse.parsedResponse();
+                if (parsedResponse == null || isNullOrEmpty(parsedResponse.choices())) {
+                    String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
+                    if (errorMessage != null) {
+                        providerErrorMessage.compareAndSet(null, errorMessage);
+                    }
+                }
             }
 
             append(parsedAndRawResponse.parsedResponse());
@@ -244,6 +254,15 @@ public class OpenAiStreamingResponseBuilder {
         if (token != null) {
             this.contentBuilder.append(token);
         }
+    }
+
+    /**
+     * Returns an error message if the provider sent an error inside the stream
+     * (e.g. {@code data: {"error": {...}}}), otherwise {@code null}.
+     */
+    public String errorMessage() {
+        String providerError = providerErrorMessage.get();
+        return providerError == null ? null : "Chat completion failed: " + providerError;
     }
 
     public ChatResponse build() {

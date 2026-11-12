@@ -14,7 +14,9 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -58,7 +60,8 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_ERROR = "ERROR";
 
-    private final MeterRegistry meterRegistry;
+    private final Meter.MeterProvider<Timer> operationDuration;
+    private final Meter.MeterProvider<DistributionSummary> chatTokenSummary;
 
     /**
      * Creates a new {@link MicrometerMetricsChatModelListener}.
@@ -66,7 +69,16 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
      * @param meterRegistry the {@link MeterRegistry} to register metrics with
      */
     public MicrometerMetricsChatModelListener(MeterRegistry meterRegistry) {
-        this.meterRegistry = ensureNotNull(meterRegistry, "meterRegistry");
+        ensureNotNull(meterRegistry, "meterRegistry");
+        operationDuration = Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
+                .description("Measures operation duration")
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .withRegistry(meterRegistry);
+        chatTokenSummary = DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
+                .description("Measures token usage")
+                .baseUnit("tokens")
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .withRegistry(meterRegistry);
     }
 
     @Override
@@ -125,15 +137,12 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
             String responseModelName,
             String outcome,
             String errorType) {
-        Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
-                .description("Measures operation duration")
-                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
-                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
-                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
-                .tag(OUTCOME, outcome)
-                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
-                .register(meterRegistry)
+        operationDuration
+                .withTags(Tags.of(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
+                        .and(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName)
+                        .and(OTelGenAiAttributes.RESPONSE_MODEL.value(), responseModelName)
+                        .and(OUTCOME, outcome)
+                        .and(OTelGenAiAttributes.ERROR_TYPE.value(), errorType))
                 .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
     }
 
@@ -158,16 +167,10 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
             // Skip recording a token type whose count is unknown instead of failing the whole response.
             return;
         }
-
-        DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
-                .baseUnit("tokens")
-                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
-                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext))
-                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), getRequestModelName(responseContext))
-                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
-                .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value())
-                .description("Measures token usage")
-                .register(meterRegistry)
+        chatTokenSummary.withTags(Tags.of(OTelGenAiAttributes.PROVIDER_NAME.value(), getProviderName(responseContext))
+                .and(OTelGenAiAttributes.REQUEST_MODEL.value(), getRequestModelName(responseContext))
+                .and(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
+                .and(OTelGenAiAttributes.TOKEN_TYPE.value(), tokenType.value()))
                 .record(tokenCount);
     }
 

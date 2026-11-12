@@ -7,7 +7,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.invocation.CapturedContextSupport;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -29,6 +32,7 @@ import dev.langchain4j.spi.ExecutorProvider;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -36,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -232,6 +237,44 @@ class AiServicesContextPropagationTest {
         // when
         CompletableFuture<ChatResponse> response = new CompletableFuture<>();
         withRequestId("request-42", () -> assistant.chatTokenStream(USER_MESSAGE))
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(response::complete)
+                .onError(response::completeExceptionally)
+                .start();
+
+        // then
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("Berlin");
+        assertThat(tools.requestIdsSeen).containsExactly("request-42");
+    }
+
+    @Test
+    void should_process_complete_responses_of_a_token_stream_with_the_captured_context() throws Exception {
+
+        // given: no concurrent tool execution, so the tool runs on the complete response processing executor
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        Tools tools = new Tools();
+        AiServiceContext context = AiServiceContext.create(Assistant.class);
+        context.streamingChatModel =
+                StreamingChatModelMock.thatAlwaysStreams(toolCall("1"), AiMessage.from("Berlin"));
+        context.toolService.tools(List.of(tools));
+        UserMessage userMessage = UserMessage.from(USER_MESSAGE);
+        InvocationContext invocationContext = withRequestId("request-42", () -> CapturedContextSupport.captureInto(
+                        InvocationContext.builder().chatMemoryId("default").userMessage(userMessage))
+                .build());
+        TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
+                .messages(List.of(userMessage))
+                .toolServiceContext(
+                        context.toolService.createContext(invocationContext, userMessage, List.of(userMessage)))
+                .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                .completeResponseProcessingExecutor(executor)
+                .context(context)
+                .invocationContext(invocationContext)
+                .build());
+
+        // when
+        CompletableFuture<ChatResponse> response = new CompletableFuture<>();
+        tokenStream
                 .onPartialResponse(ignored -> {})
                 .onCompleteResponse(response::complete)
                 .onError(response::completeExceptionally)
@@ -461,6 +504,76 @@ class AiServicesContextPropagationTest {
         // then
         assertThat(answer).isEqualTo("Berlin");
         assertThat(tools.requestIdsSeen).containsExactly("null");
+    }
+
+    @Test
+    void should_link_ai_service_called_by_tool_to_its_parent_and_keep_the_captured_context() throws Exception {
+
+        // given: the outer tool runs on an executor thread where the captured context is restored, and calls an
+        // inner AI Service that captures the context again on that thread
+        ExecutorProvider.set(new CapturingExecutorProvider(executor));
+        InnerTools innerTools = new InnerTools();
+        Assistant inner = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("recordInner")
+                                .arguments("{}")
+                                .build()),
+                        AiMessage.from("Berlin")))
+                .tools(innerTools)
+                .build();
+        OuterTools outerTools = new OuterTools(inner);
+        Assistant outer = AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("askInner")
+                                .arguments("{}")
+                                .build()),
+                        AiMessage.from("Berlin")))
+                .tools(outerTools)
+                .build();
+
+        // when
+        String answer = withRequestId("request-42", () -> outer.chatAsync(USER_MESSAGE)).get(10, SECONDS);
+
+        // then
+        assertThat(answer).isEqualTo("Berlin");
+        assertThat(innerTools.requestIdsSeen).containsExactly("request-42");
+        assertThat(innerTools.parentInvocationIdsSeen).containsExactly(outerTools.outerInvocationId.get());
+        assertThat(outerTools.outerParentInvocationId.get()).isNull();
+    }
+
+    static class OuterTools {
+
+        final Assistant inner;
+        final AtomicReference<UUID> outerInvocationId = new AtomicReference<>();
+        final AtomicReference<UUID> outerParentInvocationId = new AtomicReference<>();
+
+        OuterTools(Assistant inner) {
+            this.inner = inner;
+        }
+
+        @Tool
+        String askInner(InvocationContext invocationContext) {
+            outerInvocationId.set(invocationContext.invocationId());
+            outerParentInvocationId.set(invocationContext.parentInvocationId());
+            return inner.chatAsync(USER_MESSAGE).join();
+        }
+    }
+
+    static class InnerTools {
+
+        final List<String> requestIdsSeen = new CopyOnWriteArrayList<>();
+        final List<UUID> parentInvocationIdsSeen = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String recordInner(InvocationContext invocationContext) {
+            requestIdsSeen.add(String.valueOf(REQUEST_ID.get()));
+            parentInvocationIdsSeen.add(invocationContext.parentInvocationId());
+            return "Berlin";
+        }
     }
 
     private static AiMessage toolCall(String id) {

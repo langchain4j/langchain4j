@@ -29,7 +29,7 @@ class HuggingFaceChatModelIT {
         ChatModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("HF_API_KEY"))
                 .baseUrl("https://router.huggingface.co/v1")
-                .modelName("Qwen/Qwen2.5-Coder-3B-Instruct:nscale")
+                .modelName("Qwen/Qwen3.8-Flash-Next-FP8:nscale")
                 .build();
 
         // when

@@ -14,7 +14,6 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -149,7 +148,7 @@ class DocumentByParagraphSplitterTest {
     void should_split_sample_text_containing_multiple_paragraphs() {
 
         int maxSegmentSize = 65;
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
 
         String p1 = "In a small town nestled between two vast mountains, there was a shop unlike any other. " +
                 "A unique haven. " +
@@ -226,7 +225,7 @@ class DocumentByParagraphSplitterTest {
 
         int maxSegmentSize = 65;
         int maxOverlapSize = 15;
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
 
         String s1 = "In a small town nestled between two vast mountains, there was a shop unlike any other.";
         String s2 = "A unique haven.";
@@ -295,7 +294,7 @@ class DocumentByParagraphSplitterTest {
     void should_split_sample_text_without_paragraphs() {
 
         int maxSegmentSize = 100;
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
 
         String segment1 = "In a small town nestled between two vast mountains, there was a shop unlike any other. " +
                 "A unique haven. " +
@@ -358,7 +357,7 @@ class DocumentByParagraphSplitterTest {
         // given
         int maxSegmentSize = 100;
         int maxOverlapSize = 25;
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
         DocumentSplitter splitter = new DocumentByParagraphSplitter(maxSegmentSize, maxOverlapSize, tokenCountEstimator);
 
         Document document = Document.from(sentences(0, 28), Metadata.from("document", "0"));
@@ -390,7 +389,7 @@ class DocumentByParagraphSplitterTest {
         // given
         int maxSegmentSize = 100;
         int maxOverlapSize = 80;
-        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator tokenCountEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
         DocumentSplitter splitter = new DocumentByParagraphSplitter(maxSegmentSize, maxOverlapSize, tokenCountEstimator);
 
         Document document = Document.from(sentences(0, 28), Metadata.from("document", "0"));
@@ -476,7 +475,7 @@ class DocumentByParagraphSplitterTest {
         // given
         Document document = Document.from("Title\r\n\r\nHeader 1\r\nText 1\r\n\r\nHeader 2\r\nText 2");
 
-        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenCountEstimator(GPT_3_5_TURBO));
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
 
         // when
         List<TextSegment> segments = splitter.split(document);

@@ -3,8 +3,97 @@
     "extends": [
         "config:recommended"
     ],
+    // the ignorePaths of config:recommended (:ignoreModulesAndTests) without "**/test/**", which would hide
+    // the Milvus test image tags in src/test/java from the custom manager below
+    "ignorePaths": [
+        "**/node_modules/**",
+        "**/bower_components/**",
+        "**/vendor/**",
+        "**/examples/**",
+        "**/__tests__/**",
+        "**/tests/**",
+        "**/__fixtures__/**"
+    ],
     "labels": [
         // add "dependencies" label to PRs
         "dependencies"
+    ],
+    "packageRules": [
+        {
+            // Jackson parses untrusted JSON, so its updates must be the first to get a free PR slot
+            "matchPackageNames": [
+                "/^com\\.fasterxml\\.jackson[.:]/",
+                "/^tools\\.jackson[.:]/"
+            ],
+            "prPriority": 10
+        },
+        {
+            // these come from the same Google release train; updated separately, they fail dependency convergence
+            "matchPackageNames": ["com.google.cloud:*"],
+            "groupName": "Google Cloud libraries"
+        },
+        {
+            // updated separately, they fail dependency convergence
+            "matchPackageNames": ["com.github.docker-java:*"],
+            "groupName": "docker-java"
+        },
+        {
+            // the a2a SDK raises the versions this module pins for it; updated separately, they fail dependency convergence
+            "matchFileNames": ["langchain4j-agentic-a2a/pom.xml"],
+            "matchPackageNames": [
+                "org.a2aproject.sdk:*",
+                "com.google.protobuf:protobuf-java",
+                "com.google.code.gson:gson",
+                "com.google.errorprone:error_prone_annotations"
+            ],
+            "groupName": "a2a-java SDK"
+        },
+        {
+            // "_special_" versions are IBM hotfix builds, not regular releases
+            "matchPackageNames": ["com.ibm.db2:jcc"],
+            "allowedVersions": "!/_special_/"
+        },
+        {
+            // 1.24+ no longer ships the native library for macOS on Intel, which would break in-process models there
+            "matchPackageNames": ["com.microsoft.onnxruntime:*"],
+            "allowedVersions": "(,1.24)",
+            "groupName": "onnxruntime"
+        },
+        {
+            // the Azure SDK is still on Netty 4.1; Netty 4.2 in these modules would mix two Netty lines on the classpath
+            "matchFileNames": [
+                "code-execution-engines/langchain4j-code-execution-engine-azure-acads/pom.xml",
+                "document-loaders/langchain4j-document-loader-azure-storage-blob/pom.xml",
+                "langchain4j-azure-cosmos-nosql/pom.xml",
+                "langchain4j-azure-open-ai/pom.xml"
+            ],
+            "matchPackageNames": ["io.netty:*"],
+            "allowedVersions": "(,4.2)"
+        },
+        {
+            // the Milvus tests pin one image per server major version; a new major gets its own entry instead
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["milvusdb/milvus"],
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        },
+        {
+            // Milvus pushes a new image days before its release is final, and may push it again in between
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["milvusdb/milvus"],
+            "minimumReleaseAge": "3 days"
+        }
+    ],
+    "customManagers": [
+        {
+            // the Milvus test image is a plain string, which no built-in manager detects
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^langchain4j-(hibernate-)?milvus(-v2)?/src/test/java/.+IT\\.java$/",
+                "/^\\.github/workflows/.+\\.ya?ml$/"
+            ],
+            "matchStrings": ["(?<depName>milvusdb/milvus):(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "docker"
+        }
     ]
 }

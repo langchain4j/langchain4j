@@ -65,9 +65,21 @@ public final class ScaleQuestion implements Question {
 
     /**
      * Creates a scale question with the given text and levels, ordered from lowest to highest.
+     *
+     * @since 1.23.0
      */
-    public static ScaleQuestion of(String text, List<String> levels) {
+    public static ScaleQuestion from(String text, List<String> levels) {
         return builder().text(text).levels(levels).build();
+    }
+
+    /**
+     * Creates a scale question with the given text and levels, ordered from lowest to highest.
+     *
+     * @deprecated use {@link #from(String, List)} instead
+     */
+    @Deprecated(since = "1.23.0", forRemoval = true)
+    public static ScaleQuestion of(String text, List<String> levels) {
+        return from(text, levels);
     }
 
     public static Builder builder() {

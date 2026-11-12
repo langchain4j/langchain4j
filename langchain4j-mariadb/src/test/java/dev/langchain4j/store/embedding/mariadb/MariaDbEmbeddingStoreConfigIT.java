@@ -4,6 +4,7 @@ import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -13,9 +14,14 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -232,5 +238,118 @@ abstract class MariaDbEmbeddingStoreConfigIT extends EmbeddingStoreWithFiltering
 
         // The malicious key must not match the stored embedding.
         assertThat(matches).isEmpty();
+    }
+
+    @Test
+    void should_bind_map_value_as_parameter__remove() {
+
+        addThreeTenants();
+
+        // A loosely typed value, e.g. a JSON object that Jackson parsed into a Map. Its toString() starts
+        // with "{", which the driver would read as a JDBC escape sequence if it were part of the SQL text.
+        embeddingStore().removeAll(unvalidatedIsEqualTo("name", Map.of("fn 1} or 1=1 -- ", "")));
+        embeddingStore().removeAll(unvalidatedIsIn("name", Map.of("fn 1}) or 1=1 -- ", "")));
+
+        assertThat(getAllEmbeddings()).hasSize(3);
+
+        embeddingStore().removeAll(metadataKey("name").isIn("doc-a"));
+
+        assertThat(names(getAllEmbeddings())).containsExactlyInAnyOrder("doc-b", "doc-c");
+    }
+
+    @Test
+    void should_bind_nested_collection_value_as_parameter__remove() {
+
+        addThreeTenants();
+
+        // regression guard: nested collections were already handled safely before values were bound
+        embeddingStore().removeAll(unvalidatedIsIn("name", List.of("x') or 1=1 --")));
+
+        assertThat(getAllEmbeddings()).hasSize(3);
+    }
+
+    @Test
+    void should_bind_char_sequence_value_as_parameter__remove() {
+
+        addThreeTenants();
+
+        embeddingStore().removeAll(unvalidatedIsEqualTo("name", new StringBuilder("1 or 1=1")));
+        embeddingStore().removeAll(unvalidatedIsIn("name", new StringBuilder("1) or (1=1")));
+
+        assertThat(getAllEmbeddings()).hasSize(3);
+    }
+
+    @Test
+    void should_bind_string_value_with_quotes_as_parameter__remove() {
+
+        addThreeTenants();
+
+        embeddingStore().removeAll(metadataKey("name").isIn("x') or 1=1 -- "));
+        embeddingStore().removeAll(metadataKey("name").isEqualTo("x\\' or 1=1 -- "));
+
+        assertThat(getAllEmbeddings()).hasSize(3);
+    }
+
+    @Test
+    void should_keep_other_conditions_for_char_sequence_value__search() {
+
+        addThreeTenants();
+
+        Filter filter = metadataKey("city")
+                .isEqualTo("tenant-a")
+                .and(unvalidatedIsIn("name", new StringBuilder("'x') or 1=1 or ('x'")));
+
+        assertThat(search(filter)).isEmpty();
+
+        Filter validFilter =
+                metadataKey("city").isEqualTo("tenant-a").and(metadataKey("name").isIn("doc-a", "doc-b"));
+
+        assertThat(names(search(validFilter))).containsExactly("doc-a");
+    }
+
+    private void addThreeTenants() {
+        List<TextSegment> segments = Stream.of("a", "b", "c")
+                .map(tenant -> TextSegment.from(
+                        "text of tenant " + tenant,
+                        new Metadata().put("city", "tenant-" + tenant).put("name", "doc-" + tenant)))
+                .toList();
+        List<Embedding> embeddings = embeddingModel().embedAll(segments).content();
+        embeddingStore().addAll(embeddings, segments);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(3));
+    }
+
+    private List<EmbeddingMatch<TextSegment>> search(Filter filter) {
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel().embed("text").content())
+                .maxResults(10)
+                .filter(filter)
+                .build();
+        return embeddingStore().search(searchRequest).matches();
+    }
+
+    private static List<String> names(List<EmbeddingMatch<TextSegment>> matches) {
+        return matches.stream()
+                .map(match -> match.embedded().metadata().getString("name"))
+                .toList();
+    }
+
+    // The filter classes reject values like these, so they are returned from the overridden accessor
+    // to check that the store handles them safely on its own.
+    private static IsEqualTo unvalidatedIsEqualTo(String key, Object value) {
+        return new IsEqualTo(key, "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
+    }
+
+    private static IsIn unvalidatedIsIn(String key, Object... values) {
+        return new IsIn(key, List.of("placeholder")) {
+            @Override
+            public Collection<?> comparisonValues() {
+                return List.of(values);
+            }
+        };
     }
 }

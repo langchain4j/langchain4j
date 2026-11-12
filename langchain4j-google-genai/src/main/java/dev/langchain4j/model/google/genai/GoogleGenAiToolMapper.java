@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -16,6 +17,8 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.ArrayList;
@@ -26,26 +29,42 @@ import java.util.Map;
 
 class GoogleGenAiToolMapper {
 
-    static Tool convertToGoogleTool(ToolSpecification spec) {
-        Schema parameterSchema = convertToGoogleSchema(spec.parameters());
-
-        FunctionDeclaration.Builder fdBuilder = FunctionDeclaration.builder()
-                .name(spec.name())
-                .description(isNullOrBlank(spec.description()) ? "" : spec.description());
-        if (parameterSchema != null) {
-            fdBuilder.parameters(parameterSchema);
+    static boolean canBeMapped(JsonSchemaElement element) {
+        if (element == null) {
+            return true;
         }
-        FunctionDeclaration functionDeclaration = fdBuilder.build();
+        if (element instanceof JsonReferenceSchema || element instanceof JsonRawSchema) {
+            return false;
+        }
+        if (element instanceof JsonObjectSchema objectSchema) {
+            return objectSchema.definitions().isEmpty()
+                    && objectSchema.properties().values().stream().allMatch(GoogleGenAiToolMapper::canBeMapped);
+        }
+        if (element instanceof JsonArraySchema arraySchema) {
+            return canBeMapped(arraySchema.items());
+        }
+        if (element instanceof JsonAnyOfSchema anyOfSchema) {
+            return anyOfSchema.anyOf().stream().allMatch(GoogleGenAiToolMapper::canBeMapped);
+        }
+        return true;
+    }
 
-        return Tool.builder().functionDeclarations(List.of(functionDeclaration)).build();
+    static Tool convertToGoogleTool(ToolSpecification spec) {
+        return Tool.builder()
+                .functionDeclarations(List.of(convertToGoogleFunction(spec)))
+                .build();
     }
 
     static FunctionDeclaration convertToGoogleFunction(ToolSpecification spec) {
-        Schema parameterSchema = convertToGoogleSchema(spec.parameters());
-        FunctionDeclaration.Builder fdBuilder =
-                FunctionDeclaration.builder().name(spec.name()).description(getOrDefault(spec.description(), ""));
-        if (parameterSchema != null) {
-            fdBuilder.parameters(parameterSchema);
+        FunctionDeclaration.Builder fdBuilder = FunctionDeclaration.builder()
+                .name(spec.name())
+                .description(isNullOrBlank(spec.description()) ? "" : spec.description());
+        if (spec.parameters() != null) {
+            if (canBeMapped(spec.parameters())) {
+                fdBuilder.parameters(convertToGoogleSchema(spec.parameters()));
+            } else {
+                fdBuilder.parametersJsonSchema(toMap(spec.parameters()));
+            }
         }
         return fdBuilder.build();
     }

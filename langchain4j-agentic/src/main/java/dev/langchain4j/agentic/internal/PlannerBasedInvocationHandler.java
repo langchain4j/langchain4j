@@ -19,6 +19,7 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
@@ -35,6 +36,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.TokenStream;
@@ -160,7 +162,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         if (method.getDeclaringClass() == AgenticScopeAccess.class) {
             return switch (method.getName()) {
                 case "getAgenticScope" -> registry.get(args[0]);
-                case "evictAgenticScope" -> registry.evict(args[0], agentListener);
+                case "evictAgenticScope" -> evictAgenticScope(registry, args[0], false);
+                case "deleteAgenticScope" -> evictAgenticScope(registry, args[0], true);
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on AgenticScopeAccess class : " + method.getName());
@@ -204,14 +207,96 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         return agenticScopeRegistry.get();
     }
 
+    /**
+     * Evicts the scope with the given memory id from the registry, then the chat memories the agents of this agentic
+     * system hold for that memory id: the ones of the AI agents reachable from the agent tree, and the ones of the
+     * agents created for the scope only, like the AI agents whose configuration depends on the scope and the planner
+     * agent of a supervisor. The scope goes first, so that the listeners see the chat memories intact and a failing
+     * chat memory store cannot leave the scope behind; it is looked up in memory only, because a scope that is not
+     * there has no agents cached for it, and loading it from its store just to evict it could fail.
+     *
+     * @param delete whether to clear each chat memory, deleting its messages from its store, before evicting it; the
+     *        first failure is rethrown after the other chat memories have been visited. The ones of the agent tree
+     *        that it left cached are deleted by a later call, whether the scope still exists or not; the agents
+     *        created for the scope only are not reachable once it is evicted, so the messages they could not delete
+     *        stay in their store
+     */
+    private boolean evictAgenticScope(AgenticScopeRegistry registry, Object memoryId, boolean delete) {
+        DefaultAgenticScope scope = registry.getInMemory(memoryId);
+        boolean evicted = registry.evict(memoryId, agentListener);
+
+        List<ChatMemoryAccess> aiAgents = new ArrayList<>();
+        collectAiAgents(subagents, aiAgents);
+        if (scope != null) {
+            for (Object cachedAgent : scope.cachedAgents()) {
+                if (cachedAgent instanceof ChatMemoryAccess chatMemoryAccess) {
+                    aiAgents.add(chatMemoryAccess);
+                }
+            }
+        }
+        RuntimeException failure = null;
+        for (ChatMemoryAccess aiAgent : aiAgents) {
+            try {
+                evictChatMemory(aiAgent, memoryId, delete);
+            } catch (RuntimeException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+        return evicted;
+    }
+
+    private static void collectAiAgents(List<AgentInstance> agents, List<ChatMemoryAccess> aiAgents) {
+        for (AgentInstance agent : agents) {
+            // the planner-based agents have no chat memory of their own, and the one of a supervisor is reached
+            // through the scope: only the AI agents are asked for theirs
+            if (agent.topology() == AgenticSystemTopology.AI_AGENT
+                    && agent instanceof AgentExecutor executor
+                    && executor.agent() instanceof ChatMemoryAccess chatMemoryAccess) {
+                aiAgents.add(chatMemoryAccess);
+            }
+            collectAiAgents(agent.subagents(), aiAgents);
+        }
+    }
+
+    /**
+     * Evicts the chat memory of the given agent for the given memory id, after clearing it when asked, so that its
+     * messages leave its store too: {@link ChatMemoryAccess#evictChatMemory} alone only forgets the chat memory
+     * object. A chat memory whose clearing fails stays cached. An AI agent configured with a single chat memory,
+     * shared by all the memory ids, refuses to evict it and has nothing of this scope to clear: it is skipped.
+     */
+    private static void evictChatMemory(ChatMemoryAccess chatMemoryAccess, Object memoryId, boolean delete) {
+        if (delete) {
+            ChatMemory chatMemory = chatMemoryAccess.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                chatMemory.clear();
+            }
+        }
+        try {
+            chatMemoryAccess.evictChatMemory(memoryId);
+        } catch (UnsupportedOperationException e) {
+            // a single chat memory, not keyed by the memory id: nothing to evict for this scope
+        }
+    }
+
     private Object executeAgentMethod(AgenticScopeRegistry registry, Method method, Object[] args) {
         DefaultAgenticScope currentScope = currentAgenticScope(registry, method, args);
+        if (isRootCall()) {
+            // before writing the inputs of this call to the scope, which the asynchronous agents of the previous
+            // call still running could read
+            currentScope.rootCallStarted(registry);
+        }
         writeAgenticScope(currentScope, method, args);
         beforeCall.accept(currentScope);
 
         Map<String, Object> namedArgs = isRootCall() ? argToMap(method, args) : null;
         if (isRootCall()) {
-            currentScope.rootCallStarted(registry);
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
@@ -224,13 +309,16 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             currentScope.compensateAll();
             if (isRootCall()) {
                 agentError(agentListener, currentScope, this, namedArgs, e);
-                currentScope.rootCallEnded(registry, agentListener);
+                currentScope.rootCallEnded(registry, agentListener, true);
             }
             throw e;
         }
 
         if (result instanceof Action action && action.isSuspended()) {
             onAgenticSystemSuspended(agentListener, currentScope);
+            if (isRootCall()) {
+                currentScope.rootCallSuspended(registry, agentListener);
+            }
             if (isRootCall() && method.getReturnType().equals(ResultWithAgenticScope.class)) {
                 return new ResultWithAgenticScope<>(currentScope, null, true, () ->
                         (ResultWithAgenticScope) executeAgentMethod(registry, method, args));
@@ -242,7 +330,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (isRootCall()) {
             afterAgentInvocation(agentListener, currentScope, this, namedArgs, output);
-            currentScope.rootCallEnded(registry, agentListener);
+            currentScope.rootCallEnded(registry, agentListener, false);
         }
 
         return method.getReturnType().equals(ResultWithAgenticScope.class)
@@ -307,6 +395,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     @Override
     public boolean async() {
         return false;
+    }
+
+    @Override
+    public AgentCondition activationCondition() {
+        return service.activationCondition;
     }
 
     @Override

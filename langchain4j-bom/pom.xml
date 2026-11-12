@@ -5,20 +5,20 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.23.0-beta33-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
-    <version>1.23.0-SNAPSHOT</version>
+    <version>1.24.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <properties>
-        <langchain4j.stable.version>1.23.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.23.0-beta33-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.24.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.24.0-beta34-SNAPSHOT</langchain4j.beta.version>
     </properties>
 
     <dependencyManagement>
@@ -319,6 +319,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-hibernate</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-hibernate-milvus</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
@@ -721,6 +727,30 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-elasticsearch-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-google-ai-gemini-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-milvus-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mistral-ai-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -728,6 +758,24 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai-official-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vertex-ai-gemini-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-voyage-ai-spring-boot-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
@@ -782,6 +830,30 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-elasticsearch-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-google-ai-gemini-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-milvus-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mistral-ai-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama-spring-boot4-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -789,6 +861,24 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai-official-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vertex-ai-gemini-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-voyage-ai-spring-boot4-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

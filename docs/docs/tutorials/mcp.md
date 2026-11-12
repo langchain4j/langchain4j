@@ -75,6 +75,110 @@ With the modern protocol (2026-07-28), notifications are received via `subscript
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
+**_NOTE:_** A single message received from the server can be at most 20 MiB by default: the data of one event
+on an SSE stream (in a response or on the subsidiary channel), or the whole body of any other response, such as
+a JSON response. If the server sends a larger message, the transport closes the stream and drops the message:
+the pending request fails, and the subsidiary channel reconnects. This keeps a misbehaving server from filling
+the client's memory. The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+takes about a third more than its raw size. To change the limit, set it on the builder, for example
+`.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
+
+#### Custom HTTP client
+
+By default, the Streamable HTTP transport sends its requests with the JDK HTTP client
+(`langchain4j-http-client-jdk`, which `langchain4j-mcp` brings in), even when other HTTP clients
+are on the classpath. You can use any other [HTTP client](./customizable-http-client.md) instead,
+for example to reuse a proxy or TLS setup. Pass its builder:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .httpClientBuilder(OkHttpClient.builder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ZERO)) // no read timeout: MCP streams can stay idle for a long time
+        .build();
+```
+
+When you do not pass a builder, the transport uses another client in only two cases:
+
+- The JVM system property `langchain4j.http.clientBuilderFactory` names its factory, for example
+  `-Dlangchain4j.http.clientBuilderFactory=dev.langchain4j.http.client.okhttp.OkHttpClientBuilderFactory`.
+  Setting it in `application.properties` has no effect. It applies to every module that
+  [discovers an HTTP client](./customizable-http-client.md#selecting-an-http-client).
+- `langchain4j-http-client-jdk` is excluded from your dependencies. The client is then
+  [selected from the classpath](./customizable-http-client.md#selecting-an-http-client).
+
+In both cases, the transport sets a 60-second connection timeout (overridden by `timeout(...)`)
+and turns the read timeout off, because MCP streams can stay idle for a long time.
+
+The HTTP client must support streaming responses (`HttpClient.stream(request, parser)`).
+The JDK, OkHttp and Apache clients do. The Spring `RestClient` integration supports it only
+when `spring-webflux` is on the classpath. With a client that does not support streaming,
+every MCP request fails.
+
+Things to know when you use your own HTTP client:
+
+- **TLS, HTTP version and redirects** are configured on the HTTP client. The transport options
+  `sslContext(...)`, `setHttpVersion1_1()` and `followRedirects(true)` work only with the default
+  JDK client. Combining them with `httpClientBuilder(...)`, `httpClient(...)` or another client
+  selected as described above fails when the transport is built.
+- **Redirects:** the transport does not follow redirects by default, but OkHttp and Apache do.
+  On a redirect, they can send your custom headers (for example an API key) and the request body
+  to another host. If you don't need redirects, turn them off on the client, for example
+  `OkHttpClient.builder().okHttpClientBuilder(new okhttp3.OkHttpClient.Builder().followRedirects(false))`.
+- **Timeouts:** the transport `timeout(...)` is the connection timeout. With `httpClientBuilder(...)`,
+  it is set on the builder you pass in; without it, the client keeps its own connection timeout.
+  The transport never sets a read timeout, so the client's own read timeout applies. MCP responses
+  and notification streams can stay idle for a long time, so turn the read timeout off or make it
+  long. OkHttp's default read timeout is only 10 seconds.
+- **Executor:** if you set the transport `executor(...)`, responses and notifications are handled on it.
+  It is also used to schedule reconnects of the subsidiary channel. The HTTP client still sends
+  requests on its own threads.
+- **Slow callbacks:** the default JDK client reads a response only as fast as the transport handles it,
+  so a slow progress or notification callback pauses reading. If you pass your own `JdkHttpClient`
+  builder, call `.streamingBackpressure(true)` on it to get the same behavior. Other clients buffer
+  a limited number of events and fail the response when the buffer is full.
+- **Error responses:** when the server answers with an error status, for example `404` for an expired
+  session, the JDK, OkHttp and Apache clients report it as soon as the response headers arrive. The
+  transport then fails the request with an `HttpException` that carries the status code, or starts a
+  new session, right away. Other clients may report the error only after they have read the whole
+  response body. With protocol `2026-07-28`, a server may also reject a request with a client error
+  status and a JSON-RPC error in a JSON body, for example `404` with error code `-32601` for a method
+  it does not know. For such a response, the transport reads the body, and the request fails with the
+  server's JSON-RPC error, the same as when the error comes with status `200`. This applies to every
+  `4xx` status except `401`, `403` and `429`, which always fail the request with their status code.
+
+Closing the transport cancels its open requests. A client built from `httpClientBuilder(...)` is
+closed with the transport if it implements `AutoCloseable` (the JDK client does). To share one client
+between several transports, build it yourself and pass it with `.httpClient(client)`. The transport
+then never closes it, and you cannot set `timeout(...)` on the transport.
+
+#### Per-call context
+
+Some applications keep per-request information in thread-local context, for example a tracing span,
+the SLF4J MDC or a security context. The Streamable HTTP transport prepares requests and handles
+responses on other threads, so this context would normally be lost there.
+
+To keep it, register an `ExecutorProvider` that implements `captureContext()`, as described in
+[Controlling the executor and propagating context](./non-blocking.md#controlling-the-executor-and-propagating-context).
+The transport then captures the context of the thread that sends a request or initializes the
+connection. It restores that context while it prepares the request (including calling your
+`customHeaders(...)` supplier) and while it handles the response.
+Without such a provider, nothing is captured.
+
+Some work is not started by a request of yours. It uses the context captured when the connection
+was initialized:
+
+- the `notifications/initialized` message sent after initialization,
+- the automatic re-initialization after the server reports an expired session (a 404 response),
+- the subsidiary SSE channel and its reconnects.
+
+`DefaultMcpClient` initializes the connection when it is built, so build it in a context that is
+valid for the whole connection, not in the context of a single user request.
+
+The transport restores the context only for its own work. A custom HTTP client must propagate it
+across any threads it starts itself.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()
@@ -83,6 +187,10 @@ McpTransport transport = WebSocketMcpTransport.builder()
         .logRequests(true)
         .build();
 ```
+
+**_NOTE:_** As with the Streamable HTTP transport, a single message received from the server can be at most
+20 MiB by default. If the server sends a larger message, the transport closes the connection and all pending
+requests fail. To change the limit, set it on the builder, for example `.maxMessageSize(50 * 1024 * 1024)` for 50 MiB.
 
 For the Docker stdio transport, you first need to add a module to your pom.xml:
 
@@ -117,6 +225,15 @@ McpClient mcpClient = DefaultMcpClient.builder()
 Note that the client key is optional, but it is recommended to set it, especially
 if there are multiple MCP clients, and it is necessary to disambiguate among them.
 
+Building the client connects to the server, so `build()` throws an exception when the server
+cannot be reached or does not answer in time. The time limits are `initializationTimeout` and,
+when the protocol version is detected automatically, also `protocolDetectionTimeout` (see
+[Protocol Version](#protocol-version)). When `build()` fails, the client stops the transport: the
+subprocess, container or connection started for the attempt is released, and the transport stays
+yours, ready for another attempt or to be closed. The client owns the transport, and closes it when
+it is itself closed, only once `build()` succeeds. A custom `McpTransport` releases what its
+`start()` acquired in `stop()`, which does nothing by default.
+
 ### Protocol Version
 
 The MCP client supports both the legacy protocol (2025-11-25) and the modern
@@ -144,9 +261,13 @@ McpClient mcpClient = DefaultMcpClient.builder()
 
 Detection costs one extra round trip when the client starts: it sends a `server/discover`
 request, and treats the server as a legacy server if the answer is an error or does not
-arrive within `protocolDetectionTimeout`. That timeout defaults to `initializationTimeout`
-(30 seconds), because a server started as a subprocess needs time to boot before it can
-answer anything, and giving up too early would make a modern server look like a legacy one.
+arrive within `protocolDetectionTimeout`. A few error codes are handled differently. If the
+server answers with an "unsupported protocol version" error (`-32022`), the client starts
+again with one of the versions that the error lists, and fails to start if it lists none. If
+the server answers with `-32020` or `-32021`, the client fails to start with that error.
+`protocolDetectionTimeout` defaults to `initializationTimeout` (30 seconds), because a server
+started as a subprocess needs time to boot before it can answer anything, and giving up too
+early would make a modern server look like a legacy one.
 A fallback caused by silence rather than by an error is logged as a warning, since it is the
 case where the server may have been misjudged.
 
@@ -305,7 +426,7 @@ When a tool response uses `content[]`, the default `McpToolResultConverter` pres
 
 Image results require a model integration that supports native images in tool results, such as Anthropic or OpenAI Responses. OpenAI Chat Completions rejects non-text tool results with `UnsupportedFeatureException`. Image bytes are not encoded as plain base64 text in the prompt.
 
-Embedded binary resources, audio and other unsupported content types fail explicitly. Applications that need them can set a custom converter with `DefaultMcpClient.Builder.toolResultConverter(...)`. Responses with `structuredContent` are handled separately and do not invoke this converter. The deprecated `DefaultMcpToolResultExtractor` retains its historical text-only behavior.
+Embedded binary resources, audio and other unsupported content types fail explicitly. Applications that need them can set a custom converter with `DefaultMcpClient.Builder.toolResultConverter(...)`. Responses with `structuredContent` are handled separately and do not invoke this converter.
 
 ### MCP tool result metadata
 

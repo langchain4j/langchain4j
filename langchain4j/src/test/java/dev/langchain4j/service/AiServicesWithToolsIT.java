@@ -71,6 +71,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -415,15 +416,21 @@ class AiServicesWithToolsIT {
             final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
             final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
 
+            final CountDownLatch latch = new CountDownLatch(2);
+
             @Tool
-            String getCurrentTime(String city) {
+            String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
             @Tool
-            String getCurrentTemperature(String city) {
+            String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
@@ -641,7 +648,7 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @NullSource
     @MethodSource("executors")
-    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) {
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) throws Exception {
 
         // given
         class Tools {
@@ -652,15 +659,21 @@ class AiServicesWithToolsIT {
             final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
             final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
 
+            final CountDownLatch latch = new CountDownLatch(2);
+
             @Tool
-            String getCurrentTime(String city) {
+            String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
             @Tool
-            String getCurrentTemperature(String city) {
+            String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }

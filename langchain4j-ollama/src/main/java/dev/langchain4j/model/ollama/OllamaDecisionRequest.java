@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
@@ -15,6 +16,7 @@ class OllamaDecisionRequest {
     private List<String> images;
     private Map<String, Question> questions;
     private Integer keepAlive;
+    private Map<String, Object> customParameters;
 
     public String getModel() {
         return model;
@@ -54,6 +56,15 @@ class OllamaDecisionRequest {
 
     public void setKeepAlive(Integer keepAlive) {
         this.keepAlive = keepAlive;
+    }
+
+    @JsonAnyGetter
+    public Map<String, Object> getCustomParameters() {
+        return customParameters;
+    }
+
+    public void setCustomParameters(Map<String, Object> customParameters) {
+        this.customParameters = customParameters;
     }
 
     @JsonInclude(NON_NULL)

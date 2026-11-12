@@ -37,7 +37,9 @@ import org.junit.jupiter.api.Test;
  */
 class AnthropicStreamingChatModelPublisherCancellationTest {
 
-    private static final int TOTAL_CONTENT_CHUNKS = 50;
+    // Long enough (~30 s) that the body cannot be fully written before a slow client cancels and the
+    // disconnect reaches the server; the test still ends as soon as the server sees the disconnect.
+    private static final int TOTAL_CONTENT_CHUNKS = 600;
     private static final int EVENTS_BEFORE_CANCEL = 3;
     private static final long SERVER_CHUNK_DELAY_MS = 50;
 

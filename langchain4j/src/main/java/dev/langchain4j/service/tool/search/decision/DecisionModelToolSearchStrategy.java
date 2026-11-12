@@ -13,6 +13,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.request.TextInput;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
@@ -104,7 +105,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         String query = extractQuery(request.toolExecutionRequest().arguments());
         List<String> toolNames = request.searchableTools().isEmpty()
                 ? List.of()
-                : selector.select(query, request.searchableTools());
+                : selector.select(TextInput.from(query), request.searchableTools());
         return new ToolSearchResult(toolNames, toolResultMessageTextProvider.apply(toolNames));
     }
 

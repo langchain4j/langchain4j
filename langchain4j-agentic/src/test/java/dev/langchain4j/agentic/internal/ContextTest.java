@@ -2,22 +2,18 @@ package dev.langchain4j.agentic.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.IllegalConfigurationException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +35,7 @@ class ContextTest {
         @Override
         public ChatResponse chat(ChatRequest chatRequest) {
             invocations++;
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from("{\"summary\": \"" + summary + "\"}"))
-                    .build();
+            return ChatResponse.builder().aiMessage(AiMessage.from(summary)).build();
         }
     }
 
@@ -103,46 +97,6 @@ class ContextTest {
     }
 
     @Test
-    void summarizers_created_for_the_same_model_should_be_independent() {
-        RecordingChatModel model = new RecordingChatModel("shared summary");
-
-        Context.ContextSummarizer first = Context.createSummarizer(model);
-        Context.ContextSummarizer second = Context.createSummarizer(model);
-
-        assertThat(second).isNotSameAs(first);
-    }
-
-    @Test
-    void summarizers_with_different_models_should_not_share_a_service() {
-        Context.ContextSummarizer first = Context.createSummarizer(new RecordingChatModel("first summary"));
-        Context.ContextSummarizer second = Context.createSummarizer(new RecordingChatModel("second summary"));
-
-        assertThat(second).isNotSameAs(first);
-    }
-
-    @Test
-    void concurrent_createSummarizer_calls_with_the_same_model_should_create_independent_services() throws Exception {
-        RecordingChatModel model = new RecordingChatModel("concurrent summary");
-        int threads = 8;
-        CyclicBarrier barrier = new CyclicBarrier(threads);
-        ExecutorService executor = Executors.newFixedThreadPool(threads);
-        try {
-            List<Future<Context.ContextSummarizer>> futures = new ArrayList<>();
-            for (int i = 0; i < threads; i++) {
-                futures.add(executor.submit(() -> {
-                    barrier.await(5, TimeUnit.SECONDS);
-                    return Context.createSummarizer(model);
-                }));
-            }
-            for (Future<Context.ContextSummarizer> future : futures) {
-                assertThat(future.get()).isNotNull();
-            }
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    @Test
     void summarizer_with_chat_model_provider_should_follow_model_changes() {
         AgenticScope agenticScope = mock(AgenticScope.class);
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
@@ -162,6 +116,96 @@ class ContextTest {
 
         assertThat(firstModel.invocations()).isEqualTo(2);
         assertThat(secondModel.invocations()).isEqualTo(1);
+    }
+
+    @Test
+    void summarizer_with_streaming_chat_model_provider_should_use_the_streamed_summary() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThat(summarizer.transformUserMessage("question", "memory"))
+                .isEqualTo("Considering this context \"streamed summary\"\nquestion");
+        assertThat(streamingModel.request().messages().toString()).contains("expert conversation");
+    }
+
+    @Test
+    void sync_and_streaming_summarizers_should_send_the_same_plain_text_request() {
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("sync summary");
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("streamed ", "summary");
+
+        assertThat(Context.createSummarizer(chatModel).summarize("expert conversation"))
+                .isEqualTo("sync summary");
+        assertThat(Context.createStreamingSummarizer(streamingModel).summarize("expert conversation"))
+                .isEqualTo("streamed summary");
+
+        assertThat(chatModel.request().messages()).hasSize(1);
+        assertThat(chatModel.userMessageText()).contains("expert conversation").doesNotContain("JSON");
+        assertThat(chatModel.request().responseFormat()).isNull();
+        assertThat(streamingModel.request().messages())
+                .isEqualTo(chatModel.request().messages());
+    }
+
+    @Test
+    void summarizer_should_propagate_the_chat_model_error() {
+        RuntimeException error = new RuntimeException("chat failed");
+
+        assertThatThrownBy(
+                        () -> Context.createSummarizer(new ChatModelMock(error)).summarize("expert conversation"))
+                .isSameAs(error);
+    }
+
+    @Test
+    void streaming_summarizer_should_propagate_the_streaming_error() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        RuntimeException error = new RuntimeException("streaming failed");
+        StreamingChatModelMock streamingModel = new StreamingChatModelMock(error);
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThatThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
+                .isSameAs(error);
+    }
+
+    @Test
+    void streaming_summarizer_should_not_invoke_model_when_context_is_blank() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("");
+
+        StreamingChatModelMock streamingModel = StreamingChatModelMock.thatAlwaysStreams("summary");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> streamingModel, "expert");
+
+        assertThat(summarizer.transformUserMessage("question", "memory")).isEqualTo("question");
+        assertThat(streamingModel.requests()).isEmpty();
+    }
+
+    @Test
+    void streaming_summarizer_should_fail_fast_when_model_is_missing() {
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> Context.createStreamingSummarizer(null))
+                .withMessage("A StreamingChatModel is required to summarize agentic context.");
+    }
+
+    @Test
+    void summarizer_with_streaming_chat_model_provider_should_fail_when_provider_returns_null() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withStreamingChatModelProvider(agenticScope, ignored -> null, "expert");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
+                .withMessage("The streaming chat model provider returned null while summarizing agentic context.");
     }
 
     @Test

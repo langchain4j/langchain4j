@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.23.0-beta33-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -37,13 +37,78 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.23.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.24.0-SNAPSHOT</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- test dependencies -->
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.24.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- only for the judge tests with a real model (RealModelJudgeIT), which run when OPENAI_API_KEY is set -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>1.24.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+            <version>${reactive-streams-tck.version}</version>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <!-- langchain4j is optional: only the capture of AI Service invocations needs it. -->
+                    <!-- The tests are selected with "test" so that -Dtest on the command line cannot pull the AI Service tests in. -->
+                    <execution>
+                        <id>test-without-langchain4j</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <classpathDependencyExcludes>
+                                <!-- langchain4j and its own compile dependencies, as for a user without it: keep in sync with langchain4j/pom.xml -->
+                                <classpathDependencyExclude>dev.langchain4j:langchain4j</classpathDependencyExclude>
+                                <classpathDependencyExclude>org.apache.opennlp:opennlp-tools</classpathDependencyExclude>
+                                <classpathDependencyExclude>io.smallrye.reactive:mutiny-zero</classpathDependencyExclude>
+                            </classpathDependencyExcludes>
+                            <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java</test>
+                            <systemPropertyVariables>
+                                <withoutLangChain4j>true</withoutLangChain4j>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

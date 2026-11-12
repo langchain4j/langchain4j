@@ -2,10 +2,6 @@ package dev.langchain4j.mcp.client.transport;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.Json;
@@ -19,8 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * Bridges between JSON text and Jackson's tree model while both the
- * deprecated {@code JsonNode}-based transport API and its replacement coexist.
+ * Reads and writes MCP payloads through the pluggable JSON codec.
  */
 @Internal
 public final class McpJson {
@@ -34,13 +29,6 @@ public final class McpJson {
      */
     private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
-    /**
-     * Only for the tree the deprecated {@code JsonNode} APIs still expose, and for the tree the
-     * client itself carries between transport and parsing. Both go when those APIs do.
-     */
-    private static final ObjectMapper OBJECT_MAPPER =
-            new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-
     private McpJson() {}
 
     /**
@@ -52,17 +40,6 @@ public final class McpJson {
      */
     public static <T> T deserialize(String message, Class<T> type) {
         return read(message, type);
-    }
-
-    /**
-     * Deserializes an MCP message held as a Jackson 2 tree.
-     *
-     * @deprecated use {@link #deserialize(String, Class)}, which does not expose Jackson types and
-     * avoids re-serializing the tree in order to read it.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    public static <T> T deserialize(JsonNode message, Class<T> type) {
-        return read(message.toString(), type);
     }
 
     /**
@@ -107,29 +84,12 @@ public final class McpJson {
         if (message == null) {
             return null;
         }
-        if (message instanceof JsonNode node) {
-            // A Jackson 2 tree is a type only Jackson 2 knows. Another codec would not recognise it
-            // and would write out its bean properties - {"empty":false,"nodeType":"OBJECT",...} -
-            // rather than the JSON it holds. Its own toString() is that JSON.
-            return node.toString();
-        }
         try {
             return CODEC.toJson(message);
         } catch (JsonException e) {
             throw e;
         } catch (RuntimeException e) {
             throw new IllegalArgumentException("Failed to serialize MCP message", unwrapRuntimeException(e));
-        }
-    }
-
-    public static JsonNode parse(String json) {
-        if (json == null) {
-            return null;
-        }
-        try {
-            return OBJECT_MAPPER.readTree(json);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to parse MCP message", e);
         }
     }
 

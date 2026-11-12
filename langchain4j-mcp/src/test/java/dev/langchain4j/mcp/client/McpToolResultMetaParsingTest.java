@@ -12,8 +12,6 @@ import org.junit.jupiter.api.Test;
 class McpToolResultMetaParsingTest {
 
     private final McpToolResultConverter extractor = new DefaultMcpToolResultConverter();
-    private final McpToolResultConverter legacyExtractor =
-            new LegacyToolResultConverterAdapter(new DefaultMcpToolResultExtractor());
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
@@ -198,14 +196,13 @@ class McpToolResultMetaParsingTest {
                         }
                         """;
 
-        McpToolResultExtractor customExtractor = (content, isError) -> ToolExecutionResult.builder()
+        McpToolResultConverter customExtractor = (content, isError) -> ToolExecutionResult.builder()
                 .resultText("custom")
                 .isError(isError)
                 .attributes(Map.of("source", "extractor"))
                 .build();
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(
-                response, false, new LegacyToolResultConverterAdapter(customExtractor));
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, customExtractor);
 
         assertThat(result.resultText()).isEqualTo("custom");
         assertThat(result.attributes())
@@ -246,17 +243,6 @@ class McpToolResultMetaParsingTest {
         ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.attributes()).containsOnlyKeys("com.example.mcp/traceId", "traceId");
-    }
-
-    @Test
-    void the_default_and_the_legacy_extractor_should_agree_on_a_text_content_result() {
-        String response = """
-                {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"hello"}]}}""";
-
-        assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())
-                .isEqualTo(ToolExecutionHelper.extractResult(response, false, legacyExtractor)
-                        .resultText())
-                .isEqualTo("hello");
     }
 
     @Test

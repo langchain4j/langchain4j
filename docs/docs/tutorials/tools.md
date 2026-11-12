@@ -1009,6 +1009,10 @@ class Tools {
 In this case, the LLM is not aware of these parameters;
 they are only visible to LangChain4j and user code.
 
+If a tool calls another AI Service, the `InvocationContext` of that inner invocation
+returns the `invocationId` of the calling invocation from `parentInvocationId()`,
+see [Linking nested invocations](/tutorials/observability#linking-nested-invocations).
+
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
 you can also annotate a parameter of a `@Tool` method with `@ToolMemoryId`:
@@ -1485,6 +1489,13 @@ will produce a `Result` with a `Result.content() == null`,
 while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`.
 Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request,
 thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+If the AI Service has a `ChatMemory`, the tool execution request and its result are stored in it, as for any other
+tool, whatever the return type of the AI Service method. No final `AiMessage` is stored, because the LLM is not called
+again. The stored result is sent to the LLM on later calls that use the same memory, so it counts towards the tokens
+of those calls, and an immediate return does not keep sensitive data away from the LLM.
+
+Output guardrails do not run on an immediate return, because the LLM has not produced a final answer to check.
 
 #### Non-`Result` AI Service method Return Types
 

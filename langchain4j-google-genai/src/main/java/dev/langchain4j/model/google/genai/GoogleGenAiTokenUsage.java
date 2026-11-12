@@ -25,12 +25,14 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
     private final Integer cachedContentTokenCount;
     private final Integer thoughtsTokenCount;
     private final Integer toolUsePromptTokenCount;
+    private final Integer initialPromptTokenCount;
 
     private GoogleGenAiTokenUsage(Builder builder) {
         super(builder.inputTokenCount, builder.outputTokenCount, builder.totalTokenCount);
         this.cachedContentTokenCount = builder.cachedContentTokenCount;
         this.thoughtsTokenCount = builder.thoughtsTokenCount;
         this.toolUsePromptTokenCount = builder.toolUsePromptTokenCount;
+        this.initialPromptTokenCount = builder.initialPromptTokenCount;
     }
 
     /**
@@ -66,9 +68,22 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
     }
 
     /**
+     * Returns the prompt token count of the initial (first-hop) request when a generation spans
+     * multiple automatic continuation hops, or {@link #inputTokenCount()} for a single-hop response
+     * (or {@code null} if not reported). Across continuation hops, {@link #inputTokenCount()} accumulates
+     * the billed prompt tokens of every hop, whereas {@code initialPromptTokenCount()} reflects only
+     * the initial prompt size.
+     *
+     * @return the initial prompt token count
+     */
+    public Integer initialPromptTokenCount() {
+        return initialPromptTokenCount;
+    }
+
+    /**
      * {@inheritDoc}
      * <p>
-     * The cached content, thoughts and tool use prompt token counts are summed only when
+     * The cached content, thoughts, tool use prompt and initial prompt token counts are summed only when
      * {@code that} is a {@code GoogleGenAiTokenUsage} as well; otherwise the counts of this
      * instance are kept.
      */
@@ -85,6 +100,7 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
                 .cachedContentTokenCount(addCachedContentTokenCount(that))
                 .thoughtsTokenCount(addThoughtsTokenCount(that))
                 .toolUsePromptTokenCount(addToolUsePromptTokenCount(that))
+                .initialPromptTokenCount(addInitialPromptTokenCount(that))
                 .build();
     }
 
@@ -109,6 +125,13 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
         return this.toolUsePromptTokenCount;
     }
 
+    private Integer addInitialPromptTokenCount(TokenUsage that) {
+        if (that instanceof GoogleGenAiTokenUsage thatGoogleGenAiTokenUsage) {
+            return sum(this.initialPromptTokenCount, thatGoogleGenAiTokenUsage.initialPromptTokenCount);
+        }
+        return this.initialPromptTokenCount;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -117,12 +140,18 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
         GoogleGenAiTokenUsage that = (GoogleGenAiTokenUsage) o;
         return Objects.equals(cachedContentTokenCount, that.cachedContentTokenCount)
                 && Objects.equals(thoughtsTokenCount, that.thoughtsTokenCount)
-                && Objects.equals(toolUsePromptTokenCount, that.toolUsePromptTokenCount);
+                && Objects.equals(toolUsePromptTokenCount, that.toolUsePromptTokenCount)
+                && Objects.equals(initialPromptTokenCount, that.initialPromptTokenCount);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), cachedContentTokenCount, thoughtsTokenCount, toolUsePromptTokenCount);
+        return Objects.hash(
+                super.hashCode(),
+                cachedContentTokenCount,
+                thoughtsTokenCount,
+                toolUsePromptTokenCount,
+                initialPromptTokenCount);
     }
 
     @Override
@@ -133,7 +162,8 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
                 + totalTokenCount() + ", cachedContentTokenCount = "
                 + cachedContentTokenCount + ", thoughtsTokenCount = "
                 + thoughtsTokenCount + ", toolUsePromptTokenCount = "
-                + toolUsePromptTokenCount + " }";
+                + toolUsePromptTokenCount + ", initialPromptTokenCount = "
+                + initialPromptTokenCount + " }";
     }
 
     public static Builder builder() {
@@ -148,6 +178,7 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
         private Integer cachedContentTokenCount;
         private Integer thoughtsTokenCount;
         private Integer toolUsePromptTokenCount;
+        private Integer initialPromptTokenCount;
 
         public Builder inputTokenCount(Integer inputTokenCount) {
             this.inputTokenCount = inputTokenCount;
@@ -176,6 +207,11 @@ public class GoogleGenAiTokenUsage extends TokenUsage {
 
         public Builder toolUsePromptTokenCount(Integer toolUsePromptTokenCount) {
             this.toolUsePromptTokenCount = toolUsePromptTokenCount;
+            return this;
+        }
+
+        public Builder initialPromptTokenCount(Integer initialPromptTokenCount) {
+            this.initialPromptTokenCount = initialPromptTokenCount;
             return this;
         }
 

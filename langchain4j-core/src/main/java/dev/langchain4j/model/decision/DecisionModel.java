@@ -1,5 +1,6 @@
 package dev.langchain4j.model.decision;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -9,6 +10,7 @@ import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onRespon
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -16,6 +18,7 @@ import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,16 +59,17 @@ public interface DecisionModel {
      */
     default DecisionResponse decide(DecisionRequest request) {
         DecisionRequest finalRequest = withDefaultParameters(request);
-        List<DecisionModelListener> listeners = listeners();
+        List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
-        onRequest(finalRequest, provider(), attributes, listeners);
+        onRequest(finalRequest, provider(), attributes, invocationId, listeners);
         try {
             DecisionResponse response = DecisionResponseValidator.validate(finalRequest, doDecide(finalRequest));
-            onResponse(response, finalRequest, provider(), attributes, listeners);
+            onResponse(response, finalRequest, provider(), attributes, invocationId, listeners);
             return response;
         } catch (Exception error) {
-            onError(error, finalRequest, provider(), attributes, listeners);
+            onError(error, finalRequest, provider(), attributes, invocationId, listeners);
             throw error;
         }
     }
@@ -89,17 +93,23 @@ public interface DecisionModel {
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-        DecisionRequest finalRequest = withDefaultParameters(request);
-        List<DecisionModelListener> listeners = listeners();
+        DecisionRequest finalRequest;
+        try {
+            finalRequest = withDefaultParameters(request);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
+        List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
 
-        onRequest(finalRequest, provider(), attributes, listeners);
+        onRequest(finalRequest, provider(), attributes, invocationId, listeners);
 
         CompletableFuture<DecisionResponse> source;
         try {
             source = doDecideAsync(finalRequest);
         } catch (Exception error) {
-            onError(error, finalRequest, provider(), attributes, listeners);
+            onError(error, finalRequest, provider(), attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
         }
 
@@ -109,10 +119,10 @@ public interface DecisionModel {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider(), attributes, listeners);
+                    onError(cause, finalRequest, provider(), attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(response, finalRequest, provider(), attributes, listeners);
+                onResponse(response, finalRequest, provider(), attributes, invocationId, listeners);
             }
         });
 

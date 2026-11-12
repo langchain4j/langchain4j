@@ -15,6 +15,10 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -258,8 +262,11 @@ class ReturnBehaviorCombinationsTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
+                .chatMemory(memory)
                 .tools(new Tools())
                 .build();
 
@@ -272,6 +279,7 @@ class ReturnBehaviorCombinationsTest {
             assertThat(result.content())
                     .as("immediate return means no LLM-generated text content")
                     .isNull();
+            assertToolResultsAreInMemory(memory, toolRequests);
         } else {
             assertThat(model.requests())
                     .as("REPROCESS means a second LLM call to consume the tool results")
@@ -293,8 +301,11 @@ class ReturnBehaviorCombinationsTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
+                .chatMemory(memory)
                 .tools(new Tools())
                 .build();
 
@@ -316,6 +327,7 @@ class ReturnBehaviorCombinationsTest {
             assertThat(result.content())
                     .as("immediate return means no LLM-generated text content")
                     .isNull();
+            assertToolResultsAreInMemory(memory, toolRequests);
         } else {
             assertThat(model.requests())
                     .as("REPROCESS means a second LLM call to consume the tool results")
@@ -338,10 +350,13 @@ class ReturnBehaviorCombinationsTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
         // the tools themselves return CompletableFuture, so the immediate-return/reprocess decision is made
         // when the tool result arrives asynchronously - a different code path than the sync tools above
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
+                .chatMemory(memory)
                 .tools(new AsyncTools())
                 .executeToolsConcurrently()
                 .build();
@@ -363,6 +378,7 @@ class ReturnBehaviorCombinationsTest {
             assertThat(result.content())
                     .as("immediate return means no LLM-generated text content")
                     .isNull();
+            assertToolResultsAreInMemory(memory, toolRequests);
         } else {
             assertThat(model.requests())
                     .as("REPROCESS means a second LLM call to consume the tool results")
@@ -384,8 +400,11 @@ class ReturnBehaviorCombinationsTest {
         StreamingChatModelMock model =
                 StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolRequests), AiMessage.from("final answer"));
 
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
+                .chatMemory(memory)
                 .tools(new Tools())
                 .build();
 
@@ -406,6 +425,7 @@ class ReturnBehaviorCombinationsTest {
             assertThat(finalResponse.aiMessage().hasToolExecutionRequests())
                     .as("immediate return means the final response carries the tool calls, not LLM text")
                     .isTrue();
+            assertToolResultsAreInMemory(memory, toolRequests);
         } else {
             assertThat(model.requests())
                     .as("REPROCESS means a second LLM call to consume the tool results")
@@ -478,6 +498,16 @@ class ReturnBehaviorCombinationsTest {
         ChatModelMock model =
                 ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])));
         return model;
+    }
+
+    private static void assertToolResultsAreInMemory(ChatMemory memory, List<ToolExecutionRequest> toolRequests) {
+        List<ChatMessage> messages = memory.messages();
+        assertThat(messages).hasSize(2 + toolRequests.size());
+        assertThat(messages.subList(2, messages.size()))
+                .as("every tool call has its result in memory, in request order")
+                .extracting(message -> ((ToolExecutionResultMessage) message).id())
+                .containsExactlyElementsOf(
+                        toolRequests.stream().map(ToolExecutionRequest::id).toList());
     }
 
     private static List<ToolExecutionRequest> toolRequestsFor(List<ToolStep> steps) {

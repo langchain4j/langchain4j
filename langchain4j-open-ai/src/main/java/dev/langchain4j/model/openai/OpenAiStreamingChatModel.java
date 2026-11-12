@@ -19,6 +19,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
@@ -164,6 +165,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     }
                 })
                 .onComplete(() -> {
+                    String errorMessage = openAiResponseBuilder.errorMessage();
+                    if (errorMessage != null) {
+                        withLoggingExceptions(() -> handler.onError(new InternalServerException(errorMessage)));
+                        return;
+                    }
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                     }

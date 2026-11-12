@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeKey;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
@@ -377,6 +378,87 @@ class NestedSuspensionIT {
         String result = workflow.process("s5", "data");
 
         assertThat(result).isEqualTo("D_DONE:C_DONE:CRASH_RECOVERED");
+    }
+
+    // ================================================================
+    // Nested sequence with an activation condition that its own first
+    // subagent makes false: RootSequence(A, Inner(B, HITL, C) if todo, D)
+    // ================================================================
+
+    private static NestedWorkflow workflowWithConditionalInnerSequence() {
+        AgenticServices.AgenticScopeAction agentA =
+                AgenticServices.agentAction(scope -> scope.writeState("todo", "work"));
+
+        // once B ran, the condition of the inner sequence is false
+        AgenticServices.AgenticScopeAction agentB =
+                AgenticServices.agentAction(scope -> scope.writeState("todo", "done"));
+
+        HumanInTheLoop hitl = AgenticServices.humanInTheLoopBuilder()
+                .description("Human review")
+                .outputKey("approval")
+                .responseProvider(scope -> new SuspendedResponse<>("human-review"))
+                .build();
+
+        AgenticServices.AgenticScopeAction agentC = AgenticServices.agentAction(
+                scope -> scope.writeState("step_c", "C_DONE:" + scope.readState("approval")));
+
+        UntypedAgent innerSequence = AgenticServices.sequenceBuilder()
+                .subAgents(agentB, hitl, agentC)
+                .outputKey("inner_result")
+                .activationCondition("there is work to do", scope -> "work".equals(scope.readState("todo")))
+                .build();
+
+        AgenticServices.AgenticScopeAction agentD = AgenticServices.agentAction(
+                scope -> scope.writeState("final_result", "D_DONE:" + scope.readState("step_c")));
+
+        return AgenticServices.sequenceBuilder(NestedWorkflow.class)
+                .subAgents(agentA, innerSequence, agentD)
+                .outputKey("final_result")
+                .build();
+    }
+
+    private static boolean hasActivationMarker(AgenticScope scope) {
+        return scope.state().keySet().stream().anyMatch(key -> key.startsWith("__activated_"));
+    }
+
+    @Test
+    void activatedNestedSequenceIsNotSkippedOnResume(@TempDir Path tempDir) {
+        AgenticScopePersister.setStore(new FileBasedAgenticScopeStore(tempDir));
+        NestedWorkflow workflow = workflowWithConditionalInnerSequence();
+
+        AgenticSystemSuspendedException suspended =
+                assertThrows(AgenticSystemSuspendedException.class, () -> workflow.process("s7", "data"));
+
+        assertThat(suspended.scope().readState("todo", "")).isEqualTo("done");
+        assertThat(hasActivationMarker(suspended.scope())).isTrue();
+
+        suspended.scope().completePendingResponse("APPROVED");
+        String result = workflow.process("s7", "data");
+
+        assertThat(result).isEqualTo("D_DONE:C_DONE:APPROVED");
+        assertThat(hasActivationMarker(workflow.getAgenticScope("s7"))).isFalse();
+    }
+
+    @Test
+    void activatedNestedSequenceIsNotSkippedOnCrashRecovery(@TempDir Path tempDir) {
+        AgenticScopePersister.setStore(new FileBasedAgenticScopeStore(tempDir));
+        NestedWorkflow workflow = workflowWithConditionalInnerSequence();
+
+        assertThrows(AgenticSystemSuspendedException.class, () -> workflow.process("s8", "data"));
+
+        // Simulate crash
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) workflow).registry();
+        registry.clearInMemory();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
+
+        // Recover: the activation of the inner sequence was persisted with the rest of the scope
+        AgenticScope recovered = workflow.getAgenticScope("s8");
+        assertThat(hasActivationMarker(recovered)).isTrue();
+        recovered.writeState("approval", "CRASH_RECOVERED");
+        String result = workflow.process("s8", "data");
+
+        assertThat(result).isEqualTo("D_DONE:C_DONE:CRASH_RECOVERED");
+        assertThat(hasActivationMarker(workflow.getAgenticScope("s8"))).isFalse();
     }
 
     // ================================================================

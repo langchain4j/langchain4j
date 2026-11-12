@@ -1,8 +1,11 @@
 package dev.langchain4j.model.openai.internal.decision;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The body of {@code POST /decisions}.
@@ -19,6 +22,16 @@ public class DecisionCreateRequest {
     public Object input;
 
     public List<Question> questions;
+
+    public String promptCacheKey;
+
+    @JsonIgnore
+    public Map<String, Object> customParameters;
+
+    @JsonAnyGetter
+    Map<String, Object> customParameters() {
+        return customParameters;
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Question {

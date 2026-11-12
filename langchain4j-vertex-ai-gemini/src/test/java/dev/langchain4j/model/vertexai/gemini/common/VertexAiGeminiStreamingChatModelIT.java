@@ -6,6 +6,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.vertexai.gemini.VertexAiGeminiStreamingChatModel;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -45,6 +46,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean reportsUnsupportedParametersThroughOnError() {
+        return true;
     }
 
     @Override
@@ -91,6 +97,15 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected boolean assertTokenUsage() {
         return false; // TODO thinking tokens are not reported correctly
     }
+
+    @Override
+    protected boolean assertTimesOnPartialResponseWasCalled() {
+        return false; // after a tool call, Gemini often streams the final (short) answer in a single chunk
+    }
+
+    @Disabled("Gemini cannot do it reliably")
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {

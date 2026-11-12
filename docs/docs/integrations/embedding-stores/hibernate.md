@@ -15,13 +15,29 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
+</dependency>
+```
+
+To store embeddings in Milvus through [Hibernate NoSQL](https://github.com/hibernate/hibernate-nosql), use this artifact instead.
+It already includes `langchain4j-hibernate`:
+
+```xml
+
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-hibernate-milvus</artifactId>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.22.0-beta32'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.23.0-beta33'```
+
+and for Milvus
+
+```implementation 'dev.langchain4j:langchain4j-hibernate-milvus:1.23.0-beta33'```
 
 ## APIs
 
@@ -38,14 +54,14 @@ To configure it, use either `HibernateEmbeddingStore.dynamicBuilder()` or `Hiber
 
 | Plain Java Property | Description                                                                                                                                                                                                                                                                                                                                                                                    | Default Value | Required/Optional                                                                                                                                                                                                                                                                                                                            |
 |---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `datasource`        | The `DataSource` object used for database connections. Available only in the `HibernateEmbeddingStore.dynamicDatasourceBuilder()` builder variant. If not provided, `jdbcUrl`, `user` and `password` must be provided individually in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                          | None          | Required if `jdbcUrl`, `user` and `password` are not provided individually.                                                                                                                                                                                                                                                                  |
+| `datasource`        | The `DataSource` object used for database connections. Available only in the `HibernateEmbeddingStore.dynamicDatasourceBuilder()` builder variant. If not provided, `jdbcUrl` (or `host`, `port` and `database`) must be provided in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                          | None          | Required if neither `jdbcUrl` nor `host`, `port` and `database` are provided.                                                                                                                                                                                                                                                                  |
 | `jdbcUrl`           | JDBC URL of the database server. Required if `DataSource` and `host`, `port`, `database` are not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                   | None          | Required if `DataSource` or `host`, `port`, `database` are not provided                                                                                                                                                                                                                                                                      |
 | `host`              | Hostname of the database server. Required if neither `DataSource` or `jdbcUrl` are not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                             | None          | Required if neither `DataSource` or `jdbcUrl` are not provided                                                                                                                                                                                                                                                                               |
 | `port`              | Port number of the database server. Required if neither `DataSource` or `jdbcUrl` are not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                          | None          | Required if neither `DataSource` or `jdbcUrl` are not provided                                                                                                                                                                                                                                                                               |
 | `database`          | Name of the database to connect to. Required if neither `DataSource` or `jdbcUrl` are not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                          | None          | Required if neither `DataSource` or `jdbcUrl` are not provided                                                                                                                                                                                                                                                                               |
 | `databaseKind`      | The database kind. Required if `DataSource` is provided or the kind can't be inferred from the `jdbcUrl`.                                                                                                                                                                                                                                                                                      | None          | Required if `DataSource` is provided or the kind can't be inferred from the `jdbcUrl`                                                                                                                                                                                                                                                        |
-| `user`              | Username for database authentication. Required if `DataSource` is not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                                              | None          | Required if `DataSource` is not provided                                                                                                                                                                                                                                                                                                     |
-| `password`          | Password for database authentication. Required if `DataSource` is not provided. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                                              | None          | Required if `DataSource` is not provided                                                                                                                                                                                                                                                                                                     |
+| `user`              | Username for database authentication. Only applied when set, so it can be left out for a database that does not require authentication. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                            | None          | Optional                                                                                                                                                                                                                                                                                       |
+| `password`          | Password for database authentication. Only applied when set, so it can be left out for a database that does not require authentication. Available only in the `HibernateEmbeddingStore.dynamicBuilder()` builder variant.                                                                                                                                                                                                            | None          | Optional                                                                                                                                                                                                                                                                                       |
 | `table`             | The name of the database table used for storing embeddings.                                                                                                                                                                                                                                                                                                                                    | None          | Required                                                                                                                                                                                                                                                                                                                                     |
 | `dimension`         | The dimensionality of the embedding vectors. This should match the embedding model being used. Use `embeddingModel.dimension()` to dynamically set it.                                                                                                                                                                                                                                         | None          | Required                                                                                                                                                                                                                                                                                                                                     |
 | `createIndex`       | Specifies whether to automatically create an index for the vector embedding.                                                                                                                                                                                                                                                                                                                   | `false`       | Optional                                                                                                                                                                                                                                                                                                                                     |
@@ -54,6 +70,7 @@ To configure it, use either `HibernateEmbeddingStore.dynamicBuilder()` or `Hiber
 | `createTable`       | Specifies whether to automatically create the embeddings table.                                                                                                                                                                                                                                                                                                                                | `false`       | Optional                                                                                                                                                                                                                                                                                                                                     |
 | `dropTableFirst`    | Specifies whether to drop the table before recreating it (useful for tests).                                                                                                                                                                                                                                                                                                                   | `false`       | Optional                                                                                                                                                                                                                                                                                                                                     |
 | `distanceFunction`  | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul>                                                                                                 | `COSINE`      | Optional. If not set, a default configuration is used with `COSINE`.                                                                                                                                                                                                                                                                         |
+| `queryHints`        | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. A hint set here replaces the default hint of the database kind with the same name. See the Milvus section below. | None (Milvus: session consistency level) | Optional |
 
 ### Entity store
 
@@ -72,6 +89,7 @@ To configure it, use either `HibernateEmbeddingStore.builder()`.
 | `unmappedMetadataAttributeName` | Specifies the name of the entity attribute that represents the JSON column where unmapped metadata is stored.                                                                                                                                                                                  | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@UnmappedMetadata`                                                                                                          |
 | `metadataAttributeNames`        | Specifies the names of the entity attributes that are explicitly mapped to text metadata.                                                                                                                                                                                                      | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@MetadataAttribute`                                                                                                         |
 | `distanceFunction`              | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul> | `COSINE`      | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddingVector` and the `distance` value is used, or if that is missing, the default configuration is used with `COSINE`. |
+| `queryHints`                    | Hibernate query hints applied to every search, for example a consistency level for Milvus. They are not applied when embeddings are added or removed. A hint set here replaces the default hint of the database kind with the same name. See the Milvus section below. | None (Milvus: session consistency level) | Optional |
 
 ## Examples
 
@@ -108,8 +126,8 @@ HibernateEmbeddingStore embeddingStore = HibernateEmbeddingStore.dynamicBuilder(
         .host("localhost")                                      // Required: Host of the database server
         .port(5432)                                             // Required: Port of the database server
         .database("postgres")                                   // Required: Database name
-        .user("my_user")                                        // Required: Database user
-        .password("my_password")                                // Required: Database password
+        .user("my_user")                                        // Database user, if the database requires authentication
+        .password("my_password")                                // Database password, if the database requires authentication
         .table("my_embeddings")                                 // Required: Table name to store embeddings
         .dimension(embeddingModel.dimension())                  // Required: Dimension of embeddings
         .build();
@@ -249,6 +267,18 @@ or
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
 ```
 
+A filter value must be one of the [supported comparison value types](/tutorials/rag#filter).
+An enum or date/time attribute can be filtered by the value itself, or by its text form,
+which the store converts to the type of the attribute:
+the name of an enum constant, or the ISO-8601 text of a `LocalDate` or an `Instant`.
+
+```java
+new IsEqualTo("status", Status.PUBLISHED)                                         // an enum attribute
+new IsGreaterThan("publishedOn", LocalDate.of(2024, 1, 1))                        // a LocalDate attribute
+MetadataFilterBuilder.metadataKey("status").isEqualTo(Status.PUBLISHED.name())    // an enum attribute, as text
+MetadataFilterBuilder.metadataKey("updatedAt").isLessThan("2024-03-15T10:00:00Z") // an Instant attribute, as text
+```
+
 Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
 
 ```java
@@ -350,6 +380,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -389,10 +421,10 @@ String promptWithContext = String.format("""
 // Send to LLM with context
 ChatModel chatModel = OpenAiChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName("gpt-4")
+        .modelName("gpt-6.1-sol")
         .build();
 
-String answer = chatModel.generate(promptWithContext);
+String answer = chatModel.chat(promptWithContext);
 System.out.println("Answer: " + answer);
 ```
 
@@ -538,3 +570,105 @@ for details.
 create hnsw vector index my_entity_vector_index 
     on my_entity(embedding) with similarity function cosine_similarity;
 ```
+
+## Setup for Hibernate NoSQL
+
+[Hibernate NoSQL](https://github.com/hibernate/hibernate-nosql) lets Hibernate ORM work with NoSQL databases.
+It ships one artifact per database, and LangChain4j provides one matching artifact per database
+that brings in everything needed for it.
+
+For the features and limitations of each database, and for its JDBC URL format, see the
+[Hibernate NoSQL documentation](https://docs.hibernate.org/nosql/1.0/userguide/html_single/).
+
+The database kind of a NoSQL database is not detected automatically, so always pass it to the `databaseKind()`
+builder method:
+
+* Milvus: `MilvusDatabaseKind.INSTANCE` (package `dev.langchain4j.store.embedding.hibernate.milvus`) from the
+  `langchain4j-hibernate-milvus` artifact
+
+### Milvus
+
+```java
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+
+EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
+        .databaseKind(MilvusDatabaseKind.INSTANCE)
+        .host("localhost")
+        .port(19530)
+        .database("default")
+        .table("my_collection")
+        .dimension(384)
+        .createTable(true)
+        .build();
+```
+
+Every search uses the Milvus session consistency level by default: a search sees all embeddings that your application
+added or removed before it, without waiting for changes made by other applications. Embeddings that another
+application adds, for example a separate ingestion job, become searchable after a short delay.
+
+If a search must also see the embeddings that other applications added just before it, use the strong consistency
+level. It adds some latency to every search:
+
+```java
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
+import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import java.util.Map;
+import org.hibernate.jpa.HibernateHints;
+import org.hibernate.milvus.MilvusDatabaseHints;
+
+EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
+        .databaseKind(MilvusDatabaseKind.INSTANCE)
+        .host("localhost")
+        .port(19530)
+        .database("default")
+        .table("my_collection")
+        .dimension(384)
+        .createTable(true)
+        .queryHints(Map.of(HibernateHints.HINT_QUERY_DATABASE, MilvusDatabaseHints.CONSISTENCY_LEVEL + "=STRONG"))
+        .build();
+```
+
+The `HibernateHints.HINT_QUERY_DATABASE` hint that you set replaces the default one, so it must contain the
+consistency level you want.
+
+A Milvus server can run without authentication. In that case, leave out `user()` and `password()`, as above.
+
+To connect with a JDBC URL instead, pass it to `jdbcUrl()` together with `databaseKind(MilvusDatabaseKind.INSTANCE)`.
+For example, `jdbc:milvus://my-host:19530/default?secure=true` connects over TLS. The Hibernate NoSQL documentation
+describes the URL format and its options.
+
+Milvus differs from the relational databases described above:
+
+* **The vector index is created together with the collection.** The dynamic builders always declare it with the
+  metric of the distance function, also without `createIndex(true)`, because Milvus rejects a search whose distance
+  function does not match the metric of the index. With `createIndex(true)`, `indexType()` sets the Milvus index type
+  and `indexOptions()` adds Milvus index parameters:
+
+  ```java
+  EmbeddingStore<TextSegment> embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
+          .databaseKind(MilvusDatabaseKind.INSTANCE)
+          .host("localhost")
+          .port(19530)
+          .database("default")
+          .table("my_collection")
+          .dimension(384)
+          .createIndex(true)
+          .indexType("HNSW")
+          .indexOptions("M=16,efConstruction=64")
+          .createTable(true)
+          .build();
+  ```
+
+* **The supported distance functions are `COSINE` (the default), `INNER_PRODUCT`, `NEGATIVE_INNER_PRODUCT` and
+  `EUCLIDEAN`.** The dynamic builders fail at `build()` for the other distance functions. Milvus supports `HAMMING`
+  and `JACCARD` only for binary vectors, and LangChain4j embeddings are float vectors.
+* **With your own entity, declare the vector index with the matching metric**, for example
+  `@Table(indexes = @Index(name = "my_entity_vector_index", columnList = "embedding", options = "metric=ip"))`, and
+  pass the entity to `HibernateEmbeddingStore.builder()`. Use `metric=cosine` for `COSINE`, `metric=ip` for
+  `INNER_PRODUCT` and `NEGATIVE_INNER_PRODUCT`, and `metric=l2` for `EUCLIDEAN`. Milvus rejects a search whose
+  distance function does not match the metric of the index.

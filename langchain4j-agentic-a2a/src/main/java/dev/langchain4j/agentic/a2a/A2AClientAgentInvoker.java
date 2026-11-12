@@ -5,11 +5,13 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
 
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -21,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.a2aproject.sdk.spec.AgentCard;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
@@ -30,7 +31,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     private final A2AClientInstance a2AClientInstance;
 
-    private final AgentCard agentCard;
     private final Method method;
 
     private InternalAgent parent;
@@ -38,7 +38,6 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public A2AClientAgentInvoker(A2AClientInstance a2AClientInstance, Method method) {
         this.method = method;
         this.a2AClientInstance = a2AClientInstance;
-        this.agentCard = a2AClientInstance.agentCard();
         this.agentId = name();
         this.arguments = arguments(a2AClientInstance);
     }
@@ -89,7 +88,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String name() {
-        return agentCard.name();
+        return a2AClientInstance.name();
     }
 
     @Override
@@ -99,7 +98,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String description() {
-        return agentCard.description();
+        return a2AClientInstance.description();
     }
 
     @Override
@@ -133,6 +132,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return a2AClientInstance.activationCondition();
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
         return arguments;
     }
@@ -144,9 +148,15 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? untypedAgentInvocationArguments(agenticScope)
-                : agentInvocationArguments(agenticScope, arguments);
+        if (isUntyped()) {
+            for (AgentArgument argument : arguments) {
+                if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
+                    throw new MissingArgumentException(argument.name());
+                }
+            }
+            return untypedAgentInvocationArguments(agenticScope);
+        }
+        return agentInvocationArguments(agenticScope, arguments);
     }
 
     private boolean isUntyped() {
@@ -168,9 +178,24 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         return parent;
     }
 
+    /**
+     * Gives access to the wrapped A2A client agent, for instance to fetch its agent card before the first invocation
+     * of the declarative agentic system containing it: {@code subagent.as(A2AClientInstance.class).agentCard()}.
+     */
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        if (agentInstanceClass.isInstance(a2AClientInstance)) {
+            return agentInstanceClass.cast(a2AClientInstance);
+        }
+        return AgentInvoker.super.as(agentInstanceClass);
+    }
+
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
     }
 
     @Override

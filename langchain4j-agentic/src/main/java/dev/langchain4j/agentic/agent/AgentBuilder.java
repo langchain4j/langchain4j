@@ -5,6 +5,8 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentToolExecution;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentToolExecution;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
@@ -17,13 +19,12 @@ import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -46,12 +47,12 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -63,6 +64,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
@@ -93,6 +95,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     String outputKey;
     boolean async;
     boolean optional;
+    AgentCondition activationCondition;
 
     private final Map<String, Object> defaultValues = new HashMap<>();
 
@@ -100,7 +103,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private StreamingChatModel streamingChatModel;
     Function<AgenticScope, ChatModel> chatModelProvider;
     Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
-    private ChatModel contextSummarizerModel;
+    private Object contextSummarizerModel;
     private Context.ContextSummarizer contextSummarizer;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
@@ -123,6 +126,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
+    private ToolSearchStrategy toolSearchStrategy;
     private Integer maxToolCallingRoundTrips;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
@@ -222,15 +226,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                if (model != null) {
+                if (model != null || streamingChatModel != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withSummarizer(
                             agenticScope, contextSummarizer(), contextProvidingAgents));
                 } else if (chatModelProvider != null) {
                     aiServices.chatRequestTransformer(Context.Summarizer.withChatModelProvider(
                             agenticScope, chatModelProvider, contextProvidingAgents));
-                } else {
-                    throw new IllegalConfigurationException(
-                            "A ChatModel is required to summarize context for agent '" + this.name + "'.");
+                } else if (streamingChatModelProvider != null) {
+                    aiServices.chatRequestTransformer(Context.Summarizer.withStreamingChatModelProvider(
+                            agenticScope, streamingChatModelProvider, contextProvidingAgents));
                 }
             }
         }
@@ -261,10 +265,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         if (agentListener != null) {
-            aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
-            aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+            aiServices.beforeToolExecution(
+                    beforeToolExecution -> beforeAgentToolExecution(agentListener, agent, beforeToolExecution));
+            aiServices.afterToolExecution(
+                    afterToolExecution -> afterAgentToolExecution(agentListener, agent, afterToolExecution));
         }
 
         if (compensateOnError) {
@@ -281,7 +285,6 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             InternalAgent.class,
             AgenticScopeOwner.class,
             ChatMemoryAccess.class,
-            ChatMessagesAccess.class,
             AiServiceResponseReceivedListener.class
         };
     }
@@ -316,9 +319,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private synchronized Context.ContextSummarizer contextSummarizer() {
-        if (contextSummarizer == null || contextSummarizerModel != model) {
-            contextSummarizerModel = model;
-            contextSummarizer = Context.createSummarizer(model);
+        Object summarizerModel = model != null ? model : streamingChatModel;
+        if (contextSummarizer == null || contextSummarizerModel != summarizerModel) {
+            contextSummarizerModel = summarizerModel;
+            contextSummarizer = model != null
+                    ? Context.createSummarizer(model)
+                    : Context.createStreamingSummarizer(streamingChatModel);
         }
         return contextSummarizer;
     }
@@ -357,6 +363,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         if (!toolProviders.isEmpty()) {
             aiServices.toolProviders(toolProviders);
+        }
+        if (toolSearchStrategy != null) {
+            aiServices.toolSearchStrategy(toolSearchStrategy);
         }
         if (maxToolCallingRoundTrips != null) {
             aiServices.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
@@ -518,6 +527,21 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B toolProviders(ToolProvider... toolProviders) {
         return toolProviders(asList(toolProviders));
+    }
+
+    /**
+     * Sets the {@link ToolSearchStrategy} this agent uses to discover its tools, so that the model initially
+     * receives only the tool search tools and the tools marked as always visible, instead of every tool.
+     * Applies to the tools configured with {@code tools(...)} and to those supplied by a {@link ToolProvider}.
+     * Discovered tools stay available for the rest of the invocation and, when the agent has a chat memory,
+     * until the tool search result is evicted from it.
+     *
+     * @param toolSearchStrategy the tool search strategy
+     * @return {@code this}
+     */
+    public B toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
+        this.toolSearchStrategy = toolSearchStrategy;
+        return (B) this;
     }
 
     /**
@@ -686,6 +710,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Controls whether this agent executes asynchronously within an agentic system.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @param async {@code true} to run asynchronously
      * @return {@code this}
@@ -703,6 +733,34 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B optional(boolean optional) {
         this.optional = optional;
+        return (B) this;
+    }
+
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(Predicate<AgenticScope> activationCondition) {
+        return activationCondition("<unknown>", activationCondition);
+    }
+
+    /**
+     * Sets the condition under which this agent runs when it is invoked as a subagent of an agentic system. When the
+     * condition is false the agent is skipped, without writing anything to the {@link AgenticScope}. The condition
+     * is ignored when this agent is invoked directly. It can be evaluated more than once, so it must be free of side
+     * effects.
+     *
+     * @param description a human-readable description of the condition, used in logs, listeners and reports
+     * @param activationCondition the predicate deciding whether this agent runs
+     * @return {@code this}
+     */
+    public B activationCondition(String description, Predicate<AgenticScope> activationCondition) {
+        this.activationCondition = new AgentCondition(description, activationCondition);
         return (B) this;
     }
 
@@ -725,6 +783,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the names of other agents whose outputs are summarized and injected as context into this agent's prompt.
+     * <p>
+     * The summary is generated by an additional, blocking call to this agent's model, made before the agent's own
+     * request. If the agent uses a {@link StreamingChatModel}, the summary is fully generated before the agent
+     * starts streaming its response.
      *
      * @param contextProvidingAgents the names of agents whose outputs to summarize
      * @return {@code this}

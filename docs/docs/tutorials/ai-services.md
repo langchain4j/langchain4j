@@ -394,6 +394,9 @@ for more details on the available content types.
 
 AI Service method can return one of the following types:
 - `String` - in this case LLM-generated output is returned without any processing/parsing
+- `AiMessage` or `ChatResponse` - in this case the LLM response is returned as-is, without any processing/parsing.
+`ChatResponse` also carries metadata, such as `TokenUsage` and `FinishReason`.
+If AI service did multiple calls to the LLM (e.g., because tools were executed), the `TokenUsage` is the sum of all calls
 - Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
 AI service will parse LLM-generated output into a desired type before returning
 - `TokenStream` - to receive the response [as it is generated](/tutorials/ai-services#streaming)
@@ -741,7 +744,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 ```java
@@ -802,6 +805,8 @@ String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
 List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
 boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
 ```
+
+Only the chat memories created by a `ChatMemoryProvider` can be evicted. When an AI Service is configured with a single `ChatMemory`, shared by all its invocations, `evictChatMemory` throws an `UnsupportedOperationException`.
 
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
