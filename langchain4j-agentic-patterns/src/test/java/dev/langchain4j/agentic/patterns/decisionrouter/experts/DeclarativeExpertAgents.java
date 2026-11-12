@@ -1,7 +1,7 @@
 package dev.langchain4j.agentic.patterns.decisionrouter.experts;
 
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
-import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.decisionModel;
+import static dev.langchain4j.agentic.patterns.DecisionModels.decisionModel;
 
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.PlannerAgent;

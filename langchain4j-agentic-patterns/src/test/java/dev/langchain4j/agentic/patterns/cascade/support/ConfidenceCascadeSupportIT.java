@@ -6,7 +6,7 @@ import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.ACC
 import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.ACCEPTANCE_THRESHOLD;
 import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.PRODUCT_REQUEST;
 import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.UNRELATED_REQUEST;
-import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.decisionModel;
+import static dev.langchain4j.agentic.patterns.DecisionModels.decisionModel;
 import static dev.langchain4j.agentic.patterns.cascade.support.SupportAgents.invokedTiers;
 import static org.assertj.core.api.Assertions.assertThat;
 
