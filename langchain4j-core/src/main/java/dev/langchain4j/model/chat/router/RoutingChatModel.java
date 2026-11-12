@@ -100,10 +100,10 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-        ensureNotNull(chatRequest, "chatRequest");
         UUID invocationId = CurrentInvocation.invocationId(options);
         CompletableFuture<String> route;
         try {
+            ensureNotNull(chatRequest, "chatRequest");
             route = CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.selectAsync(chatRequest, options));
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);

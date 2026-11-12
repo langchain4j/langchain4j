@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class DecisionScoringModelTest {
@@ -123,6 +124,22 @@ class DecisionScoringModelTest {
                 .withThrowableThat()
                 .havingRootCause()
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
+    void doScoreAsync_should_return_failed_future_for_blank_query() {
+
+        CompletableFuture<ScoringResponse> future = new DecisionScoringModel(decisionModel)
+                .doScoreAsync(ScoringRequest.builder()
+                        .documents(List.of("relevant"))
+                        .query(" ")
+                        .build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
         assertThat(decisionModel.requests()).isEmpty();
     }
 

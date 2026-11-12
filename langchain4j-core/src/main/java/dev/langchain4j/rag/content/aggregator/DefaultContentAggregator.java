@@ -68,7 +68,11 @@ public class DefaultContentAggregator implements ContentAggregator {
     public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
         // Reciprocal-rank fusion is CPU-only, no I/O: complete synchronously so the async RAG flow treats this
         // stage as non-blocking.
-        return CompletableFuture.completedFuture(aggregate(queryToContents));
+        try {
+            return CompletableFuture.completedFuture(aggregate(queryToContents));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

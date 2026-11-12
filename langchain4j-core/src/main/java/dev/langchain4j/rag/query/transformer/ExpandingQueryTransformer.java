@@ -84,13 +84,17 @@ public class ExpandingQueryTransformer implements QueryTransformer {
 
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        Prompt prompt = createPrompt(query);
-        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
-        CompletableFuture<Collection<Query>> result =
-                chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
-        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
-        propagateCancellation(result, chatFuture);
-        return result;
+        try {
+            Prompt prompt = createPrompt(query);
+            var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+            CompletableFuture<Collection<Query>> result =
+                    chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
+            // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+            propagateCancellation(result, chatFuture);
+            return result;
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     private Collection<Query> toQueries(Query query, String response) {

@@ -11,8 +11,10 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -104,6 +106,18 @@ class InputGuardrailExecutorTests {
 
         // cancelling the caller-facing future aborts the in-flight guardrail validation (best-effort)
         org.assertj.core.api.Assertions.assertThat(pending).isCancelled();
+    }
+
+    @Test
+    void executeAsync_should_return_failed_future_for_null_request() {
+        var executor = InputGuardrailExecutor.builder().build();
+
+        CompletableFuture<InputGuardrailResult> future = executor.executeAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -125,12 +125,18 @@ public class DecisionScoringModel implements ScoringModel {
 
     @Override
     public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
-        List<String> documents = ensureNotNull(request.documents(), "documents");
-        String query = ensureNotBlank(request.query(), "query");
-
-        DecisionRequestParameters parameters = DecisionRequestParameters.builder()
-                .modelName(request.parameters().modelName())
-                .build();
+        List<String> documents;
+        String query;
+        DecisionRequestParameters parameters;
+        try {
+            documents = ensureNotNull(request.documents(), "documents");
+            query = ensureNotBlank(request.query(), "query");
+            parameters = DecisionRequestParameters.builder()
+                    .modelName(request.parameters().modelName())
+                    .build();
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
         List<List<String>> batches = batches(documents);
         List<CompletableFuture<DecisionResponse>> responses = new ArrayList<>(batches.size());
         for (List<String> batch : batches) {

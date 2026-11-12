@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelChatModelRouterTest {
@@ -366,6 +367,18 @@ class DecisionModelChatModelRouterTest {
                 .withThrowableThat()
                 .havingRootCause()
                 .isInstanceOf(AsyncNotSupportedException.class);
+    }
+
+    @Test
+    void should_return_failed_future_when_async_routing_request_is_null() {
+
+        ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
+
+        assertThat(router.routeAsync(null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(NullPointerException.class);
+        assertThat(decisionModel.requests()).isEmpty();
     }
 
     @Test

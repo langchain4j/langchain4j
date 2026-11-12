@@ -123,24 +123,37 @@ public interface ChatModel {
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
 
-        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
+        ChatRequest finalChatRequest;
+        List<ChatModelListener> listeners;
+        ModelProvider provider;
+        Map<Object, Object> attributes;
+        UUID invocationId;
+        try {
+            ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(chatRequest.messages())
-                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
-                .build();
+            finalChatRequest = ChatRequest.builder()
+                    .messages(chatRequest.messages())
+                    .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                    .build();
 
-        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
+            listeners = ObservabilityListeners.chat(listeners());
+            provider = provider();
+            attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+            invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
-        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
+            onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
 
         CompletableFuture<ChatResponse> source;
         try {
             source = doChatAsync(finalChatRequest);
+            if (source == null) {
+                throw new IllegalStateException(getClass().getName() + ".doChatAsync(ChatRequest) returned null");
+            }
         } catch (Exception error) {
-            onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+            onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
         }
 
@@ -148,10 +161,10 @@ public interface ChatModel {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalChatRequest, provider(), attributes, invocationId, listeners);
+                    onError(cause, finalChatRequest, provider, attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(chatResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
+                onResponse(chatResponse, finalChatRequest, provider, attributes, invocationId, listeners);
             }
         });
 
@@ -219,11 +232,14 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<String> chatAsync(String userMessage) {
+        try {
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
-
-        return chatAsync(chatRequest).thenApply(chatResponse -> chatResponse.aiMessage().text());
+            return chatAsync(chatRequest).thenApply(chatResponse -> chatResponse.aiMessage().text());
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
     }
 
     /**
@@ -233,10 +249,13 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
+        try {
+            ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chatAsync(chatRequest);
+            return chatAsync(chatRequest);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
     }
 
     /**
@@ -246,10 +265,13 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {
+        try {
+            ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chatAsync(chatRequest);
+            return chatAsync(chatRequest);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
     }
 
     default Set<Capability> supportedCapabilities() {

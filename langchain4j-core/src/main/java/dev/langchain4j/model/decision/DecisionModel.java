@@ -87,29 +87,38 @@ public interface DecisionModel {
      * <p>
      * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
      * {@link #listeners() listeners} and dispatches to {@link #doDecideAsync(DecisionRequest)}. The response is
-     * checked against the request, as in {@link #decide(DecisionRequest)}.
+     * checked against the request, as in {@link #decide(DecisionRequest)}. This method never throws: any failure,
+     * including an invalid request, completes the returned future exceptionally.
      *
      * @param request the input, the questions and the per-call parameters.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
         DecisionRequest finalRequest;
+        List<DecisionModelListener> listeners;
+        ModelProvider provider;
+        Map<Object, Object> attributes;
+        UUID invocationId;
         try {
             finalRequest = withDefaultParameters(request);
+            listeners = ObservabilityListeners.decision(listeners());
+            provider = provider();
+            attributes = new ConcurrentHashMap<>();
+            invocationId = CurrentInvocation.invocationId();
+            onRequest(finalRequest, provider, attributes, invocationId, listeners);
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }
-        List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        UUID invocationId = CurrentInvocation.invocationId();
-
-        onRequest(finalRequest, provider(), attributes, invocationId, listeners);
 
         CompletableFuture<DecisionResponse> source;
         try {
             source = doDecideAsync(finalRequest);
+            if (source == null) {
+                throw new IllegalStateException(
+                        getClass().getName() + ".doDecideAsync(DecisionRequest) returned null");
+            }
         } catch (Exception error) {
-            onError(error, finalRequest, provider(), attributes, invocationId, listeners);
+            onError(error, finalRequest, provider, attributes, invocationId, listeners);
             return CompletableFuture.failedFuture(error);
         }
 
@@ -119,10 +128,10 @@ public interface DecisionModel {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider(), attributes, invocationId, listeners);
+                    onError(cause, finalRequest, provider, attributes, invocationId, listeners);
                 }
             } else {
-                onResponse(response, finalRequest, provider(), attributes, invocationId, listeners);
+                onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
             }
         });
 

@@ -205,8 +205,12 @@ public abstract sealed class AbstractGuardrailExecutor<
      * event and short-circuiting on a fatal result, without blocking the calling thread.
      */
     protected CompletableFuture<R> executeGuardrailsAsync(P request, CancellationChain chain) {
-        ensureNotNull(request, "request");
-        return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
+        try {
+            ensureNotNull(request, "request");
+            return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     private CompletableFuture<R> executeGuardrailsAsync(

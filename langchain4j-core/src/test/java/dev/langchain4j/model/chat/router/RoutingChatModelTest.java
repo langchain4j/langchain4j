@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
@@ -341,6 +342,19 @@ class RoutingChatModelTest {
                 .withMessageContaining("routeAsync() is not implemented by")
                 .withMessageContaining("CompletableFuture.completedFuture(route(request))");
         assertThat(small.requests()).isEmpty();
+    }
+
+    @Test
+    void should_return_failed_future_when_async_chat_request_is_null() {
+
+        ChatModel chatModel = routingModel(nonBlocking(byLength()));
+
+        assertThat(chatModel.chatAsync((ChatRequest) null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(small.requests()).isEmpty();
+        assertThat(large.requests()).isEmpty();
     }
 
     @Test

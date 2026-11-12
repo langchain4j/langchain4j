@@ -153,11 +153,11 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
     @Override
     public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
-        if (request.routes().size() == 1) {
-            return CompletableFuture.completedFuture(ChatModelRoutingResult.route(request.routes().get(0).name()));
-        }
         DecisionRequest decisionRequest;
         try {
+            if (request.routes().size() == 1) {
+                return CompletableFuture.completedFuture(ChatModelRoutingResult.route(request.routes().get(0).name()));
+            }
             decisionRequest = toDecisionRequest(request);
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);

@@ -5,6 +5,9 @@ import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.Fallback
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -14,6 +17,7 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -95,6 +99,46 @@ class LanguageModelQueryRouterTest {
 
         assertThat(router.routeAsync(query).get(5, SECONDS))
                 .containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
+    }
+
+    @Test
+    void routeAsync_should_return_failed_future_when_prompt_cannot_be_created() {
+        PromptTemplate promptTemplate = PromptTemplate.from("Route '{{query}}' for {{user}}. Options: {{options}}");
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+
+        QueryRouter router =
+                new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate, ROUTE_TO_ALL);
+
+        assertThat(router.routeAsync(Query.from("Do Labradors shed?")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("user");
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void routeAsync_should_apply_fallback_strategy_when_chat_model_throws_synchronously() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("2"));
+        doThrow(new IllegalStateException("broken")).when(model).chatAsync(any(ChatRequest.class));
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        assertThat(router.routeAsync(Query.from("Do Labradors shed?")))
+                .succeedsWithin(Duration.ofSeconds(1))
+                .satisfies(retrievers ->
+                        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever));
     }
 
     @Test

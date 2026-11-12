@@ -39,18 +39,30 @@ public class InMemoryChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        return CompletableFuture.completedFuture(getMessages(memoryId));
+        try {
+            return CompletableFuture.completedFuture(getMessages(memoryId));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override
     public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        updateMessages(memoryId, messages);
-        return CompletableFuture.completedFuture(null);
+        try {
+            updateMessages(memoryId, messages);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override
     public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
-        deleteMessages(memoryId);
-        return CompletableFuture.completedFuture(null);
+        try {
+            deleteMessages(memoryId);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }

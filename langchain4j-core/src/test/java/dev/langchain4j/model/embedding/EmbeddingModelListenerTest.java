@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -262,6 +263,49 @@ class EmbeddingModelListenerTest {
         inOrder.verify(listener).onError(errorContext.capture());
         verifyNoMoreInteractions(listener);
         assertThat(errorContext.getValue().error()).isInstanceOf(AsyncNotSupportedException.class);
+    }
+
+    @Test
+    void embedAsync_should_return_failed_future_and_notify_listeners_once_when_doEmbedAsync_returns_null() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+        doReturn(null).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("doEmbedAsync(EmbeddingRequest) returned null");
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).onRequest(any());
+        inOrder.verify(listener).onError(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void embedAsync_without_listeners_should_return_failed_future_when_doEmbedAsync_returns_null() {
+        // given
+        EmbeddingModelMock model = spy(new EmbeddingModelMock());
+        doReturn(null).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("doEmbedAsync(EmbeddingRequest) returned null");
     }
 
     @Test

@@ -119,40 +119,43 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     @Override
     public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
+        try {
+            if (queryToContents.isEmpty()) {
+                return CompletableFuture.completedFuture(emptyList());
+            }
 
-        if (queryToContents.isEmpty()) {
-            return CompletableFuture.completedFuture(emptyList());
+            // Select a query against which all contents will be re-ranked
+            Query query = querySelector.apply(queryToContents);
+
+            // For each query, fuse all contents retrieved from different sources using that query
+            Map<Query, List<Content>> queryToFusedContents = fuse(queryToContents);
+
+            // Fuse all contents retrieved using all queries
+            List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
+
+            if (fusedContents.isEmpty()) {
+                return CompletableFuture.completedFuture(fusedContents);
+            }
+
+            // Re-rank all the fused contents against the query selected by the query selector.
+            // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
+            List<TextSegment> segments = fusedContents.stream()
+                    .map(Content::textSegment)
+                    .collect(Collectors.toList());
+
+            ScoringRequest scoringRequest = ScoringRequest.builder()
+                    .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
+                    .query(query.text())
+                    .build();
+            CompletableFuture<ScoringResponse> scoreFuture = scoringModel.scoreAsync(scoringRequest);
+            CompletableFuture<List<Content>> result =
+                    scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
+            // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
+            propagateCancellation(result, scoreFuture);
+            return result;
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
         }
-
-        // Select a query against which all contents will be re-ranked
-        Query query = querySelector.apply(queryToContents);
-
-        // For each query, fuse all contents retrieved from different sources using that query
-        Map<Query, List<Content>> queryToFusedContents = fuse(queryToContents);
-
-        // Fuse all contents retrieved using all queries
-        List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
-
-        if (fusedContents.isEmpty()) {
-            return CompletableFuture.completedFuture(fusedContents);
-        }
-
-        // Re-rank all the fused contents against the query selected by the query selector.
-        // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
-        List<TextSegment> segments = fusedContents.stream()
-                .map(Content::textSegment)
-                .collect(Collectors.toList());
-
-        ScoringRequest scoringRequest = ScoringRequest.builder()
-                .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
-                .query(query.text())
-                .build();
-        CompletableFuture<ScoringResponse> scoreFuture = scoringModel.scoreAsync(scoringRequest);
-        CompletableFuture<List<Content>> result =
-                scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
-        // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
-        propagateCancellation(result, scoreFuture);
-        return result;
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

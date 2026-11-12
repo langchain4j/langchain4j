@@ -209,7 +209,11 @@ public interface EmbeddingModel {
         // A provider's doEmbedAsync should return a failed future on error, but guard a synchronous throw so the
         // async contract holds regardless.
         try {
-            return doEmbedAsync(finalRequest);
+            CompletableFuture<EmbeddingResponse> future = doEmbedAsync(finalRequest);
+            if (future == null) {
+                throw new IllegalStateException(getClass().getName() + ".doEmbedAsync(EmbeddingRequest) returned null");
+            }
+            return future;
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }

@@ -111,9 +111,18 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
-        Prompt prompt = createPrompt(query);
-        CompletableFuture<ChatResponse> chatFuture =
-                chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        Prompt prompt;
+        try {
+            prompt = createPrompt(query);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        CompletableFuture<ChatResponse> chatFuture;
+        try {
+            chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        } catch (Exception e) {
+            chatFuture = CompletableFuture.failedFuture(e); // like route(): the fallback strategy applies
+        }
         CompletableFuture<Collection<ContentRetriever>> result = chatFuture
                 .thenApply(response -> parse(response.aiMessage().text()))
                 // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the

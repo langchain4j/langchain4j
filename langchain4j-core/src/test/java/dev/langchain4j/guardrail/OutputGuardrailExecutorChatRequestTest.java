@@ -9,11 +9,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class OutputGuardrailExecutorChatRequestTest {
@@ -99,5 +101,20 @@ class OutputGuardrailExecutorChatRequestTest {
                 .get(10, SECONDS);
 
         assertThat(guardrail.chatRequests).isEqualTo(Arrays.asList(FIRST_REQUEST, null));
+    }
+
+    @Test
+    void executeAsync_should_return_failed_future_for_null_request() {
+
+        RecordingGuardrail guardrail = new RecordingGuardrail();
+
+        CompletableFuture<OutputGuardrailResult> future =
+                OutputGuardrailExecutor.builder().guardrails(guardrail).build().executeAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(guardrail.chatRequests).isEmpty();
     }
 }
