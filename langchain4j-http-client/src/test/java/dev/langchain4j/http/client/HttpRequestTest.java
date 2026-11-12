@@ -44,7 +44,8 @@ class HttpRequestTest {
                         "https://example.com/search#results?tab=all",
                         "https://example.com/search?q=hello+world#results?tab=all"),
                 Arguments.of("https://example.com/search#", "https://example.com/search?q=hello+world#"),
-                Arguments.of("https://example.com/search%23results", "https://example.com/search%23results?q=hello+world"));
+                Arguments.of(
+                        "https://example.com/search%23results", "https://example.com/search%23results?q=hello+world"));
     }
 
     @ParameterizedTest
