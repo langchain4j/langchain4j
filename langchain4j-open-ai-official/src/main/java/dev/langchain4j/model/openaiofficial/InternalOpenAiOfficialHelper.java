@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
@@ -63,8 +65,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import org.jspecify.annotations.Nullable;
 
 class InternalOpenAiOfficialHelper {
+
+    private static final String USER_AGENT = "User-Agent";
 
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -631,4 +640,45 @@ class InternalOpenAiOfficialHelper {
         }
         return builder;
     }
+
+    /**
+     * Returns the {@code User-Agent} that the client sends with every request, so that a per-request
+     * {@code User-Agent} can be appended to it. Empty if the client sends none or its options cannot be read.
+     */
+    static Map<String, String> userAgentHeaderOf(@Nullable OpenAIClient client) {
+        if (client == null) {
+            return Map.of();
+        }
+        AtomicReference<List<String>> userAgent = new AtomicReference<>(List.of());
+        client.withOptions(options -> userAgent.set(options.build().headers().values(USER_AGENT)));
+        return userAgentHeader(userAgent.get());
+    }
+
+    static Map<String, String> userAgentHeaderOf(@Nullable OpenAIClientAsync client) {
+        if (client == null) {
+            return Map.of();
+        }
+        AtomicReference<List<String>> userAgent = new AtomicReference<>(List.of());
+        client.withOptions(options -> userAgent.set(options.build().headers().values(USER_AGENT)));
+        return userAgentHeader(userAgent.get());
+    }
+
+    private static Map<String, String> userAgentHeader(List<String> userAgentValues) {
+        return userAgentValues.isEmpty() ? Map.of() : Map.of(USER_AGENT, String.join(" ", userAgentValues));
+    }
+
+    /**
+     * Adds the per-request custom headers of {@code parameters} to a request: they replace the client's headers
+     * with the same name, except {@code User-Agent}, which is appended to the client's one.
+     */
+    static void addPerRequestHeaders(
+            Map<String, String> clientUserAgentHeader,
+            ChatRequestParameters parameters,
+            BiConsumer<String, String> replaceAdditionalHeader) {
+        Map<String, String> requestHeaders = customHeadersOf(parameters);
+        if (!requestHeaders.isEmpty()) {
+            perRequestHeaders(clientUserAgentHeader, requestHeaders).forEach(replaceAdditionalHeader);
+        }
+    }
 }
+

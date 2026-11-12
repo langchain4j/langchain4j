@@ -121,7 +121,8 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 + cacheTtl + ", bedrockGuardrailConfiguration="
                 + bedrockGuardrailConfiguration + ", serviceTier="
                 + serviceTier + ", requestMetadata="
-                + (requestMetadata.isEmpty() ? "{}" : "[REDACTED]") + '}';
+                + (requestMetadata.isEmpty() ? "{}" : "[REDACTED]") + ", httpParameters="
+                + httpParameters() + '}';
     }
 
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {

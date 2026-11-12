@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.userAgentHeaderOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -57,6 +58,7 @@ import java.util.Set;
 public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
     private final OpenAIClient client;
+    private final Map<String, String> clientUserAgentHeader;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
     private final ModelProvider modelProvider;
@@ -78,6 +80,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                         builder.maxRetries,
                         builder.proxy,
                         builder.customHeaders);
+        this.clientUserAgentHeader = userAgentHeaderOf(this.client);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -100,6 +103,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
@@ -141,7 +145,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 (OpenAiOfficialResponsesChatRequestParameters) chatRequest.parameters();
 
         try {
-            ResponseCreateParams params = buildRequestParams(chatRequest, parameters);
+            ResponseCreateParams params = buildRequestParams(chatRequest, parameters, clientUserAgentHeader);
             Response response = client.responses().create(params);
 
             String refusal = extractRefusal(response);

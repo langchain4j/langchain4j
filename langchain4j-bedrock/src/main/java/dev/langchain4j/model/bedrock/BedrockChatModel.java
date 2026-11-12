@@ -1,6 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -15,6 +16,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -116,7 +118,13 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 && !chatRequest.toolSpecifications().isEmpty();
         validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
 
-        return ConverseRequest.builder()
+        ConverseRequest.Builder requestBuilder = ConverseRequest.builder();
+        Map<String, String> customHeaders = customHeadersOf(parameters);
+        if (!customHeaders.isEmpty()) {
+            requestBuilder.overrideConfiguration(config -> addPerRequestHeaders(config, customHeaders));
+        }
+
+        return requestBuilder
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))

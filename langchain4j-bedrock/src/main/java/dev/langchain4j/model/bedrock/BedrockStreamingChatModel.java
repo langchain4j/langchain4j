@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -29,6 +30,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Flow.Publisher;
@@ -253,7 +255,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 && !chatRequest.toolSpecifications().isEmpty();
         validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
 
-        return ConverseStreamRequest.builder()
+        ConverseStreamRequest.Builder requestBuilder = ConverseStreamRequest.builder();
+        Map<String, String> customHeaders = customHeadersOf(parameters);
+        if (!customHeaders.isEmpty()) {
+            requestBuilder.overrideConfiguration(config -> addPerRequestHeaders(config, customHeaders));
+        }
+
+        return requestBuilder
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
