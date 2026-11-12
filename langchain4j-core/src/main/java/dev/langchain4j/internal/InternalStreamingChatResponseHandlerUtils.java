@@ -21,6 +21,13 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     private static final Logger log = LoggerFactory.getLogger(InternalStreamingChatResponseHandlerUtils.class);
 
+    /**
+     * Logs a failure that is not reported to a handler, because the handler already received an error.
+     */
+    public static void logIgnoredError(Throwable error) {
+        log.warn("Ignoring a failure after an error was already reported to the StreamingChatResponseHandler", error);
+    }
+
     public static void withLoggingExceptions(Runnable runnable) {
         try {
             runnable.run();

@@ -926,10 +926,13 @@ class AiServiceInvocationEventsTest {
                         .throwingFromChat())
                 .registerListeners(listeners())
                 .build();
-        TokenStream tokenStream = assistant.chat("Hello").onError(error -> {});
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        TokenStream tokenStream = assistant.chat("Hello").onError(errors::add);
 
-        assertThatThrownBy(tokenStream::start).hasMessage("cannot connect");
+        // the streaming model reports the exception to the handler instead of throwing it from chat()
+        tokenStream.start();
 
+        assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessage("cannot connect"));
         assertThat(events(AiServiceErrorEvent.class))
                 .singleElement()
                 .satisfies(event -> assertThat(event.error()).hasMessage("cannot connect"));

@@ -171,7 +171,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.ollama.OllamaChatModelIT#notSupportedContentTypesProvider")
-    void should_throw_when_not_supported_content_types_used(List<ContentType> contentTypes) {
+    void should_throw_when_not_supported_content_types_used(List<ContentType> contentTypes) throws Exception {
 
         // given
 
@@ -183,9 +183,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         StreamingChatResponseHandler handler = new ErrorHandler(futureError);
         final UserMessage userMessage = OllamaChatModelIT.createUserMessageBasedOnContentTypes(contentTypes);
 
-        // when-then
+        // when
 
-        assertThrows(dev.langchain4j.exception.UnsupportedFeatureException.class, () -> model.chat(List.of(userMessage), handler));
+        model.chat(List.of(userMessage), handler);
+
+        // then: the unsupported content type is reported to the handler, chat() does not throw
+
+        Throwable error = futureError.get(5, SECONDS);
+        assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.UnsupportedFeatureException.class);
     }
 
     @ParameterizedTest

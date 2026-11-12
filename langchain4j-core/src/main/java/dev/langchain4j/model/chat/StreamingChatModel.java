@@ -22,8 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -46,6 +49,11 @@ public interface StreamingChatModel {
 
     /**
      * This is the main API to interact with the chat model.
+     * <p>
+     * This method does not throw: every failure, including an invalid request, is reported to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
+     * before this method returns. Only a {@code null} handler makes this method throw, because there is no handler to
+     * report to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
@@ -56,6 +64,11 @@ public interface StreamingChatModel {
 
     /**
      * Sends a streaming chat request with additional invocation options.
+     * <p>
+     * This method does not throw: every failure, including an invalid request, is reported to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
+     * before this method returns. Only a {@code null} handler makes this method throw, because there is no handler to
+     * report to.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
@@ -64,17 +77,31 @@ public interface StreamingChatModel {
      */
     default void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(request.messages())
-                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
-                .build();
+        ChatRequest finalChatRequest;
+        List<ChatModelListener> listeners;
+        Map<Object, Object> attributes;
+        UUID invocationId;
+        try {
+            ensureNotNull(request, "request");
+            finalChatRequest = ChatRequest.builder()
+                    .messages(request.messages())
+                    .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                    .build();
 
-        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
+            ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
-        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
+            listeners = ObservabilityListeners.chat(listeners());
+            attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+            invocationId = CurrentInvocation.invocationId(effectiveOptions);
+        } catch (Throwable error) {
+            if (handler == null) {
+                throw error;
+            }
+            withLoggingExceptions(() -> handler.onError(error));
+            return;
+        }
 
+        AtomicBoolean errorReported = new AtomicBoolean();
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
             @Override
@@ -125,13 +152,28 @@ public interface StreamingChatModel {
 
             @Override
             public void onError(Throwable error) {
+                errorReported.set(true);
                 ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
                 handler.onError(error);
             }
         };
 
-        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
-        doChat(finalChatRequest, observingHandler);
+        try {
+            onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
+            doChat(finalChatRequest, observingHandler);
+        } catch (Throwable error) {
+            if (errorReported.get()) {
+                // the model already reported a failure (for example the handler's onError threw), so this is not
+                // reported a second time
+                logIgnoredError(error);
+                return;
+            }
+            if (handler == null) {
+                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                throw error;
+            }
+            withLoggingExceptions(() -> observingHandler.onError(error));
+        }
     }
 
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
@@ -295,17 +337,42 @@ public interface StreamingChatModel {
         return OTHER;
     }
 
+    /**
+     * Sends a single user message. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw:
+     * an invalid argument, for example a {@code null} message, is reported to the handler's {@code onError}.
+     */
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        ChatRequest chatRequest;
+        try {
+            chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        } catch (Throwable error) {
+            if (handler == null) {
+                throw error;
+            }
+            withLoggingExceptions(() -> handler.onError(error));
+            return;
+        }
 
         chat(chatRequest, handler);
     }
 
+    /**
+     * Sends the given messages. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw: an
+     * invalid argument, for example no messages, is reported to the handler's {@code onError}.
+     */
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
 
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+        ChatRequest chatRequest;
+        try {
+            chatRequest = ChatRequest.builder().messages(messages).build();
+        } catch (Throwable error) {
+            if (handler == null) {
+                throw error;
+            }
+            withLoggingExceptions(() -> handler.onError(error));
+            return;
+        }
 
         chat(chatRequest, handler);
     }

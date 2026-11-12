@@ -167,14 +167,6 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return true;
     }
 
-    /**
-     * Whether the model reports a request it cannot handle (e.g. an unsupported parameter) to the handler's
-     * {@code onError()} instead of throwing it from {@code chat(request, handler)}.
-     */
-    protected boolean reportsUnsupportedParametersThroughOnError() {
-        return false;
-    }
-
     @Override
     protected boolean assertThreads() {
         return streamingModes().equals(List.of(StreamingMode.HANDLER));
@@ -358,10 +350,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 .parameters(parameters)
                 .build();
 
-        // when-then: the same UnsupportedFeatureException is reported, but HOW it reaches the caller
-        // depends on the streaming mode — thrown synchronously from the handler API (the handler is never
-        // notified), but delivered via Subscriber.onError from the publisher API (a cold publisher does no
-        // work at assembly, so chat(request) itself must not throw).
+        // when-then: the same UnsupportedFeatureException is reported, through the handler's onError in the
+        // handler API and through Subscriber.onError in the publisher API; chat(...) itself never throws.
         if (model instanceof StreamingModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
 
             AtomicReference<Publisher<ChatModelStreamingEvent>> publisherReference = new AtomicReference<>();
@@ -408,7 +398,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     .hasMessageContaining("not support");
             assertThat(onNextCalled).isFalse();
             assertThat(onCompleteCalled).isFalse();
-        } else if (reportsUnsupportedParametersThroughOnError()) {
+        } else {
             StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
             assertThatCode(() -> model.chat(chatRequest, handler)).doesNotThrowAnyException();
             ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
@@ -417,14 +407,6 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("stopSequences")
                     .hasMessageContaining("not support");
-            verify(handler, never()).onCompleteResponse(any());
-        } else {
-            StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
-            assertThatThrownBy(() -> model.chat(chatRequest, handler))
-                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
-                    .hasMessageContaining("stopSequences")
-                    .hasMessageContaining("not support");
-            verify(handler, never()).onError(any());
             verify(handler, never()).onCompleteResponse(any());
         }
 

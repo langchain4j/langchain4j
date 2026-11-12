@@ -64,7 +64,8 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         private static final Logger LOG = LoggerFactory.getLogger(StreamingToSyncResponseHandler.class);
         private final Consumer<Throwable> errorHandler;
         private final CountDownLatch latch = new CountDownLatch(1);
-        private AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private final AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private final AtomicReference<Throwable> error = new AtomicReference<>();
 
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
@@ -87,20 +88,36 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
+            Throwable failure = this.error.get();
+            if (failure != null) {
+                // like the asynchronous execution, whose future fails after the error handler was called
+                if (failure instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                if (failure instanceof Error e) {
+                    throw e;
+                }
+                throw new RuntimeException(failure);
+            }
             return this.response.get();
         }
 
         @Override
         public void onError(Throwable error) {
-            if (errorHandler != null) {
-                try {
-                    errorHandler.accept(error);
-                } catch (Exception e) {
-                    LOG.error("While handling the following error...", error);
-                    LOG.error("...the following error happened", e);
+            try {
+                if (errorHandler != null) {
+                    try {
+                        errorHandler.accept(error);
+                    } catch (Exception e) {
+                        LOG.error("While handling the following error...", error);
+                        LOG.error("...the following error happened", e);
+                    }
+                } else {
+                    LOG.warn("Ignored error", error);
                 }
-            } else {
-                LOG.warn("Ignored error", error);
+            } finally {
+                this.error.compareAndSet(null, error);
+                this.latch.countDown();
             }
         }
     }

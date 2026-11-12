@@ -18,6 +18,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -135,7 +136,10 @@ public class StreamingChatModelMockTest {
 
         assertThat(chat(model)).isEqualTo("first");
         chat(model);
+        // the mock throws from doChat; chat(request, handler) reports it to the handler's onError
         assertThatThrownBy(() -> chat(model))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("StreamingChatModelMock has no more responses: the last scripted response (with tool"
                         + " calls) would be repeated, which would loop forever. Script the response that follows the"
