@@ -61,96 +61,21 @@ class MockEmbeddingModelTest {
     }
 
     @Test
-    void should_embed_by_words_with_384_dimensions_and_unit_length() {
+    void should_rank_texts_by_the_given_function() {
 
-        float[] vector = vector(MockEmbeddingModel.thatEmbedsByWords(), "cancel my booking");
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(
+                text -> text.contains("refund") ? new float[] {1, 0} : new float[] {0, 1});
 
-        assertThat(vector).hasSize(384);
-        double length = 0;
-        for (float value : vector) {
-            length += value * value;
-        }
-        assertThat(Math.sqrt(length)).isCloseTo(1.0, within(1e-6));
-    }
-
-    @Test
-    void should_embed_by_words_with_the_given_dimension() {
-
-        assertThat(vector(MockEmbeddingModel.thatEmbedsByWords(50), "cancel my booking"))
-                .hasSize(50);
-    }
-
-    @Test
-    void should_not_accept_a_dimension_that_is_not_positive() {
-
-        assertThatThrownBy(() -> MockEmbeddingModel.thatEmbedsByWords(0))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("dimension");
-    }
-
-    @Test
-    void should_embed_the_same_words_with_the_same_vector_ignoring_case_and_punctuation() {
-
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
-
-        assertThat(vector(model, "Cancel, my BOOKING!")).containsExactly(vector(model, "cancel my booking"));
-    }
-
-    @Test
-    void should_make_texts_closer_the_more_words_they_share() {
-
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
-        String query = "cancel my booking";
-
-        double twoSharedWords = similarity(model, query, "cancel a booking today");
-        double oneSharedWord = similarity(model, query, "a booking today");
-        double noSharedWords = similarity(model, query, "pets are allowed");
-
-        assertThat(twoSharedWords).isGreaterThan(oneSharedWord);
-        assertThat(oneSharedWord).isGreaterThan(noSharedWords);
-        assertThat(noSharedWords).isCloseTo(0.0, within(1e-6));
-    }
-
-    @Test
-    void should_return_a_zero_vector_for_a_text_without_words() {
-
-        assertThat(vector(MockEmbeddingModel.thatEmbedsByWords(3), "?!")).containsExactly(0f, 0f, 0f);
-    }
-
-    @Test
-    void should_give_relevance_scores_by_shared_words() {
-
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
-        String query = "How do I cancel my booking?";
-
-        double twoSharedWords = RelevanceScore.fromCosineSimilarity(
-                similarity(model, query, "You can cancel a booking free of charge up to 24 hours before departure."));
-        double oneSharedWord = RelevanceScore.fromCosineSimilarity(
-                similarity(model, query, "Refunds are paid within 14 days of a cancelled booking."));
-        double noSharedWords =
-                RelevanceScore.fromCosineSimilarity(similarity(model, query, "Pets are allowed on all routes."));
-
-        assertThat(twoSharedWords).isGreaterThan(oneSharedWord);
-        assertThat(oneSharedWord).isGreaterThan(0.55);
-        assertThat(noSharedWords).isCloseTo(0.5, within(1e-6));
-    }
-
-    @Test
-    void should_embed_words_of_any_language() {
-
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
-
-        assertThat(vector(model, "日本語")).isNotEqualTo(new float[384]);
-        assertThat(vector(model, "日本語")).isNotEqualTo(vector(model, "中文"));
-        assertThat(vector(model, "Größe")).isEqualTo(vector(model, "größe"));
-        // vowel signs are combining marks: they belong to the word, so these two words share no part
-        assertThat(similarity(model, "बुकिंग", "बैंक")).isCloseTo(0.0, within(1e-6));
+        assertThat(relevanceScore(model, "How do I get a refund?", "A refund takes 5 days."))
+                .isCloseTo(1.0, within(1e-6));
+        assertThat(relevanceScore(model, "How do I get a refund?", "Pets are allowed."))
+                .isCloseTo(0.5, within(1e-6));
     }
 
     @Test
     void should_embed_every_input_of_a_request_in_order() {
 
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> new float[] {text.length()});
 
         List<Embedding> embeddings = model.embedAll(
                         List.of(TextSegment.from("cancel my booking"), TextSegment.from("pets")))
@@ -205,7 +130,7 @@ class MockEmbeddingModelTest {
     @Test
     void should_accept_the_input_type() {
 
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f);
 
         model.embed(EmbeddingRequest.builder()
                 .input("hello")
@@ -220,7 +145,7 @@ class MockEmbeddingModelTest {
     @Test
     void should_not_record_a_request_for_the_dimension() {
 
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords(50);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(new float[50]);
 
         assertThat(model.dimension()).isEqualTo(50);
         assertThat(model.requests()).isEmpty();
@@ -297,7 +222,7 @@ class MockEmbeddingModelTest {
     @Test
     void should_not_accept_a_requested_dimension_like_a_model_without_that_parameter() {
 
-        MockEmbeddingModel model = MockEmbeddingModel.thatEmbedsByWords();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f);
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input("hello")
                 .parameters(EmbeddingRequestParameters.builder().dimensions(256).build())
@@ -321,9 +246,9 @@ class MockEmbeddingModelTest {
         return model.embed(text).content().vector();
     }
 
-    private static double similarity(MockEmbeddingModel model, String first, String second) {
+    private static double relevanceScore(MockEmbeddingModel model, String first, String second) {
         Embedding a = model.embed(first).content();
         Embedding b = model.embed(second).content();
-        return CosineSimilarity.between(a, b);
+        return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(a, b));
     }
 }

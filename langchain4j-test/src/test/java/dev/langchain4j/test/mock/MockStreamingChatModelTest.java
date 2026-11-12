@@ -925,6 +925,48 @@ public class MockStreamingChatModelTest {
     }
 
     @Test
+    void should_not_accept_an_empty_text_because_a_provider_completes_without_text() {
+
+        AiMessage emptyText = AiMessage.from("");
+
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot stream the text \"\"")
+                .hasMessageContaining("use thatStreamsTokens()")
+                .hasMessageContaining("thatStreams(ChatResponse)");
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams("Hi").thenStreams(""))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams(emptyText))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams(List.of(AiMessage.from("Hi"), emptyText)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams("Hi").thenStreams(emptyText))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_fail_the_request_when_the_computed_answer_has_an_empty_text() throws Exception {
+
+        Streamed streamed = stream(MockStreamingChatModel.thatStreams(request -> AiMessage.from("")));
+
+        assertThat(streamed.error())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot stream the text \"\"");
+    }
+
+    @Test
+    void should_complete_with_an_empty_text_given_in_a_whole_response() throws Exception {
+
+        ChatResponse response =
+                ChatResponse.builder().aiMessage(AiMessage.from("")).build();
+
+        Streamed streamed = stream(MockStreamingChatModel.thatStreams(response));
+
+        assertThat(streamed.tokens()).isEmpty();
+        assertThat(streamed.response()).isSameAs(response);
+    }
+
+    @Test
     void should_stream_a_tool_call_without_a_name_on_both_paths() throws Exception {
 
         AiMessage toolCallWithoutName = AiMessage.from(ToolExecutionRequest.builder()
@@ -1028,9 +1070,6 @@ public class MockStreamingChatModelTest {
     @Test
     void should_not_accept_a_failure_after_a_step_without_text() {
 
-        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams("").andFails(new RuntimeException()))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("no text or thinking to stream");
         assertThatThrownBy(() -> MockStreamingChatModel.thatStreamsTokens().andFails(new RuntimeException()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("no text or thinking to stream");

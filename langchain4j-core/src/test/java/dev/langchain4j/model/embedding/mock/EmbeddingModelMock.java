@@ -8,6 +8,7 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.test.mock.MockEmbeddingModel;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * An {@link EmbeddingModel} for tests: it returns the same fixed embedding for every input.
@@ -15,8 +16,8 @@ import java.util.List;
  *
  * @deprecated use {@link MockEmbeddingModel} (package {@code dev.langchain4j.test.mock}) from the
  * {@code langchain4j-test} module: {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)} returns the same vector as this
- * class, and {@link MockEmbeddingModel#thatEmbedsByWords()} returns vectors that are closer the more words two texts
- * share. It supports asynchronous calls, which complete on another thread. It accepts the per-call parameters
+ * class, and {@link MockEmbeddingModel#thatEmbeds(Function)} computes the vector from each text. It supports
+ * asynchronous calls, which complete on another thread. It accepts the per-call parameters
  * {@code modelName} and {@code inputType}, which this class rejects, and a response reports the model name.
  * {@code withProvider(...)} has no replacement.
  * This class will be removed in 1.26.0 at the earliest.

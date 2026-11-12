@@ -1,6 +1,5 @@
 package dev.langchain4j.test.mock;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -12,11 +11,9 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 /**
  * An {@link EmbeddingModel} for tests: it needs no network and records the requests it receives. It supports both
@@ -25,16 +22,14 @@ import java.util.regex.Pattern;
  * {@code UnsupportedFeatureException}, like a model without that parameter. A response reports the model name of the
  * request.
  * <p>
- * Use {@link #thatEmbedsByWords()} when the test depends on which texts are close to each other, for example on the
- * ranking of retrieved segments or on a minimum score, and {@link #thatEmbeds(float...)} when it does not matter.
- * When a test depends on the meaning of texts, use a real embedding model that runs in-process, for example
- * {@code AllMiniLmL6V2QuantizedEmbeddingModel} from the module {@code langchain4j-embeddings-all-minilm-l6-v2-q}.
+ * Use {@link #thatEmbeds(Function)} when the test depends on which texts are close to each other, for example on the
+ * ranking of retrieved segments or on a minimum score: the function in the test then says which texts are close. Use
+ * {@link #thatEmbeds(float...)} when it does not matter. When a test depends on the meaning of texts, use a real
+ * embedding model that runs in-process, for example {@code AllMiniLmL6V2QuantizedEmbeddingModel} from the module
+ * {@code langchain4j-embeddings-all-minilm-l6-v2-q}.
  */
 @Experimental
 public class MockEmbeddingModel implements EmbeddingModel {
-
-    private static final int DEFAULT_DIMENSION = 384;
-    private static final Pattern WORD_SEPARATORS = Pattern.compile("[^\\p{L}\\p{M}\\p{N}]+");
 
     private final Function<String, float[]> embeddings;
     private final RecordedRequests<EmbeddingRequest> requests = new RecordedRequests<>("embedding");
@@ -143,40 +138,17 @@ public class MockEmbeddingModel implements EmbeddingModel {
     }
 
     /**
-     * A model that computes the vector from each text.
+     * A model that computes the vector from each text, so the test says which texts are close to each other. For
+     * example, with
+     * <pre>{@code
+     * MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(
+     *         text -> text.contains("refund") ? new float[] {1, 0} : new float[] {0, 1});
+     * }</pre>
+     * two texts that both contain "refund" get a relevance score of 1, and a text with "refund" and a text without it
+     * get a score of 0.5.
      */
     public static MockEmbeddingModel thatEmbeds(Function<String, float[]> embeddings) {
         return new MockEmbeddingModel(embeddings);
-    }
-
-    /**
-     * A model with vectors of 384 dimensions that are close when texts share words, see
-     * {@link #thatEmbedsByWords(int)}.
-     */
-    public static MockEmbeddingModel thatEmbedsByWords() {
-        return thatEmbedsByWords(DEFAULT_DIMENSION);
-    }
-
-    /**
-     * A model whose vectors are close when texts share words, so that a test can check the ranking of retrieved
-     * segments or a minimum score, always with the same result.
-     * <p>
-     * The text is lower-cased and split into words. The hash of each word picks one position in the vector, and that
-     * position is increased by one. Finally, the vector is scaled to a length of 1. Two short texts that share no words
-     * get a cosine similarity of 0, which is a relevance score of 0.5. A text without letters or digits, for example
-     * {@code "?"}, gets a vector of zeros.
-     * <p>
-     * Every word counts equally, also common ones such as "the" and "is", and only whole words match: "cancelled" is not
-     * "cancel", and "dog" is not "pet". Two different words can pick the same position by chance, more often in longer
-     * texts, which raises the score slightly: use a larger {@code dimension} to make this less likely, and do not expect
-     * exactly 0.5 for long unrelated texts. When a test depends on the meaning of texts, use a real embedding model that
-     * runs in-process, see {@link MockEmbeddingModel}.
-     *
-     * @param dimension the number of dimensions of the vectors
-     */
-    public static MockEmbeddingModel thatEmbedsByWords(int dimension) {
-        ensureGreaterThanZero(dimension, "dimension");
-        return new MockEmbeddingModel(text -> embedByWords(text, dimension));
     }
 
     /**
@@ -187,17 +159,5 @@ public class MockEmbeddingModel implements EmbeddingModel {
         return new MockEmbeddingModel(text -> {
             throw exception;
         });
-    }
-
-    private static float[] embedByWords(String text, int dimension) {
-        float[] vector = new float[dimension];
-        for (String word : WORD_SEPARATORS.split(text.toLowerCase(Locale.ROOT))) {
-            if (!word.isEmpty()) {
-                vector[Math.floorMod(word.hashCode(), dimension)] += 1f;
-            }
-        }
-        Embedding embedding = Embedding.from(vector);
-        embedding.normalize();
-        return embedding.vector();
     }
 }

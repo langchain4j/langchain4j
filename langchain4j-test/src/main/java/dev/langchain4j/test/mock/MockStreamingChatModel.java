@@ -104,7 +104,8 @@ public class MockStreamingChatModel implements StreamingChatModel {
     /**
      * Adds a step: the next request is answered by streaming the given text, one character per token.
      *
-     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     * @throws IllegalArgumentException if the text is empty, see {@link #thatStreams(String)}
+     * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
      */
     public MockStreamingChatModel thenStreams(String text) {
         return thenStreams(AiMessage.from(text));
@@ -136,10 +137,11 @@ public class MockStreamingChatModel implements StreamingChatModel {
     /**
      * Adds a step: the next request is answered by streaming the given message, one character per token.
      *
-     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     * @throws IllegalArgumentException if the text of the message is empty, see {@link #thatStreams(String)}
+     * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
      */
     public MockStreamingChatModel thenStreams(AiMessage aiMessage) {
-        script.add(Step.responding(aiMessage));
+        script.add(Step.responding(ensureNotEmptyText(aiMessage)));
         return this;
     }
 
@@ -495,6 +497,12 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * A model that answers the first request by streaming the given text, one character per token. Add the next steps
      * with {@code then...} methods, or answer every request with this text: {@code thatStreams("Hello!").thenRepeats()}.
      * To control exactly which tokens are streamed, use {@link #thatStreamsTokens(String...)}.
+     * <p>
+     * The text cannot be empty: a provider that streams no text completes with no text ({@code null}), not with
+     * {@code ""}. To stream an answer without text, use {@link #thatStreamsTokens(String...)} without tokens. To complete
+     * with exactly {@code ""} anyway, give the whole response: {@link #thatStreams(ChatResponse)}.
+     *
+     * @throws IllegalArgumentException if the text is empty
      */
     public static MockStreamingChatModel thatStreams(String text) {
         return thatStreams(AiMessage.from(text));
@@ -526,6 +534,8 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * A model that streams the given messages in order, one per request, one character per token. Add further steps
      * with {@code then...} methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for
      * example several tool calls in one answer, built with {@link MockChatModel#toolCall(String, Map)}.
+     *
+     * @throws IllegalArgumentException if the text of a message is empty, see {@link #thatStreams(String)}
      */
     public static MockStreamingChatModel thatStreams(AiMessage first, AiMessage... next) {
         return thatStreams(Stream.concat(Stream.of(first), Stream.of(next)).toList());
@@ -534,11 +544,14 @@ public class MockStreamingChatModel implements StreamingChatModel {
     /**
      * A model that streams the given messages in order, one per request, one character per token. Add further steps
      * with {@code then...} methods.
+     *
+     * @throws IllegalArgumentException if the text of a message is empty, see {@link #thatStreams(String)}
      */
     public static MockStreamingChatModel thatStreams(List<AiMessage> aiMessages) {
         ensureNotEmpty(aiMessages, "aiMessages");
-        return new MockStreamingChatModel(
-                aiMessages.stream().map(Step::responding).toList());
+        return new MockStreamingChatModel(aiMessages.stream()
+                .map(aiMessage -> Step.responding(ensureNotEmptyText(aiMessage)))
+                .toList());
     }
 
     /**
@@ -555,10 +568,13 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * A model that computes the answer to the first request from the request and streams it, one character per token.
      * Add the next steps with {@code then...} methods, or compute the answer to every request:
      * {@code thatStreams(request -> ...).thenRepeats()}. If the function throws, the request fails with that exception,
-     * unchanged. The function runs on the thread that streams the answer.
+     * unchanged. An answer with the text {@code ""} fails the request with an {@link IllegalArgumentException}, see
+     * {@link #thatStreams(String)}. The function runs on the thread that streams the answer.
      */
     public static MockStreamingChatModel thatStreams(Function<ChatRequest, AiMessage> answers) {
-        return new MockStreamingChatModel(List.of(Step.computing(answers)));
+        ensureNotNull(answers, "answers");
+        return new MockStreamingChatModel(
+                List.of(Step.computing(request -> ensureNotEmptyText(answers.apply(request)))));
     }
 
     /**
@@ -581,6 +597,16 @@ public class MockStreamingChatModel implements StreamingChatModel {
      */
     public static MockStreamingChatModel thatCallsTool(String toolName, String jsonArguments) {
         return new MockStreamingChatModel(List.of(Step.callingTool(toolName, jsonArguments)));
+    }
+
+    private static AiMessage ensureNotEmptyText(AiMessage aiMessage) {
+        if (aiMessage != null && "".equals(aiMessage.text())) {
+            throw new IllegalArgumentException("The mock cannot stream the text \"\": a provider that streams no text"
+                    + " completes with no text (null), not with \"\". To stream an answer without text, use"
+                    + " thatStreamsTokens() or an AiMessage without text. To complete with exactly \"\" anyway, give"
+                    + " the whole ChatResponse, for example with thatStreams(ChatResponse).");
+        }
+        return aiMessage;
     }
 
     /**
