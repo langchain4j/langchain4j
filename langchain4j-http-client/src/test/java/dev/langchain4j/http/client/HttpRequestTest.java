@@ -159,6 +159,63 @@ class HttpRequestTest {
         assertThat(builder.build().headers()).isEmpty();
     }
 
+    @Test
+    void should_add_single_header_after_setting_immutable_headers() {
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(Map.of("Accept", List.of("application/json")))
+                .addHeader("X-Request-Id", "request-id")
+                .build();
+
+        assertThat(request.headers())
+                .containsEntry("Accept", List.of("application/json"))
+                .containsEntry("X-Request-Id", List.of("request-id"));
+    }
+
+    @Test
+    void should_add_headers_after_setting_immutable_headers() {
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(Map.of("Accept", List.of("application/json")))
+                .addHeaders(Map.of("X-Request-Id", "request-id"))
+                .build();
+
+        assertThat(request.headers())
+                .containsEntry("Accept", List.of("application/json"))
+                .containsEntry("X-Request-Id", List.of("request-id"));
+    }
+
+    @Test
+    void should_not_modify_source_headers_when_adding_a_header() {
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("Accept", List.of("application/json"));
+
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(headers)
+                .addHeader("X-Request-Id", "request-id")
+                .build();
+
+        assertThat(request.headers()).containsEntry("X-Request-Id", List.of("request-id"));
+        assertThat(headers).containsOnlyKeys("Accept");
+    }
+
+    @Test
+    void should_add_header_after_clearing_headers() {
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(Map.of("Accept", List.of("application/json")))
+                .headers(null)
+                .addHeader("X-Request-Id", "request-id")
+                .build();
+
+        assertThat(request.headers()).containsOnlyKeys("X-Request-Id");
+    }
+
     @ParameterizedTest
     @MethodSource("headerCombinations")
     void shouldCombineHeadersFromBothMethods(
