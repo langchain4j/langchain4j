@@ -46,14 +46,13 @@ import java.util.concurrent.Flow.Subscription;
  * @deprecated use {@link MockStreamingChatModel} (package {@code dev.langchain4j.test.mock}) from the
  * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
  * script runs out; end the script with {@link MockStreamingChatModel#thenRepeats()} to answer every further request
- * with its last step.
- * {@code withTokenUsage(...)}, {@code requests()} and {@code request()} have the same names. A response reports the
- * model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of
- * {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:
- * {@link MockStreamingChatModel#thatStreams(ChatResponse)}. {@code withSupportedCapabilities(...)},
- * {@code throwingFromChat()} and {@code streamingOnCallingThread()} have no replacement, and
- * {@code withListeners(...)} has the same name. Other differences: the new mock also streams partial tool calls
- * and thinking, streams text given as one string or message one character (code point) per token, reports every
+ * with its last step. {@code withTokenUsage(...)}, {@code requests()} and {@code request()} have the same names. A
+ * response reports the model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason;
+ * instead of {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:
+ * {@link MockStreamingChatModel#thatStreams(ChatResponse)}. {@code throwingFromChat()} and
+ * {@code streamingOnCallingThread()} have no replacement, and {@code withListeners(...)} and
+ * {@code withSupportedCapabilities(...)} have the same names. Other differences: the new mock also streams partial tool
+ * calls and thinking, streams text given as one string or message one character (code point) per token, reports every
  * failure on its streaming thread, and {@code requests()} returns a copy.
  * This class will be removed in 1.26.0 at the earliest.
  */
@@ -384,7 +383,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage, AiMessage...)} followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage...)} followed by
      * {@link MockStreamingChatModel#thenRepeats()}; for a message with tool calls, script the answer that follows the tool results with
      * {@link MockStreamingChatModel#thenStreams(String)} instead
      */
@@ -394,7 +393,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage, AiMessage...)}, followed by
+     * @deprecated use {@link MockStreamingChatModel#thatStreams(AiMessage...)}, followed by
      * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
      */
     @Deprecated(since = "1.24.0", forRemoval = true)

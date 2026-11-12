@@ -35,21 +35,20 @@ import java.util.function.Function;
  * Always returns a static response and records all invocations for verification at the end of a test.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
  *
- * @deprecated use {@link MockChatModel} (package {@code dev.langchain4j.test.mock}) from the
- * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
- * script runs out; end the script with {@link MockChatModel#thenRepeats()} to answer every further request with its
- * last step, also for
+ * @deprecated use {@link MockChatModel} (package {@code dev.langchain4j.test.mock}) from the {@code langchain4j-test}
+ * module. Unlike this class, it answers one request per scripted step and fails when the script runs out; end the
+ * script with {@link MockChatModel#thenRepeats()} to answer every further request with its last step, also for
  * {@link MockChatModel#thatResponds(Function)}. {@code withListeners(...)}, {@code withTokenUsage(...)},
- * {@code requests()} and {@code request()} have the same names. A response reports the model name of the request and
- * {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of {@code withModelNames(...)},
- * {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole response:
- * {@link MockChatModel#thatResponds(ChatResponse)}. {@code withSupportedCapabilities(...)} and
- * {@code withRetryPolicy(...)} have no replacement. Instead of {@code userMessageText()}, check the request, for
- * example with {@code LangChain4jAssertions.assertThat(model.request()).hasLastUserMessageContaining(...)}. Other
- * differences: {@link MockChatModel#thatResponds(Function)} does not map the exceptions the function throws (an
- * {@code HttpException} with status 429 stays an {@code HttpException}, so throw the exception you expect, for
- * example a {@code RateLimitException}), tool calls without an id get the ids {@code tool_call_1},
- * {@code tool_call_2}, ..., and {@code requests()} returns a copy.
+ * {@code withSupportedCapabilities(...)}, {@code requests()} and {@code request()} have the same names. A response
+ * reports the model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of
+ * {@code withModelNames(...)}, {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole
+ * response: {@link MockChatModel#thatResponds(ChatResponse)}. {@code withRetryPolicy(...)} has no replacement. Instead
+ * of {@code userMessageText()}, check the request, for example with
+ * {@code LangChain4jAssertions.assertThat(model.request()).hasLastUserMessageContaining(...)}. Other differences:
+ * {@link MockChatModel#thatResponds(Function)} does not map the exceptions the function throws (an
+ * {@code HttpException} with status 429 stays an {@code HttpException}, so throw the exception you expect, for example
+ * a {@code RateLimitException}), tool calls without an id get the ids {@code tool_call_1}, {@code tool_call_2}, ...,
+ * and {@code requests()} returns a copy.
  * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
@@ -254,7 +253,7 @@ public class ChatModelMock implements ChatModel {
      * Responds with the given message to every request. Fails on the second request if the message contains tool
      * execution requests, because repeating it would make an AI Service call the tools again and again.
      *
-     * @deprecated use {@link MockChatModel#thatResponds(AiMessage, AiMessage...)} followed by
+     * @deprecated use {@link MockChatModel#thatResponds(AiMessage...)} followed by
      * {@link MockChatModel#thenRepeats()}; for a message with tool calls, script the answer that follows the tool results
      * with {@link MockChatModel#thenResponds(String)} instead
      */
@@ -268,7 +267,7 @@ public class ChatModelMock implements ChatModel {
      * again for every further request (like Mockito's {@code thenReturn(a, b)}), unless it contains tool execution
      * requests: then the mock fails, because repeating it would make an AI Service call the tools again and again.
      *
-     * @deprecated use {@link MockChatModel#thatResponds(AiMessage, AiMessage...)}, followed by
+     * @deprecated use {@link MockChatModel#thatResponds(AiMessage...)}, followed by
      * {@link MockChatModel#thenRepeats()} if the model gets more requests than there are messages
      */
     @Deprecated(since = "1.24.0", forRemoval = true)

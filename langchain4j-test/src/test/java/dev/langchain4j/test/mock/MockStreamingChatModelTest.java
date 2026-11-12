@@ -1,5 +1,6 @@
 package dev.langchain4j.test.mock;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,6 +9,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
@@ -24,8 +26,10 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
@@ -442,6 +446,34 @@ public class MockStreamingChatModelTest {
     }
 
     @Test
+    void should_report_no_capabilities_by_default() {
+
+        assertThat(MockStreamingChatModel.thatStreams("Hi").supportedCapabilities())
+                .isEmpty();
+    }
+
+    @Test
+    void should_report_the_given_capabilities_and_still_answer_with_the_script() throws Exception {
+
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatStreams("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+        assertThat(chat(model)).isEqualTo("Hi");
+    }
+
+    @Test
+    void should_take_the_capabilities_as_a_set() {
+
+        Set<Capability> capabilities = new HashSet<>(Set.of(RESPONSE_FORMAT_JSON_SCHEMA));
+        MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hi").withSupportedCapabilities(capabilities);
+
+        capabilities.clear();
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    @Test
     void should_call_a_tool_and_then_stream() throws Exception {
 
         MockStreamingChatModel model = MockStreamingChatModel.thatCallsTool("cancelBooking", Map.of("id", 7))
@@ -844,6 +876,17 @@ public class MockStreamingChatModelTest {
     void should_not_accept_an_empty_list_of_messages() {
 
         assertThatThrownBy(() -> MockStreamingChatModel.thatStreams(List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("aiMessages");
+    }
+
+    @Test
+    void should_not_accept_a_call_without_messages() {
+
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("aiMessages");
+        assertThatThrownBy(() -> MockStreamingChatModel.thatStreams((AiMessage[]) null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("aiMessages");
     }

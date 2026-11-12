@@ -1,5 +1,6 @@
 package dev.langchain4j.test.mock;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.test.mock.MockChatModel.toolCall;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,14 +12,17 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -366,6 +370,17 @@ class MockChatModelTest {
     }
 
     @Test
+    void should_not_accept_a_call_without_messages() {
+
+        assertThatThrownBy(() -> MockChatModel.thatResponds())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("aiMessages");
+        assertThatThrownBy(() -> MockChatModel.thatResponds((AiMessage[]) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("aiMessages");
+    }
+
+    @Test
     void should_fail_the_first_request_with_the_given_exception() {
 
         RuntimeException failure = new IllegalArgumentException("invalid");
@@ -697,6 +712,32 @@ class MockChatModelTest {
         listeners.clear();
 
         assertThat(model.listeners()).containsExactly(listener);
+    }
+
+    @Test
+    void should_report_no_capabilities_by_default() {
+
+        assertThat(MockChatModel.thatResponds("Hi").supportedCapabilities()).isEmpty();
+    }
+
+    @Test
+    void should_report_the_given_capabilities_and_still_answer_with_the_script() {
+
+        MockChatModel model = MockChatModel.thatResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+        assertThat(model.chat("Hello")).isEqualTo("Hi");
+    }
+
+    @Test
+    void should_take_the_capabilities_as_a_set() {
+
+        Set<Capability> capabilities = new HashSet<>(Set.of(RESPONSE_FORMAT_JSON_SCHEMA));
+        MockChatModel model = MockChatModel.thatResponds("Hi").withSupportedCapabilities(capabilities);
+
+        capabilities.clear();
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
     }
 
     private static ChatResponse response(int number) {

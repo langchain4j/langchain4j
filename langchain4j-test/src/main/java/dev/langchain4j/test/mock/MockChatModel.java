@@ -8,6 +8,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -15,11 +16,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.mock.ScriptedResponses.Step;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -61,9 +63,10 @@ import org.jspecify.annotations.Nullable;
  * {@link FinishReason#LENGTH} or a different token usage per step, give the whole response:
  * {@link #thatResponds(ChatResponse)}.
  * <p>
- * The mock supports no capabilities, so an AI Service that returns a structured type, for example a POJO, adds format
- * instructions to the user message instead of asking for a JSON schema response format. To test the response-format
- * path, stub {@code supportedCapabilities()} on a Mockito spy of the mock.
+ * By default, the mock reports no capabilities, so an AI Service that returns a structured type, for example a POJO,
+ * adds format instructions to the user message. To make the AI Service ask for a JSON schema response format instead,
+ * as it does with a model that supports it, use
+ * {@code withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)}.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
@@ -78,6 +81,7 @@ public class MockChatModel implements ChatModel {
     private final ScriptedResponses script;
     private final RecordedRequests<ChatRequest> requests = new RecordedRequests<>("chat");
     private List<ChatModelListener> listeners = List.of();
+    private Set<Capability> supportedCapabilities = Set.of();
 
     MockChatModel(List<Step> steps) {
         this.script = new ScriptedResponses(MOCK_NAME, steps);
@@ -193,9 +197,35 @@ public class MockChatModel implements ChatModel {
         return this;
     }
 
+    /**
+     * Reports the given capabilities from {@link #supportedCapabilities()}, like a model that supports them. For
+     * example, with {@link Capability#RESPONSE_FORMAT_JSON_SCHEMA}, an AI Service that returns a structured type, for
+     * example a POJO, asks for a JSON schema response format instead of adding format instructions to the user message.
+     * The mock only reports the capabilities: it still answers with the steps of its script, and it does not check the
+     * requests or the answers against the capabilities.
+     */
+    public MockChatModel withSupportedCapabilities(Capability... capabilities) {
+        this.supportedCapabilities = Set.of(capabilities);
+        return this;
+    }
+
+    /**
+     * Reports the given capabilities from {@link #supportedCapabilities()}, see
+     * {@link #withSupportedCapabilities(Capability...)}.
+     */
+    public MockChatModel withSupportedCapabilities(Set<Capability> capabilities) {
+        this.supportedCapabilities = Set.copyOf(capabilities);
+        return this;
+    }
+
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     @Override
@@ -258,9 +288,11 @@ public class MockChatModel implements ChatModel {
      * A model that answers with the given messages in order, one per request. Add further steps with {@code then...}
      * methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for example several tool
      * calls in one answer: {@code AiMessage.from(toolCall("a", argsA), toolCall("b", argsB))}.
+     *
+     * @throws IllegalArgumentException if no message is given
      */
-    public static MockChatModel thatResponds(AiMessage first, AiMessage... next) {
-        return thatResponds(Stream.concat(Stream.of(first), Stream.of(next)).toList());
+    public static MockChatModel thatResponds(AiMessage... aiMessages) {
+        return thatResponds(Arrays.asList(ensureNotNull(aiMessages, "aiMessages")));
     }
 
     /**

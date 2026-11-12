@@ -13,6 +13,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -29,14 +30,15 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.test.mock.ScriptedResponses.Step;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -71,9 +73,9 @@ import org.jspecify.annotations.Nullable;
  * To report anything else, for example {@link FinishReason#LENGTH} or a different token usage per step, give the whole
  * response: {@link #thatStreams(ChatResponse)}.
  * <p>
- * The mock supports no capabilities, so an AI Service that returns a structured type, for example a POJO, adds format
- * instructions to the user message instead of asking for a JSON schema response format. To test the response-format
- * path, stub {@code supportedCapabilities()} on a Mockito spy of the mock.
+ * By default, the mock reports no capabilities. To test code that checks the capabilities of a model, for example a
+ * {@code RoutingStreamingChatModel} that sends a request with a JSON schema response format only to the models that
+ * support it, use {@code withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)}.
  * <p>
  * Like a provider, the mock streams on its own thread, never on the thread that calls it. {@code chat(request, handler)}
  * returns immediately and calls the handler on another thread, also for a failure, so a test has to wait for
@@ -96,6 +98,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
     private final ScriptedResponses script;
     private final RecordedRequests<ChatRequest> requests = new RecordedRequests<>("chat");
     private List<ChatModelListener> listeners = List.of();
+    private Set<Capability> supportedCapabilities = Set.of();
 
     MockStreamingChatModel(List<Step> steps) {
         this.script = new ScriptedResponses(MOCK_NAME, steps);
@@ -252,9 +255,35 @@ public class MockStreamingChatModel implements StreamingChatModel {
         return this;
     }
 
+    /**
+     * Reports the given capabilities from {@link #supportedCapabilities()}, like a model that supports them. For
+     * example, with {@link Capability#RESPONSE_FORMAT_JSON_SCHEMA}, a {@code RoutingStreamingChatModel} can send a
+     * request with a JSON schema response format to this mock. The mock only reports the capabilities: it still
+     * answers with the steps of its script, and it does not check the requests or the answers against the
+     * capabilities.
+     */
+    public MockStreamingChatModel withSupportedCapabilities(Capability... capabilities) {
+        this.supportedCapabilities = Set.of(capabilities);
+        return this;
+    }
+
+    /**
+     * Reports the given capabilities from {@link #supportedCapabilities()}, see
+     * {@link #withSupportedCapabilities(Capability...)}.
+     */
+    public MockStreamingChatModel withSupportedCapabilities(Set<Capability> capabilities) {
+        this.supportedCapabilities = Set.copyOf(capabilities);
+        return this;
+    }
+
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     /**
@@ -535,10 +564,11 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * with {@code then...} methods. Use it for answers that {@link #thatCallsTool(String, Map)} cannot express, for
      * example several tool calls in one answer, built with {@link MockChatModel#toolCall(String, Map)}.
      *
-     * @throws IllegalArgumentException if the text of a message is empty, see {@link #thatStreams(String)}
+     * @throws IllegalArgumentException if no message is given, or if the text of a message is empty, see
+     *                                  {@link #thatStreams(String)}
      */
-    public static MockStreamingChatModel thatStreams(AiMessage first, AiMessage... next) {
-        return thatStreams(Stream.concat(Stream.of(first), Stream.of(next)).toList());
+    public static MockStreamingChatModel thatStreams(AiMessage... aiMessages) {
+        return thatStreams(Arrays.asList(ensureNotNull(aiMessages, "aiMessages")));
     }
 
     /**
