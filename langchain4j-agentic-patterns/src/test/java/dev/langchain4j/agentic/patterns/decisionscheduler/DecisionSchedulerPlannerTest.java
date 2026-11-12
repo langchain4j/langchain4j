@@ -1020,36 +1020,49 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
-        DecisionModelMock model = model(0.1, Map.of("tracker$0", 0.6, "tracker$1", 0.9));
+        DecisionModelMock model = model(0.1, Map.of("tracker_0", 0.6, "tracker_1", 0.9));
 
         scheduler(model, trackerLabelled("first"), trackerLabelled("second")).handle(TICKET);
 
         // the second one is the most useful, and once it ran only the first one can still run
         assertThat(invoked).containsExactly("second", "first");
         Map<String, ?> firstQuestions = model.requests().get(0).questions();
-        assertThat(firstQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker$0", "tracker$1");
-        assertThat(firstQuestions.get("tracker$0"))
+        // the questions are named after the ids, with '_' instead of '$'
+        assertThat(firstQuestions).containsOnlyKeys(GOAL_QUESTION_NAME, "tracker_0", "tracker_1");
+        assertThat(firstQuestions.get("tracker_0"))
                 .isEqualTo(ScaleQuestion.from(
                         "How useful would it be to run the agent 'tracker' (The first tracker) now, to reach this "
                                 + "goal: " + GOAL + "?",
                         DEFAULT_USEFULNESS_LEVELS));
-        assertThat(firstQuestions.get("tracker$1"))
+        assertThat(firstQuestions.get("tracker_1"))
                 .isEqualTo(ScaleQuestion.from(
                         "How useful would it be to run the agent 'tracker' (The second tracker) now, to reach this "
                                 + "goal: " + GOAL + "?",
                         DEFAULT_USEFULNESS_LEVELS));
-        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "tracker$0");
+        assertThat(questionNames(model.requests().get(1))).containsExactly(GOAL_QUESTION_NAME, "tracker_0");
+    }
+
+    @Test
+    void shouldGiveAFreeQuestionNameToASubagentWhoseNameIsTaken() {
+        DecisionModelMock model = model(0.1, Map.of("tracker_0_1", 0.9, "tracker_1", 0.2, "tracker_0", 0.4));
+
+        scheduler(model, trackerLabelled("first"), trackerLabelled("second"), agent("tracker_0", "zeroStatus").build())
+                .handle(TICKET);
+
+        assertThat(invoked).first().isEqualTo("first");
+        assertThat(questionNames(model.requests().get(0)))
+                .containsExactly(GOAL_QUESTION_NAME, "tracker_0_1", "tracker_1", "tracker_0");
     }
 
     @Test
     void shouldAcceptASubagentNamedLikeTheGoalQuestion() {
-        DecisionModelMock model = model(0.1, Map.of(GOAL_QUESTION_NAME + "$0", 0.9));
+        DecisionModelMock model = model(0.1, Map.of(GOAL_QUESTION_NAME + "_0", 0.9));
 
         scheduler(model, agent(GOAL_QUESTION_NAME, "orderStatus", input("ticket")).build())
                 .handle(TICKET);
 
         assertThat(invoked).containsExactly(GOAL_QUESTION_NAME);
-        assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME, GOAL_QUESTION_NAME + "$0");
+        assertThat(questionNames(model.request())).containsExactly(GOAL_QUESTION_NAME, GOAL_QUESTION_NAME + "_0");
     }
 
     @Test

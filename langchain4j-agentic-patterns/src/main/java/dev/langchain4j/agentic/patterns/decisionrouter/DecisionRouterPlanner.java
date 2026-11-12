@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.patterns.internal.DecisionQuestionNames;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -56,7 +57,10 @@ import org.slf4j.LoggerFactory;
  * The planner identifies a subagent by its name, which names its option or its question. Several subagents can have
  * the same name: each of them is then identified by its {@link AgentInstance#agentId() id} instead, the decision
  * model tells them apart by their descriptions, and in the map returned with an activation threshold the output of
- * each of them is under its id.
+ * each of them is under its id. Such a subagent is offered to the decision model under its id with each {@code $}
+ * replaced by {@code _}, for example {@code medical_0} for {@code medical$0}, since some decision models accept only
+ * {@code [A-Za-z0-9_-]} in question names; {@code _1}, {@code _2}... is appended when another subagent already has
+ * that name.
  * <p>
  * Only the subagents whose activation condition holds are offered to the decision model. When none does, the model
  * isn't asked at all and the result is {@code null}, or an empty map with an activation threshold. Without an
@@ -105,6 +109,9 @@ public class DecisionRouterPlanner implements Planner {
 
     // the names that several subagents have: these subagents are identified by their ids, the others by their names
     private final Set<String> sharedNames = new HashSet<>();
+
+    // the name of the option or question of each subagent, keyed by the key of the subagent
+    private Map<String, String> decisionNames = Map.of();
 
     // persisted to resume after a suspension or a crash: the keys of the activated agents, the outputs of those
     // already invoked, and the keys of those whose output was still pending, like an agent waiting for a human
@@ -211,6 +218,7 @@ public class DecisionRouterPlanner implements Planner {
             }
         }
         initPlanningContext.subagents().forEach(agent -> routes.put(key(agent), agent));
+        this.decisionNames = DecisionQuestionNames.of(routes, Set.of());
     }
 
     /** The key identifying a subagent: its name, or its id when several subagents have that name. */
@@ -222,20 +230,25 @@ public class DecisionRouterPlanner implements Planner {
         return sharedNames.contains(agentName) ? agentId : agentName;
     }
 
+    /** The name of the option or question of a subagent. */
+    private String decisionName(AgentInstance agent) {
+        return decisionNames.get(key(agent));
+    }
+
     /**
      * A single choice question among the candidates without an activation threshold, one yes/no question per
-     * candidate (named after its key) with an activation threshold.
+     * candidate with an activation threshold.
      */
     private Map<String, Question> questions(List<AgentInstance> candidates) {
         if (activationThreshold != null) {
             Map<String, Question> questions = new LinkedHashMap<>();
-            candidates.forEach(agent -> questions.put(key(agent), relevanceQuestion(agent)));
+            candidates.forEach(agent -> questions.put(decisionName(agent), relevanceQuestion(agent)));
             return questions;
         }
         ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(choiceQuestion);
         // an agent without a description is described by its name
-        candidates.forEach(agent ->
-                choice.option(key(agent), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
+        candidates.forEach(agent -> choice.option(
+                decisionName(agent), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
         return Map.of(QUESTION_NAME, choice.build());
     }
 
@@ -303,12 +316,13 @@ public class DecisionRouterPlanner implements Planner {
                 .inputFields(input)
                 .questions(questions(candidates))
                 .build());
-        List<String> chosen = activationThreshold == null
-                ? List.of(response.choice(QUESTION_NAME).value())
-                : candidates.stream()
-                        .map(this::key)
-                        .filter(key -> response.yesNo(key).probability() >= activationThreshold)
-                        .toList();
+        String choice = activationThreshold == null ? response.choice(QUESTION_NAME).value() : null;
+        List<String> chosen = candidates.stream()
+                .filter(agent -> activationThreshold == null
+                        ? decisionName(agent).equals(choice)
+                        : response.yesNo(decisionName(agent)).probability() >= activationThreshold)
+                .map(this::key)
+                .toList();
         LOG.info("Activating agents {} from the answers {}", chosen, response.answers());
         return chosen;
     }

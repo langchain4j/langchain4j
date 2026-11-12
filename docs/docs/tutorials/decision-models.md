@@ -238,6 +238,24 @@ DecisionRequest request = DecisionRequest.builder()
 A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
 the model.
 
+### Audio, video and PDF files
+
+Some decision models also take audio, video and PDF files (for example
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini)), as `AudioContent`, `VideoContent` and
+`PdfFileContent`, in the same places as images: in a list of contents, as the values of fields, and in conversations:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .inputContents(List.of(
+                TextContent.from("The customer left this voice message and attached the receipt."),
+                AudioContent.from(base64Audio, "audio/mp3"),
+                PdfFileContent.from(base64Pdf, "application/pdf")))
+        .question("refund", YesNoQuestion.from("Does the customer ask for a refund?"))
+        .build();
+```
+
+See the [comparison table](/integrations/decision-models) for the kinds of input each decision model takes.
+
 ### Conversations
 
 The input can also be a conversation: a list of `ChatMessage`s in the order they were exchanged, for example between
@@ -294,8 +312,9 @@ output guardrail) can limit the number of messages and shorten long ones; see ea
 send, including system messages, tool results and retrieved content, goes to the provider of the decision model:
 leave out what must not go there with `messageFilter(...)`.
 
-Images in the conversation are referred to by their position, such as `[image 1]`, and sent next to the transcript
-if the decision model supports images. The decision model sees the names and arguments of the tool calls, but not
+Images, audio, video and PDF files in the conversation are referred to by their kind and their position among the
+contents of that kind, such as `[image 1]` or `[audio 1]`, and sent next to the transcript if the decision model
+supports them. The decision model sees the names and arguments of the tool calls, but not
 the tool specifications: if a decision depends on what a tool does, describe it in a `SystemMessage` or in the
 question. A failed tool result (`isError()`) has `"is_error": true`, and a `UserMessage` with a name has `"name"`.
 A `CustomMessage`, or a content that the decision model does not support, throws `UnsupportedFeatureException`
@@ -357,7 +376,9 @@ Implementations that do not support non-blocking calls return a future that fail
 ## Refusals
 
 A decision model can refuse to answer a question, for example because the input or the question goes against the
-usage policies of the provider. The answers to the other questions are still returned. Check
+usage policies of the provider. The answers to the other questions are still returned, unless the provider blocks the
+whole input, as [Google AI Gemini](/integrations/decision-models/google-ai-gemini#blocked-input) does: then every
+question is refused. Check
 `response.isRefused(name)` before reading an answer: reading a refused answer, for example with
 `response.yesNo(name)`, throws a `ContentFilteredException`. When a decision is used as a safety check, treat a
 refused answer as a failed check, as the [guardrails](#guardrails) do, rather than as a "no".

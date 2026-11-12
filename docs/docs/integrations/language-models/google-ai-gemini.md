@@ -6,6 +6,9 @@ sidebar_position: 7
 
 https://ai.google.dev/gemini-api/docs
 
+To answer yes/no, choice and scale questions with probabilities, see the
+[Google AI Gemini decision model](/integrations/decision-models/google-ai-gemini).
+
 ## Table of Contents
 
 - [Maven Dependency](#maven-dependency)

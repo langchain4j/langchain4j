@@ -31,6 +31,9 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
     private final SuccessfulHttpResponse response;
     private final List<ServerSentEvent> events;
     private RuntimeException failure;
+    private boolean neverResponds;
+    private final List<CompletableFuture<SuccessfulHttpResponse>> pendingResponses =
+            Collections.synchronizedList(new ArrayList<>());
     private boolean scriptedStreaming;
     private Supplier<?> contextProbe = () -> null;
     private final BlockingQueue<StreamExchange> exchanges = new LinkedBlockingQueue<>();
@@ -74,6 +77,9 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
         if (scriptedStreaming) {
             throw new IllegalStateException("This client only supports stream(request, parser)");
         }
+        if (neverResponds) {
+            throw new IllegalStateException("This client only supports executeAsync(request)");
+        }
         if (failure != null) {
             throw failure;
         }
@@ -83,6 +89,11 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         requests.add(request);
+        if (neverResponds) {
+            CompletableFuture<SuccessfulHttpResponse> pendingResponse = new CompletableFuture<>();
+            pendingResponses.add(pendingResponse);
+            return pendingResponse;
+        }
         if (failure != null) {
             return CompletableFuture.failedFuture(failure);
         }
@@ -186,6 +197,24 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
         MockHttpClient client = new MockHttpClient();
         client.failure = ensureNotNull(failure, "failure");
         return client;
+    }
+
+    /**
+     * Creates a client whose {@link #executeAsync(HttpRequest)} returns a future that is never completed by the
+     * client, see {@link #pendingResponses()}, for example to check that cancelling a call cancels the HTTP call.
+     */
+    public static MockHttpClient thatNeverResponds() {
+        MockHttpClient client = new MockHttpClient();
+        client.neverResponds = true;
+        return client;
+    }
+
+    /**
+     * The futures returned by {@link #executeAsync(HttpRequest)} of a client created with {@link #thatNeverResponds()},
+     * in the order of the requests.
+     */
+    public List<CompletableFuture<SuccessfulHttpResponse>> pendingResponses() {
+        return pendingResponses;
     }
 
     /**

@@ -499,7 +499,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
         DecisionModelMock model =
-                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
+                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical_1", Map.of())));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
@@ -508,20 +508,48 @@ class DecisionRouterPlannerTest {
 
         assertThat(router.ask(REQUEST)).isEqualTo("another medical answer");
         assertThat(medicalExpert.calls).hasValue(0);
-        // only the agents with the same name are options named after their ids
+        // only the agents with the same name are options named after their ids, with '_' instead of '$'
         ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
         assertThat(question.options())
                 .containsExactly(
-                        entry("medical$0", "Answers medical questions"),
-                        entry("medical$1", "Answers questions about medicines"),
+                        entry("medical_0", "Answers medical questions"),
+                        entry("medical_1", "Answers questions about medicines"),
                         entry("legal", "Answers legal questions"));
+    }
+
+    /** An expert whose name is the option name that the first {@link MedicalExpert} would get. */
+    public static class MedicalZeroExpert {
+
+        @Agent(name = "medical_0", description = "Answers questions about medical devices", outputKey = "deviceResponse")
+        public String devices(@V("request") String request) {
+            return "medical device answer";
+        }
+    }
+
+    @Test
+    void shouldGiveAFreeOptionNameToASubagentWhoseNameIsTaken() {
+        DecisionModelMock model =
+                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical_0_1", Map.of())));
+
+        ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
+                .subAgents(medicalExpert, new AnotherMedicalExpert(), new MedicalZeroExpert())
+                .planner(() -> new DecisionRouterPlanner(model))
+                .build();
+
+        assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        assertThat(question.options())
+                .containsExactly(
+                        entry("medical_0_1", "Answers medical questions"),
+                        entry("medical_1", "Answers questions about medicines"),
+                        entry("medical_0", "Answers questions about medical devices"));
     }
 
     @Test
     void shouldReturnUnderTheirIdsTheOutputsOfTheSubagentsWithTheSameNameWithAThreshold() {
         DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
-                "medical$0", YesNoAnswer.from(0.9),
-                "medical$1", YesNoAnswer.from(0.8),
+                "medical_0", YesNoAnswer.from(0.9),
+                "medical_1", YesNoAnswer.from(0.2),
                 "legal", YesNoAnswer.from(0.7)));
 
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
@@ -529,13 +557,12 @@ class DecisionRouterPlannerTest {
                 .planner(() -> new DecisionRouterPlanner(model, 0.5))
                 .build();
 
-        // the question and the output of an agent are under its name, unless another subagent has the same name
+        // the question and the output of an agent are under its name, unless another subagent has the same name: the
+        // output is then under its id, and the question under its id with '_' instead of '$'
         assertThat(router.ask(REQUEST))
-                .containsOnly(
-                        entry("medical$0", "medical answer"),
-                        entry("medical$1", "another medical answer"),
-                        entry("legal", "legal answer"));
-        assertThat(model.request().questions().get("medical$1").text())
+                .containsOnly(entry("medical$0", "medical answer"), entry("legal", "legal answer"));
+        assertThat(model.request().questions()).containsOnlyKeys("medical_0", "medical_1", "legal");
+        assertThat(model.request().questions().get("medical_1").text())
                 .isEqualTo("Should the agent 'medical' (Answers questions about medicines) handle this request?");
     }
 
