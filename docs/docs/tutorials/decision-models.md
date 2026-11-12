@@ -25,6 +25,8 @@ Typical uses are:
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
   (see the [confidence cascade agentic pattern](/tutorials/agents#confidence-cascade-agentic-pattern))
+- **Step-by-step orchestration**: which agent would be the most useful to invoke next? Has the goal been reached?
+  (see the [decision scheduler agentic pattern](/tutorials/agents#decision-scheduler-agentic-pattern))
 - **Decisions inside an agentic system**: a classifier, a grader or a check whose typed answer other agents consume
   (see [decision agents](/tutorials/agents#decision-agents))
 
@@ -388,18 +390,22 @@ needed. They work with any `DecisionModel` implementation.
 | `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
 | `AgenticServices.decisionAgentBuilder` | `langchain4j-agentic` |
-| `DecisionRouterPlanner`, `ConfidenceCascadePlanner` | `langchain4j-agentic-patterns` |
+| `DecisionRouterPlanner`, `ConfidenceCascadePlanner`, `DecisionSchedulerPlanner` | `langchain4j-agentic-patterns` |
 
-Each of these components makes an additional call to the decision model. Its token usage is not included in the token
-usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+Each of these components makes one or more additional calls to the decision model. Their token usage is not included
+in the token usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
 A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
 to the agent listeners and counted by the `AgentMonitor`.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
-with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component) or, for the
-chat model router, `question(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants
-(`DEFAULT_QUESTION` for the chat model router).
+with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component), for the
+chat model router and the confidence cascade, with `question(...)`, for the decision router, with `choiceQuestion(...)`
+and `relevanceQuestionTemplate(...)`, and for the decision scheduler, with `goalQuestionTemplate(...)` and
+`usefulnessQuestionTemplate(...)`. The defaults are available as `DEFAULT_QUESTION_TEMPLATE` constants
+(`DEFAULT_QUESTION` for the chat model router and the confidence cascade, `DEFAULT_CHOICE_QUESTION` and
+`DEFAULT_RELEVANCE_QUESTION_TEMPLATE` for the decision router, `DEFAULT_GOAL_QUESTION_TEMPLATE` and
+`DEFAULT_USEFULNESS_QUESTION_TEMPLATE` for the decision scheduler).
 For example:
 
 ```java
@@ -548,9 +554,10 @@ A [decision agent](/tutorials/agents#decision-agents) is an agent of an agentic 
 as the input of the decision, and its typed answer, with its probabilities, is written to the scope for the
 predicates, the exit conditions and the agents that follow. It is created with
 `AgenticServices.decisionAgentBuilder(...)` of the `langchain4j-agentic` module, or declaratively with
-`@DecisionModelSupplier`. The [decision router](/tutorials/agents#decision-router-agentic-pattern) and the
-[confidence cascade](/tutorials/agents#confidence-cascade-agentic-pattern) patterns use a decision model inside
-their orchestration instead, to choose which agents run and when to stop escalating.
+`@DecisionModelSupplier`. The [decision router](/tutorials/agents#decision-router-agentic-pattern), the
+[confidence cascade](/tutorials/agents#confidence-cascade-agentic-pattern) and the
+[decision scheduler](/tutorials/agents#decision-scheduler-agentic-pattern) patterns use a decision model inside
+their orchestration instead, to choose which agents run, when to stop escalating and which agent to invoke next.
 
 ### What the components send to the decision model
 

@@ -1,11 +1,13 @@
 package dev.langchain4j.model.watsonx;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -31,9 +33,7 @@ class WatsonxChatRequestParametersTest {
                 .timeout(Duration.ofSeconds(10))
                 .guidedChoice(Set.of("a", "b"))
                 .guidedRegex("[0-9]+")
-                .guidedGrammar("grammar")
-                .repetitionPenalty(1.1)
-                .lengthPenalty(1.2);
+                .guidedGrammar("grammar");
     }
 
     @Test
@@ -66,8 +66,30 @@ class WatsonxChatRequestParametersTest {
         assertThat(base).isNotEqualTo(fullyPopulated().guidedChoice(Set.of("c")).build());
         assertThat(base).isNotEqualTo(fullyPopulated().guidedRegex("[a-z]+").build());
         assertThat(base).isNotEqualTo(fullyPopulated().guidedGrammar("other").build());
-        assertThat(base).isNotEqualTo(fullyPopulated().repetitionPenalty(2.0).build());
-        assertThat(base).isNotEqualTo(fullyPopulated().lengthPenalty(2.0).build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void should_reject_repetition_and_length_penalty() {
+
+        assertThatThrownBy(() -> WatsonxChatRequestParameters.builder()
+                        .repetitionPenalty(1.1)
+                        .build())
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("'repetitionPenalty' is not supported by the watsonx.ai chat API. "
+                        + "Remove it, or use 'frequencyPenalty' or 'presencePenalty' to discourage repetition");
+
+        assertThatThrownBy(() ->
+                        WatsonxChatRequestParameters.builder().lengthPenalty(1.2).build())
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("'lengthPenalty' is not supported by the watsonx.ai chat API. Remove it, there is no replacement");
+
+        WatsonxChatRequestParameters parameters = WatsonxChatRequestParameters.builder()
+                .repetitionPenalty(null)
+                .lengthPenalty(null)
+                .build();
+        assertThat(parameters.repetitionPenalty()).isNull();
+        assertThat(parameters.lengthPenalty()).isNull();
     }
 
     @Test

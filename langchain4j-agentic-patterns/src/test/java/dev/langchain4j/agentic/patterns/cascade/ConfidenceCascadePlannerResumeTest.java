@@ -324,6 +324,20 @@ class ConfidenceCascadePlannerResumeTest {
     }
 
     @Test
+    void shouldRejectAPlannerInstanceInitializedTwice() {
+        MockDecisionModel model = modelGrading(0.1);
+        AgentInstance cascade = (AgentInstance) cascade(model, faqAgent, expertAgent);
+        DefaultAgenticScope scope = new AgenticScopeRegistry("cascade").create("s9");
+        InitPlanningContext initPlanningContext = new InitPlanningContext(scope, cascade, cascade.subagents());
+        ConfidenceCascadePlanner planner = new ConfidenceCascadePlanner(model, 0.5);
+        planner.init(initPlanningContext);
+
+        assertThatThrownBy(() -> planner.init(initPlanningContext))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cannot be reused");
+    }
+
+    @Test
     void shouldHaveNoExecutionStateBeforeTheFirstTierRuns() {
         ConfidenceCascadePlanner planner =
                 new ConfidenceCascadePlanner(MockDecisionModel.thatFails(new RuntimeException("unused")), 0.5);

@@ -3,8 +3,6 @@ package dev.langchain4j.agentic.patterns.cascade.support;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
@@ -23,15 +21,6 @@ public class SupportAgents {
         return Stream.of("faq", "expert")
                 .filter(tier -> !agenticScope.agentInvocations(tier).isEmpty())
                 .toList();
-    }
-
-    public static DecisionModel decisionModel() {
-        return TypeSafeDecisionModel.builder()
-                .apiKey(System.getenv("TYPESAFE_API_KEY"))
-                .modelName("jev-1.13.0")
-                .logRequests(true)
-                .logResponses(true)
-                .build();
     }
 
     public interface FaqAgent {

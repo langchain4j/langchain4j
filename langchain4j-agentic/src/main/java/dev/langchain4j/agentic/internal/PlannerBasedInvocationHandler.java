@@ -315,9 +315,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         if (result instanceof Action action && action.isSuspended()) {
-            onAgenticSystemSuspended(agentListener, currentScope);
             if (isRootCall()) {
                 currentScope.rootCallSuspended(registry, agentListener);
+            } else {
+                onAgenticSystemSuspended(agentListener, currentScope);
             }
             if (isRootCall() && method.getReturnType().equals(ResultWithAgenticScope.class)) {
                 return new ResultWithAgenticScope<>(currentScope, null, true, () ->

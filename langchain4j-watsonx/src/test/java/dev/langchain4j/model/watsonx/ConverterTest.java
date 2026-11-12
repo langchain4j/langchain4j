@@ -312,8 +312,6 @@ public class ConverterTest {
                 .guidedChoice("a", "b")
                 .guidedGrammar("guidedGrammar")
                 .guidedRegex("guidedRegex")
-                .lengthPenalty(1.1)
-                .repetitionPenalty(1.2)
                 .build();
 
         var p = Converter.toChatParameters(parameters, false);
@@ -335,8 +333,6 @@ public class ConverterTest {
         assertEquals(Set.of("a", "b"), p.guidedChoice());
         assertEquals("guidedGrammar", p.guidedGrammar());
         assertEquals("guidedRegex", p.guidedRegex());
-        assertEquals(1.1, p.lengthPenalty());
-        assertEquals(1.2, p.repetitionPenalty());
         assertNull(p.responseFormat());
     }
 
