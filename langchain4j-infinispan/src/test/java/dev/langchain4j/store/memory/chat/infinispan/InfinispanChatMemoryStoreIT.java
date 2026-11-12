@@ -1,6 +1,7 @@
 package dev.langchain4j.store.memory.chat.infinispan;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.infinispan.testcontainers.InfinispanContainer.IMAGE_BASENAME;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -209,13 +210,29 @@ class InfinispanChatMemoryStoreIT {
         builder.uri(infinispan.getConnectionURI());
         RemoteCacheManager remoteCacheManager = new RemoteCacheManager(builder.build());
 
-        InfinispanChatMemoryStore.builder()
-                .remoteCacheManager(remoteCacheManager)
-                .cacheName("non-existent-cache")
-                .createCache(false)
-                .build();
+        assertThatThrownBy(() -> InfinispanChatMemoryStore.builder()
+                        .remoteCacheManager(remoteCacheManager)
+                        .cacheName("non-existent-cache")
+                        .createCache(false)
+                        .build())
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'non-existent-cache' does not exist");
 
         assertThat(remoteCacheManager.getCache("non-existent-cache")).isNull();
+    }
+
+    @Test
+    void should_fail_when_cache_does_not_exist_and_creation_is_disabled_with_configuration_builder() {
+        ConfigurationBuilder builder = new ConfigurationBuilder();
+        builder.uri(infinispan.getConnectionURI());
+
+        assertThatThrownBy(() -> InfinispanChatMemoryStore.builder()
+                        .infinispanConfigBuilder(builder)
+                        .cacheName("non-existent-cache-2")
+                        .createCache(false)
+                        .build())
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'non-existent-cache-2' does not exist");
     }
 
     @Test

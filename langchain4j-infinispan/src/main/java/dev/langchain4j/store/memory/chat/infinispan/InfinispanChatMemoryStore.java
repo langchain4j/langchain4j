@@ -23,7 +23,7 @@ import org.infinispan.commons.configuration.StringConfiguration;
  */
 public class InfinispanChatMemoryStore implements ChatMemoryStore {
 
-    public static final String DEFAULT_CACHE_NAME = "chat-memory-json";
+    public static final String DEFAULT_CACHE_NAME = "chat-memory";
 
     private static final String DEFAULT_CACHE_CONFIG = "<distributed-cache name=\"CACHE_NAME\" statistics=\"true\">\n"
             + "<encoding>\n"
@@ -35,11 +35,12 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
     private final RemoteCache<String, String> remoteCache;
 
     /**
-     * Creates an InfinispanJsonChatMemoryStore from a pre-configured RemoteCacheManager.
+     * Creates an InfinispanChatMemoryStore from a pre-configured RemoteCacheManager.
      *
      * @param remoteCacheManager the already configured remote cache manager
      * @param cacheName          the cache name to use
-     * @param createCache        whether to create the cache if it doesn't exist
+     * @param createCache        whether to create the cache if it doesn't exist. When {@code false}, the cache must
+     *                           already exist on the server
      * @param cacheConfig        optional custom cache configuration XML
      */
     public InfinispanChatMemoryStore(
@@ -52,16 +53,17 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
             this.remoteCache =
                     remoteCacheManager.administration().getOrCreateCache(cacheName, new StringConfiguration(config));
         } else {
-            this.remoteCache = remoteCacheManager.getCache(cacheName);
+            this.remoteCache = getExistingCache(remoteCacheManager, cacheName);
         }
     }
 
     /**
-     * Creates an InfinispanJsonChatMemoryStore from a ConfigurationBuilder.
+     * Creates an InfinispanChatMemoryStore from a ConfigurationBuilder.
      *
      * @param builder     the Infinispan configuration builder
      * @param cacheName   the cache name to use
-     * @param createCache whether to create the cache if it doesn't exist
+     * @param createCache whether to create the cache if it doesn't exist. When {@code false}, the cache must already
+     *                    exist on the server
      * @param cacheConfig optional custom cache configuration XML
      */
     public InfinispanChatMemoryStore(
@@ -75,15 +77,22 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
         }
 
         RemoteCacheManager remoteCacheManager = new RemoteCacheManager(builder.build());
-        this.remoteCache = remoteCacheManager.getCache(cacheName);
+        this.remoteCache = getExistingCache(remoteCacheManager, cacheName);
+    }
+
+    private static RemoteCache<String, String> getExistingCache(
+            RemoteCacheManager remoteCacheManager, String cacheName) {
+        RemoteCache<String, String> cache = remoteCacheManager.getCache(cacheName);
+        if (cache == null) {
+            throw new IllegalStateException("Infinispan cache '" + cacheName
+                    + "' does not exist. Create it on the server, or set createCache(true) to let the store create it");
+        }
+        return cache;
     }
 
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
         ensureNotNull(memoryId, "memoryId");
-        if (remoteCache == null) {
-            return new ArrayList<>();
-        }
         String json = remoteCache.get(memoryId.toString());
         return json == null ? new ArrayList<>() : ChatMessageDeserializer.messagesFromJson(json);
     }
@@ -131,7 +140,8 @@ public class InfinispanChatMemoryStore implements ChatMemoryStore {
         }
 
         /**
-         * Create cache in the server, defaults to true
+         * Create cache in the server, defaults to true.
+         * When {@code false}, the cache must already exist on the server, otherwise building the store fails.
          */
         public Builder createCache(boolean createCache) {
             this.createCache = createCache;
