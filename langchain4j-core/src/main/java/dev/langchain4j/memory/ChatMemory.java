@@ -124,6 +124,9 @@ public interface ChatMemory {
      * this race window is <b>wider</b> than with the blocking {@link #add(Iterable)}: here the read and the write are
      * separated by future composition and thread hops rather than a single uninterrupted call, so sharing one memory
      * across concurrent invocations is more likely to silently drop an update than it was with the synchronous API.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param messages The {@link ChatMessage}s to add.
      * @return A future that completes when the messages have been added.
@@ -143,6 +146,9 @@ public interface ChatMemory {
      * Replaces the entire message history with {@code messages}. Like the other async methods, callers must not
      * invoke it concurrently for the same memory. The default implementation returns a failed future carrying
      * {@link AsyncNotSupportedException}; see {@link #addAsync(List)} for the rationale.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param messages The {@link ChatMessage}s to set.
      * @return A future that completes when the messages have been set.
@@ -160,6 +166,9 @@ public interface ChatMemory {
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #addAsync(List)}
      * for the rationale.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @return A future that completes with the current state of the chat memory.
      * @since 1.20.0

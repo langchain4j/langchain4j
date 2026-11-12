@@ -46,6 +46,9 @@ public interface QueryRouter {
      * call (e.g. {@link LanguageModelQueryRouter}) must opt in by overriding this method to stay off the calling
      * thread. A router that cannot be made non-blocking is still usable from these modes via
      * {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #route(Query)} to its executor.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param query The {@link Query} to be routed.
      * @return A {@link CompletableFuture} of one or more {@link ContentRetriever}s to route the {@link Query} to.

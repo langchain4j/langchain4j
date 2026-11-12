@@ -38,8 +38,19 @@ public interface ChatModelRouter {
      * The default returns a future failed with an {@link dev.langchain4j.exception.AsyncNotSupportedException}: the
      * non-blocking calls of the routing chat models ({@code chatAsync(...)}, and streaming to a {@code Publisher})
      * then fail. A router that decides without blocking, for example with simple rules, can implement this method by
-     * returning {@code CompletableFuture.completedFuture(route(request))}; a router that blocks, for example one that
-     * looks up the user in a database, can run {@link #route(ChatModelRoutingRequest)} on an executor of its choice.
+     * calling {@link #route(ChatModelRoutingRequest)} directly and reporting a failure through the future:
+     * <pre>{@code
+     * try {
+     *     return CompletableFuture.completedFuture(route(request));
+     * } catch (Exception e) {
+     *     return CompletableFuture.failedFuture(e);
+     * }
+     * }</pre>
+     * A router that blocks, for example one that looks up the user in a database, can run
+     * {@link #route(ChatModelRoutingRequest)} on an executor of its choice.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param request the chat request to route and the routes that can handle it. Never {@code null}.
      * @return a future of the result, see {@link #route(ChatModelRoutingRequest)}.
@@ -47,7 +58,8 @@ public interface ChatModelRouter {
     default CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
         return AsyncNotSupported.failedFuture("routeAsync() is not implemented by " + getClass().getName()
                 + ". If route() does not block, implement routeAsync() by returning"
-                + " CompletableFuture.completedFuture(route(request))");
+                + " CompletableFuture.completedFuture(route(request)), or CompletableFuture.failedFuture(e) if"
+                + " route(request) throws");
     }
 
     /**

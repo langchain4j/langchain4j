@@ -54,6 +54,9 @@ public interface ChatExecutor {
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.20.0
@@ -70,6 +73,9 @@ public interface ChatExecutor {
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the response
@@ -103,6 +109,9 @@ public interface ChatExecutor {
      * <p>
      * The default implementation calls {@link #executeAsync(List)} and returns {@code null} as the request, because
      * the request that the executor sent is not known.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the request and the response

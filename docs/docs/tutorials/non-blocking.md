@@ -414,12 +414,17 @@ interaction fails the call the same way. In practice that means:
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
 | Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
-A guardrail that does no blocking work satisfies the contract in one line:
+A guardrail that does no blocking work can call `validate(...)` directly. Like every asynchronous method, it reports
+a failure through the returned future instead of throwing:
 
 ```java
 @Override
 public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
-    return CompletableFuture.completedFuture(validate(request));
+    try {
+        return CompletableFuture.completedFuture(validate(request));
+    } catch (Exception e) {
+        return CompletableFuture.failedFuture(e);
+    }
 }
 ```
 

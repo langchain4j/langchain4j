@@ -59,6 +59,9 @@ public interface ChatMemoryStore {
      * <b>not</b> silently offloaded to a worker thread, because that would hide the fact that it is not truly
      * non-blocking. Implement this method to return the messages without blocking the calling thread (e.g. using a
      * reactive client), or, if the underlying client is blocking, offload it to an executor explicitly.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.
      * @return A future that completes with the list of messages for the specified chat memory. Must not be null.
@@ -76,6 +79,9 @@ public interface ChatMemoryStore {
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.
      * @param messages List of messages for the specified chat memory, that represent the current state of the
@@ -95,6 +101,9 @@ public interface ChatMemoryStore {
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.
      * @return A future that completes when the messages have been deleted.
