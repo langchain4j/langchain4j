@@ -22,7 +22,10 @@ import java.lang.annotation.Target;
  *     In the case of re-prompting, the reprompt message is added to the LLM context and the request is then retried.
  * </p>
  * <p>
- *     If the annotation is present on a class, the guardrails will be applied to all the methods of the class.
+ *     If the annotation is present on a class, the guardrails will be applied to all the methods of the class. An
+ *     annotation on a method takes precedence over one on the class. Output guardrails set on the
+ *     {@link dev.langchain4j.service.AiServices AiServices} builder take precedence over the guardrails of both, and an
+ *     output guardrails configuration set on the builder takes precedence over their {@link #maxRetries()}.
  * </p>
  * <p>
  *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in

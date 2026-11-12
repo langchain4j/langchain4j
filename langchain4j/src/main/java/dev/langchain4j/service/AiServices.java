@@ -1028,6 +1028,12 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the output guardrails for AI services.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service and takes precedence over the
+     *     configuration declared in any {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation on the AI service methods or class, such as its
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries}.
+     * </p>
      *
      * @param outputGuardrailsConfig the configuration object specifying the output guardrails
      * @return the current instance of {@link AiServices} to allow for method chaining
