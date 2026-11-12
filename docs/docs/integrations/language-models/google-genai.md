@@ -31,7 +31,7 @@ https://github.com/googleapis/java-genai
 - [Custom Labels](#custom-labels)
 - [File API](#file-api)
 - [Cached Content Support](#cached-content-support)
-- [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
+- [Thinking Models](#thinking-models)
 - [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Audio Transcription](#audio-transcription)
@@ -77,11 +77,11 @@ Check the list of [available models](https://ai.google.dev/gemini-api/docs/model
 
 * `gemini-4-argon`
 * `gemini-3.8-flash`
-* `gemini-3.5-flash`
-* `gemini-3.5-flash-lite`
 * `gemini-3.1-pro-preview`
 * `gemini-3.1-flash-lite`
-* `gemini-3-flash-preview`
+
+`gemini-4-argon` is available on the Gemini Developer API only, not on Vertex AI. It does not support explicit caching,
+and it thinks only with `thinkingLevel("MEDIUM")` or `thinkingLevel("HIGH")` (see [Thinking Models](#thinking-models)).
 
 (See the [official documentation](https://ai.google.dev/gemini-api/docs/models) for the full list of specialized preview models like `-image`, `-tts`, and `-live`).
 
@@ -440,11 +440,11 @@ Once you have created the cached content using the official Google Gen AI SDK or
 
 ```java
 // Pass your cached content URI here
-String cachedContentUri = "projects/123456/locations/us-central1/cachedContents/my-cached-content-789";
+String cachedContentUri = "cachedContents/my-cached-content-789";
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-pro-preview")
+    .modelName("gemini-3.8-flash")
     .cachedContent(cachedContentUri)
     .build();
 
@@ -452,6 +452,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 String response = gemini.chat("Summarize the cached document in 3 bullet points.");
 ```
 
+The model must be the one the cache was created with.
 This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
 
 ### Creating and managing caches
@@ -488,9 +489,9 @@ caches.deleteCache(cache.name().orElseThrow());
 
 > Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
-## Thinking Models (Gemini 3.0+)
+## Thinking Models
 
-Gemini 3 models (like `gemini-3.1-pro-preview` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
+Gemini 3 and later models (like `gemini-3.1-pro-preview` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
 You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
 
 ```java
@@ -503,6 +504,8 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 > [!NOTE]
 > Previously, thinking was configured using a token-based `thinkingBudget`. The `thinkingBudget` parameter is now considered legacy, though still supported. You cannot specify both `thinkingLevel` and `thinkingBudget` at the same time.
+>
+> `gemini-4-argon` does not think with a `thinkingBudget` or with `"LOW"`: use `"MEDIUM"` or `"HIGH"`.
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
@@ -620,7 +623,7 @@ The `GoogleGenAiImageModel` allows you to generate images from text prompts. It 
 ```java
 ImageModel imageModel = GoogleGenAiImageModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-flash-image-preview")
+    .modelName("gemini-3.1-flash-image")
     .aspectRatio("16:9")
     .build();
 
