@@ -69,6 +69,12 @@ class AiServiceStreamingPublisherConcurrencyTest {
             int now = active.incrementAndGet();
             peakActive.accumulateAndGet(now, Math::max);
             try {
+                // The model streams the tool calls one after another, so a tool can finish before the next one
+                // starts. Wait until two tools run at the same time, so that their events are sent concurrently.
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                while (peakActive.get() < 2 && System.nanoTime() < deadline) {
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+                }
                 // Brief work so overlapping invocations coincide, widening the concurrent-emission window.
                 LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(2));
             } finally {
