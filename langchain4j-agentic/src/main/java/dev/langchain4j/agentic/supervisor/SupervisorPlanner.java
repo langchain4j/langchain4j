@@ -412,11 +412,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         try {
             return supplier.get();
         } finally {
-            if (callerParameters == null) {
-                LangChain4jManaged.removeCurrent();
-            } else {
-                LangChain4jManaged.setCurrent(callerParameters);
-            }
+            LangChain4jManaged.restore(callerParameters);
         }
     }
 
