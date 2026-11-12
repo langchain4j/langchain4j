@@ -72,24 +72,20 @@ public class WatsonxModerationTest {
     @MockitoSettings(strictness = Strictness.LENIENT)
     void should_throw_an_illegal_argument_exception() {
 
-        var ex = assertThrows(
-                IllegalArgumentException.class,
-                () -> WatsonxModerationModel.builder()
-                        .baseUrl("https://test.com")
-                        .apiKey("api-key-test")
-                        .projectId("project-id")
-                        .build());
+        var ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
+                .baseUrl("https://test.com")
+                .apiKey("api-key-test")
+                .projectId("project-id")
+                .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
 
-        ex = assertThrows(
-                IllegalArgumentException.class,
-                () -> WatsonxModerationModel.builder()
-                        .baseUrl("https://test.com")
-                        .apiKey("api-key-test")
-                        .projectId("project-id")
-                        .detectors(List.of())
-                        .build());
+        ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
+                .baseUrl("https://test.com")
+                .apiKey("api-key-test")
+                .projectId("project-id")
+                .detectors(List.of())
+                .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
     }

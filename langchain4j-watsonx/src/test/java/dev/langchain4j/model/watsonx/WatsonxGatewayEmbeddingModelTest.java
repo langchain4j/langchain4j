@@ -325,8 +325,7 @@ public class WatsonxGatewayEmbeddingModelTest {
     void should_notify_the_listeners_when_embedding_with_the_gateway_parameters() {
 
         var data = List.of(new ModelGatewayEmbeddingResponse.Embedding("embedding", 0, List.of(0f, 1f), null));
-        var parameters =
-                ModelGatewayEmbeddingParameters.builder().dimensions(256).build();
+        var parameters = ModelGatewayEmbeddingParameters.builder().dimensions(256).build();
 
         when(mockModelGatewayEmbeddingService.embed(any(), parametersCaptor.capture()))
                 .thenReturn(

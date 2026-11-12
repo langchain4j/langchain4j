@@ -98,6 +98,31 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-watsonx</artifactId>
+            <version>${langchain4j.beta.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <!-- the watsonx.ai SDK has its own JSON binding: swap the Jackson 2 one for the Jackson 3 one below -->
+                <exclusion>
+                    <groupId>com.ibm.watsonx</groupId>
+                    <artifactId>watsonx-ai-jackson2</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.ibm.watsonx</groupId>
+            <artifactId>watsonx-ai-jackson3</artifactId>
+            <version>${watsonx-ai.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
             <version>${langchain4j.beta.version}</version>
             <exclusions>

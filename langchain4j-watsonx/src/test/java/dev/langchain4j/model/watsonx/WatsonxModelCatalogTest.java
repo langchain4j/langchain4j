@@ -65,7 +65,9 @@ public class WatsonxModelCatalogTest {
         var mockHttpRequest = ArgumentCaptor.forClass(HttpRequest.class);
 
         when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body()).thenReturn("""
+        when(mockHttpResponse.body())
+                .thenReturn(
+                        """
                     {
                         "total_count": 28,
                         "limit": 100,

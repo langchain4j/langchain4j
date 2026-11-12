@@ -17,7 +17,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_PROJECT_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
-@EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
 public class WatsonxChatModelThinkingIT {
 
     static final String API_KEY = System.getenv("WATSONX_API_KEY");
@@ -26,6 +25,7 @@ public class WatsonxChatModelThinkingIT {
     static final String DEPLOYMENT_ID = System.getenv("WATSONX_GRANITE_3_3_DEPLOYMENT_ID");
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     public void should_return_and_send_thinking() {
 
         ChatModel chatModel = WatsonxDeploymentChatModel.builder()
@@ -47,6 +47,7 @@ public class WatsonxChatModelThinkingIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     void should_return_and_NOT_send_thinking() {
 
         ChatModel chatModel = WatsonxDeploymentChatModel.builder()

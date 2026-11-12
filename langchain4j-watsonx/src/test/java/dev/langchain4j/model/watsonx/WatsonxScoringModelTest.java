@@ -24,11 +24,11 @@ import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
 import com.ibm.watsonx.ai.rerank.RerankService;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.listener.ScoringModelRequestContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelResponseContext;
+import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -228,8 +228,7 @@ public class WatsonxScoringModelTest {
 
             assertEquals(2, contexts.size());
             var requestContext = (ScoringModelRequestContext) contexts.get(0);
-            assertEquals(
-                    List.of("test1", "test2"), requestContext.scoringRequest().documents());
+            assertEquals(List.of("test1", "test2"), requestContext.scoringRequest().documents());
             assertEquals("query", requestContext.scoringRequest().query());
             assertEquals("model-name", requestContext.scoringRequest().modelName());
             assertEquals(ModelProvider.WATSONX, requestContext.modelProvider());
@@ -244,7 +243,8 @@ public class WatsonxScoringModelTest {
     @Test
     void should_notify_listeners_on_error() {
 
-        when(mockRerankService.rerank("failing query", List.of("test1"), null)).thenThrow(new RuntimeException("boom"));
+        when(mockRerankService.rerank("failing query", List.of("test1"), null))
+                .thenThrow(new RuntimeException("boom"));
         List<Object> contexts = new ArrayList<>();
 
         withRerankServiceMock(() -> {
@@ -290,9 +290,7 @@ public class WatsonxScoringModelTest {
             assertEquals("per-call-model", parameters.getValue().modelId());
             assertEquals(
                     "per-call-model",
-                    ((ScoringModelRequestContext) contexts.get(0))
-                            .scoringRequest()
-                            .modelName());
+                    ((ScoringModelRequestContext) contexts.get(0)).scoringRequest().modelName());
         });
     }
 
@@ -306,20 +304,14 @@ public class WatsonxScoringModelTest {
 
             ScoringResponse noDocuments = scoringModel.score(
                     ScoringRequest.builder().documents(List.of()).query("query").build());
-            ScoringResponse blankQuery = scoringModel.score(ScoringRequest.builder()
-                    .documents(List.of("test1"))
-                    .query(" ")
-                    .build());
+            ScoringResponse blankQuery = scoringModel.score(
+                    ScoringRequest.builder().documents(List.of("test1")).query(" ").build());
 
             assertEquals(List.of(), noDocuments.scores());
             assertEquals(List.of(), blankQuery.scores());
             verifyNoInteractions(mockRerankService);
             assertEquals(4, contexts.size());
-            assertEquals(
-                    List.of(),
-                    ((ScoringModelResponseContext) contexts.get(1))
-                            .scoringResponse()
-                            .scores());
+            assertEquals(List.of(), ((ScoringModelResponseContext) contexts.get(1)).scoringResponse().scores());
         });
     }
 
@@ -329,8 +321,7 @@ public class WatsonxScoringModelTest {
         List<RerankResult> rerankResults = List.of(new RerankResult(0, 0.9, new RerankInputResult("test1")));
         RerankResponse rerankResponse =
                 new RerankResponse("modelId", rerankResults, "createdAt", 1, "modelVersion", "query");
-        RerankParameters parameters =
-                RerankParameters.builder().modelId("modelId").build();
+        RerankParameters parameters = RerankParameters.builder().modelId("modelId").build();
         when(mockRerankService.rerank("query", List.of("test1"), parameters)).thenReturn(rerankResponse);
         List<Object> contexts = new ArrayList<>();
 

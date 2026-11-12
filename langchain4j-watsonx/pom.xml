@@ -23,7 +23,7 @@
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai</artifactId>
-            <version>0.50.0</version>
+            <version>${watsonx-ai.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -32,10 +32,11 @@
             </exclusions>
         </dependency>
 
+        <!-- JSON binding of the watsonx.ai SDK, loaded through ServiceLoader; Jackson 3 users swap it for watsonx-ai-jackson3 -->
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai-jackson2</artifactId>
-            <version>0.50.0</version>
+            <version>${watsonx-ai.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
