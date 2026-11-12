@@ -5,11 +5,14 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.HttpParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -70,4 +73,59 @@ class ChatRequestValidationUtilsTest {
         assertThatCode(() -> ChatRequestValidationUtils.validate(ResponseFormat.TEXT))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void validate_no_http_parameters_should_fail_when_http_parameters_are_set() {
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .httpParameters(HttpParameters.builder()
+                        .customHeaders(Map.of("X-Correlation-Id", "123"))
+                        .build())
+                .build();
+
+        assertThatThrownBy(() -> ChatRequestValidationUtils.validateNoHttpParameters(parameters))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("httpParameters");
+        assertThatThrownBy(() -> ChatRequestValidationUtils.validateParameters(parameters))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("httpParameters");
+    }
+
+    @Test
+    void validate_no_http_parameters_should_pass_when_http_parameters_are_not_set() {
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder().build();
+
+        assertThatCode(() -> ChatRequestValidationUtils.validateNoHttpParameters(parameters))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validate_no_http_parameters_should_pass_when_http_parameters_have_nothing_to_send() {
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .httpParameters(HttpParameters.builder().customHeaders(Map.of()).build())
+                .build();
+
+        assertThatCode(() -> ChatRequestValidationUtils.validateNoHttpParameters(parameters))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> ChatRequestValidationUtils.validateNoHttpParametersInBatch(parameters))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validate_no_http_parameters_in_batch_should_fail_with_batch_specific_message() {
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .httpParameters(HttpParameters.builder()
+                        .customHeaders(Map.of("X-Correlation-Id", "123"))
+                        .build())
+                .build();
+
+        assertThatThrownBy(() -> ChatRequestValidationUtils.validateNoHttpParametersInBatch(parameters))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("httpParameters")
+                .hasMessageContaining("batch");
+    }
 }
+

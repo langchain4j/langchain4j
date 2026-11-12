@@ -3,13 +3,16 @@ package dev.langchain4j.model.chat.request;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import dev.langchain4j.model.HttpParameters;
 
 class ChatRequestTest {
 
@@ -709,4 +712,78 @@ class ChatRequestTest {
             }
         }
     }
+
+    @Test
+    void should_set_custom_headers_via_shortcut() {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .customHeaders(Map.of("X-Correlation-Id", "123"))
+                .build();
+
+        assertThat(chatRequest.parameters().httpParameters().customHeaders())
+                .containsOnly(entry("X-Correlation-Id", "123"));
+    }
+
+    @Test
+    void custom_headers_shortcut_should_be_added_to_headers_of_parameters() {
+
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .temperature(0.5)
+                .httpParameters(HttpParameters.builder()
+                        .customHeaders(Map.of("X-Tenant-Id", "tenant-1", "X-Correlation-Id", "old"))
+                        .build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .customHeaders(Map.of("x-correlation-id", "new"))
+                .build();
+
+        assertThat(chatRequest.parameters().temperature()).isEqualTo(0.5);
+        assertThat(chatRequest.parameters().httpParameters().customHeaders())
+                .containsOnly(entry("X-Tenant-Id", "tenant-1"), entry("x-correlation-id", "new"));
+    }
+
+    @Test
+    void empty_custom_headers_shortcut_should_not_set_http_parameters() {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .customHeaders(Map.of())
+                .build();
+
+        assertThat(chatRequest.parameters().httpParameters()).isNull();
+    }
+
+    @Test
+    void to_builder_should_keep_http_parameters() {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .customHeaders(Map.of("X-Correlation-Id", "123"))
+                .build();
+
+        ChatRequest copy = chatRequest.toBuilder().temperature(0.3).build();
+
+        assertThat(copy.parameters().httpParameters().customHeaders())
+                .containsOnly(entry("X-Correlation-Id", "123"));
+        assertThat(copy.temperature()).isEqualTo(0.3);
+    }
+
+    @Test
+    void custom_headers_accessor_should_return_headers_or_empty_map() {
+
+        ChatRequest withHeaders = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .customHeaders(Map.of("X-Correlation-Id", "123"))
+                .build();
+        ChatRequest withoutHeaders =
+                ChatRequest.builder().messages(UserMessage.from("hi")).build();
+
+        assertThat(withHeaders.customHeaders()).containsOnly(entry("X-Correlation-Id", "123"));
+        assertThat(withoutHeaders.customHeaders()).isEmpty();
+    }
 }
+
