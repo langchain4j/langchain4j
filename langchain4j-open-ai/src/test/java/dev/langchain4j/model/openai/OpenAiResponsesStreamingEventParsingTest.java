@@ -4,20 +4,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +43,7 @@ class OpenAiResponsesStreamingEventParsingTest {
     private final List<PartialToolCall> partialToolCalls = new ArrayList<>();
     private final List<CompleteToolCall> completeToolCalls = new ArrayList<>();
     private final CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+    private final AtomicInteger errorCount = new AtomicInteger();
 
     private final StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
@@ -66,6 +74,7 @@ class OpenAiResponsesStreamingEventParsingTest {
 
         @Override
         public void onError(Throwable error) {
+            errorCount.incrementAndGet();
             futureResponse.completeExceptionally(error);
         }
     };
@@ -109,15 +118,21 @@ class OpenAiResponsesStreamingEventParsingTest {
         ChatResponse response = chatWith(
                 event(
                         "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"getWeather\"}}"),
-                event("{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"{\\\"city\\\":\"}"),
-                event("{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"\\\"Munich\\\"}\"}"),
+                event(
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"{\\\"city\\\":\"}"),
+                event(
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"\\\"Munich\\\"}\"}"),
                 event(
                         "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"fc_1\",\"arguments\":\"{\\\"city\\\":\\\"Munich\\\"}\"}"),
                 event(
                         "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}"));
 
         assertThat(partialToolCalls)
-                .extracting(PartialToolCall::index, PartialToolCall::id, PartialToolCall::name, PartialToolCall::partialArguments)
+                .extracting(
+                        PartialToolCall::index,
+                        PartialToolCall::id,
+                        PartialToolCall::name,
+                        PartialToolCall::partialArguments)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(0, "call_1", "getWeather", "{\"city\":"),
                         org.assertj.core.groups.Tuple.tuple(0, "call_1", "getWeather", "\"Munich\"}"));
@@ -127,7 +142,9 @@ class OpenAiResponsesStreamingEventParsingTest {
                 .name("getWeather")
                 .arguments("{\"city\":\"Munich\"}")
                 .build();
-        assertThat(completeToolCalls).extracting(CompleteToolCall::toolExecutionRequest).containsExactly(expected);
+        assertThat(completeToolCalls)
+                .extracting(CompleteToolCall::toolExecutionRequest)
+                .containsExactly(expected);
         assertThat(response.aiMessage().toolExecutionRequests()).containsExactly(expected);
         assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
     }
@@ -151,9 +168,7 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_read_the_metadata_of_the_completed_event() throws Exception {
-        ChatResponse response = chatWith(
-                event(
-                        """
+        ChatResponse response = chatWith(event("""
                         {"type":"response.completed","response":{
                           "id":"resp_1",
                           "model":"gpt-5.4-mini",
@@ -190,12 +205,107 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_fail_with_the_error_message_of_the_failed_event() {
-        stream(event(
-                "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Something went wrong\"}}}"));
+        stream(
+                event(
+                        "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Something went wrong\"}}}"));
 
         assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
                 .isInstanceOf(ExecutionException.class)
-                .hasMessageContaining("Response failed: Something went wrong");
+                .hasMessageContaining("Response failed: Something went wrong")
+                .cause()
+                .isInstanceOfSatisfying(
+                        OpenAiResponsesStreamingException.class,
+                        e -> assertThat(e.code()).isEqualTo("server_error"));
+    }
+
+    @Test
+    void should_fail_with_the_code_and_message_of_a_top_level_error_event() {
+        stream(
+                event("{\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}"),
+                event(
+                        "{\"type\":\"error\",\"sequence_number\":2,\"code\":\"rate_limit_exceeded\",\"message\":\"Rate limit reached\",\"param\":null}"));
+
+        assertThat(text).hasToString("Hel");
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOfSatisfying(OpenAiResponsesStreamingException.class, e -> {
+                    assertThat(e).hasMessage("Response failed: Rate limit reached");
+                    assertThat(e.code()).isEqualTo("rate_limit_exceeded");
+                });
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_with_the_code_and_message_of_a_nested_error_event() {
+        stream(
+                event(
+                        "{\"type\":\"error\",\"sequence_number\":1,\"error\":{\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\",\"message\":\"You exceeded your current quota\",\"param\":null}}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOfSatisfying(OpenAiResponsesStreamingException.class, e -> {
+                    assertThat(e).hasMessage("Response failed: You exceeded your current quota");
+                    assertThat(e.code()).isEqualTo("insufficient_quota");
+                });
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_when_the_stream_closes_before_a_terminal_event() {
+        stream(event("{\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}"));
+
+        assertThat(text).hasToString("Hel");
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOfSatisfying(
+                        OpenAiResponsesStreamingException.class,
+                        e -> assertThat(e.code()).isNull());
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_fail_once_when_the_completed_event_cannot_be_parsed() {
+        // like the real HTTP clients: the SSE parser swallows listener exceptions, then the stream closes
+        MockHttpClient mockHttpClient = new MockHttpClient() {
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                String body = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hel\"}\n\n"
+                        + "data: {\"type\":\"response.completed\",\"response\":{\"id\":\n\n";
+                new DefaultServerSentEventParser()
+                        .parse(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)), listener);
+                listener.onClose();
+            }
+        };
+
+        OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("dummy")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("gpt-5.4-mini")
+                .build()
+                .chat("Hello", handler);
+
+        assertThat(text).hasToString("Hel");
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(OpenAiResponsesStreamingException.class);
+        assertThat(errorCount).hasValue(1);
+    }
+
+    @Test
+    void should_report_an_error_event_followed_by_a_failed_event_only_once() {
+        stream(
+                event("{\"type\":\"error\",\"code\":\"server_error\",\"message\":\"First\"}"),
+                event(
+                        "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Second\"}}}"));
+
+        assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasMessageContaining("Response failed: First");
+        assertThat(errorCount).hasValue(1);
     }
 
     @Test
@@ -209,15 +319,14 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_ignore_events_that_do_not_belong_to_a_known_tool_call() throws Exception {
-        ChatResponse response = chatWith(
-                Stream.of(
-                                "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\"}}",
-                                "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"unknown\",\"delta\":\"{}\"}",
-                                "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"unknown\",\"arguments\":\"{}\"}",
-                                "{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\"}}",
-                                "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}")
-                        .map(OpenAiResponsesStreamingEventParsingTest::event)
-                        .toArray(ServerSentEvent[]::new));
+        ChatResponse response = chatWith(Stream.of(
+                        "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\"}}",
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"unknown\",\"delta\":\"{}\"}",
+                        "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"unknown\",\"arguments\":\"{}\"}",
+                        "{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\"}}",
+                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}")
+                .map(OpenAiResponsesStreamingEventParsingTest::event)
+                .toArray(ServerSentEvent[]::new));
 
         assertThat(partialToolCalls).isEmpty();
         assertThat(completeToolCalls).isEmpty();
