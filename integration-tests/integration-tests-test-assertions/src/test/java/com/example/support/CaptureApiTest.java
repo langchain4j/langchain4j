@@ -7,6 +7,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import static dev.langchain4j.test.service.AiServiceCapture.captureExpectingFailure;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -28,7 +29,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -151,22 +151,24 @@ class CaptureApiTest {
     }
 
     @Test
-    void should_capture_token_stream_started_with_complete_handlers() {
+    void should_capture_token_stream_started_with_complete_handlers() throws Exception {
         StreamingCustomerSupportAgent agent = CustomerSupport.streamingCustomerSupportAgent(
                 StreamingChatModelMock.thatAlwaysStreams("Hi ", "there"), bookings());
         List<String> tokens = new CopyOnWriteArrayList<>();
-        AtomicReference<ChatResponse> completeResponse = new AtomicReference<>();
+        CompletableFuture<ChatResponse> completeResponse = new CompletableFuture<>();
 
         AiServiceCapture capture = capture(() -> agent.chat("Hi")
                 .onPartialResponse(tokens::add)
-                .onCompleteResponse(completeResponse::set)
+                .onCompleteResponse(completeResponse::complete)
                 .onError(error -> {})
                 .start());
 
         assertThat(capture.outputText()).isEqualTo("Hi there");
         assertThat(String.join("", tokens)).isEqualTo("Hi there");
-        assertThat(completeResponse.get().aiMessage().text()).isEqualTo("Hi there");
-        assertThat(capture.invocation().lastResponse()).isEqualTo(completeResponse.get());
+        // the invocation ends before the onCompleteResponse handler runs, so capture(...) can return before it
+        ChatResponse response = completeResponse.get(10, SECONDS);
+        assertThat(response.aiMessage().text()).isEqualTo("Hi there");
+        assertThat(capture.invocation().lastResponse()).isEqualTo(response);
     }
 
     @Test
