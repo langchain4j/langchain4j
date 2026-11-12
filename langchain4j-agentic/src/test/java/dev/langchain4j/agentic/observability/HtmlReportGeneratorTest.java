@@ -18,6 +18,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -27,6 +28,7 @@ import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -315,9 +317,8 @@ class HtmlReportGeneratorTest {
                 .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
     }
 
-    private static String executionOfSupervisorPlanningWith(ChatModelMock planningModel) {
-        AgentMonitor monitor = new AgentMonitor();
-        AgenticServices.supervisorBuilder()
+    private static SupervisorAgent supervisorPlanningWith(ChatModelMock planningModel, AgentMonitor monitor) {
+        return AgenticServices.supervisorBuilder()
                 .chatModel(planningModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(AgenticServices.nonAiAgentBuilder(scope -> "noon")
@@ -326,9 +327,43 @@ class HtmlReportGeneratorTest {
                         .outputKey("time")
                         .build())
                 .listener(monitor)
-                .build()
-                .invoke("What time is it?");
+                .build();
+    }
+
+    private static String executionOfSupervisorPlanningWith(ChatModelMock planningModel) {
+        AgentMonitor monitor = new AgentMonitor();
+        supervisorPlanningWith(planningModel, monitor).invoke("What time is it?");
         return HtmlReportGenerator.generateExecution(monitor);
+    }
+
+    @Test
+    void shows_the_model_and_the_tokens_spent_by_a_pattern_whose_execution_failed() {
+        // the supervisor invokes the clock, then its second planning call fails
+        AtomicInteger planningCalls = new AtomicInteger();
+        ChatModelMock planningModel = ChatModelMock.thatResponds(request -> {
+                    if (planningCalls.getAndIncrement() > 0) {
+                        throw new IllegalStateException("planning failed");
+                    }
+                    return AiMessage.from("""
+                            {"agentName": "clock", "arguments": {}}
+                            """);
+                })
+                .withModelNames("planning-model")
+                .withTokenUsage(new TokenUsage(100, 20));
+        AgentMonitor monitor = new AgentMonitor();
+        SupervisorAgent supervisor = supervisorPlanningWith(planningModel, monitor);
+
+        assertThatThrownBy(() -> supervisor.invoke("What time is it?")).hasMessageContaining("planning failed");
+        String html = HtmlReportGenerator.generateExecution(monitor);
+
+        // the row of the supervisor, which never completed, still shows what its first planning call spent
+        assertThat(html).contains("planning failed");
+        String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
+        String[] rows = body.split("<tr");
+        assertThat(rows).hasSize(3);
+        assertThat(rows[1])
+                .contains("<td class=\"wf-dur\">planning-model</td>")
+                .contains("<td class=\"wf-dur\">120</td>");
     }
 
     @Test

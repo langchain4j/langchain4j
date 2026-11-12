@@ -204,15 +204,20 @@ public class AgentInvocation {
      * calls, without the token usage of its subagents, which is reported by their own invocations. It is empty if
      * the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider didn't
      * report the token usage.
+     * <p>
+     * This method can be called at any time. For an agent whose planner calls a model itself it returns what those
+     * calls consumed so far, also while the invocation is in progress or suspended, and after it failed. The token
+     * usage of an AI agent or of a decision agent is only known when its invocation completes, so it is empty until
+     * then, and it stays empty when the invocation fails.
      */
     public Optional<TokenUsage> tokenUsage() {
-        if (!done()) {
-            throw new IllegalStateException("Agent call is not finished yet");
-        }
         synchronized (this) {
             if (plannerModelCalled) {
                 return Optional.ofNullable(plannerTokenUsage);
             }
+        }
+        if (!done()) {
+            return Optional.empty();
         }
         Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
@@ -228,15 +233,19 @@ public class AgentInvocation {
      * since {@link #tokenUsage()} is the total of all those calls. In the same way, for an agent whose planner calls
      * a model itself, like a supervisor or a decision router, it is the name of the model that answered all those
      * calls, and it is empty if they were answered by different models.
+     * <p>
+     * Like {@link #tokenUsage()}, this method can be called at any time: it tells the model of the calls made so far
+     * by the planner of the agent, and it is empty for an AI agent or a decision agent whose invocation didn't
+     * complete.
      */
     public Optional<String> modelName() {
-        if (!done()) {
-            throw new IllegalStateException("Agent call is not finished yet");
-        }
         synchronized (this) {
             if (plannerModelCalled) {
                 return Optional.ofNullable(plannerModelName);
             }
+        }
+        if (!done()) {
+            return Optional.empty();
         }
         Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
@@ -288,7 +297,7 @@ public class AgentInvocation {
                 ", finishTime=" + finishTime() +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
                 (suspendedDuration().isZero() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
-                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
+                ", tokens=" + (done() || totalTokenCount() > 0 ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');

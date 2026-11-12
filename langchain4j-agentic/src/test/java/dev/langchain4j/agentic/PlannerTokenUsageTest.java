@@ -299,7 +299,7 @@ class PlannerTokenUsageTest {
     }
 
     @Test
-    void planner_failing_after_a_model_call_reported_it_to_the_listeners_but_shows_no_tokens_in_the_monitor() {
+    void planner_failing_after_a_model_call_keeps_the_tokens_it_spent_in_the_monitor() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         AgentMonitor monitor = new AgentMonitor();
         ChatModelMock model = ChatModelMock.thatResponds(request -> {
@@ -308,6 +308,7 @@ class PlannerTokenUsageTest {
                     }
                     return AiMessage.from("go on");
                 })
+                .withModelNames("planning-model")
                 .withTokenUsage(new TokenUsage(100, 20));
         Pattern pattern = AgenticServices.plannerBuilder(Pattern.class)
                 .name("pattern")
@@ -323,8 +324,41 @@ class PlannerTokenUsageTest {
                 .hasMessage("model failed");
 
         assertThat(responses).extracting(PlannerModelResponse::tokenUsage).containsExactly(new TokenUsage(100, 20));
-        // like a failed AI agent, a failed pattern is never done, so its tokens are not shown
-        assertThat(monitor.failedExecutions().get(0).topLevelInvocations().done()).isFalse();
+        // a failed invocation is never done, but what its planner spent before failing is still reported
+        AgentInvocation failed = monitor.failedExecutions().get(0).topLevelInvocations();
+        assertThat(failed.done()).isFalse();
+        assertThat(failed.tokenUsage()).contains(new TokenUsage(100, 20));
+        assertThat(failed.totalTokenCount()).isEqualTo(120);
+        assertThat(failed.modelName()).contains("planning-model");
+        assertThat(failed.toString()).contains("tokens=120");
+    }
+
+    @Test
+    void planner_whose_subagent_fails_keeps_the_tokens_it_spent_in_the_monitor() {
+        AgentMonitor monitor = new AgentMonitor();
+        ChatModelMock model = plannerModel().withTokenUsage(new TokenUsage(100, 20));
+        Assistant failingAssistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysThrowsException())
+                .build();
+        Pattern pattern = AgenticServices.plannerBuilder(Pattern.class)
+                .name("pattern")
+                .subAgents(failingAssistant)
+                .outputKey("answer")
+                .planner(() -> new ChatModelPlanner(model))
+                .listener(monitor)
+                .build();
+
+        assertThatThrownBy(() -> pattern.run("what time is it?")).isInstanceOf(RuntimeException.class);
+
+        AgentInvocation failed = monitor.failedExecutions().get(0).topLevelInvocations();
+        assertThat(failed.done()).isFalse();
+        assertThat(failed.tokenUsage()).contains(new TokenUsage(100, 20));
+        // the response of the model of a failed AI agent is lost with its failure, so it has no tokens to report
+        AgentInvocation failedAssistant = failed.nestedInvocations().get(0);
+        assertThat(failedAssistant.done()).isFalse();
+        assertThat(failedAssistant.tokenUsage()).isEmpty();
+        assertThat(failedAssistant.totalTokenCount()).isZero();
+        assertThat(failedAssistant.modelName()).isEmpty();
     }
 
     // ── Supervisor ──

@@ -187,6 +187,9 @@ class SupervisorHitlSuspensionTest {
         ResultWithAgenticScope<String> suspended = supervisor.invoke("s1", "Greet the user");
         assertThat(suspended.suspended()).isTrue();
         assertThat(plannerModel.requests()).hasSize(1);
+        // the tokens spent so far are already reported by the suspended invocation, which is not done yet
+        assertThat(monitor.ongoingExecutionFor("s1").topLevelInvocations().tokenUsage())
+                .contains(new TokenUsage(100, 20));
 
         ResultWithAgenticScope<String> result = suspended.completePendingResponse("user-name", "Alice");
         assertThat(result.suspended()).isFalse();
