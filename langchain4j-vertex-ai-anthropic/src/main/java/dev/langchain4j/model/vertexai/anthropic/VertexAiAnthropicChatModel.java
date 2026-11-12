@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_VERTEX_AI_ANTHROPIC;
@@ -101,6 +102,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         if (parameters.responseFormat() != null && parameters.responseFormat().jsonSchema() != null) {
             throw new UnsupportedFeatureException("JSON response format is not supported yet");
         }
+        validateNoHttpParameters(parameters);
 
         try {
             String requestModelName = getOrDefault(parameters.modelName(), modelName);

@@ -1,5 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -90,6 +92,12 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
     protected final void executeChatStreaming(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
+        try {
+            validateNoHttpParameters(chatRequest.parameters());
+        } catch (UnsupportedFeatureException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+            return;
+        }
         var watsonxChatRequest = toWatsonxChatRequest(chatRequest);
         var streamingHandle = new WatsonxStreamingHandle();
 
@@ -187,6 +195,7 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
     private static void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
+        validateNoHttpParameters(parameters);
     }
 
     @SuppressWarnings("unchecked")

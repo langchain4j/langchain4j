@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.*;
@@ -98,8 +99,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             }
             return;
         }
-
         try {
+            validateNoHttpParameters(parameters);
             String requestModelName = determineRequestModelName(chatRequest.parameters());
             AnthropicRequest anthropicRequest = buildAnthropicRequest(chatRequest, requestModelName);
 
