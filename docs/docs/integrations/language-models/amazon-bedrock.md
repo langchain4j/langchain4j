@@ -268,6 +268,15 @@ See [Per-request metadata tagging](https://docs.aws.amazon.com/bedrock/latest/us
 for more information.
 
 
+## Per-request HTTP headers
+
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+Bedrock signs every request itself, so a per-request `Authorization` header has no effect.
+A per-request `User-Agent` is added after the AWS SDK's own value; each of its tokens must have the form
+`name/version` (for example `my-app/1.0`).
+`BedrockBatchChatModel` does not support per-request headers.
+
 ## Thinking / Reasoning
 
 To enable Claude thinking process, call `enableReasoning` on `BedrockChatRequestParameters` and set it via

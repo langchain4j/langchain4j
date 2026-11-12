@@ -198,6 +198,11 @@ class ChatModelController {
 }
 ```
 
+### Per-request HTTP headers
+
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+
 ## Structured Outputs
 The [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) feature is supported
 for both [tools](/tutorials/tools) and [response format](/tutorials/ai-services#json-mode).

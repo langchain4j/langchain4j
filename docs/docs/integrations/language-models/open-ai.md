@@ -425,6 +425,11 @@ Map<String, Object> customParameters = Map.of(
 );
 ```
 
+### Per-request HTTP headers
+
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+
 ## Prompt Caching
 
 OpenAI caches long, repeated prompt prefixes and bills a cache read at a fraction of the input rate.
@@ -610,6 +615,9 @@ Custom headers are applied last, so they can also be used to override the header
 LangChain4j sets by default (for example, `Authorization`).
 
 The same applies to `OpenAiResponsesStreamingChatModel`.
+
+To send a header with a single request only, see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
 
 ### `OpenAiResponsesChatRequestParameters`
 

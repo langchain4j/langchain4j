@@ -106,6 +106,11 @@ ChatResponse chatResponse = model.chat(chatRequest);
 
 Any parameter not set on the request falls back to the value configured on the model builder.
 
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+A per-request `anthropic-beta` header replaces the betas set with `beta(...)` on the model builder,
+so list all the betas you need, separated by commas.
+
 ## AnthropicStreamingChatModel
 ```java
 AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()

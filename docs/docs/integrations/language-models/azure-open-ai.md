@@ -351,6 +351,13 @@ langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
 
 
+## Per-request HTTP headers
+
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+If you pass your own client with `openAIClient(...)`, the headers are still sent,
+but that client's own headers with the same name win.
+
 ## Audio Transcription
 
 Azure OpenAI now supports audio transcription, enabling you to convert spoken language from audio files into text using state-of-the-art models hosted on Azure.
