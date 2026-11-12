@@ -921,6 +921,8 @@ public class SupervisorAgentIT {
 
         AgentInvocation topLevel = execution.topLevelInvocations();
         assertThat(topLevel.done()).isTrue();
+        // the tokens of the planning calls of the supervisor itself, without the ones of its subagents
+        assertThat(topLevel.totalTokenCount()).isPositive();
 
         List<AgentInvocation> nestedInvocations = topLevel.nestedInvocations();
         assertThat(nestedInvocations).isNotEmpty();

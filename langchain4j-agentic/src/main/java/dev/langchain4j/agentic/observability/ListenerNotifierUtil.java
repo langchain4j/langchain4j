@@ -135,6 +135,19 @@ public class ListenerNotifierUtil {
         }
     }
 
+    public static void onPlannerModelResponse(AgentListener listener, PlannerModelResponse plannerModelResponse) {
+        if (listener != null) {
+            try {
+                listener.onPlannerModelResponse(plannerModelResponse);
+            } catch (Exception e) {
+                LOG.error(
+                        "onPlannerModelResponse listener for agent " + plannerModelResponse.agentName() + " failed: "
+                                + e.getMessage(),
+                        e);
+            }
+        }
+    }
+
     public static void afterAgenticScopeCreated(AgentListener listener, AgenticScope agenticScope) {
         if (listener != null) {
             try {

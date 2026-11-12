@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.patterns.p2p.VariablesExtractorAgent",
+          "justification": "The AI service that the peer-to-peer planner asks to extract the variables of its agents from the request: it is built and called only by P2PPlanner, never by user code. It is now annotated with @Internal, so it is no longer analysed, and its extractVariables method returns a Result to let the planner report the token usage of the extraction call (issue #7082)."
+        }
+      ]
+    }
+  }
+]

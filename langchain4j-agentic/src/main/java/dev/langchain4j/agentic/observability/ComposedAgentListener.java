@@ -86,6 +86,11 @@ public class ComposedAgentListener implements AgentListener {
     }
 
     @Override
+    public void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+        notifyEach(listener -> listener.onPlannerModelResponse(plannerModelResponse));
+    }
+
+    @Override
     public void afterAgenticScopeCreated(final AgenticScope agenticScope) {
         notifyEach(listener -> listener.afterAgenticScopeCreated(agenticScope));
     }

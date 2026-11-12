@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeKey;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
@@ -13,8 +15,10 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import java.util.Iterator;
@@ -141,5 +145,55 @@ class SupervisorHitlSuspensionTest {
         assertThat(result.agenticScope().readState("userAnswer", "")).isEqualTo("Alice");
         assertThat(result.agenticScope().readState("queryResult", "")).isEqualTo("queried:Alice");
         assertThat(plannerModel.calls()).isEqualTo(3);
+    }
+
+    @Test
+    void resumed_supervisor_counts_the_planning_calls_made_before_the_suspension() {
+        AgenticScopePersister.setStore(new InMemoryAgenticScopeStore());
+
+        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from("""
+                                {"agentName": "askUser", "arguments": {"question": "What is your name?"}}
+                                """),
+                        AiMessage.from("""
+                                {"agentName": "query", "arguments": {}}
+                                """),
+                        AiMessage.from("""
+                                {"agentName": "done", "arguments": {"response": "Hello Alice"}}
+                                """))
+                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5), new TokenUsage(10, 2));
+
+        HumanInTheLoop askUser = AgenticServices.humanInTheLoopBuilder()
+                .description("Ask the user for missing information")
+                .outputKey("userAnswer")
+                .responseProvider(scope -> new SuspendedResponse<>("user-name"))
+                .build();
+
+        var queryAgent = AgenticServices.nonAiAgentBuilder(scope -> "queried:" + scope.readState("userAnswer", ""))
+                .name("query")
+                .description("Query agent that uses the user answer")
+                .outputKey("queryResult")
+                .build();
+
+        AgentMonitor monitor = new AgentMonitor();
+        SuspendableSupervisor supervisor = AgenticServices.supervisorBuilder(SuspendableSupervisor.class)
+                .chatModel(plannerModel)
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
+                .subAgents(askUser, queryAgent)
+                .listener(monitor)
+                .build();
+
+        ResultWithAgenticScope<String> suspended = supervisor.invoke("s1", "Greet the user");
+        assertThat(suspended.suspended()).isTrue();
+        assertThat(plannerModel.requests()).hasSize(1);
+
+        ResultWithAgenticScope<String> result = suspended.completePendingResponse("user-name", "Alice");
+        assertThat(result.suspended()).isFalse();
+        assertThat(plannerModel.requests()).hasSize(3);
+
+        // the resumed call continues the invocation recorded before the suspension, with the tokens it had spent
+        AgentInvocation invocation = monitor.successfulExecutionsFor("s1").get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(140, 27));
     }
 }

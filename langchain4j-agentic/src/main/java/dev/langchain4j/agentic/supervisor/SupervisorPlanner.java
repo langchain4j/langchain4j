@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.CurrentPlanningContext;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -23,6 +24,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.service.Result;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -214,7 +216,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (loopCount++ >= maxAgentsInvocations) {
-            return doneAction(planningContext.agenticScope(), lastResponse, null);
+            return doneAction(planningContext, lastResponse, null);
         }
         // a skipped agent produced no response, so the model is told why instead
         String plannerResponse = previousInvocation != null && previousInvocation.skipped()
@@ -368,10 +370,12 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = withAgenticScope(
-                agenticScope,
+        Result<AgentInvocation> plan = withPlanningContext(
+                planningContext,
                 () -> planner(agenticScope)
                         .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
+        planningContext.reportChatModelResponse(plan.finalResponse());
+        AgentInvocation agentInvocation = plan.content();
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName() == null) {
@@ -379,7 +383,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-            return doneAction(agenticScope, lastResponse, agentInvocation);
+            return doneAction(planningContext, lastResponse, agentInvocation);
         }
 
         AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
@@ -391,8 +395,18 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return call(agent);
     }
 
-    private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+    /**
+     * Runs a model call of the supervisor with its scope and its planning context bound to the thread: the context
+     * summarizer runs inside the request transformer of the planning service, which is cached per scope and shared
+     * by all the invocations of the supervisor, so the thread is the only way it can reach the planning context of
+     * the current invocation to report its own model call.
+     */
+    private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
+        LangChain4jManaged.setCurrent(Map.of(
+                AgenticScope.class,
+                planningContext.agenticScope(),
+                CurrentPlanningContext.class,
+                new CurrentPlanningContext(planningContext)));
         try {
             return supplier.get();
         } finally {
@@ -434,8 +448,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return true;
     }
 
-    private Action doneAction(AgenticScope agenticScope, String lastResponse, AgentInvocation done) {
-        Object result = result(agenticScope, request, lastResponse, done);
+    private Action doneAction(PlanningContext planningContext, String lastResponse, AgentInvocation done) {
+        AgenticScope agenticScope = planningContext.agenticScope();
+        Object result = result(planningContext, request, lastResponse, done);
         if (outputKey != null) {
             agenticScope.writeState(outputKey, result);
         }
@@ -446,7 +461,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return ((DefaultAgenticScope) agenticScope).getOrCreateAgent(agentId(), this::buildPlannerAgent);
     }
 
-    private Object result(AgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
+    private Object result(PlanningContext planningContext, String request, String lastResponse, AgentInvocation done) {
         if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
@@ -456,8 +471,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                ResponseScore score = withAgenticScope(
-                        agenticScope, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
+                Result<ResponseScore> scored = withPlanningContext(
+                        planningContext, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
+                planningContext.reportChatModelResponse(scored.finalResponse());
+                ResponseScore score = scored.content();
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }

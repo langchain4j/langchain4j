@@ -257,6 +257,16 @@
           "code": "java.method.addedToInterface",
           "new": "method boolean dev.langchain4j.agentic.scope.AgenticScopeAccess::deleteAgenticScope(java.lang.Object)",
           "justification": "Evicts an AgenticScope and deletes the stored messages of the chat memories its agents hold for its id, which evictAgenticScope keeps, with the meaning of ChatMemoryAccess.evictChatMemory. AgenticScopeAccess is extended by agent interfaces and implemented by the agent objects that langchain4j-agentic and its integrations generate, not by user code."
+        },
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.supervisor.PlannerAgent",
+          "justification": "The AI service that the supervisor asks which subagent to invoke next: it is built and called only by SupervisorPlanner, never by user code. It is now annotated with @Internal, so it is no longer analysed, and its plan method returns a Result to let the supervisor report the token usage of its planning calls (issue #7082)."
+        },
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.supervisor.ResponseAgent",
+          "justification": "The AI service that the supervisor asks to score its candidate responses: it is built and called only by SupervisorPlanner, never by user code. It is now annotated with @Internal, so it is no longer analysed, and its scoreResponses method returns a Result to let the supervisor report the token usage of its scoring call (issue #7082)."
         }
       ]
     }

@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.Result;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -79,8 +80,10 @@ public class P2PPlanner implements Planner {
                     .distinct()
                     .toList();
 
-            Map<String, String> vars =
+            Result<Map<String, String>> extraction =
                     createVariablesExtractorAgent(chatModel).extractVariables(request, variableNames);
+            planningContext.reportChatModelResponse(extraction.finalResponse());
+            Map<String, String> vars = extraction.content();
             LOG.info("Variables extracted from user's prompt: {}", vars);
             vars.forEach(planningContext.agenticScope()::writeState);
         }

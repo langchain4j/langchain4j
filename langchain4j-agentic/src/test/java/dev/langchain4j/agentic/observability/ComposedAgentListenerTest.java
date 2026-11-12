@@ -73,6 +73,20 @@ class ComposedAgentListenerTest {
     }
 
     @Test
+    void planner_model_responses_are_forwarded_to_all_the_composed_listeners() {
+        List<PlannerModelResponse> firstResponses = new ArrayList<>();
+        List<PlannerModelResponse> secondResponses = new ArrayList<>();
+        AgentListener composed = ComposedAgentListener.compose(
+                plannerModelResponseRecorder(firstResponses), plannerModelResponseRecorder(secondResponses));
+        PlannerModelResponse response = new PlannerModelResponse(null, null, null, null);
+
+        composed.onPlannerModelResponse(response);
+
+        assertThat(firstResponses).containsExactly(response);
+        assertThat(secondResponses).containsExactly(response);
+    }
+
+    @Test
     void a_failing_listener_does_not_keep_the_others_from_being_notified_before_an_invocation() {
         List<AgentRequest> requests = new ArrayList<>();
         IllegalStateException failure = new IllegalStateException("before failed");
@@ -178,6 +192,15 @@ class ComposedAgentListenerTest {
             @Override
             public void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {
                 events.add(agentAiServiceEvent);
+            }
+        };
+    }
+
+    private static AgentListener plannerModelResponseRecorder(List<PlannerModelResponse> responses) {
+        return new AgentListener() {
+            @Override
+            public void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+                responses.add(plannerModelResponse);
             }
         };
     }

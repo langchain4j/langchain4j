@@ -18,6 +18,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
+import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
@@ -299,6 +300,58 @@ class HtmlReportGeneratorTest {
 
         // the tokens column shows the total of both LLM calls, so no single model can be credited with it
         assertThat(html).doesNotContain("tool-calling-model").doesNotContain("answering-model");
+        assertThat(html).contains("<td class=\"wf-dur\">155</td>");
+    }
+
+    /** A model making a supervisor invoke its only subagent, the clock, and then end. */
+    private static ChatModelMock planningModel() {
+        return ChatModelMock.thatAlwaysResponds(
+                        AiMessage.from("""
+                                {"agentName": "clock", "arguments": {}}
+                                """),
+                        AiMessage.from("""
+                                {"agentName": "done", "arguments": {"response": "It is noon"}}
+                                """))
+                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+    }
+
+    private static String executionOfSupervisorPlanningWith(ChatModelMock planningModel) {
+        AgentMonitor monitor = new AgentMonitor();
+        AgenticServices.supervisorBuilder()
+                .chatModel(planningModel)
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(AgenticServices.nonAiAgentBuilder(scope -> "noon")
+                        .name("clock")
+                        .description("Tells the time")
+                        .outputKey("time")
+                        .build())
+                .listener(monitor)
+                .build()
+                .invoke("What time is it?");
+        return HtmlReportGenerator.generateExecution(monitor);
+    }
+
+    @Test
+    void shows_the_model_and_the_tokens_of_the_model_calls_of_a_pattern_on_its_own_row() {
+        String html = executionOfSupervisorPlanningWith(
+                planningModel().withModelNames("planning-model", "planning-model"));
+
+        // the supervisor is the first row: it shows the model and the total tokens of its two planning calls
+        String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
+        String[] rows = body.split("<tr");
+        assertThat(rows).hasSize(3);
+        assertThat(rows[1])
+                .contains("<td class=\"wf-dur\">planning-model</td>")
+                .contains("<td class=\"wf-dur\">155</td>");
+        // the subagent, which calls no model, shows neither
+        assertThat(rows[2]).doesNotContain("planning-model").doesNotContain("155");
+    }
+
+    @Test
+    void does_not_show_a_model_next_to_the_tokens_of_a_pattern_whose_model_calls_were_answered_by_different_models() {
+        String html = executionOfSupervisorPlanningWith(planningModel().withModelNames("first-model", "second-model"));
+
+        assertThat(html).doesNotContain("first-model").doesNotContain("second-model");
         assertThat(html).contains("<td class=\"wf-dur\">155</td>");
     }
 

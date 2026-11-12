@@ -40,6 +40,19 @@ public interface AgentListener {
     default void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {}
 
     /**
+     * Called each time the planner of an agent, like a supervisor, a decision router or a custom
+     * {@link dev.langchain4j.agentic.planner.Planner}, receives the response of a model that it called itself to
+     * decide what to do, as reported by the planner through the
+     * {@link dev.langchain4j.agentic.planner.PlanningContext#reportChatModelResponse reportChatModelResponse} or
+     * {@link dev.langchain4j.agentic.planner.PlanningContext#reportDecisionModelResponse reportDecisionModelResponse}
+     * method of its {@code PlanningContext}. The model calls of the subagents are not notified here, but by their
+     * own invocations.
+     * It is called on the thread running the planner, before the planner acts on the response, so also when the
+     * invocation of the agent later fails.
+     */
+    default void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {}
+
+    /**
      * Indicates whether this listener should be used only to the agent where it is registered (default)
      * or also inherited by its subagents.
      *

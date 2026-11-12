@@ -394,8 +394,11 @@ needed. They work with any `DecisionModel` implementation.
 
 Each of these components makes one or more additional calls to the decision model. Their token usage is not included
 in the token usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
-A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
-to the agent listeners and counted by the `AgentMonitor`.
+The agentic components are the exception: their token usage is also reported to the agent listeners and counted by the
+`AgentMonitor`. The decision call of a decision agent is the only call of the agent, and is counted on its invocation.
+The decision calls of the three planners are notified to the `onPlannerModelResponse` method of the agent listeners
+and counted on the invocation of the pattern, separately from the tokens of its subagents, as explained in the
+[monitoring](/tutorials/agents#monitoring) section of the agents tutorial.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`

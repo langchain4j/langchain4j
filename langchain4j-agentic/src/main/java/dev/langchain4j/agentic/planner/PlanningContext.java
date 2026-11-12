@@ -1,10 +1,30 @@
 package dev.langchain4j.agentic.planner;
 
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onPlannerModelResponse;
+
 import dev.langchain4j.agentic.internal.ActivationConditions;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.PlannerModelResponse;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 
-public record PlanningContext(AgenticScope agenticScope, AgentInvocation previousAgentInvocation) {
+/**
+ * The context in which a {@link Planner} decides its next action.
+ *
+ * @param previousAgentInvocation the invocation of the subagent that just completed, or {@code null} for the first
+ *                                action
+ * @param plannerAgent the agent running the planner, or {@code null} when the context is not created by an agentic
+ *                     system, for instance in a unit test of the planner
+ */
+public record PlanningContext(
+        AgenticScope agenticScope, AgentInvocation previousAgentInvocation, AgentInstance plannerAgent) {
+
+    public PlanningContext(AgenticScope agenticScope, AgentInvocation previousAgentInvocation) {
+        this(agenticScope, previousAgentInvocation, null);
+    }
 
     /**
      * Tells whether the given subagent would run if it were invoked now, according to its
@@ -22,5 +42,39 @@ public record PlanningContext(AgenticScope agenticScope, AgentInvocation previou
      */
     public boolean isActive(AgentInstance agent) {
         return ActivationConditions.isActive(agent, agenticScope);
+    }
+
+    /**
+     * Reports the response of a chat model that the planner called itself to decide what to do. The response is
+     * notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners} of the agent
+     * running the planner, so that its token usage is counted on the invocation of that agent, for instance by the
+     * {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon as the model
+     * returns, once for each call.
+     * <p>
+     * It does nothing when this context has no {@link #plannerAgent() planner agent}, or when the response is
+     * {@code null}.
+     *
+     * @param chatResponse the response returned by the chat model
+     */
+    public void reportChatModelResponse(ChatResponse chatResponse) {
+        reportModelResponse(chatResponse, null);
+    }
+
+    /**
+     * Reports the response of a decision model that the planner called itself to decide what to do, like
+     * {@link #reportChatModelResponse(ChatResponse)} does for a chat model.
+     *
+     * @param decisionResponse the response returned by the decision model
+     */
+    public void reportDecisionModelResponse(DecisionResponse decisionResponse) {
+        reportModelResponse(null, decisionResponse);
+    }
+
+    private void reportModelResponse(ChatResponse chatResponse, DecisionResponse decisionResponse) {
+        if (plannerAgent instanceof InternalAgent agent && (chatResponse != null || decisionResponse != null)) {
+            onPlannerModelResponse(
+                    agent.listener(),
+                    new PlannerModelResponse(agenticScope, plannerAgent, chatResponse, decisionResponse));
+        }
     }
 }

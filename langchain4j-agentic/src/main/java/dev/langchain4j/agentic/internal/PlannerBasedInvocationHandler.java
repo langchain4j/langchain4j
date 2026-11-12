@@ -513,7 +513,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 planner.restoreExecutionState(savedState);
             }
 
-            nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
+            nextAction = planner.firstAction(
+                    new PlanningContext(agenticScope, null, PlannerBasedInvocationHandler.this));
             nextAction = filterCompletedAgents(nextAction);
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
@@ -642,7 +643,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             try {
                 completedAgentIds.add(agentInvocation.agentId());
                 this.nextAction = composeActions(
-                        this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
+                        this.nextAction,
+                        planner.nextAction(new PlanningContext(
+                                agenticScope, agentInvocation, PlannerBasedInvocationHandler.this)));
                 saveExecutionState();
                 if (registry != null) {
                     agenticScope.checkpoint(registry);

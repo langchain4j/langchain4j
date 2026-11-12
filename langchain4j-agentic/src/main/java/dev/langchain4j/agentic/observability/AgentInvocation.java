@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 public class AgentInvocation {
@@ -32,6 +33,10 @@ public class AgentInvocation {
 
     private Duration suspendedTime = Duration.ZERO;
     private volatile Instant suspendedAt;
+
+    private boolean plannerModelCalled;
+    private TokenUsage plannerTokenUsage;
+    private String plannerModelName;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -86,6 +91,22 @@ public class AgentInvocation {
      */
     synchronized void cancelSuspension() {
         suspendedAt = null;
+    }
+
+    /**
+     * Records one model call made by the planner of the agent during this invocation: a planner can make several,
+     * and the invocation reports the token usage of all of them, and the model name only when all the calls agree on
+     * it. An invocation suspended and then continued keeps the calls made before the suspension.
+     */
+    synchronized void addPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+        if (plannerModelCalled) {
+            plannerTokenUsage = TokenUsage.sum(plannerTokenUsage, plannerModelResponse.tokenUsage());
+            plannerModelName = Objects.equals(plannerModelName, plannerModelResponse.modelName()) ? plannerModelName : null;
+        } else {
+            plannerModelCalled = true;
+            plannerTokenUsage = plannerModelResponse.tokenUsage();
+            plannerModelName = plannerModelResponse.modelName();
+        }
     }
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
@@ -178,13 +199,20 @@ public class AgentInvocation {
     }
 
     /**
-     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. It is
-     * empty if the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider
-     * didn't report the token usage.
+     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. For
+     * an agent whose planner calls a model itself, like a supervisor or a decision router, it is the total of those
+     * calls, without the token usage of its subagents, which is reported by their own invocations. It is empty if
+     * the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider didn't
+     * report the token usage.
      */
     public Optional<TokenUsage> tokenUsage() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
+        }
+        synchronized (this) {
+            if (plannerModelCalled) {
+                return Optional.ofNullable(plannerTokenUsage);
+            }
         }
         Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
@@ -197,11 +225,18 @@ public class AgentInvocation {
      * decision agent, as reported by the provider in the response metadata. It is empty if the agent called no
      * model, like a workflow or a non-AI agent, if it was skipped, if the provider didn't report the model name, or
      * if the LLM calls of an AI agent (for example, the calls of a tool loop) were answered by different models,
-     * since {@link #tokenUsage()} is the total of all those calls.
+     * since {@link #tokenUsage()} is the total of all those calls. In the same way, for an agent whose planner calls
+     * a model itself, like a supervisor or a decision router, it is the name of the model that answered all those
+     * calls, and it is empty if they were answered by different models.
      */
     public Optional<String> modelName() {
         if (!done()) {
             throw new IllegalStateException("Agent call is not finished yet");
+        }
+        synchronized (this) {
+            if (plannerModelCalled) {
+                return Optional.ofNullable(plannerModelName);
+            }
         }
         Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)

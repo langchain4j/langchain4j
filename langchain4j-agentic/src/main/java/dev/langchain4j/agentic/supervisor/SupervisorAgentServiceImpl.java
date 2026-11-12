@@ -13,6 +13,7 @@ import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.CurrentPlanningContext;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -154,7 +155,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
                         "A ChatModel is required to summarize context for a supervisor agent.");
             }
             contextSummarizerModel = chatModel;
-            contextSummarizer = Context.createSummarizer(chatModel);
+            // the summarizer is shared by all the invocations of the supervisor, so it reports each of its model calls
+            // to the planning context of the invocation running on the current thread
+            contextSummarizer = Context.createSummarizer(chatModel, CurrentPlanningContext::reportChatModelResponse);
         }
         return contextSummarizer;
     }

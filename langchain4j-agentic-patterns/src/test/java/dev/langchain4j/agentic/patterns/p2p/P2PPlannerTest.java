@@ -8,7 +8,10 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.V;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -182,5 +185,45 @@ class P2PPlannerTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // ── Token usage ──
+
+    @Test
+    void should_count_the_variables_extraction_call_on_the_p2p_agent() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("{\"pong\": \"seed\"}")
+                .withModelNames("extraction-model")
+                .withTokenUsage(new TokenUsage(50, 8));
+        AgentMonitor monitor = new AgentMonitor();
+        P2PAgent system = AgenticServices.plannerBuilder(P2PAgent.class)
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(model, 2, scope -> false))
+                .listener(monitor)
+                .build();
+
+        system.invoke("Start from the pong 'seed'");
+
+        assertThat(invocations).hasValue(2);
+        assertThat(model.requests()).hasSize(1);
+        var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(50, 8));
+        assertThat(invocation.modelName()).contains("extraction-model");
+    }
+
+    @Test
+    void should_count_no_tokens_when_there_is_no_request_to_extract_the_variables_from() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("unused").withTokenUsage(new TokenUsage(50, 8));
+        AgentMonitor monitor = new AgentMonitor();
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(model, 2, scope -> false))
+                .listener(monitor)
+                .build();
+
+        invokeWithTimeout(system, Map.of("pong", "seed"));
+
+        assertThat(model.requests()).isEmpty();
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().tokenUsage())
+                .isEmpty();
     }
 }
