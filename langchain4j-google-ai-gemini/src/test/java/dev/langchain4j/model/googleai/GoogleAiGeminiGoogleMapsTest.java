@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -79,13 +80,13 @@ class GoogleAiGeminiGoogleMapsTest {
             var chatRequest =
                     ChatRequest.builder().messages(UserMessage.from("Hello")).build();
 
-            when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+            when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Hi"));
 
             // When
             model.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNull();
         }
@@ -104,13 +105,13 @@ class GoogleAiGeminiGoogleMapsTest {
                     .messages(UserMessage.from("Find coffee shops"))
                     .build();
 
-            when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Here is result"));
+            when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Here is result"));
 
             // When
             model.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
@@ -133,13 +134,13 @@ class GoogleAiGeminiGoogleMapsTest {
                     .messages(UserMessage.from("Map of coffee shops"))
                     .build();
 
-            when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Here is result"));
+            when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Here is result"));
 
             // When
             model.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
@@ -204,7 +205,7 @@ class GoogleAiGeminiGoogleMapsTest {
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, groundingMetadata, null);
 
-            when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
+            when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(response);
 
             // When
             var chatRequest = ChatRequest.builder()
@@ -284,7 +285,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     "id", "model", List.of(candidate), usageMetadata, null, null); // Grounding metadata
             // null on response
 
-            when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
+            when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(response);
 
             // When
             var chatRequest = ChatRequest.builder()

@@ -4,7 +4,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 
 class GoogleGenAiClientFactory {
@@ -20,12 +19,7 @@ class GoogleGenAiClientFactory {
 
         HttpOptions.Builder httpOptions = HttpOptions.builder();
 
-        Map<String, String> headers = new HashMap<>();
-        if (customHeaders != null) {
-            headers.putAll(customHeaders);
-        }
-        headers.put("User-Agent", "LangChain4j");
-        httpOptions.headers(headers);
+        httpOptions.headers(GoogleGenAiHttpHeaders.clientHeaders(customHeaders));
 
         if (timeout != null) {
             httpOptions.timeout((int) timeout.toMillis());

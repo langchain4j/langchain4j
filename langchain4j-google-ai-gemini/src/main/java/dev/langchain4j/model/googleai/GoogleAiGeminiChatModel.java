@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -47,7 +48,9 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
         GeminiGenerateContentRequest request = createGenerateContentRequest(chatRequest);
 
         GeminiGenerateContentResponse geminiResponse = withRetryMappingExceptions(
-                () -> geminiService.generateContent(chatRequest.modelName(), request), maximumRetries);
+                () -> geminiService.generateContent(
+                        chatRequest.modelName(), request, customHeadersOf(chatRequest.parameters())),
+                maximumRetries);
 
         return processResponse(geminiResponse);
     }

@@ -85,7 +85,8 @@ public class GoogleAiGeminiChatRequestParameters extends DefaultChatRequestParam
                 + stopSequences() + ", toolSpecifications="
                 + toolSpecifications() + ", toolChoice="
                 + toolChoice() + ", responseFormat="
-                + responseFormat() + ", aspectRatio="
+                + responseFormat() + ", httpParameters="
+                + httpParameters() + ", aspectRatio="
                 + quoted(aspectRatio) + ", imageSize="
                 + quoted(imageSize) + ", cachedContentName="
                 + quoted(cachedContentName) + '}';

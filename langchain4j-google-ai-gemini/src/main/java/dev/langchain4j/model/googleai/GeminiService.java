@@ -9,6 +9,8 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
+import static dev.langchain4j.internal.CustomHeadersUtils.mergeCustomHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -43,7 +45,9 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbed
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -61,6 +65,12 @@ class GeminiService {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String apiKey;
+    /**
+     * Google's {@code x-goog-api-client} header holds a list of tokens, like {@code User-Agent}:
+     * a per-request value is appended to the value the model sends instead of replacing it.
+     */
+    private static final Set<String> PER_REQUEST_APPENDED_HEADER_NAMES = Set.of("x-goog-api-client");
+
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
     enum BatchOperationType {
@@ -109,8 +119,14 @@ class GeminiService {
     }
 
     GeminiGenerateContentResponse generateContent(String modelName, GeminiGenerateContentRequest request) {
+        return generateContent(modelName, request, Map.of());
+    }
+
+    GeminiGenerateContentResponse generateContent(
+            String modelName, GeminiGenerateContentRequest request, Map<String, String> requestCustomHeaders) {
         String url = String.format("%s/models/%s:generateContent", baseUrl, modelName);
-        return sendRequest(url, apiKey, request, GeminiGenerateContentResponse.class);
+        HttpRequest httpRequest = buildHttpRequest(url, apiKey, request, POST, requestCustomHeaders);
+        return fromJson(httpClient.execute(httpRequest).body(), GeminiGenerateContentResponse.class);
     }
 
     @SuppressWarnings("unchecked")
@@ -210,11 +226,12 @@ class GeminiService {
     void generateContentStream(
             String modelName,
             GeminiGenerateContentRequest request,
+            Map<String, String> requestCustomHeaders,
             boolean includeCodeExecutionOutput,
             Boolean returnThinking,
             StreamingChatResponseHandler handler) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, handler);
+        streamRequest(url, apiKey, request, requestCustomHeaders, includeCodeExecutionOutput, returnThinking, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, @Nullable Object requestBody, Class<T> responseType) {
@@ -231,10 +248,11 @@ class GeminiService {
             String url,
             String apiKey,
             Object requestBody,
+            Map<String, String> requestCustomHeaders,
             boolean includeCodeExecutionOutput,
             Boolean returnThinking,
             StreamingChatResponseHandler handler) {
-        HttpRequest httpRequest = buildHttpRequest(url, apiKey, requestBody, POST);
+        HttpRequest httpRequest = buildHttpRequest(url, apiKey, requestBody, POST, requestCustomHeaders);
 
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
@@ -302,20 +320,27 @@ class GeminiService {
     }
 
     private HttpRequest buildHttpRequest(String url, String apiKey, @Nullable Object body, HttpMethod method) {
-        var builder = HttpRequest.builder()
-                .method(method)
-                .url(url)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "LangChain4j");
+        return buildHttpRequest(url, apiKey, body, method, Map.of());
+    }
+
+    private HttpRequest buildHttpRequest(
+            String url,
+            String apiKey,
+            @Nullable Object body,
+            HttpMethod method,
+            Map<String, String> requestCustomHeaders) {
+        Map<String, String> modelHeaders = new LinkedHashMap<>();
+        modelHeaders.put("Content-Type", "application/json");
+        modelHeaders.put("User-Agent", "LangChain4j");
         if (apiKey != null) {
-            builder.addHeader(API_KEY_HEADER_NAME, apiKey);
+            modelHeaders.put(API_KEY_HEADER_NAME, apiKey);
         }
         if (customHeadersSupplier != null) {
-            Map<String, String> customHeaders = customHeadersSupplier.get();
-            if (customHeaders != null) {
-                customHeaders.forEach(builder::addHeader);
-            }
+            modelHeaders = mergeCustomHeaders(modelHeaders, customHeadersSupplier.get());
         }
+        var builder = HttpRequest.builder().method(method).url(url);
+        modelHeaders.forEach(builder::addHeader);
+        builder.addHeaders(perRequestHeaders(modelHeaders, requestCustomHeaders, PER_REQUEST_APPENDED_HEADER_NAMES));
         if (body != null) {
             builder.body(Json.toJson(body));
         }

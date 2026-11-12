@@ -1,7 +1,10 @@
 package dev.langchain4j.model.vertexai.gemini;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
+
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.Objects;
@@ -24,9 +27,18 @@ class VertexAiGeminiRequestParameters {
     /**
      * Rejects the parameters this model does not support per request. Values equal to the configured ones (which come
      * in through {@link #defaultRequestParameters(GenerativeModel, GenerationConfig)}) are accepted; temperature and
-     * topP are compared with the precision of the configuration ({@code float}).
+     * topP are compared with the precision of the configuration ({@code float}). Per-request
+     * {@link ChatRequestParameters#httpParameters()} are rejected when they contain headers to send.
      */
     static void validateParameters(ChatRequestParameters parameters, ChatRequestParameters defaults) {
+        if (!customHeadersOf(parameters).isEmpty()) {
+            throw new UnsupportedFeatureException(
+                    "'httpParameters' parameter (per-request custom HTTP headers) is not supported by Vertex AI Gemini, "
+                            + "as the Vertex AI SDK sets headers only when the model is built. "
+                            + "Set them once with customHeaders(...) on the model builder, "
+                            + "or use the langchain4j-google-genai module, which supports per-request headers "
+                            + "(also for Vertex AI)");
+        }
         ChatRequestValidationUtils.validateParameters(ChatRequestParameters.builder()
                 .modelName(differing(parameters.modelName(), defaults.modelName()))
                 .temperature(differingAsFloat(parameters.temperature(), defaults.temperature()))

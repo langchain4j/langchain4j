@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.mockito.Mockito.verifyNoInteractions;
 import static dev.langchain4j.model.batch.BatchState.CANCELLED;
 import static dev.langchain4j.model.batch.BatchState.FAILED;
 import static dev.langchain4j.model.batch.BatchState.PENDING;
@@ -58,6 +59,9 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.HttpParameters;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiBatchChatModelTest {
@@ -314,6 +318,41 @@ class GoogleAiGeminiBatchChatModelTest {
 
             var capturedRequest = batchRequestCaptor.getValue();
             assertThat(capturedRequest.batch().priority()).isZero();
+        }
+
+        @Test
+        void should_reject_requests_with_per_request_http_headers() {
+            // given
+            var requests = List.of(ChatRequest.builder()
+                    .messages(UserMessage.from("What is the capital of Italy?"))
+                    .customHeaders(Map.of("X-Correlation-Id", "123"))
+                    .build());
+
+            // when-then
+            assertThatThrownBy(() -> subject.submit(GeminiBatchRequest.from(requests, "Test Batch")))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("httpParameters")
+                    .hasMessageContaining("batch");
+            verifyNoInteractions(mockGeminiService);
+        }
+
+        @Test
+        void should_reject_per_request_http_headers_in_default_request_parameters_at_build() {
+            // when-then
+            assertThatThrownBy(() -> new GoogleAiGeminiBatchChatModel(
+                            GoogleAiGeminiBatchChatModel.builder()
+                                    .apiKey("does not matter")
+                                    .modelName(MODEL_NAME)
+                                    .defaultRequestParameters(ChatRequestParameters.builder()
+                                            .httpParameters(HttpParameters.builder()
+                                                    .customHeaders(Map.of("X-Correlation-Id", "123"))
+                                                    .build())
+                                            .build()),
+                            mockGeminiService))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("httpParameters")
+                    .hasMessageContaining("batch");
+            verifyNoInteractions(mockGeminiService);
         }
     }
 
