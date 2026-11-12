@@ -55,6 +55,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import java.util.Map;
 
 @Internal
 class Converter {
@@ -213,7 +214,7 @@ class Converter {
     static ChatParameters toChatParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         ChatParameters.Builder builder = ChatParameters.builder();
-        applyBaseParameters(builder, parameters, strictJsonSchema);
+        applyBaseParameters(builder, builder::responseAsJsonSchema, parameters, strictJsonSchema);
 
         if (parameters instanceof WatsonxChatRequestParameters watsonxParameters) {
             builder.logitBias(watsonxParameters.logitBias());
@@ -227,8 +228,6 @@ class Converter {
             builder.guidedChoice(watsonxParameters.guidedChoice());
             builder.guidedGrammar(watsonxParameters.guidedGrammar());
             builder.guidedRegex(watsonxParameters.guidedRegex());
-            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
-            builder.lengthPenalty(watsonxParameters.lengthPenalty());
         }
 
         return builder.build();
@@ -238,7 +237,7 @@ class Converter {
             ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         ModelGatewayChatParameters.Builder builder = ModelGatewayChatParameters.builder();
-        applyBaseParameters(builder, parameters, strictJsonSchema);
+        applyBaseParameters(builder, builder::responseAsJsonSchema, parameters, strictJsonSchema);
 
         if (parameters instanceof WatsonxGatewayChatRequestParameters gatewayParameters) {
             builder.logitBias(gatewayParameters.logitBias());
@@ -260,8 +259,15 @@ class Converter {
         return builder.build();
     }
 
+    private interface JsonSchemaSetter {
+        void set(String name, Map<String, Object> jsonSchema, boolean strict);
+    }
+
     private static void applyBaseParameters(
-            BaseChatParameters.Builder<?> builder, ChatRequestParameters parameters, boolean strictJsonSchema) {
+            BaseChatParameters.Builder<?> builder,
+            JsonSchemaSetter jsonSchemaSetter,
+            ChatRequestParameters parameters,
+            boolean strictJsonSchema) {
 
         builder.modelId(parameters.modelName());
         builder.frequencyPenalty(parameters.frequencyPenalty());
@@ -294,7 +300,7 @@ class Converter {
                                             + rootElement.getClass());
 
                         var jsonSchema = JsonSchemaElementUtils.toMap(rootElement, strictJsonSchema);
-                        builder.responseAsJsonSchema(name, jsonSchema, strictJsonSchema);
+                        jsonSchemaSetter.set(name, jsonSchema, strictJsonSchema);
                     } else {
                         builder.responseAsJson();
                     }

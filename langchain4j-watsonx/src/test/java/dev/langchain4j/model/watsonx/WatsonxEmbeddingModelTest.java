@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -62,8 +63,8 @@ public class WatsonxEmbeddingModelTest {
         when(mockEmbeddingServiceBuilder.spaceId(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.timeout(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.version(any())).thenReturn(mockEmbeddingServiceBuilder);
-        when(mockEmbeddingServiceBuilder.logRequests(any())).thenReturn(mockEmbeddingServiceBuilder);
-        when(mockEmbeddingServiceBuilder.logResponses(any())).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockEmbeddingServiceBuilder);
+        when(mockEmbeddingServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.authenticator(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.apiKey(any())).thenReturn(mockEmbeddingServiceBuilder);
         when(mockEmbeddingServiceBuilder.httpClient(any())).thenReturn(mockEmbeddingServiceBuilder);

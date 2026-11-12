@@ -23,7 +23,7 @@
         <dependency>
             <groupId>com.couchbase.client</groupId>
             <artifactId>java-client</artifactId>
-            <version>3.13.0</version>
+            <version>3.13.1</version>
         </dependency>
 
         <dependency>

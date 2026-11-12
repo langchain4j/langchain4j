@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -94,8 +95,8 @@ public class WatsonxChatModelTest {
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
@@ -555,8 +556,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("a", "b")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
@@ -580,8 +579,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
     }
 
@@ -620,8 +617,6 @@ public class WatsonxChatModelTest {
                     .guidedChoice("a", "b")
                     .guidedGrammar("guidedGrammar")
                     .guidedRegex("guidedRegex")
-                    .repetitionPenalty(1.1)
-                    .lengthPenalty(1.2)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -652,8 +647,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -683,8 +676,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("a", "b")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                     .build();
@@ -720,8 +711,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -818,8 +807,6 @@ public class WatsonxChatModelTest {
                     .guidedChoice("defaultValue1", "defaultValue2")
                     .guidedGrammar("defaultGuidedGrammar")
                     .guidedRegex("defaultGuidedRegex")
-                    .repetitionPenalty(1.0)
-                    .lengthPenalty(1.0)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -853,8 +840,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("value1", "value2")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
@@ -883,8 +868,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("value1", "value2"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
             // ----------------
         });
     }
@@ -918,6 +901,47 @@ public class WatsonxChatModelTest {
                         .defaultRequestParameters(
                                 ChatRequestParameters.builder().topK(10).build())
                         .build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void should_throw_exception_when_repetition_or_length_penalty_is_set() {
+
+        var repetitionPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .repetitionPenalty(1.1)
+                        .build());
+        assertTrue(repetitionPenalty.getMessage().startsWith("'repetitionPenalty' is not supported"));
+
+        var lengthPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .lengthPenalty(1.2)
+                        .build());
+        assertTrue(lengthPenalty.getMessage().startsWith("'lengthPenalty' is not supported"));
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatRequestParameters.builder().repetitionPenalty(1.1).build());
+
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl("https://test.com")
+                .modelName("modelId")
+                .projectId("project-id")
+                .apiKey("api-key")
+                .repetitionPenalty(null)
+                .lengthPenalty(null)
+                .build();
+        assertNotNull(chatModel);
     }
 
     @Test

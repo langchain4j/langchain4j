@@ -51,12 +51,33 @@ jobs:
         with:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
-          cache: 'maven'
+
+      - name: Get the month for the Maven cache key
+        id: maven-cache-month
+        # A new month starts a fresh cache, so old dependency versions do not pile up in it
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Maven repository
+        id: maven-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: maven-build-${{ steps.maven-cache-month.outputs.month }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-build-${{ steps.maven-cache-month.outputs.month }}-
 
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
           set -o pipefail
           mvn -B -U -DembeddingsSkipDownload -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
+
+      - name: Save the Maven repository
+        # JDK 25 builds every module (jdk21 and jdk25 profiles in pom.xml), so it resolves most of what the other jobs need.
+        # Only pushes save: a PR's cache could be used only by that PR, and a 1+ GB entry per PR would evict main's cache.
+        if: github.event_name == 'push' && matrix.java_version == 25 && steps.maven-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Publish test summary
         if: always()
@@ -149,7 +170,18 @@ jobs:
         with:
           java-version: 21
           distribution: 'temurin'
-          cache: 'maven'
+
+      - name: Get the month for the Maven cache key
+        id: maven-cache-month
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Maven repository
+        id: maven-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: maven-build-${{ steps.maven-cache-month.outputs.month }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-build-${{ steps.maven-cache-month.outputs.month }}-
 
       - name: Check that the profile is still declared somewhere
         run: |
@@ -214,7 +246,18 @@ jobs:
         with:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
-          cache: 'maven'
+
+      - name: Get the month for the Maven cache key
+        id: maven-cache-month
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Maven repository
+        id: maven-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: maven-build-${{ steps.maven-cache-month.outputs.month }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-build-${{ steps.maven-cache-month.outputs.month }}-
 
       - name: Authenticate to Google Cloud
         # Required for Google modules (e.g., langchain4j-vertex-ai)

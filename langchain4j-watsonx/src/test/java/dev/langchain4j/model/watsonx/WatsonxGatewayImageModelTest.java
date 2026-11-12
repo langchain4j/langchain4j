@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -74,8 +75,10 @@ public class WatsonxGatewayImageModelTest {
                 .thenReturn(mockModelGatewayImageServiceBuilder);
         when(mockModelGatewayImageServiceBuilder.timeout(any())).thenReturn(mockModelGatewayImageServiceBuilder);
         when(mockModelGatewayImageServiceBuilder.version(any())).thenReturn(mockModelGatewayImageServiceBuilder);
-        when(mockModelGatewayImageServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayImageServiceBuilder);
-        when(mockModelGatewayImageServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayImageServiceBuilder);
+        when(mockModelGatewayImageServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayImageServiceBuilder);
+        when(mockModelGatewayImageServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayImageServiceBuilder);
         when(mockModelGatewayImageServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayImageServiceBuilder);
         when(mockModelGatewayImageServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayImageServiceBuilder);
         when(mockModelGatewayImageServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayImageServiceBuilder);

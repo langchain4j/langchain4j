@@ -20,6 +20,7 @@ import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.V;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -182,12 +183,25 @@ class DecisionRouterPlannerTest {
         assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
         ChoiceQuestion question = (ChoiceQuestion) request.questions().get(QUESTION_NAME);
         assertThat(question.text()).isEqualTo("Which agent is best suited to handle this request?");
-        // an option added without a description is described by its name
+        // an option is named after its agent, and an agent without a description is described by its name
         assertThat(question.options())
                 .containsExactly(
                         entry("medical", "Answers medical questions"),
                         entry("legal", "Answers legal questions"),
                         entry("technical", "technical"));
+    }
+
+    @Test
+    void shouldAskTheChoiceQuestionSetOnTheBuilder() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
+                .decisionModel(model)
+                .choiceQuestion("Which expert should answer this request?")
+                .build();
+
+        assertThat(router(ExpertRouter.class, planner).ask(REQUEST)).isEqualTo("medical answer");
+        assertThat(model.request().questions().get(QUESTION_NAME).text())
+                .isEqualTo("Which expert should answer this request?");
     }
 
     @Test
@@ -415,9 +429,28 @@ class DecisionRouterPlannerTest {
                                 yesNo -> assertThat(yesNo.yesWhen()).isNull()));
         assertThat(request.questions().get("medical").text())
                 .isEqualTo("Should the agent 'medical' (Answers medical questions) handle this request?");
-        // an agent without a description is asked about by its name only
+        // an agent without a description is described by its name
         assertThat(request.questions().get("technical").text())
-                .isEqualTo("Should the agent 'technical' handle this request?");
+                .isEqualTo("Should the agent 'technical' (technical) handle this request?");
+    }
+
+    @Test
+    void shouldAskTheRelevanceQuestionOfTheTemplateSetOnTheBuilder() {
+        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
+        DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
+                .decisionModel(model)
+                .activationThreshold(0.5)
+                .relevanceQuestionTemplate(PromptTemplate.from("Is this a request for the expert who: {{description}}?"))
+                .build();
+
+        assertThat(router(MultiExpertRouter.class, planner).ask(REQUEST))
+                .containsOnly(entry("medical", "medical answer"));
+
+        DecisionRequest request = model.request();
+        assertThat(request.questions().get("medical").text())
+                .isEqualTo("Is this a request for the expert who: Answers medical questions?");
+        assertThat(request.questions().get("technical").text())
+                .isEqualTo("Is this a request for the expert who: technical?");
     }
 
     @Test
@@ -454,25 +487,83 @@ class DecisionRouterPlannerTest {
 
     // ── Both modes ──
 
+    /** Another expert named "medical", like the {@link MedicalExpert}. */
+    public static class AnotherMedicalExpert {
+
+        @Agent(description = "Answers questions about medicines", outputKey = "otherMedicalResponse")
+        public String medical(@V("request") String request) {
+            return "another medical answer";
+        }
+    }
+
     @Test
-    void shouldRejectSubagentsWithTheSameName() {
-        var anotherMedicalExpert = new Object() {
-            @Agent(outputKey = "otherMedicalResponse")
-            public String medical(@V("request") String request) {
-                return "another medical answer";
-            }
-        };
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+    void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
+        DecisionModelMock model =
+                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
-                .subAgents(medicalExpert, anotherMedicalExpert)
+                .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
                 .planner(() -> new DecisionRouterPlanner(model))
                 .build();
 
-        assertThatThrownBy(() -> router.ask(REQUEST))
+        assertThat(router.ask(REQUEST)).isEqualTo("another medical answer");
+        assertThat(medicalExpert.calls).hasValue(0);
+        // only the agents with the same name are options named after their ids
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        assertThat(question.options())
+                .containsExactly(
+                        entry("medical$0", "Answers medical questions"),
+                        entry("medical$1", "Answers questions about medicines"),
+                        entry("legal", "Answers legal questions"));
+    }
+
+    @Test
+    void shouldReturnUnderTheirIdsTheOutputsOfTheSubagentsWithTheSameNameWithAThreshold() {
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "medical$0", YesNoAnswer.from(0.9),
+                "medical$1", YesNoAnswer.from(0.8),
+                "legal", YesNoAnswer.from(0.7)));
+
+        MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
+                .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+
+        // the question and the output of an agent are under its name, unless another subagent has the same name
+        assertThat(router.ask(REQUEST))
+                .containsOnly(
+                        entry("medical$0", "medical answer"),
+                        entry("medical$1", "another medical answer"),
+                        entry("legal", "legal answer"));
+        assertThat(model.request().questions().get("medical$1").text())
+                .isEqualTo("Should the agent 'medical' (Answers questions about medicines) handle this request?");
+    }
+
+    @Test
+    void shouldRejectInvalidQuestions() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .choiceQuestion(" ")
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("distinct names")
-                .hasMessageContaining("'medical'");
+                .hasMessageContaining("choiceQuestion");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .relevanceQuestionTemplate(PromptTemplate.from("Should an agent handle this request?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}} or {{description}}");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder()
+                        .decisionModel(model)
+                        .relevanceQuestionTemplate(PromptTemplate.from("Should {{name}} handle {{ticket}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}} and {{description}}");
+        assertThatThrownBy(() -> DecisionRouterPlanner.builder().build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decisionModel");
     }
 
     @Test
