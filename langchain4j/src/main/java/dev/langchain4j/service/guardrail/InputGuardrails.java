@@ -19,7 +19,9 @@ import java.lang.annotation.Target;
  *     to the caller, wrapped into a {@link dev.langchain4j.guardrail.GuardrailException GuardrailException}.
  * </p>
  * <p>
- *     If the annotation is present on a class, the guardrails will be applied to all the methods of the class.
+ *     If the annotation is present on a class, the guardrails will be applied to all the methods of the class. An
+ *     annotation on a method takes precedence over one on the class, and input guardrails set on the
+ *     {@link dev.langchain4j.service.AiServices AiServices} builder take precedence over both.
  * </p>
  * <p>
  *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order

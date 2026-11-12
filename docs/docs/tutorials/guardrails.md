@@ -349,7 +349,7 @@ The way classes are converted to instances can be customized. For example, frame
 
 #### Annotation on individual AI Service methods
 
-[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on ndividual [AI Service](/tutorials/ai-services) methods have the next highest precendence.
+[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on individual [AI Service](/tutorials/ai-services) methods have the next highest precedence.
 
 ```java
 public interface Assistant {
@@ -398,6 +398,8 @@ Output guardrails have the following additional configuration that can be suppli
 |:--------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `maxRetries`  | - The maximum number of retries for an output guardrail when performing a retry or reprompt.<br/> - Defaults to `2`.<br/> - Set to `0` to disable retries. |
 
+The configuration is resolved independently of the guardrails themselves, following the same order of precedence: an `OutputGuardrailsConfig` set on the `AiServices` builder, then the `@OutputGuardrails` annotation on the AI Service method, then the one on the AI Service class. For example, output guardrails set on the `AiServices` builder still use the `maxRetries` of an `@OutputGuardrails` annotation when no `OutputGuardrailsConfig` is set on the builder.
+
 ##### Annotation on individual AI Service methods
 
 ```java
@@ -440,7 +442,7 @@ var outputGuardrailsConfig = OutputGuardrailsConfig.builder()
 var assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .outputGuardrailsConfig(outputGuardrailsConfig)
-        .outputGuardrailClasss(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
+        .outputGuardrailClasses(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
         .build();
 ```
 

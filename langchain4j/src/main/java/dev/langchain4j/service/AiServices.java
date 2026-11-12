@@ -1028,6 +1028,12 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the output guardrails for AI services.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service and takes precedence over the
+     *     configuration declared in any {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
+     *     annotation on the AI service methods or class, such as its
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries}.
+     * </p>
      *
      * @param outputGuardrailsConfig the configuration object specifying the output guardrails
      * @return the current instance of {@link AiServices} to allow for method chaining
@@ -1040,8 +1046,9 @@ public abstract class AiServices<T> {
     /**
      * Configures the input guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.InputGuardrails InputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1070,8 +1077,9 @@ public abstract class AiServices<T> {
     /**
      * Configures input guardrail classes for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.InputGuardrails InputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1100,8 +1108,9 @@ public abstract class AiServices<T> {
     /**
      * Sets the input guardrails to be used by the guardrail service builder in the current context.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.InputGuardrails InputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1128,8 +1137,9 @@ public abstract class AiServices<T> {
     /**
      * Adds the specified input guardrails to the context's guardrail service builder.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.InputGuardrails InputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1156,8 +1166,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored. Unless an
+     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig) output guardrails configuration} is also set, the
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries} of such an annotation still
+     *     applies.
      * </p>
      * <p>
      *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1192,8 +1206,12 @@ public abstract class AiServices<T> {
     /**
      * Sets the output guardrail classes to be used in the guardrail service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored. Unless an
+     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig) output guardrails configuration} is also set, the
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries} of such an annotation still
+     *     applies.
      * </p>
      * <p>
      *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1229,8 +1247,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrails for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored. Unless an
+     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig) output guardrails configuration} is also set, the
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries} of such an annotation still
+     *     applies.
      * </p>
      * <p>
      *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1263,8 +1285,12 @@ public abstract class AiServices<T> {
     /**
      * Configures output guardrails for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails configured this way apply to every method of the AI service and take precedence over any
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails} annotation on the AI service methods
+     *     or class: the guardrails declared in such annotations are ignored. Unless an
+     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig) output guardrails configuration} is also set, the
+     *     {@link dev.langchain4j.service.guardrail.OutputGuardrails#maxRetries() maxRetries} of such an annotation still
+     *     applies.
      * </p>
      * <p>
      *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
