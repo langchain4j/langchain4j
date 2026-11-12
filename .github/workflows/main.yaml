@@ -71,8 +71,9 @@ jobs:
           mvn -B -U -DembeddingsSkipDownload -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
 
       - name: Save the Maven repository
-        # JDK 25 builds every module (jdk21 and jdk25 profiles in pom.xml), so it resolves what the other jobs need
-        if: matrix.java_version == 25 && steps.maven-cache.outputs.cache-hit != 'true'
+        # JDK 25 builds every module (jdk21 and jdk25 profiles in pom.xml), so it resolves most of what the other jobs need.
+        # Only pushes save: a PR's cache could be used only by that PR, and a 1+ GB entry per PR would evict main's cache.
+        if: github.event_name == 'push' && matrix.java_version == 25 && steps.maven-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.m2/repository
