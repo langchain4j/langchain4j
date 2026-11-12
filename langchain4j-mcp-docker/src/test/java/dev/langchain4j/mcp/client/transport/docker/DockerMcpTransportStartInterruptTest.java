@@ -170,7 +170,9 @@ class DockerMcpTransportStartInterruptTest {
         thread.start();
 
         try {
-            assertThat(reached.await(15, TimeUnit.SECONDS))
+            // generous timeout: on a heavily loaded CI, the first start() in the JVM can take more than 15 seconds
+            // to reach the blocking request
+            assertThat(reached.await(60, TimeUnit.SECONDS))
                     .as("the stub daemon never saw the request start() should be blocked on")
                     .isTrue();
             thread.interrupt();
