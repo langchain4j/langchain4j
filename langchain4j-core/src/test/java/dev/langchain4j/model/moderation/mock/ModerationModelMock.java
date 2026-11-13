@@ -15,8 +15,11 @@ import java.util.function.Function;
  * by a function) and records the requests.
  *
  * @deprecated use {@link MockModerationModel} (package {@code dev.langchain4j.test.mock}) from the
- * {@code langchain4j-test} module. {@code requests()} has the same name and returns a copy, and
- * {@code thatModerates(...)} and {@code withListeners(...)} have the same names.
+ * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
+ * script runs out; end the script with {@link MockModerationModel#thenRepeats()} to answer every further request with
+ * its last step. {@code thatNeverFlags()} is now {@link MockModerationModel#thatDoesNotFlag()} and
+ * {@code thatAlwaysFlags(...)} is now {@link MockModerationModel#thatFlags(String)}. {@code requests()} has the same
+ * name and returns a copy, and {@code thatModerates(...)} and {@code withListeners(...)} have the same names.
  * This class will be removed in 1.26.0 at the earliest.
  */
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -27,9 +30,9 @@ public class ModerationModelMock implements ModerationModel {
     private List<ModerationModelListener> listeners = List.of();
 
     /**
-     * @deprecated use {@link MockModerationModel#thatModerates(Function)}:
-     * {@code MockModerationModel.thatModerates(request -> moderation)}. Removed together with this class, in 1.26.0 at
-     * the earliest.
+     * @deprecated use {@link MockModerationModel#thatModerates(Function)} followed by
+     * {@link MockModerationModel#thenRepeats()}: {@code MockModerationModel.thatModerates(request -> moderation)
+     * .thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ModerationModelMock(Moderation moderation) {
@@ -53,8 +56,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatNeverFlags()}. Removed together with this class, in 1.26.0 at the
-     * earliest.
+     * @deprecated use {@link MockModerationModel#thatDoesNotFlag()} followed by
+     * {@link MockModerationModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatNeverFlags() {
@@ -62,8 +65,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatAlwaysFlags(String)}. Removed together with this class, in 1.26.0
-     * at the earliest.
+     * @deprecated use {@link MockModerationModel#thatFlags(String)} followed by
+     * {@link MockModerationModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatAlwaysFlags(String flaggedText) {
@@ -71,8 +74,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatModerates(Function)}. Removed together with this class, in 1.26.0
-     * at the earliest.
+     * @deprecated use {@link MockModerationModel#thatModerates(Function)} followed by
+     * {@link MockModerationModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatModerates(Function<ModerationRequest, Moderation> moderation) {
