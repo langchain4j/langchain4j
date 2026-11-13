@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
@@ -1179,6 +1180,7 @@ public class ToolService {
                             memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
                     .exceptionallyCompose(ToolService::translateBlockingChatMemory);
         } catch (Throwable t) {
+            restoreInterruptIfInterrupted(t);
             return translateBlockingChatMemory(t);
         }
     }

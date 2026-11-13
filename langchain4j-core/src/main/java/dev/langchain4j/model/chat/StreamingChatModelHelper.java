@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -85,6 +86,7 @@ public final class StreamingChatModelHelper {
         try {
             streamingChatModel.chat(request).subscribe(subscriber);
         } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
             future.completeExceptionally(e);
         }
         return future;

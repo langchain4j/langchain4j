@@ -3,6 +3,7 @@ package dev.langchain4j.model.embedding;
 import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -139,6 +140,7 @@ public interface EmbeddingModel {
             finalRequest = validatedRequest(request);
             listeners = ObservabilityListeners.embedding(listeners());
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
 
@@ -165,6 +167,7 @@ public interface EmbeddingModel {
                             .build(),
                     listeners);
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
 

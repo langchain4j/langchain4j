@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -123,6 +124,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
         try {
             prompt = createPrompt(query);
         } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<ChatResponse> chatFuture = failOnThrow(

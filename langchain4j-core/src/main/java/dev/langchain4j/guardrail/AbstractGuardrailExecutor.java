@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -182,6 +183,7 @@ public abstract sealed class AbstractGuardrailExecutor<
             ensureNotNull(request, "request");
             ensureNotNull(guardrail, "guardrail");
         } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
             return CompletableFuture.failedFuture(e);
         }
 

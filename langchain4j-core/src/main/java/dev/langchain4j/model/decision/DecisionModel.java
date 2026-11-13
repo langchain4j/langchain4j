@@ -1,6 +1,7 @@
 package dev.langchain4j.model.decision;
 
 import dev.langchain4j.internal.ObservabilityListeners;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -108,6 +109,7 @@ public interface DecisionModel {
             invocationId = CurrentInvocation.invocationId();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
 

@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -233,6 +234,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                     }
                 });
         } catch (Throwable t) {
+            restoreInterruptIfInterrupted(t);
             result.completeExceptionally(t);
         }
         return result;

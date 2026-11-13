@@ -20,6 +20,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -176,6 +177,7 @@ public interface ScoringModel {
             attributes = new ConcurrentHashMap<>();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
 

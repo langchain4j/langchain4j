@@ -5,6 +5,7 @@ import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -147,6 +148,7 @@ public interface ChatModel {
 
             onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
         } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
             return CompletableFuture.failedFuture(error);
         }
 

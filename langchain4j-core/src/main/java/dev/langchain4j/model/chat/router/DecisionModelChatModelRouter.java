@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -161,6 +162,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
             }
             decisionRequest = toDecisionRequest(request);
         } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
             return CompletableFuture.failedFuture(e);
         }
         if (decisionRequest == null) {
