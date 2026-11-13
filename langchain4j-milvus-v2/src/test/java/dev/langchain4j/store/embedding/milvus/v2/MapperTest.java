@@ -1,9 +1,13 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toRelevanceScore;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toSparseVectors;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toVectors;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.milvus.v2.MilvusV2EmbeddingStore.SearchMode;
+import io.milvus.v2.common.IndexParam;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -132,5 +136,29 @@ class MapperTest implements WithAssertions {
         assertThat(vector.get(-1L)).isEqualTo(-0.1f);
         assertThat(vector.get(0L)).isEqualTo(0.0f);
         assertThat(vector.get(1L)).isEqualTo(0.1f);
+    }
+
+    @Test
+    void should_convert_l2_distance_to_relevance_score_in_vector_mode() {
+        assertThat(toRelevanceScore(0.0, IndexParam.MetricType.L2, SearchMode.VECTOR))
+                .isEqualTo(1.0);
+        assertThat(toRelevanceScore(1.0, IndexParam.MetricType.L2, SearchMode.VECTOR))
+                .isEqualTo(0.5);
+        assertThat(toRelevanceScore(3.0, IndexParam.MetricType.L2, SearchMode.VECTOR))
+                .isEqualTo(0.25);
+    }
+
+    @Test
+    void should_use_cosine_conversion_for_non_l2_metric() {
+        assertThat(toRelevanceScore(0.6, IndexParam.MetricType.COSINE, SearchMode.VECTOR))
+                .isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(toRelevanceScore(0.6, IndexParam.MetricType.IP, SearchMode.VECTOR))
+                .isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+    }
+
+    @Test
+    void should_use_cosine_conversion_for_l2_metric_in_hybrid_mode() {
+        assertThat(toRelevanceScore(0.6, IndexParam.MetricType.L2, SearchMode.HYBRID))
+                .isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
     }
 }
