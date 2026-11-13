@@ -13,6 +13,8 @@ import org.jspecify.annotations.Nullable;
  */
 final class Script<S> {
 
+    private static final int MAX_TEXT_LENGTH = 200;
+
     private final String mockName;
     private final List<S> steps = new ArrayList<>();
     private int nextIndex;
@@ -54,6 +56,13 @@ final class Script<S> {
     }
 
     /**
+     * A copy of all steps, in order, also those already taken.
+     */
+    List<S> steps() {
+        return List.copyOf(steps);
+    }
+
+    /**
      * Whether the last step already answered a request.
      */
     boolean lastStepTaken() {
@@ -88,5 +97,12 @@ final class Script<S> {
                 + "Script one more step, or end the script with thenRepeats() to answer every further request with its"
                 + " last step. If the mock is shared between tests, for example as a bean, create a new one for each"
                 + " test. " + request;
+    }
+
+    /**
+     * The text, cut to 200 characters for an error message.
+     */
+    static String shortened(String text) {
+        return text.length() > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + "..." : text;
     }
 }

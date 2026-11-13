@@ -64,7 +64,6 @@ import java.util.function.ToDoubleFunction;
 public class MockDecisionModel implements DecisionModel {
 
     private static final String MOCK_NAME = "MockDecisionModel";
-    private static final int MAX_TEXT_LENGTH = 200;
 
     /**
      * One step of the script: the answers to one request, keyed by question name.
@@ -196,13 +195,9 @@ public class MockDecisionModel implements DecisionModel {
                 .append(" ")
                 .append(name)
                 .append(" \"")
-                .append(shortened(question.text()))
+                .append(Script.shortened(question.text()))
                 .append("\""));
         return script.runOutMessage(requestNumber, "", questions.toString());
-    }
-
-    private static String shortened(String text) {
-        return text.length() > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + "..." : text;
     }
 
     /**

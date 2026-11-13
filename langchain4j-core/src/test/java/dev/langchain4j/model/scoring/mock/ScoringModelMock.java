@@ -32,11 +32,13 @@ import java.util.function.ToDoubleFunction;
  * This implementation is experimental and subject to change in the future.
  *
  * @deprecated use {@link MockScoringModel} (package {@code dev.langchain4j.test.mock}) from the
- * {@code langchain4j-test} module. {@code withListeners(...)} has the same name. A response reports the model name of
- * the request, and asynchronous calls complete on another thread. {@code withProvider(...)},
- * {@code withModelName(...)}, {@code withTokenUsage(...)}, {@code withoutAsyncSupport()},
- * {@code withAsyncResult(...)}, {@code implementingOnlyScoreAll()} and {@code scoreAllCalls()} have no replacement.
- * This class will be removed in 1.26.0 at the earliest.
+ * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
+ * script runs out; end the script with {@link MockScoringModel#thenRepeats()} to answer every further request with its
+ * last step. {@code withListeners(...)} has the same name. A response reports the model name of the request, and
+ * asynchronous calls complete on another thread. {@code withProvider(...)}, {@code withModelName(...)},
+ * {@code withTokenUsage(...)}, {@code withoutAsyncSupport()}, {@code withAsyncResult(...)},
+ * {@code implementingOnlyScoreAll()} and {@code scoreAllCalls()} have no replacement. This class will be removed in
+ * 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -54,8 +56,8 @@ public class ScoringModelMock implements ScoringModel {
 
     /**
      * @param scores computes the score of a document from its text.
-     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}. Removed together with this class, in
-     * 1.26.0 at the earliest.
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock(Function<String, Double> scores) {
@@ -220,8 +222,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatScores(double)}. Removed together with this class, in 1.26.0 at the
-     * earliest.
+     * @deprecated use {@link MockScoringModel#thatScores(double)} followed by {@link MockScoringModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysScores(double score) {
@@ -229,8 +231,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}. Removed together with this class, in
-     * 1.26.0 at the earliest.
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatScores(Function<String, Double> scores) {
@@ -238,8 +240,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}. Removed together with this class, in 1.26.0
-     * at the earliest.
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsException() {
@@ -247,8 +249,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}. Removed together with this class, in 1.26.0
-     * at the earliest.
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsExceptionWithMessage(String message) {

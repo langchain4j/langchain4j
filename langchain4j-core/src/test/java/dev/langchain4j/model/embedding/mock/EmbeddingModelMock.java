@@ -17,12 +17,15 @@ import java.util.function.Function;
  * This implementation is experimental and subject to change in the future.
  *
  * @deprecated use {@link MockEmbeddingModel} (package {@code dev.langchain4j.test.mock}) from the
- * {@code langchain4j-test} module: {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)} returns the same vector as this
- * class, and {@link MockEmbeddingModel#thatEmbeds(Function)} computes the vector from each text. It supports
- * asynchronous calls, which complete on another thread. It accepts the per-call parameters
- * {@code modelName} and {@code inputType}, which this class rejects, and a response reports the model name.
- * {@code withProvider(...)} has no replacement, and {@code withListeners(...)} has the same name.
- * This class will be removed in 1.26.0 at the earliest.
+ * {@code langchain4j-test} module: {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f).thenRepeats()} returns the same
+ * vector as this class for every request, and {@link MockEmbeddingModel#thatEmbeds(Function)} followed by
+ * {@link MockEmbeddingModel#thenRepeats()} computes the vector from each text. Unlike this class, it answers one
+ * request per scripted step and fails when the script runs out, so that a script can also let a request fail and the
+ * next one succeed; end the script with {@code thenRepeats()} to answer every further request with its last step. It
+ * supports asynchronous calls, which complete on another thread. It accepts the per-call parameters {@code modelName}
+ * and {@code inputType}, which this class rejects, and a response reports the model name. {@code withProvider(...)} has
+ * no replacement, and {@code withListeners(...)} has the same name. This class will be removed in 1.26.0 at the
+ * earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
