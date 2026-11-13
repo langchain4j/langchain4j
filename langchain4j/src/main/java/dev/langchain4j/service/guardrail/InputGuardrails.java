@@ -24,7 +24,9 @@ import java.lang.annotation.Target;
  *     annotation on a method takes precedence over one on the class: for that method, it replaces the annotation on
  *     the class, and the guardrails of the two are not combined. Input guardrails set on the {@link AiServices}
  *     builder take precedence over both: they replace the guardrails of these annotations, and are not combined with
- *     them either.
+ *     them either. Passing {@code null} or an empty list of input guardrails to the builder does not disable these
+ *     annotations. An input guardrails configuration set on the builder applies to every method, including the ones
+ *     whose guardrails come from these annotations.
  * </p>
  * <p>
  *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in the order

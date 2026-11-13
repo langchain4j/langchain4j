@@ -28,8 +28,14 @@ import java.lang.annotation.Target;
  *     annotation on a method takes precedence over one on the class: for that method, it replaces the annotation on
  *     the class as a whole, including its {@link #maxRetries()}, and the two are not combined. Output guardrails set
  *     on the {@link AiServices} builder take precedence over the guardrails of both: they replace the guardrails of
- *     these annotations, and are not combined with them either. An output guardrails configuration set on the
- *     builder takes precedence over their {@link #maxRetries()}.
+ *     these annotations, and are not combined with them either. Passing {@code null} or an empty list of output
+ *     guardrails to the builder does not disable these annotations.
+ * </p>
+ * <p>
+ *     The guardrails and their configuration are resolved independently of each other. An output guardrails
+ *     configuration set on the builder takes precedence over the {@link #maxRetries()} of these annotations. When
+ *     only output guardrails, and no configuration, are set on the builder, the {@link #maxRetries()} of these
+ *     annotations still applies to the guardrails set on the builder.
  * </p>
  * <p>
  *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in

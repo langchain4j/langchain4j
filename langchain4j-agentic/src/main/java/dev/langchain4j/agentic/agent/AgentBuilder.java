@@ -599,7 +599,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for input guardrails applied before sending requests to the model.
-     * It applies to every method of the agent, see {@link AiServices#inputGuardrailsConfig(InputGuardrailsConfig)}.
+     * It applies to every method of the agent.
      *
      * @param inputGuardrailsConfig the input guardrails configuration
      * @return {@code this}
@@ -611,8 +611,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for output guardrails applied after receiving responses from the model.
-     * It takes precedence over the configuration of any {@link OutputGuardrails} annotation on the agent,
-     * see {@link AiServices#outputGuardrailsConfig(OutputGuardrailsConfig)}.
+     * It takes precedence over the configuration of any {@link OutputGuardrails} annotation on the agent.
      *
      * @param outputGuardrailsConfig the output guardrails configuration
      * @return {@code this}
@@ -624,8 +623,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail classes to be instantiated and applied before each request.
-     * Guardrails set this way take precedence over any {@link InputGuardrails} annotation on the agent,
-     * see {@link AiServices#inputGuardrailClasses(Class[])}.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrailClasses the input guardrail classes
      * @param <I> the guardrail type
@@ -638,8 +637,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail classes to be instantiated and applied after each response.
-     * Guardrails set this way take precedence over any {@link OutputGuardrails} annotation on the agent,
-     * see {@link AiServices#outputGuardrailClasses(Class[])}.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrailClasses the output guardrail classes
      * @param <O> the guardrail type
@@ -652,8 +651,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail instances applied before each request.
-     * Guardrails set this way take precedence over any {@link InputGuardrails} annotation on the agent,
-     * see {@link AiServices#inputGuardrails(InputGuardrail[])}.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrails the input guardrails
      * @param <I> the guardrail type
@@ -666,8 +665,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail instances applied after each response.
-     * Guardrails set this way take precedence over any {@link OutputGuardrails} annotation on the agent,
-     * see {@link AiServices#outputGuardrails(OutputGuardrail[])}.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrails the output guardrails
      * @param <O> the guardrail type

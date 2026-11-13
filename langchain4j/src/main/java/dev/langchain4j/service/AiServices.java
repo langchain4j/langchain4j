@@ -1051,10 +1051,8 @@ public abstract class AiServices<T> {
     /**
      * Configures the input guardrail classes for the AI services.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link InputGuardrails} annotation: they are used for
-     *     every method of the AI service, instead of the guardrails listed in {@code @InputGuardrails} on the class or
-     *     on the method. Passing {@code null} or an empty list does not disable the guardrails listed in
-     *     {@code @InputGuardrails}.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1083,10 +1081,8 @@ public abstract class AiServices<T> {
     /**
      * Configures input guardrail classes for the AI service.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link InputGuardrails} annotation: they are used for
-     *     every method of the AI service, instead of the guardrails listed in {@code @InputGuardrails} on the class or
-     *     on the method. Passing {@code null} or no guardrails does not disable the guardrails listed in
-     *     {@code @InputGuardrails}.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1115,10 +1111,8 @@ public abstract class AiServices<T> {
     /**
      * Sets the input guardrails to be used by the guardrail service builder in the current context.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link InputGuardrails} annotation: they are used for
-     *     every method of the AI service, instead of the guardrails listed in {@code @InputGuardrails} on the class or
-     *     on the method. Passing {@code null} or an empty list does not disable the guardrails listed in
-     *     {@code @InputGuardrails}.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1145,10 +1139,8 @@ public abstract class AiServices<T> {
     /**
      * Sets the specified input guardrails on the context's guardrail service builder.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link InputGuardrails} annotation: they are used for
-     *     every method of the AI service, instead of the guardrails listed in {@code @InputGuardrails} on the class or
-     *     on the method. Passing {@code null} or no guardrails does not disable the guardrails listed in
-     *     {@code @InputGuardrails}.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1175,11 +1167,9 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrail classes for the AI services.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link OutputGuardrails} annotation: they are used
-     *     for every method of the AI service, instead of the guardrails listed in {@code @OutputGuardrails} on the
-     *     class or on the method. The {@code maxRetries} of such an annotation still applies, unless
-     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig)} is set as well. Passing {@code null} or an empty list
-     *     does not disable the guardrails listed in {@code @OutputGuardrails}.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
      *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1214,11 +1204,9 @@ public abstract class AiServices<T> {
     /**
      * Sets the output guardrail classes to be used in the guardrail service.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link OutputGuardrails} annotation: they are used
-     *     for every method of the AI service, instead of the guardrails listed in {@code @OutputGuardrails} on the
-     *     class or on the method. The {@code maxRetries} of such an annotation still applies, unless
-     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig)} is set as well. Passing {@code null} or no guardrails
-     *     does not disable the guardrails listed in {@code @OutputGuardrails}.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
      *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1254,11 +1242,9 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrails for the AI service.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link OutputGuardrails} annotation: they are used
-     *     for every method of the AI service, instead of the guardrails listed in {@code @OutputGuardrails} on the
-     *     class or on the method. The {@code maxRetries} of such an annotation still applies, unless
-     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig)} is set as well. Passing {@code null} or an empty list
-     *     does not disable the guardrails listed in {@code @OutputGuardrails}.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
      *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -1291,11 +1277,9 @@ public abstract class AiServices<T> {
     /**
      * Configures output guardrails for the AI services.
      * <p>
-     *     Guardrails configured this way take precedence over the {@link OutputGuardrails} annotation: they are used
-     *     for every method of the AI service, instead of the guardrails listed in {@code @OutputGuardrails} on the
-     *     class or on the method. The {@code maxRetries} of such an annotation still applies, unless
-     *     {@link #outputGuardrailsConfig(OutputGuardrailsConfig)} is set as well. Passing {@code null} or no guardrails
-     *     does not disable the guardrails listed in {@code @OutputGuardrails}.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
      *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
