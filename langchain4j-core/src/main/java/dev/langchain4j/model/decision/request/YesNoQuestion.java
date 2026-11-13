@@ -18,6 +18,9 @@ import java.util.Objects;
  *         .noWhen("The customer only asks about a charge")
  *         .build();
  * }</pre>
+ * Each of them is a sufficient condition: when it holds, the answer follows it. When it does not hold, for example
+ * when only {@code yesWhen} is set and the input does not meet it, the meaning of the question itself decides the
+ * answer.
  *
  * @since 1.21.0
  */
@@ -108,7 +111,9 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes".
+         * Describes when the answer should be "yes". This is a sufficient condition: when it holds, the answer is
+         * "yes". When it does not hold, the answer is not necessarily "no": then the meaning of the question itself
+         * decides, or {@link #noWhen(String)} if it is set and holds.
          */
         public Builder yesWhen(String description) {
             this.yesWhen = description;
@@ -116,7 +121,9 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "no".
+         * Describes when the answer should be "no". This is a sufficient condition: when it holds, the answer is
+         * "no". When it does not hold, the answer is not necessarily "yes": then the meaning of the question itself
+         * decides, or {@link #yesWhen(String)} if it is set and holds.
          */
         public Builder noWhen(String description) {
             this.noWhen = description;

@@ -9,6 +9,9 @@ import com.openai.client.OpenAIClientImpl;
 import com.openai.core.ClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -26,7 +29,9 @@ import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.time.Duration;
 import dev.langchain4j.exception.AuthenticationException;
@@ -539,7 +544,7 @@ class OpenAiOfficialDecisionModelTest {
                         .get("content"))
                 .isEqualTo(OBJECT_MAPPER.readTree(
                         """
-                        [{"type": "input_image", "image_url": "https://example.com/package.png", "detail": "low"}]
+                        [{"type": "input_image", "image_url": "https://example.com/package.png"}]
                         """));
     }
 
@@ -702,6 +707,14 @@ class OpenAiOfficialDecisionModelTest {
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
                         + "messages: SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
+        assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
+                        .inputMessages(List.of(UserMessage.from(
+                                TextContent.from("See attached."), AudioContent.from("YXVkaW8=", "audio/wav"))))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The OpenAI Decisions API supports only text and images in a conversation, but it contains "
+                        + "AUDIO");
         assertThat(model().decideAsync(DecisionRequest.builder()
                         .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
                         .question("urgent", YesNoQuestion.from("Does this need attention today?"))
@@ -837,6 +850,102 @@ class OpenAiOfficialDecisionModelTest {
         assertThatThrownBy(() -> model.decide(REQUEST))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("The model name must be set");
+    }
+
+    @Test
+    void do_decide_async_should_return_failed_future_instead_of_throwing() {
+
+        // given
+        OpenAiOfficialDecisionModel model = model();
+        // doDecideAsync is called directly, so the model name of the builder is not applied
+        DecisionRequest withoutModelName = DecisionRequest.builder()
+                .input("Hi")
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+        DecisionRequest withCustomInput = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .parameters(DecisionRequestParameters.builder().modelName("gpt-6-luna").build())
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> missingModelName = model.doDecideAsync(withoutModelName);
+        CompletableFuture<DecisionResponse> customInput = model.doDecideAsync(withCustomInput);
+
+        // then
+        assertThat(missingModelName)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(customInput)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.recordedRequests()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ImageContent.DetailLevel.class, names = {"LOW", "HIGH", "AUTO"})
+    void should_send_image_detail_level_only_when_it_was_set(ImageContent.DetailLevel detailLevel) throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", DAMAGED_RESPONSE);
+        httpClient.enqueue("decisions", DAMAGED_RESPONSE);
+
+        // when
+        model().decide(damagedRequest(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)));
+        model().decide(damagedRequest(ImageContent.from("iVBORw0KGgo=", "image/png")));
+
+        // then
+        assertThat(imagePart(0).get("detail").asText()).isEqualTo(detailLevel.name().toLowerCase(Locale.ROOT));
+        assertThat(imagePart(1).has("detail")).isFalse();
+    }
+
+    @Test
+    void should_send_detail_level_of_image_read_from_json() throws Exception {
+
+        // given
+        httpClient.enqueue("decisions", DAMAGED_RESPONSE);
+        httpClient.enqueue("decisions", DAMAGED_RESPONSE);
+        // an image read from JSON, for example from a chat memory, counts as having its detail level set, also when
+        // it was not set before it was written (it is then LOW)
+        ImageContent high = readFromJson(ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.HIGH));
+        ImageContent notSet = readFromJson(ImageContent.from("iVBORw0KGgo=", "image/png"));
+
+        // when
+        model().decide(damagedRequest(high));
+        model().decide(damagedRequest(notSet));
+
+        // then
+        assertThat(imagePart(0).get("detail").asText()).isEqualTo("high");
+        assertThat(imagePart(1).get("detail").asText()).isEqualTo("low");
+    }
+
+    private static final String DAMAGED_RESPONSE =
+            """
+            {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+            """;
+
+    private static DecisionRequest damagedRequest(ImageContent image) {
+        return DecisionRequest.builder()
+                .inputContents(List.of(image))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
+                .build();
+    }
+
+    private JsonNode imagePart(int request) throws Exception {
+        return OBJECT_MAPPER
+                .readTree(httpClient.recordedRequests().get(request).body())
+                .get("input")
+                .get(0)
+                .get("content")
+                .get(0);
+    }
+
+    private static ImageContent readFromJson(ImageContent image) {
+        UserMessage message = (UserMessage) ChatMessageDeserializer.messageFromJson(
+                ChatMessageSerializer.messageToJson(UserMessage.from(image)));
+        return (ImageContent) message.contents().get(0);
     }
 
     private OpenAiOfficialDecisionModel model() {

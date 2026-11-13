@@ -99,13 +99,17 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        TypeSafeRequest typeSafeRequest = TypeSafeMapper.toTypeSafeRequest(request);
-        CompletableFuture<TypeSafeResponse> responseFuture =
-                withRetryMappingExceptionsAsync(() -> client.decideAsync(typeSafeRequest), maxRetries);
-        CompletableFuture<DecisionResponse> result =
-                responseFuture.thenApply(response -> TypeSafeMapper.toDecisionResponse(response, request));
-        propagateCancellation(result, responseFuture);
-        return result;
+        try {
+            TypeSafeRequest typeSafeRequest = TypeSafeMapper.toTypeSafeRequest(request);
+            CompletableFuture<TypeSafeResponse> responseFuture =
+                    withRetryMappingExceptionsAsync(() -> client.decideAsync(typeSafeRequest), maxRetries);
+            CompletableFuture<DecisionResponse> result =
+                    responseFuture.thenApply(response -> TypeSafeMapper.toDecisionResponse(response, request));
+            propagateCancellation(result, responseFuture);
+            return result;
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override

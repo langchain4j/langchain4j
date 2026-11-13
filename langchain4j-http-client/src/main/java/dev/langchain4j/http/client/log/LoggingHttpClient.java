@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -89,11 +90,13 @@ public class LoggingHttpClient implements HttpClient {
             return future;
         }
 
-        return future.whenComplete((response, throwable) -> {
+        CompletableFuture<SuccessfulHttpResponse> result = future.whenComplete((response, throwable) -> {
             if (response != null) {
                 HttpResponseLogger.log(log, response);
             }
         });
+        propagateCancellation(result, future);
+        return result;
     }
 
     @Override
