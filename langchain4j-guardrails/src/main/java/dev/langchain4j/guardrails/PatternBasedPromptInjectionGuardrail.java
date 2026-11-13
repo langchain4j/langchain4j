@@ -2,7 +2,9 @@ package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
+import static java.util.stream.Collectors.joining;
 
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
@@ -120,7 +122,12 @@ public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
         ensureNotNull(userMessage, "userMessage");
-        String text = userMessage.singleText();
+        // Check the text of every TextContent: a message can also contain images or other media,
+        // or be made of several text parts, and singleText() throws for both
+        String text = userMessage.contents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(content -> ((TextContent) content).text())
+                .collect(joining("\n"));
         if (text == null || text.isBlank()) {
             return success();
         }
