@@ -566,6 +566,11 @@ This feature is experimental and may change in future releases.
 
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
 
+When an output message contains a non-blank refusal, `OpenAiResponsesChatModel` throws
+`ContentFilteredException` (or completes `chatAsync()` exceptionally).
+`OpenAiResponsesStreamingChatModel` reports it through `onError()` instead of completing successfully.
+The exception message contains the refusal text.
+
 ### Creating `OpenAiResponsesChatModel`
 
 ```java

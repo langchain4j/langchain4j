@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,6 +21,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -104,6 +106,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_ARGUMENTS = "arguments";
     private static final String FIELD_DELTA = "delta";
     private static final String FIELD_TEXT = "text";
+    private static final String FIELD_REFUSAL = "refusal";
     private static final String FIELD_IMAGE_URL = "image_url";
     private static final String FIELD_FILE_URL = "file_url";
     private static final String FIELD_FILE_DATA = "file_data";
@@ -182,6 +185,7 @@ class OpenAiResponsesClient {
     private static final String TYPE_MESSAGE = "message";
     private static final String TYPE_REASONING = "reasoning";
     private static final String TYPE_OUTPUT_TEXT = "output_text";
+    private static final String TYPE_REFUSAL = "refusal";
     private static final String TYPE_OBJECT = "object";
     private static final String TYPE_INPUT_TEXT = "input_text";
     private static final String TYPE_INPUT_IMAGE = "input_image";
@@ -580,6 +584,20 @@ class OpenAiResponsesClient {
         return textBuilder.isEmpty() ? null : textBuilder.toString();
     }
 
+    private static String extractRefusal(Object output) {
+        StringBuilder refusalBuilder = new StringBuilder();
+        for (Object item : arr(output)) {
+            if (TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE)))) {
+                for (Object content : arr(at(item, FIELD_CONTENT))) {
+                    if (TYPE_REFUSAL.equals(str(at(content, FIELD_TYPE)))) {
+                        refusalBuilder.append(str(at(content, FIELD_REFUSAL)));
+                    }
+                }
+            }
+        }
+        return refusalBuilder.isEmpty() ? null : refusalBuilder.toString();
+    }
+
     private static String extractReasoningSummary(Object output) {
         StringBuilder summaryBuilder = new StringBuilder();
         for (Object item : arr(output)) {
@@ -684,6 +702,10 @@ class OpenAiResponsesClient {
         Map<String, Object> responseNode = CODEC.fromJson(rawHttpResponse.body(), Map.class);
 
         Object outputNode = at(responseNode, FIELD_OUTPUT);
+        String refusal = extractRefusal(outputNode);
+        if (isNotNullOrBlank(refusal)) {
+            throw new ContentFilteredException(refusal);
+        }
         String text = extractText(outputNode);
         String thinking = extractReasoningSummary(outputNode);
         String encryptedContent = extractReasoningEncryptedContent(outputNode);
@@ -1222,6 +1244,11 @@ class OpenAiResponsesClient {
             var responseNode = at(node, FIELD_RESPONSE);
 
             Object outputNode = at(responseNode, FIELD_OUTPUT);
+            String refusal = extractRefusal(outputNode);
+            if (isNotNullOrBlank(refusal)) {
+                withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                return;
+            }
             String text = extractText(outputNode);
             String thinking = extractReasoningSummary(outputNode);
             String encryptedContent = extractReasoningEncryptedContent(outputNode);
