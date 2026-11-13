@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -18,7 +19,8 @@ import org.junit.jupiter.api.Test;
 
 class OutputGuardrailExecutorChatRequestTest {
 
-    static final ChatResponse GOOD = ChatResponse.builder().aiMessage(AiMessage.from("good")).build();
+    static final ChatResponse GOOD =
+            ChatResponse.builder().aiMessage(AiMessage.from("good")).build();
     static final ChatRequest FIRST_REQUEST =
             ChatRequest.builder().messages(UserMessage.from("Hi")).build();
 
@@ -99,5 +101,93 @@ class OutputGuardrailExecutorChatRequestTest {
                 .get(10, SECONDS);
 
         assertThat(guardrail.chatRequests).isEqualTo(Arrays.asList(FIRST_REQUEST, null));
+    }
+
+    @Test
+    void should_not_throw_npe_when_ai_message_has_no_text() {
+        AiMessage aiMessage = AiMessage.from(List.of(ToolExecutionRequest.builder()
+                .id("1")
+                .name("getWeather")
+                .arguments("{}")
+                .build()));
+        assertThat(aiMessage.text()).isNull();
+
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder().aiMessage(aiMessage).build())
+                .chatExecutor(new CustomExecutor())
+                .requestParams(GuardrailRequestParams.builder()
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .invocationContext(InvocationContext.builder()
+                                .interfaceName("SomeInterface")
+                                .methodName("someMethod")
+                                .build())
+                        .build())
+                .chatRequest(FIRST_REQUEST)
+                .build();
+
+        OutputGuardrail passThroughGuardrail = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(OutputGuardrailRequest req) {
+                return success();
+            }
+        };
+
+        OutputGuardrailResult result = OutputGuardrailExecutor.builder()
+                .guardrails(passThroughGuardrail)
+                .build()
+                .execute(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.hasRewrittenResult()).isFalse();
+        ChatResponse chatResponse = result.response(request);
+        assertThat(chatResponse.aiMessage()).isSameAs(aiMessage);
+    }
+
+    @Test
+    void should_not_throw_npe_when_ai_message_has_no_text_async() throws Exception {
+        AiMessage aiMessage = AiMessage.from(List.of(ToolExecutionRequest.builder()
+                .id("1")
+                .name("getWeather")
+                .arguments("{}")
+                .build()));
+        assertThat(aiMessage.text()).isNull();
+
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder().aiMessage(aiMessage).build())
+                .chatExecutor(new CustomExecutor())
+                .requestParams(GuardrailRequestParams.builder()
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .invocationContext(InvocationContext.builder()
+                                .interfaceName("SomeInterface")
+                                .methodName("someMethod")
+                                .build())
+                        .build())
+                .chatRequest(FIRST_REQUEST)
+                .build();
+
+        OutputGuardrail passThroughGuardrail = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(OutputGuardrailRequest req) {
+                return success();
+            }
+
+            @Override
+            public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest req) {
+                return CompletableFuture.completedFuture(validate(req));
+            }
+        };
+
+        OutputGuardrailResult result = OutputGuardrailExecutor.builder()
+                .guardrails(passThroughGuardrail)
+                .build()
+                .executeAsync(request)
+                .get(10, SECONDS);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.hasRewrittenResult()).isFalse();
+        ChatResponse chatResponse = result.response(request);
+        assertThat(chatResponse.aiMessage()).isSameAs(aiMessage);
     }
 }
