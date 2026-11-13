@@ -1,5 +1,12 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.PartialToolCall;
@@ -9,15 +16,7 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
-
 import java.util.List;
-
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 @Internal
 public final class ChatCompletionEventDispatcher {
@@ -57,14 +56,14 @@ public final class ChatCompletionEventDispatcher {
             return;
         }
 
-        String content = delta.content();
-        if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
-        }
-
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
+        }
+
+        String content = delta.content();
+        if (!isNullOrEmpty(content)) {
+            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
