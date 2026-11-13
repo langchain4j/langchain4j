@@ -49,19 +49,26 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
     static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private final java.net.http.HttpClient delegate;
+    private final boolean ownsDelegate;
     private final boolean useHttp1ForPlainHttp;
     private final Duration readTimeout;
     private final int streamingBufferSize;
     private final boolean streamingBackpressure;
 
     public JdkHttpClient(JdkHttpClientBuilder builder) {
-        java.net.http.HttpClient.Builder httpClientBuilder =
-                getOrDefault(builder.httpClientBuilder(), java.net.http.HttpClient::newBuilder);
-        if (builder.connectTimeout() != null) {
-            httpClientBuilder.connectTimeout(builder.connectTimeout());
+        if (builder.httpClient() != null) {
+            this.delegate = builder.httpClient();
+            this.ownsDelegate = false;
+        } else {
+            java.net.http.HttpClient.Builder httpClientBuilder =
+                    getOrDefault(builder.httpClientBuilder(), java.net.http.HttpClient::newBuilder);
+            if (builder.connectTimeout() != null) {
+                httpClientBuilder.connectTimeout(builder.connectTimeout());
+            }
+            this.delegate = httpClientBuilder.build();
+            this.ownsDelegate = true;
         }
-        this.delegate = httpClientBuilder.build();
-        this.useHttp1ForPlainHttp = builder.httpClientBuilder() == null;
+        this.useHttp1ForPlainHttp = builder.httpClient() == null && builder.httpClientBuilder() == null;
         this.readTimeout = builder.readTimeout();
         this.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
@@ -77,8 +84,9 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
     }
 
     /**
-     * Closes the underlying JDK HTTP client on Java 21 and later. On earlier Java versions,
-     * which do not support explicitly closing HTTP clients, this method does nothing.
+     * Closes an underlying JDK HTTP client created by this wrapper on Java 21 and later. On earlier Java versions,
+     * which do not support explicitly closing HTTP clients, this method does nothing. A client supplied through
+     * {@link JdkHttpClientBuilder#httpClient(java.net.http.HttpClient)} remains owned by the caller and is not closed.
      * <p>
      * The caller owns this client and should close it when it is no longer needed. Complete
      * or cancel outstanding requests, including streaming subscriptions, before closing it,
@@ -88,7 +96,7 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
      */
     @Override
     public void close() throws IOException {
-        if (delegate instanceof AutoCloseable closeable) {
+        if (ownsDelegate && delegate instanceof AutoCloseable closeable) {
             try {
                 closeable.close();
             } catch (InterruptedException e) {
