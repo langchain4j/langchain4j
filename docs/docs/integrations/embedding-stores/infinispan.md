@@ -32,7 +32,28 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 ## APIs
 
 - `InfinispanEmbeddingStore`
+- `InfinispanChatMemoryStore`
 
+### InfinispanChatMemoryStore
+
+A `ChatMemoryStore` backed by an Infinispan cache. Messages are serialized to JSON
+using `ChatMessageSerializer`, supporting all message types including multimodal
+content (images, audio, video, PDF), tool calls, and provider-specific attributes.
+
+```java
+// Using a ConfigurationBuilder
+InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
+    .infinispanConfigBuilder(builder)
+    .build();
+```
+
+When using a pre-configured `RemoteCacheManager` (e.g. in Quarkus):
+
+```java
+InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
+    .remoteCacheManager(remoteCacheManager)
+    .build();
+```
 
 ## Examples
 
