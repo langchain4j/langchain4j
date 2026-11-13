@@ -9,8 +9,8 @@ import static io.restassured.RestAssured.given;
 
 import com.example.support.SupportResource;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
 import io.quarkus.test.junit.QuarkusTest;
@@ -42,7 +42,7 @@ class RestResourceTest {
 
     @Test
     void does_not_capture_invocation_started_by_http_request() {
-        ChatModelMock chatModel = useChatModelResponding(AiMessage.from("Hello from the assistant"));
+        MockChatModel chatModel = useChatModelResponding(AiMessage.from("Hello from the assistant"));
 
         AiServiceCapture invocations = AiServiceCapture.capture(() -> given().queryParam("q", "Hi")
                 .when()
@@ -78,7 +78,7 @@ class RestResourceTest {
 
     @Test
     void http_request_to_multi_endpoint_streams_the_answer() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello ", "world"));
+        useStreamingChatModel(MockStreamingChatModel.thatStreams("Hello ", "world"));
 
         String body = given().queryParam("q", "Hi")
                 .when()
@@ -116,7 +116,7 @@ class RestResourceTest {
 
     @Test
     void records_multi_returned_by_resource_bean() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hello ", "world"));
+        useStreamingChatModel(MockStreamingChatModel.thatStreams("Hello ", "world"));
 
         AiServiceInvocation invocation = AiServiceCapture.capture(() -> supportResource.chatStream("Hi"))
                 .invocation();
@@ -126,7 +126,7 @@ class RestResourceTest {
 
     @Test
     void output_is_the_validatable_response_of_rest_assured_but_nothing_is_recorded() {
-        ChatModelMock chatModel = useChatModelResponding(AiMessage.from("Hello from the assistant"));
+        MockChatModel chatModel = useChatModelResponding(AiMessage.from("Hello from the assistant"));
 
         AiServiceCapture capture = AiServiceCapture.capture(() -> given().queryParam("q", "Hi")
                 .when()

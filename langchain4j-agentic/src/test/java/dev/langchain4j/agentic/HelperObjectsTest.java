@@ -59,9 +59,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
@@ -233,8 +233,8 @@ class HelperObjectsTest {
     }
 
     /** Replies with the system message and the last user message it receives. */
-    static ChatModelMock echoModel() {
-        return new ChatModelMock(chatRequest -> {
+    static MockChatModel echoModel() {
+        return MockChatModel.thatResponds(chatRequest -> {
             String system = chatRequest.messages().stream()
                     .filter(SystemMessage.class::isInstance)
                     .map(message -> ((SystemMessage) message).text())
@@ -243,16 +243,16 @@ class HelperObjectsTest {
             ChatMessage last = chatRequest.messages().get(chatRequest.messages().size() - 1);
             String user = last instanceof UserMessage userMessage ? userMessage.singleText() : "";
             return AiMessage.from(system + " | " + user);
-        });
+        }).thenRepeats();
     }
 
     /** Replies with the given responses in order. */
-    static ChatModelMock scriptedModel(String... responses) {
+    static MockChatModel scriptedModel(String... responses) {
         Iterator<String> iterator = List.of(responses).iterator();
-        return new ChatModelMock(chatRequest -> AiMessage.from(iterator.next()));
+        return MockChatModel.thatResponds(chatRequest -> AiMessage.from(iterator.next())).thenRepeats();
     }
 
-    static String receivedTexts(ChatModelMock model) {
+    static String receivedTexts(MockChatModel model) {
         return model.requests().stream()
                 .flatMap(request -> request.messages().stream())
                 .map(message -> message instanceof SystemMessage systemMessage
@@ -581,7 +581,7 @@ class HelperObjectsTest {
         final MemoryStore store = new MemoryStore();
 
         @ChatModelSupplier
-        ChatModel chatModel(@Injected ChatModelMock model) {
+        ChatModel chatModel(@Injected MockChatModel model) {
             return model;
         }
 
@@ -621,7 +621,7 @@ class HelperObjectsTest {
     void ai_agent_suppliers_are_invoked_on_the_helper_object() {
         register(Persona.class, new Persona("Butler"));
         register(Formatter.class, new Formatter());
-        ChatModelMock model = register(ChatModelMock.class, echoModel());
+        MockChatModel model = register(MockChatModel.class, echoModel());
         RecordingListener listener = register(RecordingListener.class, new RecordingListener());
         AssistantHelpers helpers = new AssistantHelpers();
         var configurator = new AgentConfigurator(
@@ -647,8 +647,8 @@ class HelperObjectsTest {
     }
 
     public static class TranslatorHelpers {
-        final ChatModelMock english = ChatModelMock.thatAlwaysResponds("hello");
-        final ChatModelMock italian = ChatModelMock.thatAlwaysResponds("ciao");
+        final MockChatModel english = MockChatModel.thatResponds("hello");
+        final MockChatModel italian = MockChatModel.thatResponds("ciao");
 
         @ChatModelSupplier
         ChatModel chatModel(@V("language") String language, @Injected Formatter formatter) {
@@ -677,7 +677,7 @@ class HelperObjectsTest {
         assertThat(helpers.english.requests()).hasSize(1);
     }
 
-    static final ChatModelMock INHERITED_MODEL = ChatModelMock.thatAlwaysResponds("inherited");
+    static final MockChatModel INHERITED_MODEL = MockChatModel.thatResponds("inherited").thenRepeats();
 
     public interface ModelDefaults {
 
@@ -702,7 +702,7 @@ class HelperObjectsTest {
 
     @Test
     void static_chat_model_supplier_of_a_super_interface_of_an_ai_agent_is_applied() {
-        ChatModelMock systemModel = ChatModelMock.thatAlwaysResponds("system");
+        MockChatModel systemModel = MockChatModel.thatResponds("system");
 
         InheritingTranslation translation =
                 AgenticServices.createAgenticSystem(InheritingTranslation.class, systemModel);
@@ -761,9 +761,9 @@ class HelperObjectsTest {
 
     public static class SupervisorHelpers {
         final MemoryStore store = new MemoryStore();
-        final ChatModelMock plannerModel;
+        final MockChatModel plannerModel;
 
-        SupervisorHelpers(ChatModelMock plannerModel) {
+        SupervisorHelpers(MockChatModel plannerModel) {
             this.plannerModel = plannerModel;
         }
 
@@ -788,7 +788,7 @@ class HelperObjectsTest {
         }
     }
 
-    static ChatModelMock exchangePlannerModel() {
+    static MockChatModel exchangePlannerModel() {
         return scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
@@ -824,7 +824,7 @@ class HelperObjectsTest {
         final List<ThresholdContext> contexts = new ArrayList<>();
 
         @DecisionModelSupplier
-        DecisionModel decisionModel(@Injected DecisionModelMock model) {
+        DecisionModel decisionModel(@Injected MockDecisionModel model) {
             return model;
         }
 
@@ -837,7 +837,7 @@ class HelperObjectsTest {
 
     @Test
     void decision_suppliers_are_invoked_on_the_helper_object() {
-        register(DecisionModelMock.class, DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7));
+        register(MockDecisionModel.class, MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.7));
         register(Threshold.class, new Threshold(80));
         GateHelpers helpers = new GateHelpers();
 
@@ -1359,7 +1359,7 @@ class HelperObjectsTest {
     }
 
     public static class RephrasingModel {
-        final ChatModelMock model = scriptedModel("ciao");
+        final MockChatModel model = scriptedModel("ciao");
 
         @ChatModelSupplier
         ChatModel chatModel(@Injected Persona persona) {

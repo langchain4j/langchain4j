@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class AiServiceValidationTest {
 
-    private static final ChatModel CHAT_MODEL = ChatModelMock.thatAlwaysResponds("Hello there!");
+    private static final ChatModel CHAT_MODEL = MockChatModel.thatResponds("Hello there!");
 
     record Person(String name) {}
 

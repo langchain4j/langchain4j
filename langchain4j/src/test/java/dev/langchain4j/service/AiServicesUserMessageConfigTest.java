@@ -16,8 +16,8 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -51,7 +51,7 @@ class AiServicesUserMessageConfigTest {
     private static final ImageContent imageContent = ImageContent.from(image);
 
     @Spy
-    ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+    ChatModel chatModel = MockChatModel.thatResponds("Berlin");
 
     @AfterEach
     void afterEach() {
@@ -573,7 +573,7 @@ class AiServicesUserMessageConfigTest {
     @Test
     void user_message_configuration_19_3_streaming() throws Exception {
         // given
-        StreamingChatModelMock streamingChatModel = StreamingChatModelMock.thatAlwaysStreams("Berlin");
+        MockStreamingChatModel streamingChatModel = MockStreamingChatModel.thatResponds("Berlin");
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         AiService aiService = AiServices.builder(AiService.class)
                 .streamingChatModel(streamingChatModel)

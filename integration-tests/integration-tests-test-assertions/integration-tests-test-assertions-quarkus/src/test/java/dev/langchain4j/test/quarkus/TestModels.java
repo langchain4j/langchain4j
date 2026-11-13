@@ -2,8 +2,8 @@ package dev.langchain4j.test.quarkus;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 
@@ -18,12 +18,13 @@ public class TestModels {
     @Produces
     @ApplicationScoped
     ChatModel chatModel() {
-        return ChatModelMock.thatAlwaysResponds(DEFAULT_ANSWER);
+        return MockChatModel.thatResponds(DEFAULT_ANSWER).thenRepeats();
     }
 
     @Produces
     @ApplicationScoped
     StreamingChatModel streamingChatModel() {
-        return StreamingChatModelMock.thatAlwaysStreams("How ", "can ", "I ", "help ", "you?");
+        return MockStreamingChatModel.thatStreams("How ", "can ", "I ", "help ", "you?")
+                .thenRepeats();
     }
 }

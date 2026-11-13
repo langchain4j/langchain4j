@@ -31,8 +31,8 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -189,10 +189,10 @@ class DecisionSchedulerPlannerTest {
      * A model answering each request with the goal probability and the scores computed from its state. The score of
      * a subagent is found by the name of its question, and a subagent without a score is useless.
      */
-    private static DecisionModelMock model(
+    private static MockDecisionModel model(
             Function<Map<String, Object>, Double> goalProbability,
             Function<Map<String, Object>, Map<String, Double>> scores) {
-        return DecisionModelMock.thatAnswers(request -> {
+        return MockDecisionModel.thatAnswers(request -> {
             Map<String, Object> state = state(request);
             Map<String, Double> stateScores = scores.apply(state);
             Map<String, DecisionAnswer> answers = new LinkedHashMap<>();
@@ -202,19 +202,19 @@ class DecisionSchedulerPlannerTest {
                             ? YesNoAnswer.from(goalProbability.apply(state))
                             : score(stateScores.getOrDefault(name, 0.0))));
             return answers;
-        });
+        }).thenRepeats();
     }
 
-    private static DecisionModelMock model(double goalProbability, Map<String, Double> scores) {
+    private static MockDecisionModel model(double goalProbability, Map<String, Double> scores) {
         return model(state -> goalProbability, state -> scores);
     }
 
     /** A model considering the goal reached as soon as the reply is part of the state. */
-    private static DecisionModelMock modelReachingTheGoalWithAReply(Map<String, Double> scores) {
+    private static MockDecisionModel modelReachingTheGoalWithAReply(Map<String, Double> scores) {
         return model(state -> state.containsKey("reply") ? 0.9 : 0.1, state -> scores);
     }
 
-    private static DecisionSchedulerPlanner.Builder planner(DecisionModelMock model) {
+    private static DecisionSchedulerPlanner.Builder planner(MockDecisionModel model) {
         return DecisionSchedulerPlanner.builder()
                 .decisionModel(model)
                 .goal(GOAL)
@@ -230,7 +230,7 @@ class DecisionSchedulerPlannerTest {
                 .build();
     }
 
-    private static SupportDesk scheduler(DecisionModelMock model, Object... subagents) {
+    private static SupportDesk scheduler(MockDecisionModel model, Object... subagents) {
         return scheduler(SupportDesk.class, () -> planner(model).build(), subagents);
     }
 
@@ -238,7 +238,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldInvokeTheMostUsefulSubagentAtEachStepUntilTheGoalIsReached() {
-        DecisionModelMock model =
+        MockDecisionModel model =
                 modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6));
 
         String reply = scheduler(model, tracker(), advisor(), writer()).handle(TICKET);
@@ -250,7 +250,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldPreferTheFirstDeclaredSubagentOnATie() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.7, "advisor", 0.7, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.7, "advisor", 0.7, "writer", 0.6));
 
         scheduler(model, tracker(), advisor(), writer()).handle(TICKET);
 
@@ -259,7 +259,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldAskTheModelEvenWhenASingleSubagentCanRun() {
-        DecisionModelMock model = model(0.1, Map.of("writer", 0.2));
+        MockDecisionModel model = model(0.1, Map.of("writer", 0.2));
 
         // the only candidate is not invoked blindly: the model finds it not useful enough
         assertThatThrownBy(() -> scheduler(model, writer()).handle(TICKET))
@@ -271,7 +271,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldInvokeASubagentWhoseScoreEqualsTheActivationThreshold() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.5));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.5));
 
         assertThat(scheduler(model, writer()).handle(TICKET)).isEqualTo("reply using nothing and nothing");
         assertThat(invoked).containsExactly("writer");
@@ -281,7 +281,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldStopWhenTheGoalProbabilityEqualsTheThreshold() {
-        DecisionModelMock model = model(0.5, Map.of("tracker", 0.9, "writer", 0.9));
+        MockDecisionModel model = model(0.5, Map.of("tracker", 0.9, "writer", 0.9));
 
         // the goal is asked once the reply exists, and stops the scheduler although the tracker is still useful
         scheduler(model, writer(), tracker()).handle(TICKET);
@@ -291,7 +291,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldStopWithTheResultWhenNoSubagentReachesTheActivationThreshold() {
-        DecisionModelMock model = model(0.1, Map.of("writer", 0.9, "tracker", 0.49));
+        MockDecisionModel model = model(0.1, Map.of("writer", 0.9, "tracker", 0.49));
 
         // the goal is not reached, but the reply exists and is what the caller gets
         assertThat(scheduler(model, writer(), tracker()).handle(TICKET)).isEqualTo("reply using nothing and nothing");
@@ -301,7 +301,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldFailWhenNoSubagentReachesTheActivationThresholdBeforeTheResultExists() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9, "advisor", 0.49, "writer", 0.49));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9, "advisor", 0.49, "writer", 0.49));
 
         assertThatThrownBy(() -> scheduler(model, tracker(), advisor(), writer()).handle(TICKET))
                 .isInstanceOf(IllegalStateException.class)
@@ -316,7 +316,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldStopWithTheResultWithoutAskingTheModelWhenNoSubagentCanRun() {
-        DecisionModelMock model = model(0.1, Map.of("writer", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("writer", 0.9));
 
         // once the writer ran none of its arguments changes, so nothing can run and the model is not asked again
         assertThat(scheduler(model, writer()).handle(TICKET)).isEqualTo("reply using nothing and nothing");
@@ -326,7 +326,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldFailWithoutAskingTheModelWhenNoSubagentCanRunBeforeTheResultExists() {
-        DecisionModelMock model = model(0.1, Map.of("summarizer", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("summarizer", 0.9));
 
         assertThatThrownBy(() -> scheduler(model, agent("summarizer", "reply", input("orderStatus")).build())
                         .handle(TICKET))
@@ -346,7 +346,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldStopWithTheResultAtTheMaximumNumberOfInvocationsWithoutAskingTheModelAgain() {
-        DecisionModelMock model = model(0.1, Map.of("rewriter", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("rewriter", 0.9));
 
         String reply = scheduler(
                         SupportDesk.class, () -> planner(model).maxInvocations(3).build(), rewriter())
@@ -360,7 +360,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldFailAtTheMaximumNumberOfInvocationsBeforeTheResultExists() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9, "writer", 0.8));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9, "writer", 0.8));
 
         assertThatThrownBy(() -> scheduler(
                                 SupportDesk.class,
@@ -378,7 +378,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldWriteTheResultUnderTheOutputKey() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
 
         ResultWithAgenticScope<String> result = scheduler(
                         SupportDeskWithScope.class, () -> planner(model).build(), writer())
@@ -396,7 +396,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldOfferOnlyTheSubagentsWhoseMandatoryArgumentsAreInTheScope() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "summarizer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "summarizer", 0.9));
 
         scheduler(model, agent("summarizer", "reply", input("orderStatus")).build(), tracker())
                 .handle(TICKET);
@@ -408,7 +408,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldOfferASubagentWhoseMissingArgumentsHaveADefaultValue() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
 
         scheduler(model, tracker(), writer()).handle(TICKET);
 
@@ -418,9 +418,9 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldOfferAnAiAgentWhoseMissingArgumentHasADefaultValueSetOnItsBuilder() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
         AiWriter aiWriter = AgenticServices.agentBuilder(AiWriter.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("ai reply"))
+                .chatModel(MockChatModel.thatResponds("ai reply"))
                 .defaultKeyValue("orderStatus", "not available")
                 .build();
 
@@ -431,7 +431,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldNotOfferAgainASubagentWhoseArgumentsDidNotChange() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9, "advisor", 0.8));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9, "advisor", 0.8));
 
         scheduler(model, tracker(), advisor()).handle(TICKET);
 
@@ -447,7 +447,7 @@ class DecisionSchedulerPlannerTest {
     void shouldOfferAgainASubagentWhenOneOfItsArgumentsChanges() {
         // the writer is the most useful until it wrote a reply, then the advisor, whose output is an argument of the
         // writer, and the goal is reached when the reply uses that output
-        DecisionModelMock model = model(
+        MockDecisionModel model = model(
                 state -> String.valueOf(state.get("reply")).contains("advisor output") ? 0.9 : 0.1,
                 state -> state.containsKey("reply") && !state.containsKey("refundPolicy")
                         ? Map.of("advisor", 0.9)
@@ -463,7 +463,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldNotOfferAnInactiveSubagent() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
         AgenticScopeFunction<Object> inactiveTracker = agent("tracker", "orderStatus", input("ticket"))
                 .activationCondition(scope -> false)
                 .build();
@@ -476,7 +476,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldNotOfferAgainASkippedSubagentNorTheSubagentsReadingItsOutput() {
-        DecisionModelMock model = model(0.1, Map.of("writer", 0.9, "tracker", 0.8));
+        MockDecisionModel model = model(0.1, Map.of("writer", 0.9, "tracker", 0.8));
         // its condition holds when the candidates of the first two steps are selected, but no more when it is invoked
         AtomicInteger evaluations = new AtomicInteger();
         AgenticScopeFunction<Object> skippedTracker = agent("tracker", "orderStatus", input("ticket"))
@@ -504,7 +504,7 @@ class DecisionSchedulerPlannerTest {
     }
 
     /** The first action of a scheduler with the given remote subagent declared before a tracker and a writer. */
-    private Action firstActionWith(DecisionModelMock model, AgentInstance remote, String... stateKeys) {
+    private Action firstActionWith(MockDecisionModel model, AgentInstance remote, String... stateKeys) {
         AgentInstance scheduler = (AgentInstance) scheduler(model, tracker(), writer());
         DefaultAgenticScope scope = new AgenticScopeRegistry("scheduler").create("unavailable");
         for (String key : stateKeys) {
@@ -529,7 +529,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldLeaveOutASubagentThatIsUnavailable() {
-        DecisionModelMock model = model(0.1, Map.of("remote", 0.9, "tracker", 0.8));
+        MockDecisionModel model = model(0.1, Map.of("remote", 0.9, "tracker", 0.8));
         AgentInstance remote = remoteAgent("remote");
         when(remote.description())
                 .thenThrow(new AgentUnavailableException(
@@ -541,7 +541,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldPropagateAnyOtherFailureOfTheDescriptionOfASubagent() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.8));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.8));
         AgentInstance remote = remoteAgent("remote");
         when(remote.description()).thenThrow(new IllegalStateException("Tool 'writr' not found"));
 
@@ -553,7 +553,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldNotReadTheDescriptionOfASubagentThatCannotRun() {
-        DecisionModelMock model = model(0.1, Map.of());
+        MockDecisionModel model = model(0.1, Map.of());
         AgentInstance remote = remoteAgent("remote");
 
         // without the ticket in the scope no subagent can run
@@ -568,7 +568,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldSendTheArgumentsAndTheOutputsInTheScopeAsTheStateOfEachStep() {
-        DecisionModelMock model =
+        MockDecisionModel model =
                 modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6));
 
         scheduler(model, tracker(), advisor(), writer()).handle(TICKET);
@@ -588,7 +588,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldLeaveTheExcludedOutputKeysOutOfTheState() {
-        DecisionModelMock model =
+        MockDecisionModel model =
                 modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6));
 
         String reply = scheduler(
@@ -609,7 +609,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldLeaveOutAnExcludedOutputKeyThatIsAlsoAnArgumentOfTheScheduler() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
 
         String reply = scheduler(
                         StatusDesk.class,
@@ -625,7 +625,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldAskOneScaleQuestionPerCandidateAndTheGoalOnceTheResultExists() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("writer", 0.9));
         AgenticScopeFunction<String> undescribedTracker = AgenticServices.nonAiAgentBuilder(scope -> "status")
                 .name("tracker")
                 .inputs(input("ticket"))
@@ -657,7 +657,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldAskForTheGoalAtEveryStepWhenNoSubagentWritesTheOutputKey() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
 
         // the output key of the scheduler is "reply", which the tracker doesn't write: no subagent is expected to
         // produce the result, so stopping without it is not a failure
@@ -669,7 +669,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldStopBeforeInvokingAnySubagentWhenTheGoalIsAlreadyReached() {
-        DecisionModelMock model = model(0.9, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.9, Map.of("tracker", 0.9));
 
         scheduler(model, tracker()).handle(TICKET);
 
@@ -679,7 +679,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldSendTheArgumentsAsTheyAreAndConvertATypedOutputToJsonValues() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
         Map<String, Object> ticket = Map.of("subject", "Late parcel", "priority", 2);
         AgenticScopeFunction<Object> typedTracker = agent(
                         "tracker", "orderStatus", scope -> new OrderStatus("ACME", 3), new AgentArgument(Map.class, "ticket"))
@@ -700,7 +700,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldSendAContentOutputAsItIs() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
         ImageContent image = ImageContent.from("https://example.com/parcel.png");
         AgenticScopeFunction<Object> photographer =
                 agent("tracker", "orderStatus", scope -> image, input("ticket")).build();
@@ -714,7 +714,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAnArgumentThatTheDecisionModelDoesNotAccept() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
         AgenticScopeFunction<Object> ticketTracker = agent(
                         "tracker", "orderStatus", new AgentArgument(Ticket.class, "ticket"))
                 .build();
@@ -733,7 +733,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldBeAStepOfASequence() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
 
         SupportPipeline pipeline = AgenticServices.sequenceBuilder(SupportPipeline.class)
                 .subAgents(scheduler(model, tracker(), writer()), new Summarizer())
@@ -745,7 +745,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldBeReportedAsAStar() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         assertThat(planner(model).build().topology()).isEqualTo(AgenticSystemTopology.STAR);
         assertThat(HtmlReportGenerator.generateTopology(scheduler(model, tracker(), writer())))
@@ -771,7 +771,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldWaitForTheOutputOfAnAsyncSubagentBeforeDeciding() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
 
         String reply = scheduler(model, asyncTracker("orderStatus"), writer()).handle(TICKET);
 
@@ -782,7 +782,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRetryAFailedAsyncSubagentWithoutDeadlocking() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
         AtomicInteger attempts = new AtomicInteger();
         AgenticScopeFunction<Object> flakyAsyncTracker = agent(
                         "tracker",
@@ -813,7 +813,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldFailWhenTheDelayedOutputOfASubagentHasNoOutputKey() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
 
         assertThatThrownBy(() -> scheduler(model, asyncTracker(null), writer()).handle(TICKET))
                 .isInstanceOf(IllegalStateException.class)
@@ -833,7 +833,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAMissingOrBlankGoal() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         for (String goal : new String[] {null, "", "  "}) {
             assertThatThrownBy(() -> planner(model).goal(goal).build())
@@ -844,7 +844,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAMissingThreshold() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         assertThatThrownBy(() -> DecisionSchedulerPlanner.builder()
                         .decisionModel(model)
@@ -864,7 +864,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAThresholdOutsideZeroToOne() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         for (double threshold : new double[] {0.0, 1.0, -0.1, 1.5, Double.NaN}) {
             assertThatThrownBy(() -> planner(model).goalThreshold(threshold).build())
@@ -878,7 +878,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAMaximumNumberOfInvocationsLessThanOne() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         assertThatThrownBy(() -> planner(model).maxInvocations(0).build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -887,7 +887,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldAllowTenInvocationsByDefault() {
-        DecisionModelMock model = model(0.1, Map.of("rewriter", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("rewriter", 0.9));
 
         scheduler(model, rewriter()).handle(TICKET);
 
@@ -898,7 +898,7 @@ class DecisionSchedulerPlannerTest {
     void shouldAskTheReplacedQuestionsWithTheReplacedLevels() {
         List<String> levels = List.of("NO", "MAYBE", "YES");
         // the middle level of three is scored 0.5, which reaches the activation threshold
-        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(request -> Map.of(
                 GOAL_QUESTION_NAME, YesNoAnswer.from(0.1),
                 "tracker", ScaleAnswer.builder().mean(1.0).build()));
         SupportDesk scheduler = scheduler(
@@ -923,7 +923,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectInvalidQuestionTemplatesAndLevels() {
-        DecisionModelMock model = model(0.9, Map.of());
+        MockDecisionModel model = model(0.9, Map.of());
 
         assertThatThrownBy(() -> planner(model)
                         .goalQuestionTemplate(PromptTemplate.from("Is {{goal}} reached for {{customer}}?"))
@@ -947,7 +947,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAPlannerInstanceInitializedTwice() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
+        MockDecisionModel model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "writer", 0.6));
         DecisionSchedulerPlanner planner = planner(model).build();
         SupportDesk scheduler = scheduler(SupportDesk.class, () -> planner, tracker(), writer());
 
@@ -960,7 +960,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAnUntypedScheduler() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
 
         UntypedAgent scheduler = AgenticServices.plannerBuilder()
                 .subAgents(tracker(), writer())
@@ -975,7 +975,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectAnExcludedOutputKeyThatNoSubagentWrites() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
 
         assertThatThrownBy(() -> scheduler(
                                 SupportDesk.class,
@@ -992,7 +992,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldRejectTheExclusionOfTheOutputKeyOfTheScheduler() {
-        DecisionModelMock model = model(0.1, Map.of("tracker", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker", 0.9));
 
         assertThatThrownBy(() -> scheduler(
                                 SupportDesk.class,
@@ -1022,7 +1022,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
-        DecisionModelMock model = model(0.1, Map.of("tracker$0", 0.6, "tracker$1", 0.9));
+        MockDecisionModel model = model(0.1, Map.of("tracker$0", 0.6, "tracker$1", 0.9));
 
         scheduler(model, trackerLabelled("first"), trackerLabelled("second")).handle(TICKET);
 
@@ -1045,7 +1045,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldAcceptASubagentNamedLikeTheGoalQuestion() {
-        DecisionModelMock model = model(0.1, Map.of(GOAL_QUESTION_NAME + "$0", 0.9));
+        MockDecisionModel model = model(0.1, Map.of(GOAL_QUESTION_NAME + "$0", 0.9));
 
         scheduler(model, agent(GOAL_QUESTION_NAME, "orderStatus", input("ticket")).build())
                 .handle(TICKET);
@@ -1056,7 +1056,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision failed");
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> scheduler(model, tracker(), writer()).handle(TICKET))
                 .hasMessageContaining("decision failed");
@@ -1065,7 +1065,7 @@ class DecisionSchedulerPlannerTest {
 
     @Test
     void shouldPropagateARefusalOfTheDecisionModel() {
-        DecisionModelMock model = DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of());
+        MockDecisionModel model = MockDecisionModel.thatAnswersQuestions(question -> RefusalAnswer.of());
 
         assertThatThrownBy(() -> scheduler(model, tracker(), writer()).handle(TICKET))
                 .isInstanceOf(ContentFilteredException.class);

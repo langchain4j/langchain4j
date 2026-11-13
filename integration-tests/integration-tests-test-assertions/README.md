@@ -4,7 +4,7 @@ assertions), used the way a user would use it in plain Java, without a framework
 `src/main/java` contains a small customer-support application built with AI Services: tools, RAG, chat memory,
 guardrails, structured output, streaming and asynchronous methods, and an AI Service used as a tool by another one.
 `src/test/java` tests it with `AiServiceCapture`, `LangChain4jAssertions` and `Judge`, using
-the mock models of the `langchain4j-core` test-jar.
+the mock models of `langchain4j-test`.
 
 One test class runs its tests in parallel (see `src/test/resources/junit-platform.properties`), to check that
 captures on different threads do not see each other's invocations.
