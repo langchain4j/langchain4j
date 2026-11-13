@@ -10,6 +10,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.test.service.internal.InvocationRegistry;
 import java.lang.invoke.MethodType;
 import java.util.List;
@@ -19,7 +21,8 @@ import java.util.concurrent.Flow;
 /**
  * Captures what AI Services do while a lambda runs: what they produce, which tools they execute, which sources they
  * retrieve, which model calls they make, how many tokens they use and how they end. Works with any AI Service method,
- * whatever it returns.
+ * whatever it returns. To run the AI Service without a network, build it on a {@link MockChatModel} or a
+ * {@link MockStreamingChatModel} that answers what the test tells it to.
  * <pre>{@code
  * import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
  * import static dev.langchain4j.test.service.AiServiceCapture.capture;

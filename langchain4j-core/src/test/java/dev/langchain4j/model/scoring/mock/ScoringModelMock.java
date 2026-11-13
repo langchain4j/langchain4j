@@ -14,11 +14,13 @@ import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
+import dev.langchain4j.test.mock.MockScoringModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleFunction;
 
 /**
  * A {@link ScoringModel} for tests: it scores each document with a fixed or computed score.
@@ -28,8 +30,19 @@ import java.util.function.Supplier;
  * {@link #withAsyncResult(Supplier)}. With {@link #implementingOnlyScoreAll()}, it behaves like a model that implements
  * only {@link #scoreAll(List, String)}.
  * This implementation is experimental and subject to change in the future.
+ *
+ * @deprecated use {@link MockScoringModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
+ * script runs out; end the script with {@link MockScoringModel#thenRepeats()} to answer every further request with its
+ * last step. {@code withListeners(...)} has the same name. A response reports the model name of the request, and
+ * asynchronous calls complete on another thread. Instead of {@code withModelName(...)} and {@code withTokenUsage(...)},
+ * give a step the whole response, with one score per document: {@link MockScoringModel#thatResponds(ScoringResponse)};
+ * for scores computed from the documents, a fixed token usage has no replacement. {@code withProvider(...)},
+ * {@code withoutAsyncSupport()}, {@code withAsyncResult(...)}, {@code implementingOnlyScoreAll()} and
+ * {@code scoreAllCalls()} have no replacement. This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
+@Deprecated(since = "1.24.0", forRemoval = true)
 public class ScoringModelMock implements ScoringModel {
 
     private final Function<String, Double> scores;
@@ -44,14 +57,21 @@ public class ScoringModelMock implements ScoringModel {
 
     /**
      * @param scores computes the score of a document from its text.
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock(Function<String, Double> scores) {
         this.scores = ensureNotNull(scores, "scores");
     }
 
     /**
      * Reports the given provider from {@link #provider()}.
+     *
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withProvider(ModelProvider provider) {
         this.provider = provider;
         return this;
@@ -59,7 +79,13 @@ public class ScoringModelMock implements ScoringModel {
 
     /**
      * Reports the given model name in {@link #defaultRequestParameters()}.
+     *
+     * @deprecated a response of {@link MockScoringModel} reports the model name of the request; for another model
+     * name, give a step the whole response, with one score per document:
+     * {@link MockScoringModel#thatResponds(ScoringResponse)}, followed by {@link MockScoringModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withModelName(String modelName) {
         this.modelName = modelName;
         return this;
@@ -67,12 +93,23 @@ public class ScoringModelMock implements ScoringModel {
 
     /**
      * Reports the given token usage in every response.
+     *
+     * @deprecated give a step the whole response, with its token usage and one score per document:
+     * {@link MockScoringModel#thatResponds(ScoringResponse)}, followed by {@link MockScoringModel#thenRepeats()}; for
+     * scores computed from the documents, a fixed token usage has no replacement. Removed together with this class, in
+     * 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withTokenUsage(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
         return this;
     }
 
+    /**
+     * @deprecated use {@link MockScoringModel#withListeners(ScoringModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withListeners(ScoringModelListener... listeners) {
         this.listeners = List.of(listeners);
         return this;
@@ -82,7 +119,11 @@ public class ScoringModelMock implements ScoringModel {
      * Makes {@link #scoreAsync(ScoringRequest)} fail with an
      * {@link AsyncNotSupportedException}, like a scoring model without asynchronous
      * support.
+     *
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withoutAsyncSupport() {
         this.asyncSupported = false;
         return this;
@@ -91,7 +132,11 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Makes {@link #doScoreAsync(ScoringRequest)} return what the given supplier returns (for example a future that
      * is not completed yet, or {@code null}), or throw what it throws.
+     *
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withAsyncResult(Supplier<CompletableFuture<ScoringResponse>> asyncResult) {
         this.asyncResult = asyncResult;
         return this;
@@ -100,7 +145,10 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Makes this mock behave like a model that implements only {@link #scoreAll(List, String)}: it scores in
      * {@link #scoreAll(List, String)} and keeps the default {@link ScoringModel#doScore(ScoringRequest)}.
+     *
+     * @deprecated has no replacement. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock implementingOnlyScoreAll() {
         this.onlyScoreAll = true;
         return this;
@@ -109,7 +157,10 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * @return the segments of each call of {@link #scoreAll(List, String)} made by a mock created with
      * {@link #implementingOnlyScoreAll()}.
+     *
+     * @deprecated has no replacement. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public List<List<TextSegment>> scoreAllCalls() {
         return scoreAllCalls;
     }
@@ -175,18 +226,38 @@ public class ScoringModelMock implements ScoringModel {
         return provider;
     }
 
+    /**
+     * @deprecated use {@link MockScoringModel#thatScores(double)} followed by {@link MockScoringModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysScores(double score) {
         return new ScoringModelMock(document -> score);
     }
 
+    /**
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatScores(Function<String, Double> scores) {
         return new ScoringModelMock(scores);
     }
 
+    /**
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsException() {
         return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
     }
 
+    /**
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)} followed by
+     * {@link MockScoringModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new ScoringModelMock(document -> {
             throw new RuntimeException(message);

@@ -49,6 +49,12 @@
             "groupName": "a2a-java SDK"
         },
         {
+            // the watsonx.ai SDK is released together with its JSON bindings; updated separately, the Jackson 3
+            // integration tests would run one SDK version against the JSON binding of another
+            "matchPackageNames": ["com.ibm.watsonx:*"],
+            "groupName": "watsonx.ai SDK"
+        },
+        {
             // "_special_" versions are IBM hotfix builds, not regular releases
             "matchPackageNames": ["com.ibm.db2:jcc"],
             "allowedVersions": "!/_special_/"
@@ -69,6 +75,37 @@
             ],
             "matchPackageNames": ["io.netty:*"],
             "allowedVersions": "(,4.2)"
+        },
+        {
+            // the Azure SDK is still on Reactor Core 3.7 and Reactor Netty 1.2 (Reactor Netty 1.3 needs Netty 4.2);
+            // lift these two caps and the Netty one above when azure-sdk-bom brings azure-core 1.61+ (Reactor Core 3.8)
+            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
+            "matchPackageNames": ["io.projectreactor:reactor-core"],
+            "allowedVersions": "(,3.8)"
+        },
+        {
+            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
+            "matchPackageNames": ["io.projectreactor.netty:*"],
+            "allowedVersions": "(,1.3)"
+        },
+        {
+            // the module is built on the JDK 25 build of the 0.4 line: 0.5.0+ removed classes it uses (LastRunMetrics),
+            // and the successor of GPULlama3.java is jitLLM (langchain4j-jitllm)
+            "matchPackageNames": ["io.github.beehive-lab:gpu-llama3"],
+            "allowedVersions": "/^0\\.4\\.\\d+-jdk25$/"
+        },
+        {
+            // 5.6.0 has no jar: it only relocates to io.weaviate:client6, a new client with a different API,
+            // so moving to it is a migration of the module, not a version update
+            "matchPackageNames": ["io.weaviate:client"],
+            "allowedVersions": "(,5.6)"
+        },
+        {
+            // because of that relocation, Renovate also proposes replacing it with io.weaviate:client6 5.6.0,
+            // a version that client6 does not have
+            "matchPackageNames": ["io.weaviate:client"],
+            "matchUpdateTypes": ["replacement"],
+            "enabled": false
         },
         {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead

@@ -1,8 +1,9 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {
@@ -49,7 +50,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_map_meta_of_structured_content_result_into_attributes() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {
@@ -74,7 +75,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_return_no_attributes_when_there_is_no_meta() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {
@@ -97,8 +98,54 @@ class McpToolResultMetaParsingTest {
     }
 
     @Test
+    void should_preserve_native_image_and_meta_in_an_ignored_application_error() {
+        String response = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 7,
+                  "result": {
+                    "isError": true,
+                    "content": [{
+                      "type": "image", "data": "AQID", "mimeType": "image/png"
+                    }],
+                    "_meta": {"example.org/traceId": "blob-123"}
+                  }
+                }
+                """;
+
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, extractor);
+
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png", AUTO));
+        assertThat(result.isError()).isTrue();
+        assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "blob-123"));
+    }
+
+    @Test
+    void should_prefer_structured_content_over_a_blob_resource() {
+        String response = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 8,
+                  "result": {
+                    "structuredContent": {"size": 3},
+                    "content": [{
+                      "type": "resource",
+                      "resource": {"uri": "file:///diagnostic.bin", "blob": "AQID"}
+                    }]
+                  }
+                }
+                """;
+
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
+
+        assertThat(result.result()).isEqualTo(Map.of("size", 3));
+        assertThat(result.resultText()).isEqualTo("{\"size\":3}");
+        assertThat(result.isError()).isFalse();
+    }
+
+    @Test
     void should_keep_meta_of_error_result_when_application_level_errors_are_ignored() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {
@@ -128,7 +175,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_give_precedence_to_attributes_set_by_the_extractor() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {
@@ -165,7 +212,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_skip_meta_keys_reserved_by_mcp() throws Exception {
-        String response = 
+        String response =
                 // language=json
                 """
                         {

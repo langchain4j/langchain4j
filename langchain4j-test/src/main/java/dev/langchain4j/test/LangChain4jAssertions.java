@@ -7,6 +7,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.test.guardrail.InputGuardrailResultAssert;
 import dev.langchain4j.test.guardrail.OutputGuardrailResultAssert;
 import dev.langchain4j.test.judge.Judge;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.test.model.ChatRequestAssert;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceInvocationAssert;
@@ -28,7 +30,8 @@ import org.assertj.core.api.Assertions;
  * This works for every return type of the AI Service method, also {@code Result<...>}: capture the call, and use
  * {@code capture.output()} for what it returned. These assertions are deterministic: they check what happened,
  * without calling a model. To check a text with natural-language criteria, using a model as a judge, see
- * {@link Judge}.
+ * {@link Judge}. To run the AI Service in a test without a network, build it on a {@link MockChatModel} or a
+ * {@link MockStreamingChatModel} that answers what the test tells it to.
  * <p>
  * Only the assertions on captured AI Service invocations ({@link AiServiceCapture} and {@link AiServiceInvocation})
  * need the {@code langchain4j} module, where AI Services are defined: add it with the same version as your other

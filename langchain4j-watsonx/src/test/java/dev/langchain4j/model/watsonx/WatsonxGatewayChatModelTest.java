@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -83,8 +84,10 @@ public class WatsonxGatewayChatModelTest {
         when(mockModelGatewayChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.timeout(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.version(any())).thenReturn(mockModelGatewayChatServiceBuilder);
-        when(mockModelGatewayChatServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayChatServiceBuilder);
-        when(mockModelGatewayChatServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayChatServiceBuilder);

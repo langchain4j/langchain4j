@@ -2,12 +2,9 @@
 
 ## Supported Versions
 
-Only the latest stable version of LangChain4j is supported with security updates.
-
-| Version   | Supported          |
-| --------- | ------------------ |
-| 1.0.x     | :white_check_mark: |
-| < 1.0.0   | :x:                |
+Security fixes are released in the latest version of LangChain4j.
+Some older release lines may also receive a fix.
+The security advisory lists every version that contains the fix.
 
 ## Reporting a Vulnerability
 

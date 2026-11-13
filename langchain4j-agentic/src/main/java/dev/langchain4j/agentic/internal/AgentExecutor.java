@@ -60,7 +60,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 ActivationConditions.clearActivation(this, agenticScope);
                 throw e;
             }
-            case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
+            case RETRY -> internalExecute(agenticScope, invokedAgent, plannerAlreadyNotified ? null : planner, false);
             case RETURN_RESULT -> {
                 if (plannerAlreadyNotified) {
                     yield recoveryResult.result();

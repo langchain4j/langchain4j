@@ -11,6 +11,7 @@ import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 import java.util.Set;
@@ -179,22 +180,27 @@ abstract class WatsonxTextChatBase<R extends BaseChatRequest> extends WatsonxCha
         }
 
         /**
-         * Sets the repetition penalty. Values greater than {@code 1.0} discourage repetition; values less than {@code 1.0} encourage it.
-         *
-         * @param repetitionPenalty the repetition penalty
+         * @param repetitionPenalty must be {@code null}
          * @return {@code this}
+         * @deprecated the watsonx.ai chat API does not support a repetition penalty, so a non-null value makes
+         * building the model throw an {@link UnsupportedFeatureException}. Use {@link #frequencyPenalty(Double)} or
+         * {@link #presencePenalty(Double)} to discourage repetition. This method will be removed no earlier than 6
+         * months after 1.24.0-beta34.
          */
+        @Deprecated(since = "1.24.0-beta34", forRemoval = true)
         public T repetitionPenalty(Double repetitionPenalty) {
             this.repetitionPenalty = repetitionPenalty;
             return (T) this;
         }
 
         /**
-         * Sets the length penalty applied to the sequence score during beam search. Values greater than {@code 1.0} favor longer sequences.
-         *
-         * @param lengthPenalty the length penalty
+         * @param lengthPenalty must be {@code null}
          * @return {@code this}
+         * @deprecated the watsonx.ai chat API does not support a length penalty, so a non-null value makes building the
+         * model throw an {@link UnsupportedFeatureException}. There is no replacement. This method will be removed no
+         * earlier than 6 months after 1.24.0-beta34.
          */
+        @Deprecated(since = "1.24.0-beta34", forRemoval = true)
         public T lengthPenalty(Double lengthPenalty) {
             this.lengthPenalty = lengthPenalty;
             return (T) this;

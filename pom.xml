@@ -210,7 +210,7 @@
             <extension>
                 <groupId>io.github.gitflow-incremental-builder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>4.6.0</version>
+                <version>4.8.1</version>
             </extension>
         </extensions>
     </build>
