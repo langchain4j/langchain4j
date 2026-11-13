@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -68,8 +69,8 @@ public class WatsonxScoringModelTest {
         when(mockRerankServiceBuilder.spaceId(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.timeout(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.version(any())).thenReturn(mockRerankServiceBuilder);
-        when(mockRerankServiceBuilder.logRequests(any())).thenReturn(mockRerankServiceBuilder);
-        when(mockRerankServiceBuilder.logResponses(any())).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.authenticator(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.apiKey(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.httpClient(any())).thenReturn(mockRerankServiceBuilder);

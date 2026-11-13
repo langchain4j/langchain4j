@@ -1,8 +1,8 @@
 package dev.langchain4j.agentic.patterns.cascade;
 
 import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.ANSWER_KEY;
+import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.DEFAULT_QUESTION;
 import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.QUESTION_NAME;
-import static dev.langchain4j.agentic.patterns.cascade.ConfidenceCascadePlanner.QUESTION_TEXT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -233,7 +233,7 @@ class ConfidenceCascadePlannerTest {
         assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST, ANSWER_KEY, "faq answer")));
         assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
         YesNoQuestion question = (YesNoQuestion) request.questions().get(QUESTION_NAME);
-        assertThat(question.text()).isEqualTo(QUESTION_TEXT);
+        assertThat(question.text()).isEqualTo("Does the answer fully and correctly address the request?");
         assertThat(question.yesWhen()).isNull();
     }
 
@@ -246,7 +246,25 @@ class ConfidenceCascadePlannerTest {
                 .ask(REQUEST);
 
         YesNoQuestion question = (YesNoQuestion) model.request().questions().get(QUESTION_NAME);
-        assertThat(question.text()).isEqualTo(QUESTION_TEXT);
+        assertThat(question.text()).isEqualTo(DEFAULT_QUESTION);
+        assertThat(question.yesWhen()).isEqualTo(criterion);
+    }
+
+    @Test
+    void shouldAskTheQuestionSetOnTheBuilder() {
+        DecisionModelMock model = modelGrading(0.9);
+        String criterion = "The answer gives concrete steps and does not ask the user to contact support";
+        ConfidenceCascadePlanner planner = ConfidenceCascadePlanner.builder()
+                .decisionModel(model)
+                .acceptanceThreshold(0.5)
+                .acceptanceCriterion(criterion)
+                .question("Is the answer complete and written in the language of the request?")
+                .build();
+
+        cascade(SupportCascade.class, planner, faqAgent, expertAgent).ask(REQUEST);
+
+        YesNoQuestion question = (YesNoQuestion) model.request().questions().get(QUESTION_NAME);
+        assertThat(question.text()).isEqualTo("Is the answer complete and written in the language of the request?");
         assertThat(question.yesWhen()).isEqualTo(criterion);
     }
 
@@ -469,6 +487,23 @@ class ConfidenceCascadePlannerTest {
         assertThatThrownBy(() -> new ConfidenceCascadePlanner(model, 0.5, "  "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Acceptance criterion");
+    }
+
+    @Test
+    void shouldRejectABuilderWithoutAThresholdOrWithABlankQuestion() {
+        DecisionModelMock model = modelGrading(0.9);
+
+        assertThatThrownBy(() ->
+                        ConfidenceCascadePlanner.builder().decisionModel(model).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Acceptance threshold must be set");
+        assertThatThrownBy(() -> ConfidenceCascadePlanner.builder()
+                        .decisionModel(model)
+                        .acceptanceThreshold(0.5)
+                        .question(" ")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("question");
     }
 
     @Test
