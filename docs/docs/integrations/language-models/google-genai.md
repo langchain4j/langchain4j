@@ -75,13 +75,15 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-4-hydrogen`
+* `gemini-4-carbon`
 * `gemini-4-argon`
 * `gemini-3.8-flash`
 * `gemini-3.1-pro-preview`
 * `gemini-3.1-flash-lite`
 
-`gemini-4-argon` is available on the Gemini Developer API only, not on Vertex AI. It does not support explicit caching,
-and it thinks only with `thinkingLevel("MEDIUM")` or `thinkingLevel("HIGH")` (see [Thinking Models](#thinking-models)).
+The Gemini 4 models are available on the Gemini Developer API only, not on Vertex AI, and do not support explicit caching.
+Their thinking differs from the Gemini 3 models (see [Thinking Models](#thinking-models)).
 
 (See the [official documentation](https://ai.google.dev/gemini-api/docs/models) for the full list of specialized preview models like `-image`, `-tts`, and `-live`).
 
@@ -505,7 +507,9 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 > [!NOTE]
 > Previously, thinking was configured using a token-based `thinkingBudget`. The `thinkingBudget` parameter is now considered legacy, though still supported. You cannot specify both `thinkingLevel` and `thinkingBudget` at the same time.
 >
-> `gemini-4-argon` does not think with a `thinkingBudget` or with `"LOW"`: use `"MEDIUM"` or `"HIGH"`.
+> `gemini-4-argon` and `gemini-4-carbon` do not think with a `thinkingBudget` or with `"LOW"`: use `"MEDIUM"` or `"HIGH"`.
+> `gemini-4-hydrogen` always thinks, even with `thinkingBudget(0)`, so leave room for thinking in `maxOutputTokens`.
+> It also accepts `"XHIGH"`.
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
