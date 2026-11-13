@@ -23,6 +23,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -33,7 +34,7 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
     private final StreamingResponseHandler<String> handler;
     private final BiFunction<String, List<ToolExecutionRequest>, String> toResponse;
 
-    private List<ToolExecutionRequest> toolExecutionRequests;
+    private final List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
     private TokenUsage tokenUsage;
     private FinishReason finishReason;
 
@@ -81,7 +82,7 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
 
             List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();
             if (!isNullOrEmpty(toolCalls)) {
-                toolExecutionRequests = toToolExecutionRequests(toolCalls);
+                toolExecutionRequests.addAll(toToolExecutionRequests(toolCalls));
             }
 
             MistralAiUsage usageInfo = chatCompletionResponse.getUsage();
