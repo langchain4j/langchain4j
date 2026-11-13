@@ -121,6 +121,10 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void set(Iterable<ChatMessage> iter) {
+        ensureNotNull(iter, "messages");
+        if (!iter.iterator().hasNext()) {
+            throw new IllegalArgumentException("messages must not be empty");
+        }
         if (iter instanceof List) {
             set((List<ChatMessage>) iter);
         } else {
@@ -143,6 +147,10 @@ public class MessageWindowChatMemory implements ChatMemory {
         // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
         // consistent with addAsync and the async error contract.
         try {
+            ensureNotNull(messages, "messages");
+            if (messages.isEmpty()) {
+                throw new IllegalArgumentException("messages must not be empty");
+            }
             Integer maxMessages = this.maxMessagesProvider.apply(this.id);
             ensureGreaterThanZero(maxMessages, "maxMessages");
             List<ChatMessage> windowed = new ArrayList<>(messages);

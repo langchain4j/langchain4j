@@ -5,6 +5,7 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -19,6 +20,33 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class MessageWindowChatMemoryTest implements WithAssertions {
+
+    @Test
+    void should_reject_null_and_empty_messages_on_set() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).build();
+        chatMemory.add(userMessage("keep me"));
+
+        assertThatThrownBy(() -> chatMemory.set((Iterable<ChatMessage>) null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> chatMemory.set(java.util.Collections.<ChatMessage>emptyList()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> chatMemory.set(java.util.Collections.<ChatMessage>emptySet()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("keep me"));
+    }
+
+    @Test
+    void should_complete_exceptionally_for_empty_messages_on_setAsync() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).build();
+
+        java.util.concurrent.CompletableFuture<Void> future =
+                chatMemory.setAsync(java.util.Collections.<ChatMessage>emptyList());
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::join)
+                .isInstanceOf(java.util.concurrent.CompletionException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
     @Test
     void id() {
         {
