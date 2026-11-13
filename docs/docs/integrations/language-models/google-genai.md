@@ -22,6 +22,7 @@ https://github.com/googleapis/java-genai
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
 - [GoogleGenAiImageModel](#googlegenaiimagemodel)
 - [GoogleGenAiTextToSpeechModel](#googlegenaitexttospeechmodel)
+- [GoogleGenAiDecisionModel](#googlegenaidecisionmodel)
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
@@ -67,6 +68,40 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // .googleCredentials(...) // Optional: explicitly provide credentials
     .projectId("your-google-cloud-project-id")
     .location("us-central1")
+    .modelName("gemini-2.5-flash")
+    .build();
+```
+
+### API version
+
+The clients that LangChain4j builds call version `v1beta` of the Gemini Developer API. To call another version, set
+`apiVersion(...)` on the builder, or the `GOOGLE_GENAI_API_VERSION` environment variable:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .apiVersion("v1")
+    .build();
+```
+
+Some features, such as speech generation and explicit context caching, and model aliases such as `gemini-flash-latest`,
+are available on `v1beta` only.
+
+### Using your own `Client`
+
+Every builder of this module also takes a preconfigured `com.google.genai.Client` with `.client(...)`. The API version
+is then the one of your client, and the Google GenAI SDK uses `v1` by default on the Gemini Developer API. To use the
+features that are available on `v1beta` only, set the API version on your client:
+
+```java
+Client client = Client.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .httpOptions(HttpOptions.builder().apiVersion("v1beta").build())
+    .build();
+
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .client(client)
     .modelName("gemini-2.5-flash")
     .build();
 ```
@@ -491,7 +526,7 @@ caches.deleteCache(cache.name().orElseThrow());
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
-You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
+You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, `"HIGH"`, and `"XHIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
@@ -671,6 +706,26 @@ TextToSpeechResponse response = model.synthesize("""
 A line that does not start with a speaker name belongs to the turn above it, so the text must start with a speaker: text before the first turn is rejected with an `IllegalArgumentException`. A conversation has exactly two speakers, cannot be combined with `voice`, and needs a `gemini-3.8` text-to-speech model: the preview models reject it. `multiSpeakerVoiceConfig` takes the SDK's `MultiSpeakerVoiceConfig` when a speaker needs more than a prebuilt voice.
 
 To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
+
+## GoogleGenAiDecisionModel
+
+The `GoogleGenAiDecisionModel` evaluates yes/no, choice and scale questions against a shared multimodal or conversation input using Gemini decision models such as `gemini-decision-1`, returning calibrated probabilities.
+
+```java
+DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-decision-1")
+    .build();
+
+DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+    .input("Help! My payouts have been failing for 3 days.")
+    .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+    .build());
+
+double probability = response.yesNo("urgent").probability();
+```
+
+See [Google Gen AI Decision Models](/integrations/decision-models/google-genai) for full details.
 
 ## Batch API
 

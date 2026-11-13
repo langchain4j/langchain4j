@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides an interface for interacting with the Google GenAI Batch API for Image generation models.
@@ -77,7 +78,7 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint, builder.apiVersion);
     }
 
     public static Builder builder() {
@@ -274,6 +275,7 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
         private String personGeneration;
         private List<SafetySetting> safetySettings;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private Map<String, String> labels;
 
@@ -339,6 +341,17 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

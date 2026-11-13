@@ -146,6 +146,12 @@ class GoogleGenAiConfigBuilderTest {
 
         assertThat(config.thinkingConfig().get().thinkingLevel().get().toString())
                 .contains("MEDIUM");
+
+        GenerateContentConfig xhighConfig = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, "XHIGH", null, null, false, false, false, null, null, null, null);
+
+        assertThat(xhighConfig.thinkingConfig().get().thinkingLevel().get().knownEnum())
+                .isEqualTo(com.google.genai.types.ThinkingLevel.Known.XHIGH);
     }
 
     @Test

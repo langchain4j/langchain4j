@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +105,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint, builder.apiVersion);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -272,6 +273,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String vertexSearchDatastore;
         private Map<String, String> labels;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private String cachedContent;
         private Boolean logRequests;
@@ -288,6 +290,11 @@ public class GoogleGenAiChatModel implements ChatModel {
          * Use this when you need full control over client configuration.
          * When set, {@link #apiKey(String)}, {@link #googleCredentials(GoogleCredentials)},
          * {@link #projectId(String)}, {@link #location(String)}, and {@link #timeout(Duration)} are ignored.
+         * <p>
+         * A {@code Client} that you build uses the default API version of the Google GenAI SDK ({@code v1} on the
+         * Gemini Developer API), while the client that this builder creates uses {@link #apiVersion(String)}
+         * ({@code v1beta} by default). Some features and model aliases are available on {@code v1beta} only: set
+         * {@code HttpOptions.builder().apiVersion("v1beta")} on your client to use them.
          *
          * @param client the pre-configured client
          * @return {@code this}
@@ -456,7 +463,7 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         /**
          * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
-         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}, {@code "XHIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
         public Builder thinkingLevel(String thinkingLevel) {
@@ -712,6 +719,17 @@ public class GoogleGenAiChatModel implements ChatModel {
          */
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 
