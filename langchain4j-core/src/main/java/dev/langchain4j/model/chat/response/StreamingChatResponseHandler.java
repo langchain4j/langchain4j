@@ -215,7 +215,14 @@ public interface StreamingChatResponseHandler {
      * This method is invoked when the request fails, before or during streaming, including when the request is
      * invalid (for example when it has no messages, or a parameter the model does not support). It can be called on
      * the thread that called {@code chat(...)}, before {@code chat(...)} returns. If this method throws in that case,
-     * the exception is thrown from {@code chat(...)}; if it throws on another thread, the exception is logged.
+     * the exception is thrown from {@code chat(...)}; if it throws on another thread, or after {@code chat(...)}
+     * returned, the exception is logged.
+     * <p>
+     * This method is also invoked when one of the other methods of this handler throws, for example
+     * {@link #onPartialResponse(String)} or {@link #onCompleteResponse(ChatResponse)}. So it can be invoked more than
+     * once, and before or after {@link #onCompleteResponse(ChatResponse)}: do not treat it as the end of the stream.
+     * If you wait for the outcome of a request, complete a {@code CompletableFuture} from both
+     * {@link #onCompleteResponse(ChatResponse)} and this method: only the first completion counts.
      *
      * @param error The error that occurred
      */

@@ -33,6 +33,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -291,6 +292,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         CompletableFuture<Void> futureErrors = new CompletableFuture<>();
 
         RuntimeException userCodeException = new RuntimeException("something wrong happened in user code");
+        RuntimeException onErrorException =
+                new RuntimeException("something unexpected happened, but it should be ignored");
 
         StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
@@ -308,7 +311,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onError(Throwable error) {
                 errors.add(error);
                 futureErrors.complete(null);
-                throw new RuntimeException("something unexpected happened, but it should be ignored");
+                throw onErrorException;
             }
         };
 
@@ -319,9 +322,15 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         }
 
         // when
-        model.chat("What is the capital of Germany?", handler);
+        Throwable thrown = catchThrowable(() -> model.chat("What is the capital of Germany?", handler));
 
         // then
+        if (thrown != null) {
+            // a model that streams on the calling thread calls onError before chat(...) returns,
+            // and then chat(...) throws what onError throws
+            assertThat(thrown).isSameAs(onErrorException);
+        }
+
         ChatResponse response = futureResponse.get(30, SECONDS);
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
 

@@ -29,6 +29,8 @@ import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logOnErrorFailure;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.notifyListenersIgnoringFailures;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -55,11 +57,12 @@ public interface StreamingChatModel {
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
      * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
-     * before this method returns, that exception is thrown from this method. With a {@code null} handler, a failure
-     * found before the request is sent is thrown instead, because there is no handler to report it to.
+     * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
+     * this method returned, the exception is logged.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
-     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM; must not
+     *                be {@code null}, otherwise an {@link IllegalArgumentException} is thrown before anything is sent
      */
     default void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         chat(request, ChatRequestOptions.EMPTY, handler);
@@ -71,22 +74,26 @@ public interface StreamingChatModel {
      * This method does not throw: every failure, including an invalid request, is reported to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
      * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
-     * before this method returns, that exception is thrown from this method. With a {@code null} handler, a failure
-     * found before the request is sent is thrown instead, because there is no handler to report it to.
+     * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
+     * this method returned, the exception is logged.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
-     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM; must not
+     *                be {@code null}, otherwise an {@link IllegalArgumentException} is thrown before anything is sent
      * @since 1.13.0
      */
     default void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
         ChatRequest finalChatRequest;
+        ModelProvider modelProvider;
         List<ChatModelListener> listeners;
         Map<Object, Object> attributes;
         UUID invocationId;
         try {
             ensureNotNull(request, "request");
+            modelProvider = provider();
             finalChatRequest = ChatRequest.builder()
                     .messages(request.messages())
                     .parameters(defaultRequestParameters().overrideWith(request.parameters()))
@@ -99,16 +106,16 @@ public interface StreamingChatModel {
             invocationId = CurrentInvocation.invocationId(effectiveOptions);
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
-            if (handler == null) {
-                throw error;
-            }
             handler.onError(error);
             return;
         }
 
-        AtomicBoolean completed = new AtomicBoolean();
-        AtomicBoolean errorReported = new AtomicBoolean();
+        // set once the handler received the complete response or an error: core then does not report a failure again
+        AtomicBoolean handlerDone = new AtomicBoolean();
         AtomicReference<Throwable> onErrorFailure = new AtomicReference<>();
+        // what onError throws is thrown from chat(...) only on the calling thread, before chat(...) returns
+        Thread callingThread = Thread.currentThread();
+        AtomicBoolean chatReturned = new AtomicBoolean();
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
             @Override
@@ -153,18 +160,24 @@ public interface StreamingChatModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                onResponse(completeResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
+                onResponse(completeResponse, finalChatRequest, modelProvider, attributes, invocationId, listeners);
                 handler.onCompleteResponse(completeResponse);
-                completed.set(true);
+                handlerDone.set(true);
             }
 
             @Override
             public void onError(Throwable error) {
-                errorReported.set(true);
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
+                handlerDone.set(true);
+                notifyListenersIgnoringFailures(() -> ChatModelListenerUtils.onError(
+                        error, finalChatRequest, modelProvider, attributes, invocationId, listeners));
                 try {
                     handler.onError(error);
                 } catch (Throwable onErrorThrew) {
+                    if (Thread.currentThread() != callingThread || chatReturned.get()) {
+                        restoreInterruptIfInterrupted(onErrorThrew);
+                        logOnErrorFailure(onErrorThrew);
+                        return;
+                    }
                     onErrorFailure.set(onErrorThrew);
                     throw onErrorThrew;
                 }
@@ -172,25 +185,37 @@ public interface StreamingChatModel {
         };
 
         try {
-            onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
+            onRequest(finalChatRequest, modelProvider, attributes, invocationId, listeners);
             doChat(finalChatRequest, observingHandler);
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
             if (error == onErrorFailure.get()) {
                 throw error; // the handler's onError threw while the failure was reported on the calling thread
             }
-            if (completed.get() || errorReported.get()) {
+            if (handlerDone.get()) {
                 logIgnoredError(error);
                 return;
             }
-            if (handler == null) {
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
-                throw error;
-            }
             observingHandler.onError(error);
+        } finally {
+            chatReturned.set(true);
         }
     }
 
+    /**
+     * Provider-specific implementation of {@link #chat(ChatRequest, StreamingChatResponseHandler)}, which wraps it with
+     * {@link ChatModelListener} invocation and failure reporting.
+     * <p>
+     * An implementation may throw a failure that it finds before the request is sent, for example an invalid request:
+     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} then reports it to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. Every later failure goes to {@code handler.onError(...)}.
+     * Whatever {@code handler.onError(...)} throws should not be caught or logged by the implementation: core decides
+     * what to do with it. It throws it from {@code chat(...)} when it happens on the calling thread before
+     * {@code chat(...)} returns, and logs it otherwise, so it never reaches the implementation on another thread.
+     *
+     * @param chatRequest the request, with the default request parameters of this model applied
+     * @param handler     the handler to send the streamed response and failures to
+     */
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         throw new RuntimeException("Not implemented");
     }
@@ -287,7 +312,8 @@ public interface StreamingChatModel {
                     }
                 } catch (Throwable error) {
                     restoreInterruptIfInterrupted(error);
-                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
+                    notifyListenersIgnoringFailures(
+                            () -> ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners));
                     downstream.onSubscribe(EMPTY_SUBSCRIPTION);
                     downstream.onError(error);
                     return;
@@ -312,7 +338,8 @@ public interface StreamingChatModel {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, invocationId, listeners);
+                        notifyListenersIgnoringFailures(
+                                () -> ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, invocationId, listeners));
                         downstream.onError(throwable);
                     }
 
@@ -364,17 +391,19 @@ public interface StreamingChatModel {
     /**
      * Sends a single user message. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw:
      * an invalid argument, for example a {@code null} message, is reported to the handler's {@code onError}.
+     *
+     * @param userMessage the user message to send
+     * @param handler     the handler of the streamed response; must not be {@code null}, otherwise an
+     *                    {@link IllegalArgumentException} is thrown before anything is sent
      */
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
         ChatRequest chatRequest;
         try {
             chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
-            if (handler == null) {
-                throw error;
-            }
             handler.onError(error);
             return;
         }
@@ -385,17 +414,19 @@ public interface StreamingChatModel {
     /**
      * Sends the given messages. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw: an
      * invalid argument, for example no messages, is reported to the handler's {@code onError}.
+     *
+     * @param messages the messages to send
+     * @param handler  the handler of the streamed response; must not be {@code null}, otherwise an
+     *                 {@link IllegalArgumentException} is thrown before anything is sent
      */
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
         ChatRequest chatRequest;
         try {
             chatRequest = ChatRequest.builder().messages(messages).build();
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
-            if (handler == null) {
-                throw error;
-            }
             handler.onError(error);
             return;
         }

@@ -4,6 +4,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 
@@ -45,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class RoutingChatModelTest {
@@ -900,6 +902,52 @@ class RoutingChatModelTest {
                         .chat("Hi!", handler))
                 .isSameAs(onErrorFailure);
         assertThat(errors).singleElement().isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void should_only_log_what_the_streaming_handler_on_error_throws_on_another_thread() throws Exception {
+
+        StreamingChatModelMock selected = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        AtomicReference<StreamingChatResponseHandler> selectedModelHandler = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    // a model that reports the failure later, on its own thread
+                    selectedModelHandler.set(invocation.getArgument(2));
+                    return null;
+                })
+                .when(selected)
+                .chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
+        RoutingStreamingChatModel model = RoutingStreamingChatModel.builder()
+                .route("only", selected)
+                .router(request -> ChatModelRoutingResult.route("only"))
+                .defaultRoute("only")
+                .build();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                throw new IllegalStateException("onError failed");
+            }
+        };
+        model.chat("Hi!", handler);
+        RuntimeException failure = new IllegalStateException("connection reset");
+        AtomicReference<Throwable> reachedTheModel = new AtomicReference<>();
+
+        Thread thread = new Thread(() -> {
+            try {
+                selectedModelHandler.get().onError(failure);
+            } catch (Throwable e) {
+                reachedTheModel.set(e);
+            }
+        });
+        thread.start();
+        thread.join(5_000);
+
+        assertThat(reachedTheModel.get()).isNull();
+        assertThat(errors).containsExactly(failure);
     }
 
     @Test

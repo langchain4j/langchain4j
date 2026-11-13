@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -88,6 +89,10 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
+            ChatResponse completeResponse = this.response.get();
+            if (completeResponse != null) {
+                return completeResponse; // an error reported after the complete response does not fail the request
+            }
             Throwable failure = this.error.get();
             if (failure != null) {
                 // like the asynchronous execution, whose future fails after the error handler was called
@@ -114,7 +119,10 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
                     }
                 }
             } finally {
-                this.error.compareAndSet(null, error);
+                boolean first = response.get() == null && this.error.compareAndSet(null, error);
+                if (!first && errorHandler == null) {
+                    logIgnoredError(error); // nobody else sees this error: the request already has its outcome
+                }
                 this.latch.countDown();
             }
         }

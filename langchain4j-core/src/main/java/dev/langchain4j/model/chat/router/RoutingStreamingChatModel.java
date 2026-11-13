@@ -1,5 +1,7 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logOnErrorFailure;
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
@@ -31,8 +33,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The streaming counterpart of {@link RoutingChatModel}: a {@link StreamingChatModel} that sends each request to one
@@ -60,8 +60,6 @@ import org.slf4j.LoggerFactory;
  */
 @Experimental
 public class RoutingStreamingChatModel implements StreamingChatModel {
-
-    private static final Logger log = LoggerFactory.getLogger(RoutingStreamingChatModel.class);
 
     private final RouteSelector<StreamingChatModel> selector;
 
@@ -101,11 +99,13 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
             if (e == routeHandler.onErrorFailure) {
                 throw e; // the handler's onError threw while the failure was reported on the calling thread
             }
-            if (routeHandler.errorReported) {
-                log.warn("Ignoring a failure after an error was already reported to the streaming response handler", e);
+            if (routeHandler.handlerDone) {
+                logIgnoredError(e);
                 return;
             }
             handler.onError(e);
+        } finally {
+            routeHandler.chatReturned = true;
         }
     }
 
@@ -138,6 +138,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                     CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.model(routeName).chat(request))
                             .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
                 } catch (Throwable error) {
+                    restoreInterruptIfInterrupted(error);
                     downstream.onError(error);
                 }
             });
@@ -312,8 +313,12 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         private final StreamingChatResponseHandler delegate;
         private final String routeName;
-        private volatile boolean errorReported;
+        // set once the handler received the complete response or an error, as in StreamingChatModel.chat(...)
+        private volatile boolean handlerDone;
         private volatile Throwable onErrorFailure;
+        // what onError throws is thrown from chat(...) only on the calling thread, before chat(...) returns
+        private final Thread callingThread = Thread.currentThread();
+        private volatile boolean chatReturned;
 
         private RouteRecordingHandler(StreamingChatResponseHandler delegate, String routeName) {
             this.delegate = delegate;
@@ -363,14 +368,20 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
             delegate.onCompleteResponse(RouteSelector.withRoute(completeResponse, routeName));
+            handlerDone = true;
         }
 
         @Override
         public void onError(Throwable error) {
-            errorReported = true;
+            handlerDone = true;
             try {
                 delegate.onError(error);
             } catch (Throwable onErrorThrew) {
+                if (Thread.currentThread() != callingThread || chatReturned) {
+                    restoreInterruptIfInterrupted(onErrorThrew);
+                    logOnErrorFailure(onErrorThrew);
+                    return;
+                }
                 onErrorFailure = onErrorThrew;
                 throw onErrorThrew;
             }
