@@ -14,8 +14,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.test.service.ChatModelCall;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import dev.langchain4j.test.service.AiServiceCapture;
 import io.quarkus.test.junit.QuarkusTest;
@@ -38,7 +38,7 @@ class ToolLoopTest {
 
     @Test
     void records_one_own_chat_model_call_per_model_call_of_tool_loop() {
-        ChatModelMock chatModel = useChatModelResponding(
+        MockChatModel chatModel = useChatModelResponding(
                 toolCall("getOrderStatus", "{\"orderNumber\":\"ORD-2\"}"),
                 toolCall("cancelOrder", "{\"orderNumber\":\"ORD-2\"}"),
                 AiMessage.from("ORD-2 was still processing, so I cancelled it."));
@@ -86,7 +86,7 @@ class ToolLoopTest {
 
     @Test
     void own_chat_model_calls_do_not_include_those_of_nested_invocation() {
-        ChatModelMock chatModel = useChatModelResponding(
+        MockChatModel chatModel = useChatModelResponding(
                 toolCall("escalateToHuman", "{\"issue\":\"The parcel arrived damaged\"}"),
                 AiMessage.from("Customer received a damaged parcel."),
                 AiMessage.from("I have handed your issue over to a colleague."));
@@ -116,7 +116,7 @@ class ToolLoopTest {
 
     @Test
     void records_own_chat_model_calls_of_returned_multi() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Your ", "order ", "has ", "shipped."));
+        useStreamingChatModel(MockStreamingChatModel.thatStreams("Your ", "order ", "has ", "shipped."));
 
         AiServiceCapture capture = capture(() -> supportService.streamAnswer("Where is my order?"));
 
@@ -196,7 +196,7 @@ class ToolLoopTest {
 
     @Test
     void has_no_retrieved_sources_fails_for_ai_service_without_content_retriever() {
-        useStreamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Red ", "shoes"));
+        useStreamingChatModel(MockStreamingChatModel.thatStreams("Red ", "shoes"));
 
         AiServiceCapture capture = capture(() -> supportService.recommendProducts("Something red"));
 

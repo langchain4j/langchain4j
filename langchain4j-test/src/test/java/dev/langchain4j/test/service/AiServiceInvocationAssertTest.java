@@ -1,5 +1,6 @@
 package dev.langchain4j.test.service;
 
+import static dev.langchain4j.test.service.TestResponses.responseWithTokenUsage;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -13,7 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -200,10 +201,10 @@ class AiServiceInvocationAssertTest {
 
     @Test
     void should_check_tool_arguments_with_a_judge() {
-        ChatModelMock satisfied = ChatModelMock.thatAlwaysResponds(
+        MockChatModel satisfied = MockChatModel.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "DE is Germany.", "result": "SATISFIED"}]}""");
-        ChatModelMock notSatisfied = ChatModelMock.thatAlwaysResponds(
+        MockChatModel notSatisfied = MockChatModel.thatResponds(
                 """
                 {"assessments": [{"conditionNumber": 1, "reasoning": "DE is not France.", "result": "NOT_SATISFIED"}]}""");
         AiServiceInvocation invocation = invocation(execution("getWeather", "{\"country\":\"DE\"}"));
@@ -662,19 +663,20 @@ class AiServiceInvocationAssertTest {
         // the outer assistant calls the expert through a tool, and the expert cancels the booking
         private static AiServiceCapture captureWithNestedInvocation() {
             Assistant expert = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer(toolCall("cancelBooking", "MS-777")))
-                            .withTokenUsage(new TokenUsage(10, 5, 15)))
+                    .chatModel(MockChatModel.thatResponds(responseWithTokenUsage(
+                                    AiMessage.from(toolCall("cancelBooking", "MS-777")), new TokenUsage(10, 5, 15)))
+                            .thenResponds(responseWithTokenUsage(AiMessage.from("answer"), new TokenUsage(10, 5, 15))))
                     .tools(new BookingTools())
                     .build();
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatResponds(
-                                    callToolsThenAnswer(ToolExecutionRequest.builder()
+                    .chatModel(MockChatModel.thatResponds(responseWithTokenUsage(
+                                    AiMessage.from(ToolExecutionRequest.builder()
                                             .id("1")
                                             .name("askExpert")
                                             .arguments("{\"question\":\"cancel MS-777\"}")
-                                            .build()))
-                            .withTokenUsage(new TokenUsage(100, 50, 150))
-                            .withFinishReason(FinishReason.STOP))
+                                            .build()),
+                                    new TokenUsage(100, 50, 150)))
+                            .thenResponds(responseWithTokenUsage(AiMessage.from("answer"), new TokenUsage(100, 50, 150))))
                     .tools(new ExpertTool(expert))
                     .build();
             return capture(() -> assistant.chat("Cancel MS-777"));
@@ -829,7 +831,7 @@ class AiServiceInvocationAssertTest {
 
         private static AiServiceCapture captureCalling(ToolExecutionRequest... toolCalls) {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer(toolCalls)))
+                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer(toolCalls)).thenRepeats())
                     .tools(new BookingTools())
                     .build();
             return capture(() -> assistant.chat("Cancel"));
@@ -853,4 +855,5 @@ class AiServiceInvocationAssertTest {
             };
         }
     }
+
 }

@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -77,7 +77,7 @@ class ChatExecutorExchangeTest {
     @Test
     void built_in_exchange_should_return_the_request_with_the_parameters_of_the_original_request() {
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Hello");
+        MockChatModel chatModel = MockChatModel.thatResponds("Hello").thenRepeats();
         ChatRequest original = ChatRequest.builder()
                 .messages(UserMessage.from("Hi"))
                 .temperature(0.3)
@@ -95,7 +95,7 @@ class ChatExecutorExchangeTest {
     void exchangeAsync_should_return_failed_future_instead_of_throwing() {
 
         ChatExecutor builtIn = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                MockChatModel.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
         ChatExecutor throwing = new FixedResponseExecutor() {
@@ -140,7 +140,7 @@ class ChatExecutorExchangeTest {
             registrar.register((AiServiceResponseReceivedListener) events::add);
             ChatRequest original =
                     ChatRequest.builder().messages(UserMessage.from("Hi")).build();
-            ChatExecutor executor = builtInExecutor(ChatModelMock.thatAlwaysResponds("Hello"), original, registrar);
+            ChatExecutor executor = builtInExecutor(MockChatModel.thatResponds("Hello"), original, registrar);
             List<ChatMessage> messages = List.of(UserMessage.from("Hi"), UserMessage.from("Again"));
 
             ChatResponse response = method.apply(executor, messages);
@@ -161,7 +161,7 @@ class ChatExecutorExchangeTest {
         registrar.register((AiServiceRequestIssuedListener) requests::add);
         registrar.register((AiServiceResponseReceivedListener) responses::add);
         ChatExecutor executor = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                MockChatModel.thatResponds("Hello").thenRepeats(),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
                 registrar);
 
@@ -180,11 +180,11 @@ class ChatExecutorExchangeTest {
             throw new IllegalStateException("listener failed");
         });
         ChatExecutor executor = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                MockChatModel.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build(),
                 throwingRegistrar);
         ChatExecutor builtIn = builtInExecutor(
-                ChatModelMock.thatAlwaysResponds("Hello"),
+                MockChatModel.thatResponds("Hello"),
                 ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
         assertThat(executor.executeAsync()).failsWithin(Duration.ofSeconds(1));
@@ -192,12 +192,12 @@ class ChatExecutorExchangeTest {
         assertThat(builtIn.executeAsync(List.of())).failsWithin(Duration.ofSeconds(1));
     }
 
-    private static ChatExecutor builtInExecutor(ChatModelMock chatModel, ChatRequest chatRequest) {
+    private static ChatExecutor builtInExecutor(MockChatModel chatModel, ChatRequest chatRequest) {
         return builtInExecutor(chatModel, chatRequest, null);
     }
 
     private static ChatExecutor builtInExecutor(
-            ChatModelMock chatModel, ChatRequest chatRequest, AiServiceListenerRegistrar registrar) {
+            MockChatModel chatModel, ChatRequest chatRequest, AiServiceListenerRegistrar registrar) {
         return ChatExecutor.builder(chatModel)
                 .chatRequest(chatRequest)
                 .invocationContext(InvocationContext.builder()

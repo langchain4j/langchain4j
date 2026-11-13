@@ -21,10 +21,10 @@ import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -170,7 +170,7 @@ class PlannerBasedAgentConfiguratorTest {
         List<Class<?>> configured = new ArrayList<>();
 
         AgenticServices.createAgenticSystem(
-                agentType, ChatModelMock.thatAlwaysResponds("unused"), recordingTypes(configured));
+                agentType, MockChatModel.thatResponds("unused").thenRepeats(), recordingTypes(configured));
 
         // once for the agent itself, and not for its non-AI subagent
         assertThat(configured).containsExactly(agentType);
@@ -213,7 +213,7 @@ class PlannerBasedAgentConfiguratorTest {
             }
         };
         AgentConfigurator configurator = configuring(builder -> builder.listener(listener));
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+        MockChatModel model = MockChatModel.thatResponds("""
                         {"agentName": "done", "arguments": {"response": "nothing to do"}}
                         """)
                 .withTokenUsage(new TokenUsage(100, 20));
@@ -244,7 +244,7 @@ class PlannerBasedAgentConfiguratorTest {
                         + (context.agenticService() != null ? "agenticService" : "")));
 
         AgenticServices.createAgenticSystem(
-                AssistedGreeting.class, ChatModelMock.thatAlwaysResponds("Hello Mario"), configurator);
+                AssistedGreeting.class, MockChatModel.thatResponds("Hello Mario").thenRepeats(), configurator);
 
         assertThat(builders)
                 .containsOnly(
@@ -268,7 +268,7 @@ class PlannerBasedAgentConfiguratorTest {
         });
 
         AssistedGreeting sequence = AgenticServices.createAgenticSystem(
-                AssistedGreeting.class, ChatModelMock.thatAlwaysResponds("Hello Mario"), configurator);
+                AssistedGreeting.class, MockChatModel.thatResponds("Hello Mario").thenRepeats(), configurator);
 
         assertThat(sequence.greet("Mario")).isEqualTo("Hello Mario");
         assertThat(invoked).containsExactly("greet");

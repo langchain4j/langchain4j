@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.V;
+import dev.langchain4j.test.mock.MockChatModel;
 import org.junit.jupiter.api.Test;
 
 class SupervisorEnumArgumentTest {
@@ -26,7 +26,7 @@ class SupervisorEnumArgumentTest {
 
     @Test
     void supervisor_passes_an_enum_argument_by_the_name_of_its_constant() {
-        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(AiMessage.from("""
+        MockChatModel plannerModel = MockChatModel.thatResponds(AiMessage.from("""
                 {"agentName": "route", "arguments": {"category": "LEGAL"}}
                 """), AiMessage.from("""
                 {"agentName": "done", "arguments": {"response": "routed"}}

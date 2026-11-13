@@ -5,9 +5,7 @@ import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -32,11 +30,10 @@ import java.util.function.ToDoubleFunction;
  * @deprecated use {@link MockDecisionModel} (package {@code dev.langchain4j.test.mock}) from the
  * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
  * script runs out; end the script with {@link MockDecisionModel#thenRepeats()} to answer every further request with its
- * last step. {@code requests()} and {@code request()} have the same names. Instead of {@code withTokenUsage(...)} and
- * {@code withModelName(...)}, give a step the whole response: {@link MockDecisionModel#thatResponds(DecisionResponse)};
- * for answers computed from the request, a fixed token usage has no replacement. {@code withProvider(...)},
- * {@code withoutAsyncSupport()} and {@code withAsyncResponse(...)} have no replacement (with Mockito, stub the method
- * on a spy), {@code withListeners(...)} has the same name, and asynchronous calls complete on another thread. A
+ * last step. {@code requests()} and {@code request()} have the same names. Instead of {@code withTokenUsage(...)},
+ * give a step the whole response: {@link MockDecisionModel#thatResponds(DecisionResponse)}; for answers computed from
+ * the request, a fixed token usage has no replacement. {@code withoutAsyncSupport()} and {@code withAsyncResponse(...)}
+ * have no replacement (with Mockito, stub the method on a spy), and asynchronous calls complete on another thread. A
  * response reports the model name of the request. Another difference:
  * {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} takes a {@code ToDoubleFunction}, so a lambda
  * compiles unchanged, but a variable of type {@code Function<YesNoQuestion, Double>} does not. This class will be
@@ -49,11 +46,8 @@ public class DecisionModelMock implements DecisionModel {
     private final Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers;
     private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
     private TokenUsage tokenUsage;
-    private String modelName;
-    private ModelProvider provider = ModelProvider.OTHER;
     private boolean asyncSupported = true;
     private Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse;
-    private List<DecisionModelListener> listeners = List.of();
 
     /**
      * @deprecated use {@link MockDecisionModel#thatAnswers(Function)} followed by
@@ -77,36 +71,6 @@ public class DecisionModelMock implements DecisionModel {
     public DecisionModelMock withTokenUsage(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
         return this;
-    }
-
-    /**
-     * Reports the given model name in every response.
-     *
-     * @deprecated a response of {@link MockDecisionModel} reports the model name of the request; for another model
-     * name, give a step the whole response: {@link MockDecisionModel#thatResponds(DecisionResponse)}, followed by
-     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
-     */
-    @Deprecated(since = "1.24.0", forRemoval = true)
-    public DecisionModelMock withModelName(String modelName) {
-        this.modelName = modelName;
-        return this;
-    }
-
-    /**
-     * Returns the given provider from {@link #provider()}.
-     *
-     * @deprecated has no replacement: stub {@code provider()} on a Mockito spy of {@link MockDecisionModel}. Removed
-     * together with this class, in 1.26.0 at the earliest.
-     */
-    @Deprecated(since = "1.24.0", forRemoval = true)
-    public DecisionModelMock withProvider(ModelProvider provider) {
-        this.provider = ensureNotNull(provider, "provider");
-        return this;
-    }
-
-    @Override
-    public ModelProvider provider() {
-        return provider;
     }
 
     /**
@@ -164,7 +128,6 @@ public class DecisionModelMock implements DecisionModel {
     private DecisionResponse respond(DecisionRequest request) {
         return DecisionResponse.builder()
                 .answers(answers.apply(request))
-                .modelName(modelName)
                 .tokenUsage(tokenUsage)
                 .build();
     }
@@ -263,20 +226,5 @@ public class DecisionModelMock implements DecisionModel {
         return new DecisionModelMock(request -> {
             throw new RuntimeException(message);
         });
-    }
-
-    /**
-     * @deprecated use {@link MockDecisionModel#withListeners(DecisionModelListener...)}. Removed together with this
-     * class, in 1.26.0 at the earliest.
-     */
-    @Deprecated(since = "1.24.0", forRemoval = true)
-    public DecisionModelMock withListeners(DecisionModelListener... listeners) {
-        this.listeners = List.of(listeners);
-        return this;
-    }
-
-    @Override
-    public List<DecisionModelListener> listeners() {
-        return listeners;
     }
 }

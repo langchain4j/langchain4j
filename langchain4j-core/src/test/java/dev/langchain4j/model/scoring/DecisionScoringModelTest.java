@@ -2,14 +2,19 @@ package dev.langchain4j.model.scoring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -32,11 +37,12 @@ import org.junit.jupiter.api.Test;
 class DecisionScoringModelTest {
 
     // answers "yes" with a probability derived from the document text: "relevant" -> 0.9, otherwise 0.1
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> question.text()
+    final MockDecisionModel decisionModel = MockDecisionModel.thatAnswersYesNoQuestions(question -> question.text()
                     .replace("Does the document help answer the query?", "")
                     .contains("relevant")
             ? 0.9
-            : 0.1);
+            : 0.1)
+            .thenRepeats();
 
     @Test
     void should_score_segments_with_the_probability_of_yes() {
@@ -68,7 +74,7 @@ class DecisionScoringModelTest {
             }
         };
         ScoringModel scoringModel = DecisionScoringModel.builder()
-                .decisionModel(decisionModel.withTokenUsage(new TokenUsage(3)).withProvider(ModelProvider.OPEN_AI))
+                .decisionModel(reporting(decisionModel, new TokenUsage(3), null, ModelProvider.OPEN_AI))
                 .maxSegmentsPerRequest(1)
                 .listeners(listener)
                 .build();
@@ -85,7 +91,7 @@ class DecisionScoringModelTest {
     @Test
     void should_report_the_model_name_of_the_decision_model() {
 
-        ScoringModel scoringModel = new DecisionScoringModel(decisionModel.withModelName("decision-model-v2"));
+        ScoringModel scoringModel = new DecisionScoringModel(reporting(decisionModel, null, "decision-model-v2", null));
         ScoringRequest request = ScoringRequest.builder()
                 .documents(List.of("a relevant document"))
                 .query("the query")
@@ -145,7 +151,7 @@ class DecisionScoringModelTest {
     void should_fail_when_decision_model_refuses_to_score_a_segment() {
 
         ScoringModel scoringModel =
-                new DecisionScoringModel(DecisionModelMock.thatAnswersQuestions(question -> RefusalAnswer.of()));
+                new DecisionScoringModel(MockDecisionModel.thatAnswersQuestions(question -> RefusalAnswer.of()));
 
         assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("a document")), "the query"))
                 .isInstanceOf(ContentFilteredException.class);
@@ -193,9 +199,8 @@ class DecisionScoringModelTest {
     @Test
     void should_sum_token_usage_of_batches() {
 
-        decisionModel.withTokenUsage(new TokenUsage(10, 1));
         ScoringModel scoringModel = DecisionScoringModel.builder()
-                .decisionModel(decisionModel)
+                .decisionModel(reporting(decisionModel, new TokenUsage(10, 1), null, null))
                 .maxSegmentsPerRequest(2)
                 .build();
 
@@ -218,9 +223,8 @@ class DecisionScoringModelTest {
     @Test
     void should_score_asynchronously() {
 
-        decisionModel.withTokenUsage(new TokenUsage(10, 1));
         ScoringModel scoringModel = DecisionScoringModel.builder()
-                .decisionModel(decisionModel)
+                .decisionModel(reporting(decisionModel, new TokenUsage(10, 1), null, null))
                 .maxSegmentsPerRequest(2)
                 .build();
 
@@ -255,7 +259,7 @@ class DecisionScoringModelTest {
     void should_fail_async_scoring_when_response_has_no_answer() {
 
         DecisionModel withoutAnswers =
-                DecisionModelMock.thatAlwaysAnswers(Map.of("unknown", YesNoAnswer.from(0.9)));
+                MockDecisionModel.thatAnswers(Map.of("unknown", YesNoAnswer.from(0.9)));
 
         assertThat(new DecisionScoringModel(withoutAnswers)
                         .scoreAsync(ScoringRequest.builder()
@@ -294,7 +298,8 @@ class DecisionScoringModelTest {
     void should_propagate_decision_model_errors() {
 
         ScoringModel scoringModel =
-                new DecisionScoringModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+                new DecisionScoringModel(
+                        MockDecisionModel.thatFails(new RuntimeException("down")).thenRepeats());
 
         assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("text")), "query"))
                 .hasMessage("down");
@@ -312,7 +317,8 @@ class DecisionScoringModelTest {
     void should_cancel_decision_model_call_when_async_scoring_is_cancelled() {
 
         CompletableFuture<DecisionResponse> inFlight = new CompletableFuture<>();
-        DecisionModel pending = DecisionModelMock.thatAlwaysAnswers(Map.of()).withAsyncResponse(request -> inFlight);
+        MockDecisionModel pending = spy(MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.5)); // its answer never arrives
+        doReturn(inFlight).when(pending).doDecideAsync(any());
 
         new DecisionScoringModel(pending)
                 .scoreAsync(ScoringRequest.builder()
@@ -328,11 +334,15 @@ class DecisionScoringModelTest {
     void should_fail_async_scoring_and_cancel_other_batches_when_a_batch_fails() {
 
         CompletableFuture<DecisionResponse> pending = new CompletableFuture<>();
-        DecisionModel decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of())
-                .withAsyncResponse(request -> request.questions().values().stream()
-                                .anyMatch(question -> question.text().contains("first"))
+        MockDecisionModel decisionModel =
+                spy(MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.5)); // the first batch fails
+        doAnswer(invocation -> ((DecisionRequest) invocation.getArgument(0))
+                                .questions().values().stream()
+                                        .anyMatch(question -> question.text().contains("first"))
                         ? CompletableFuture.failedFuture(new RuntimeException("down"))
-                        : pending);
+                        : pending)
+                .when(decisionModel)
+                .doDecideAsync(any());
 
         CompletableFuture<ScoringResponse> response = DecisionScoringModel.builder()
                 .decisionModel(decisionModel)
@@ -363,5 +373,30 @@ class DecisionScoringModelTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("maxSegmentsPerRequest");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static MockDecisionModel reporting(
+            MockDecisionModel model, TokenUsage tokenUsage, String modelName, ModelProvider provider) {
+        MockDecisionModel reporting = spy(model); // a decision model that reports token usage, a model name and a provider
+        doAnswer(invocation -> withMetadata((DecisionResponse) invocation.callRealMethod(), tokenUsage, modelName))
+                .when(reporting)
+                .doDecide(any());
+        doAnswer(invocation -> ((CompletableFuture<DecisionResponse>) invocation.callRealMethod())
+                        .thenApply(response -> withMetadata(response, tokenUsage, modelName)))
+                .when(reporting)
+                .doDecideAsync(any());
+        if (provider != null) {
+            doReturn(provider).when(reporting).provider();
+        }
+        return reporting;
+    }
+
+    private static DecisionResponse withMetadata(DecisionResponse response, TokenUsage tokenUsage, String modelName) {
+        return DecisionResponse.builder()
+                .answers(response.answers())
+                .tokenUsage(tokenUsage)
+                .modelName(modelName)
+                .build();
     }
 }

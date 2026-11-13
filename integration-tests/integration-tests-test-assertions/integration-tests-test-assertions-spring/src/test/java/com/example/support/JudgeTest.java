@@ -7,9 +7,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.example.support.assistant.SupportAssistant;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.test.judge.JudgeCriterion;
 import dev.langchain4j.test.judge.Judge;
@@ -34,7 +33,7 @@ class JudgeTest {
     void judges_the_captured_answer_with_a_decision_model() {
         String question = "What is your return policy?";
         AiServiceInvocation invocation = capture(() -> supportAssistant.chat(question)).invocation();
-        DecisionModelMock judgeModel = DecisionModelMock.thatAnswersYesNoQuestions(
+        MockDecisionModel judgeModel = MockDecisionModel.thatAnswersYesNoQuestions(
                 yesNoQuestion -> yesNoQuestion.text().contains("14 days") ? 0.95 : 0.05);
 
         Judge.from(judgeModel)
@@ -51,7 +50,7 @@ class JudgeTest {
     @Test
     void names_the_failed_criterion_with_the_probability_of_the_decision_model() {
         String answer = capture(() -> supportAssistant.chat("Hi")).outputText();
-        DecisionModelMock judgeModel = DecisionModelMock.thatAnswersYesNoQuestions(
+        MockDecisionModel judgeModel = MockDecisionModel.thatAnswersYesNoQuestions(
                 yesNoQuestion -> yesNoQuestion.text().contains("greets") ? 0.9 : 0.2);
 
         assertThatThrownBy(() -> Judge.from(judgeModel)
@@ -68,13 +67,12 @@ class JudgeTest {
     void judges_the_captured_answer_with_a_chat_model() {
         AiServiceInvocation invocation =
                 capture(() -> supportAssistant.chat("Please cancel MS-777")).invocation();
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(
+        MockChatModel judgeModel = MockChatModel.thatResponds(
                         """
                         {"assessments": [
                           {"conditionNumber": 1, "reasoning": "It says the booking was cancelled.", "result": "SATISFIED"},
                           {"conditionNumber": 2, "reasoning": "It does not apologize.", "result": "NOT_SATISFIED"}
-                        ]}""")
-                .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+                        ]}""");
 
         assertThatThrownBy(() -> Judge.from(judgeModel)
                         .assertThat(invocation.outputText())
@@ -94,10 +92,9 @@ class JudgeTest {
 
     @Test
     void the_judge_model_is_not_captured_as_an_ai_service_invocation() {
-        ChatModelMock judgeModel = ChatModelMock.thatAlwaysResponds(AiMessage.from(
+        MockChatModel judgeModel = MockChatModel.thatResponds(AiMessage.from(
                         """
-                        {"assessments": [{"conditionNumber": 1, "reasoning": "greets", "result": "SATISFIED"}]}"""))
-                .withSupportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+                        {"assessments": [{"conditionNumber": 1, "reasoning": "greets", "result": "SATISFIED"}]}"""));
 
         AiServiceCapture invocations = capture(() -> {
             String answer = supportAssistant.chat("Hi");

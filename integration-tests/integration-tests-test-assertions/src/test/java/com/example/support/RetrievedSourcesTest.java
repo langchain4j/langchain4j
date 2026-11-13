@@ -4,7 +4,7 @@ import static dev.langchain4j.test.LangChain4jAssertions.assertThat;
 import static dev.langchain4j.test.LangChain4jAssertions.assertThatThrownBy;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.test.service.AiServiceCapture;
 import dev.langchain4j.test.service.AiServiceInvocation;
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(30)
 class RetrievedSourcesTest {
 
-    ChatModelMock model = ChatModelMock.thatAlwaysResponds("Small pets are welcome for 10 EUR per day.");
+    MockChatModel model = MockChatModel.thatResponds("Small pets are welcome for 10 EUR per day.");
 
     PolicyExpert policyExpert = CustomerSupport.policyExpert(model);
 
@@ -59,7 +59,7 @@ class RetrievedSourcesTest {
     @Test
     void should_tell_when_the_ai_service_has_no_retrieval_augmentor() {
         CustomerSupportAgent agent =
-                CustomerSupport.customerSupportAgent(ChatModelMock.thatAlwaysResponds("Hi"), Bookings.bookings(), policyExpert);
+                CustomerSupport.customerSupportAgent(MockChatModel.thatResponds("Hi"), Bookings.bookings(), policyExpert);
 
         AiServiceInvocation invocation = capture(() -> agent.chat("klaus", "Can I bring my pets?")).invocation();
 

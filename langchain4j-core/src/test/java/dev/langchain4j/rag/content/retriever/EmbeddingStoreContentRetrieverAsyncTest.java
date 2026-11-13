@@ -3,13 +3,17 @@ package dev.langchain4j.rag.content.retriever;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
+import dev.langchain4j.test.mock.MockEmbeddingModel;
 import dev.langchain4j.rag.query.Metadata;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -185,7 +189,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
             }
         };
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingModel(new EmbeddingModelMock())
+                .embeddingModel(withoutAsyncSupport(MockEmbeddingModel.thatEmbeds(1f, 2f, 3f)))
                 .embeddingStore(store)
                 .offloadBlocking(true)
                 .build();
@@ -243,5 +247,13 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         public List<String> addAll(List<Embedding> embeddings) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    private static MockEmbeddingModel withoutAsyncSupport(MockEmbeddingModel model) {
+        MockEmbeddingModel withoutAsync = spy(model); // an embedding model without asynchronous support
+        doAnswer(invocation -> AsyncNotSupported.failedFuture(MockEmbeddingModel.class, "doEmbedAsync"))
+                .when(withoutAsync)
+                .doEmbedAsync(any());
+        return withoutAsync;
     }
 }

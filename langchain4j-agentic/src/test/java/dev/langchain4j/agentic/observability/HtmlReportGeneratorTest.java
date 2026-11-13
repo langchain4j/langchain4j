@@ -21,14 +21,14 @@ import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -242,14 +242,18 @@ class HtmlReportGeneratorTest {
     void generates_execution_with_the_model_of_each_ai_agent() {
         Assistant assistant = AgenticServices.agentBuilder(
                         Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
-                                AiMessage.from(ToolExecutionRequest.builder()
+                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
                                         .arguments("{}")
-                                        .build()),
-                                AiMessage.from("It is noon"))
-                        .withModelNames("answering-model", "answering-model"))
+                                        .build()))
+                                .modelName("answering-model")
+                                .build())
+                        .thenResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from("It is noon"))
+                                .modelName("answering-model")
+                                .build()))
                 .tools(new Clock())
                 .build();
         AgentMonitor monitor = new AgentMonitor();
@@ -279,15 +283,20 @@ class HtmlReportGeneratorTest {
     @Test
     void does_not_show_a_model_next_to_the_tokens_of_llm_calls_answered_by_different_models() {
         Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
-                                AiMessage.from(ToolExecutionRequest.builder()
+                .chatModel(MockChatModel.thatResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from(ToolExecutionRequest.builder()
                                         .id("1")
                                         .name("time")
                                         .arguments("{}")
-                                        .build()),
-                                AiMessage.from("It is noon"))
-                        .withModelNames("tool-calling-model", "answering-model")
-                        .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5)))
+                                        .build()))
+                                .modelName("tool-calling-model")
+                                .tokenUsage(new TokenUsage(100, 20))
+                                .build())
+                        .thenResponds(ChatResponse.builder()
+                                .aiMessage(AiMessage.from("It is noon"))
+                                .modelName("answering-model")
+                                .tokenUsage(new TokenUsage(30, 5))
+                                .build()))
                 .tools(new Clock())
                 .build();
         AgentMonitor monitor = new AgentMonitor();
@@ -305,19 +314,30 @@ class HtmlReportGeneratorTest {
         assertThat(html).contains("<td class=\"wf-dur\">155</td>");
     }
 
-    /** A model making a supervisor invoke its only subagent, the clock, and then end. */
-    private static ChatModelMock planningModel() {
-        return ChatModelMock.thatAlwaysResponds(
-                        AiMessage.from("""
-                                {"agentName": "clock", "arguments": {}}
-                                """),
-                        AiMessage.from("""
+    private static final AiMessage INVOKE_CLOCK = AiMessage.from("""
+            {"agentName": "clock", "arguments": {}}
+            """);
+
+    /**
+     * A model making a supervisor invoke its only subagent, the clock, and then end, with its two answers given by the
+     * given models.
+     */
+    private static MockChatModel planningModel(String firstModel, String secondModel) {
+        return MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(INVOKE_CLOCK)
+                        .modelName(firstModel)
+                        .tokenUsage(new TokenUsage(100, 20))
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("""
                                 {"agentName": "done", "arguments": {"response": "It is noon"}}
                                 """))
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+                        .modelName(secondModel)
+                        .tokenUsage(new TokenUsage(30, 5))
+                        .build());
     }
 
-    private static SupervisorAgent supervisorPlanningWith(ChatModelMock planningModel, AgentMonitor monitor) {
+    private static SupervisorAgent supervisorPlanningWith(MockChatModel planningModel, AgentMonitor monitor) {
         return AgenticServices.supervisorBuilder()
                 .chatModel(planningModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -330,7 +350,7 @@ class HtmlReportGeneratorTest {
                 .build();
     }
 
-    private static String executionOfSupervisorPlanningWith(ChatModelMock planningModel) {
+    private static String executionOfSupervisorPlanningWith(MockChatModel planningModel) {
         AgentMonitor monitor = new AgentMonitor();
         supervisorPlanningWith(planningModel, monitor).invoke("What time is it?");
         return HtmlReportGenerator.generateExecution(monitor);
@@ -339,17 +359,12 @@ class HtmlReportGeneratorTest {
     @Test
     void shows_the_model_and_the_tokens_spent_by_a_pattern_whose_execution_failed() {
         // the supervisor invokes the clock, then its second planning call fails
-        AtomicInteger planningCalls = new AtomicInteger();
-        ChatModelMock planningModel = ChatModelMock.thatResponds(request -> {
-                    if (planningCalls.getAndIncrement() > 0) {
-                        throw new IllegalStateException("planning failed");
-                    }
-                    return AiMessage.from("""
-                            {"agentName": "clock", "arguments": {}}
-                            """);
-                })
-                .withModelNames("planning-model")
-                .withTokenUsage(new TokenUsage(100, 20));
+        MockChatModel planningModel = MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(INVOKE_CLOCK)
+                        .modelName("planning-model")
+                        .tokenUsage(new TokenUsage(100, 20))
+                        .build())
+                .thenFails(new IllegalStateException("planning failed"));
         AgentMonitor monitor = new AgentMonitor();
         SupervisorAgent supervisor = supervisorPlanningWith(planningModel, monitor);
 
@@ -369,7 +384,7 @@ class HtmlReportGeneratorTest {
     @Test
     void shows_the_model_and_the_tokens_of_the_model_calls_of_a_pattern_on_its_own_row() {
         String html = executionOfSupervisorPlanningWith(
-                planningModel().withModelNames("planning-model", "planning-model"));
+                planningModel("planning-model", "planning-model"));
 
         // the supervisor is the first row: it shows the model and the total tokens of its two planning calls
         String body = html.substring(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
@@ -384,7 +399,7 @@ class HtmlReportGeneratorTest {
 
     @Test
     void does_not_show_a_model_next_to_the_tokens_of_a_pattern_whose_model_calls_were_answered_by_different_models() {
-        String html = executionOfSupervisorPlanningWith(planningModel().withModelNames("first-model", "second-model"));
+        String html = executionOfSupervisorPlanningWith(planningModel("first-model", "second-model"));
 
         assertThat(html).doesNotContain("first-model").doesNotContain("second-model");
         assertThat(html).contains("<td class=\"wf-dur\">155</td>");

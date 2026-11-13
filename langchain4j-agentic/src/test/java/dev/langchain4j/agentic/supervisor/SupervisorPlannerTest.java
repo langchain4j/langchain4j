@@ -7,8 +7,8 @@ import static org.mockito.Mockito.mock;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
@@ -55,9 +55,10 @@ class SupervisorPlannerTest {
     /** A supervisor whose model ends the invocation at its first planning call, without invoking any subagent. */
     private static SupervisorAgent supervisorEndingAtOnce() {
         return AgenticServices.supervisorBuilder()
-                .chatModel(ChatModelMock.thatAlwaysResponds("""
-                        {"agentName": "done", "arguments": {"response": "nothing to do"}}
-                        """))
+                .chatModel(MockChatModel.thatResponds("""
+                                {"agentName": "done", "arguments": {"response": "nothing to do"}}
+                                """)
+                        .thenRepeats())
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .subAgents(AgenticServices.nonAiAgentBuilder(scope -> "noon")
                         .name("clock")

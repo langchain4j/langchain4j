@@ -4,7 +4,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
 import org.junit.jupiter.api.Test;
@@ -31,7 +31,7 @@ class LanguageModelSqlFilterBuilderTest {
     void should_parse_valid_SQL(String validSql) {
 
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(validSql);
+        ChatModel chatModel = MockChatModel.thatResponds(validSql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)
@@ -72,7 +72,7 @@ class LanguageModelSqlFilterBuilderTest {
     void should_fail_to_parse_then_extract_valid_SQL(String dirtySql) {
 
         // given
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(dirtySql);
+        ChatModel chatModel = MockChatModel.thatResponds(dirtySql);
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)
@@ -104,7 +104,7 @@ class LanguageModelSqlFilterBuilderTest {
 
     @Test
     void should_handle_null_table_definition() {
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("SELECT * FROM table");
+        ChatModel chatModel = MockChatModel.thatResponds("SELECT * FROM table");
 
         assertThatThrownBy(() -> LanguageModelSqlFilterBuilder.builder()
                         .chatModel(chatModel)
@@ -123,7 +123,7 @@ class LanguageModelSqlFilterBuilderTest {
                 .addColumn("name", "VARCHAR")
                 .build();
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("SELECT * FROM users WHERE id = 1");
+        ChatModel chatModel = MockChatModel.thatResponds("SELECT * FROM users WHERE id = 1");
 
         LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
                 .chatModel(chatModel)
