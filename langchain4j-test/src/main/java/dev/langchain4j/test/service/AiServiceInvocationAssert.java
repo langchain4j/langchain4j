@@ -1,6 +1,6 @@
 package dev.langchain4j.test.service;
 
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import static dev.langchain4j.internal.ToolArgumentsParser.argumentsAsMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -88,7 +88,8 @@ import org.assertj.core.api.ListAssert;
  * }</pre>
  */
 @Experimental
-public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServiceInvocationAssert, AiServiceInvocation> {
+public final class AiServiceInvocationAssert
+        extends AbstractObjectAssert<AiServiceInvocationAssert, AiServiceInvocation> {
 
     private static final int MAX_TEXT_LENGTH = 300;
 
@@ -175,7 +176,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
         String expectation = "Expected an execution of tool <%s> to fail".formatted(toolName);
         ensureToolFailuresReported(expectation);
         List<ScopedExecution> failed = scopedExecutions().stream()
-                .filter(execution -> execution.isOf(toolName) && execution.toolExecution().hasFailed())
+                .filter(execution ->
+                        execution.isOf(toolName) && execution.toolExecution().hasFailed())
                 .toList();
         if (failed.isEmpty()) {
             throw failure(
@@ -233,8 +235,9 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
                 .formatted(Arrays.asList(toolNames));
         List<ScopedExecution> executions = succeeded(expectation);
         if (scope == Scope.INCLUDING_NESTED && !actual.nestedInvocations().isEmpty()) {
-            throw new IllegalStateException("The order of the tool executions of different invocations is not known. "
-                    + "Use topLevelOnly(), or check a nested invocation: assertThat(invocation.nestedInvocations().get(i))");
+            throw new IllegalStateException(
+                    "The order of the tool executions of different invocations is not known. "
+                            + "Use topLevelOnly(), or check a nested invocation: assertThat(invocation.nestedInvocations().get(i))");
         }
         List<ScopedExecution> matched = new ArrayList<>();
         for (ScopedExecution execution : executions) {
@@ -411,7 +414,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
     public AiServiceInvocationAssert hasNoFailedToolExecutions() {
         ensureSucceeded();
         ensureToolFailuresReported("Expected no failed tool executions");
-        if (scopedExecutions().stream().anyMatch(execution -> execution.toolExecution().hasFailed())) {
+        if (scopedExecutions().stream()
+                .anyMatch(execution -> execution.toolExecution().hasFailed())) {
             throw failure("Expected no failed tool executions, but some failed. %s", describeToolExecutions());
         }
         return this;
@@ -535,9 +539,7 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
                 .filter(type::isInstance)
                 .toList();
         if (calls.size() != expectedCount) {
-            throw failure(
-                    "Expected %d %s, but there were %d: %s",
-                    expectedCount, describe(type), calls.size(), calls);
+            throw failure("Expected %d %s, but there were %d: %s", expectedCount, describe(type), calls.size(), calls);
         }
         return this;
     }
@@ -658,7 +660,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
     private List<ScopedExecution> scopedExecutions() {
         List<ScopedExecution> executions = new ArrayList<>();
         for (AiServiceInvocation invocation : scopedInvocations()) {
-            invocation.allToolExecutions()
+            invocation
+                    .allToolExecutions()
                     .forEach(toolExecution -> executions.add(new ScopedExecution(invocation, toolExecution)));
         }
         return executions;
@@ -688,7 +691,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
                 .filter(AiServiceInvocation::chatModelNotifiedNoListeners)
                 .findFirst()
                 .ifPresent(invocation -> {
-                    throw failure("The calls of the AI Service to its chat model are not known: %s",
+                    throw failure(
+                            "The calls of the AI Service to its chat model are not known: %s",
                             invocation.notNotifiedMessage());
                 });
         return scopedInvocations().stream()
@@ -714,7 +718,8 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
 
     private long failedTimes(String toolName) {
         return scopedExecutions().stream()
-                .filter(execution -> execution.isOf(toolName) && execution.toolExecution().hasFailed())
+                .filter(execution ->
+                        execution.isOf(toolName) && execution.toolExecution().hasFailed())
                 .count();
     }
 
@@ -828,7 +833,11 @@ public final class AiServiceInvocationAssert extends AbstractObjectAssert<AiServ
 
     private static String describeSources(List<Content> sources) {
         return sources.stream()
-                .map(source -> "  - " + truncate(source.textSegment() == null ? null : source.textSegment().text()))
+                .map(source -> "  - "
+                        + truncate(
+                                source.textSegment() == null
+                                        ? null
+                                        : source.textSegment().text()))
                 .collect(joining(System.lineSeparator()));
     }
 
