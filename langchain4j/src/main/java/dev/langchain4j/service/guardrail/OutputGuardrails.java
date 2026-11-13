@@ -1,6 +1,7 @@
 package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.service.AiServices;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -54,12 +55,12 @@ public @interface OutputGuardrails {
 
     /**
      * The maximum number of times the output guardrails validate a response of the model, including the first one:
-     * the model is called again at most {@code maxRetries - 1} times when an output guardrail forces a retry or
-     * reprompt.
+     * at most {@code maxRetries - 1} retries or reprompts.
      * <p>
-     *     Set to {@code 0} or {@code 1} to disable retries.
+     *     Set to {@code 0} or {@code 1} to disable retries. A negative value uses
+     *     {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT}.
      * </p>
-     * @see dev.langchain4j.guardrail.config.OutputGuardrailsConfig#maxRetries()
+     * @see OutputGuardrailsConfig#maxRetries()
      */
-    int maxRetries() default dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
+    int maxRetries() default OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
 }

@@ -315,7 +315,8 @@ public interface GuardrailService {
          * The guardrails and their configuration are resolved independently of each other, and separately for input
          * and output guardrails. Only the first source found is used: guardrails set in the builder, on the method and
          * on the class are not combined. Guardrails set in the builder count only when there is at least one:
-         * {@code null} or an empty list does not disable the guardrails declared in annotations.
+         * {@code null} or an empty list does not disable the guardrails declared in annotations. Guardrail instances
+         * and guardrail classes set in the builder are both used: the instances first, then the classes.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.

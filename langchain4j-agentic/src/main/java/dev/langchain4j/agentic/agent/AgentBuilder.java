@@ -599,6 +599,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for input guardrails applied before sending requests to the model.
+     * It applies to every method of the agent, see {@link AiServices#inputGuardrailsConfig(InputGuardrailsConfig)}.
      *
      * @param inputGuardrailsConfig the input guardrails configuration
      * @return {@code this}
@@ -652,7 +653,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the input guardrail instances applied before each request.
      * Guardrails set this way take precedence over any {@link InputGuardrails} annotation on the agent,
-     * see {@link AiServices#inputGuardrailClasses(Class[])}.
+     * see {@link AiServices#inputGuardrails(InputGuardrail[])}.
      *
      * @param inputGuardrails the input guardrails
      * @param <I> the guardrail type
@@ -666,7 +667,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the output guardrail instances applied after each response.
      * Guardrails set this way take precedence over any {@link OutputGuardrails} annotation on the agent,
-     * see {@link AiServices#outputGuardrailClasses(Class[])}.
+     * see {@link AiServices#outputGuardrails(OutputGuardrail[])}.
      *
      * @param outputGuardrails the output guardrails
      * @param <O> the guardrail type

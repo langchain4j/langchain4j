@@ -18,12 +18,15 @@ public interface OutputGuardrailsConfig extends GuardrailsConfig {
     int MAX_RETRIES_DEFAULT = 2;
 
     /**
-     * Configures the maximum number of times the output guardrails validate a response of the model, including the
-     * first one: the model is called again at most {@code maxRetries - 1} times for a retry or reprompt.
+     * Returns the maximum number of times the output guardrails validate a response of the model, including the first
+     * one: at most {@code maxRetries - 1} retries or reprompts. Unlike {@code maxRetries} on chat models, which counts
+     * only the retries after the first call, this value includes the first response.
      * <p>
-     *     Defaults to {@link #MAX_RETRIES_DEFAULT} (one retry or reprompt) if not set.
+     *     The default implementation uses {@link #MAX_RETRIES_DEFAULT} (one retry or reprompt) if not set.
      * </p>
-     * Set to {@code 0} or {@code 1} to disable retries.
+     * Set to {@code 0} or {@code 1} to disable retries. A negative value uses {@link #MAX_RETRIES_DEFAULT}.
+     *
+     * @return the maximum number of validations, including the first one
      */
     int maxRetries();
 
@@ -50,7 +53,7 @@ public interface OutputGuardrailsConfig extends GuardrailsConfig {
          * Sets the maximum number of times the output guardrails validate a response of the model, including the
          * first one.
          * <p>
-         *     Defaults to {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} if not set.
+         *     The default implementation uses {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} if not set.
          * </p>
          * @param maxRetries The maximum number of times a response is validated, including the first one
          * @return This builder

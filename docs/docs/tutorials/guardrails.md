@@ -110,7 +110,7 @@ There are several ways to declare input guardrails, listed here in order of prec
 2. [`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
 3. [`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
 
-Only the input guardrails from the first of these places that declares any are used: guardrails declared in different places are not combined. For example, an `@InputGuardrails` annotation on a method replaces the one on the class for that method.
+Only the input guardrails from one of these places are used: the ones set on the `AiServices` builder if there is at least one, otherwise the `@InputGuardrails` annotation on the method if it is present, otherwise the one on the class. Guardrails declared in different places are not combined. For example, an `@InputGuardrails` annotation on a method replaces the one on the class for that method.
 
 Regardless of how they are declared, input guardrails are always executed in the order they appear in the list. A user message rewritten by any guardrail in the list is visible to the guardrails that follow it and, unless a later guardrail rewrites it again, to the LLM.
 
@@ -312,7 +312,7 @@ There are several ways to declare output guardrails, listed here in order of pre
 2. [`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
 3. [`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
 
-Only the output guardrails from the first of these places that declares any are used: guardrails declared in different places are not combined. For example, an `@OutputGuardrails` annotation on a method replaces the one on the class for that method.
+Only the output guardrails from one of these places are used: the ones set on the `AiServices` builder if there is at least one, otherwise the `@OutputGuardrails` annotation on the method if it is present, otherwise the one on the class. Guardrails declared in different places are not combined. For example, an `@OutputGuardrails` annotation on a method replaces the one on the class for that method.
 
 Regardless of how they are declared, output guardrails are always executed in the order they appear in the list. An output rewritten by any guardrail in the list is visible to the guardrails that follow it and, unless a later guardrail rewrites it again, to the caller.
 
@@ -401,7 +401,7 @@ Output guardrails have the following additional configuration that can be suppli
 
 | Configuration | Description                                                                                                                                                |
 |:--------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `maxRetries`  | - The maximum number of times the output guardrails validate a response of the model, including the first one: the model is called again at most `maxRetries - 1` times for a retry or reprompt.<br/> - Defaults to `2` (one retry or reprompt).<br/> - Set to `0` or `1` to disable retries. |
+| `maxRetries`  | - The maximum number of times the output guardrails validate a response of the model, including the first one: at most `maxRetries - 1` retries or reprompts.<br/> - Unlike `maxRetries` on chat models, which counts only the retries after the first call, this value includes the first response.<br/> - Defaults to `2` (one retry or reprompt).<br/> - Set to `0` or `1` to disable retries. A negative value uses the default. |
 
 The configuration is resolved independently of the guardrails themselves, following the same order of precedence: an `OutputGuardrailsConfig` set on the `AiServices` builder, then the `@OutputGuardrails` annotation on the AI Service method, then the one on the AI Service class. For example, output guardrails set on the `AiServices` builder still use the `maxRetries` of an `@OutputGuardrails` annotation when no `OutputGuardrailsConfig` is set on the builder. An `@OutputGuardrails` annotation on a method replaces the one on the class as a whole: when it does not set `maxRetries`, the default applies, not the `maxRetries` of the annotation on the class.
 
