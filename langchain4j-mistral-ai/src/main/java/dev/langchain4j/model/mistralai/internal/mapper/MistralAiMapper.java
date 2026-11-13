@@ -151,7 +151,7 @@ public class MistralAiMapper {
 
         return switch (mistralAiFinishReason) {
             case "stop" -> STOP;
-            case "length" -> LENGTH;
+            case "length", "model_length" -> LENGTH;
             case "tool_calls" -> TOOL_EXECUTION;
             case "content_filter" -> CONTENT_FILTER;
             default -> OTHER;
