@@ -127,7 +127,11 @@ public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
 
         for (Pattern pattern : patterns) {
             if (pattern.matcher(text).find()) {
-                LOGGER.warn("Prompt injection detected. pattern='{}' input='{}'", pattern.pattern(), text);
+                // Only the pattern is logged, never the message that matched it: a prompt carries
+                // whatever the user typed or pasted, and an attacker who knows the patterns can
+                // trip the guardrail on purpose to write chosen text, newlines included, into the
+                // application log.
+                LOGGER.warn("Prompt injection detected. pattern='{}'", pattern.pattern());
                 return fatal(buildFailureMessage(text, pattern));
             }
         }
