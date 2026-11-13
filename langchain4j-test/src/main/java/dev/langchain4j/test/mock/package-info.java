@@ -14,8 +14,9 @@
  * <p>
  * On every mock, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole response of the
  * model, for example an {@code EmbeddingResponse}: the request is answered with exactly that response, including its
- * metadata, for example the token usage of an embedding call in a cost test; the decision mock still checks the answers
- * like a real model does. On the chat mocks, they also take the text or the message of the answer.
+ * metadata, for example the token usage of an embedding call in a cost test, also when it does not fit the request,
+ * for example to test how your code handles a provider that returns too few embeddings. Only the decision mock still
+ * checks the answers like a real model does. On the chat mocks, they also take the text or the message of the answer.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test, for
  * example by replacing the model bean for each test. In Quarkus, {@code QuarkusMock.installMockForType(...)} does that.

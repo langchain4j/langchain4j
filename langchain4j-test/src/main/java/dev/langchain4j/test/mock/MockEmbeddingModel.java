@@ -61,7 +61,9 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
  * response, here an {@link EmbeddingResponse}: the request is answered with exactly that response, including its
- * metadata, for example the token usage of an embedding call in a cost test.
+ * metadata, for example the token usage of an embedding call in a cost test. The response is used as given, also when
+ * its number of embeddings differs from the number of texts of the request, for example to test how your code handles
+ * a provider that returns too few embeddings.
  * <p>
  * The mock accepts the per-call parameters {@code modelName} and {@code inputType}, and rejects {@code dimensions} with
  * an {@code UnsupportedFeatureException}, like a model without that parameter; a rejected request takes no step. Unless
@@ -213,13 +215,6 @@ public class MockEmbeddingModel implements EmbeddingModel {
     private static EmbeddingResponse respond(Step step, EmbeddingRequest request) {
         EmbeddingResponse response = step.response();
         if (response != null) {
-            int texts = request.inputs().size();
-            if (response.embeddings().size() != texts) {
-                throw new IllegalStateException("The response of this step has "
-                        + Script.counted(response.embeddings().size(), "embedding") + ", but the request has "
-                        + Script.counted(texts, "text") + ". A provider returns one embedding per text, so give a"
-                        + " response with " + Script.counted(texts, "embedding") + ".");
-            }
             return response;
         }
         Function<String, float[]> embeddings = embeddingsOf(step);
@@ -364,9 +359,9 @@ public class MockEmbeddingModel implements EmbeddingModel {
      *         .tokenUsage(new TokenUsage(12))
      *         .build());
      * }</pre>
-     * The response must have one embedding per text of the request, as a provider's response has: otherwise the
-     * request fails with an {@link IllegalStateException}. Add the next steps with {@code then...} methods, or answer
-     * every request with this response: {@code thatResponds(response).thenRepeats()}.
+     * The response is used as given, also when its number of embeddings differs from the number of texts of the
+     * request. Add the next steps with {@code then...} methods, or answer every request with this response:
+     * {@code thatResponds(response).thenRepeats()}.
      */
     public static MockEmbeddingModel thatResponds(EmbeddingResponse response) {
         return new MockEmbeddingModel(responding(response));

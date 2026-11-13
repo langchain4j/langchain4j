@@ -435,17 +435,15 @@ class MockEmbeddingModelTest {
     }
 
     @Test
-    void should_fail_a_request_whose_number_of_texts_does_not_match_the_given_response() {
+    void should_answer_with_the_given_response_also_when_it_has_fewer_embeddings_than_texts() {
 
-        EmbeddingResponse given = EmbeddingResponse.builder()
-                .embeddings(List.of(Embedding.from(new float[] {0.1f, 0.2f})))
-                .build();
-        MockEmbeddingModel model = MockEmbeddingModel.thatResponds(given);
+        // simulates a broken provider that returns one embedding for two texts
+        Embedding only = Embedding.from(new float[] {0.1f, 0.2f});
+        MockEmbeddingModel model = MockEmbeddingModel.thatResponds(
+                EmbeddingResponse.builder().embeddings(List.of(only)).build());
 
-        assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("b"))))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("has 1 embedding, but the request has 2 texts")
-                .hasMessageEndingWith("so give a response with 2 embeddings.");
+        assertThat(model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("b"))).content())
+                .containsExactly(only);
     }
 
     @Test

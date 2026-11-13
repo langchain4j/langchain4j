@@ -108,13 +108,6 @@ final class Script<S> {
     }
 
     /**
-     * The count with its noun, for example {@code 1 embedding} or {@code 2 embeddings}.
-     */
-    static String counted(int count, String noun) {
-        return count + " " + noun + (count == 1 ? "" : "s");
-    }
-
-    /**
      * The first three texts in quotes, each cut to 200 characters, and how many more there are, for an error message,
      * for example {@code  "a" "b" "c" and 2 more}.
      */

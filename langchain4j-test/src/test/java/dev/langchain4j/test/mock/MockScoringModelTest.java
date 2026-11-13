@@ -260,15 +260,13 @@ class MockScoringModelTest {
     }
 
     @Test
-    void should_fail_a_request_whose_number_of_documents_does_not_match_the_given_response() {
+    void should_answer_with_the_given_response_also_when_it_has_fewer_scores_than_documents() {
 
+        // simulates a broken re-ranking provider that returns one score for two documents
         MockScoringModel model = MockScoringModel.thatResponds(
                 ScoringResponse.builder().scores(List.of(0.9)).build());
 
-        assertThatThrownBy(() -> model.score(REQUEST))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("has 1 score, but the request has 2 documents")
-                .hasMessageEndingWith("so give a response with 2 scores.");
+        assertThat(model.score(REQUEST).scores()).containsExactly(0.9);
     }
 
     @Test

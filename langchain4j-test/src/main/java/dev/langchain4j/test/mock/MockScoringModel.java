@@ -41,7 +41,9 @@ import java.util.function.ToDoubleFunction;
  * }</pre>
  * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
  * response, here a {@link ScoringResponse}: the request is answered with exactly that response, including its
- * metadata, for example the token usage that a cost check reads.
+ * metadata, for example the token usage that a cost check reads. The response is used as given, also when its number
+ * of scores differs from the number of documents of the request, for example to test how your code handles a
+ * re-ranking provider that returns too few scores.
  * <p>
  * Unless a step gives the whole response, a response reports the model name of the request. {@code scoreAsync(...)}
  * completes on another thread, where a step that computes its scores also computes them.
@@ -249,9 +251,9 @@ public class MockScoringModel implements ScoringModel {
      *         .tokenUsage(new TokenUsage(30))
      *         .build());
      * }</pre>
-     * The response must have one score per document of the request, as a provider's response has: otherwise the request
-     * fails with an {@link IllegalStateException}. Add the next steps with {@code then...} methods, or answer every
-     * request with this response: {@code thatResponds(response).thenRepeats()}.
+     * The response is used as given, also when its number of scores differs from the number of documents of the
+     * request. Add the next steps with {@code then...} methods, or answer every request with this response:
+     * {@code thatResponds(response).thenRepeats()}.
      */
     public static MockScoringModel thatResponds(ScoringResponse response) {
         return new MockScoringModel(responding(response));
@@ -280,16 +282,7 @@ public class MockScoringModel implements ScoringModel {
 
     private static Step responding(ScoringResponse response) {
         ensureNotNull(response, "response");
-        return request -> {
-            int documents = request.documents().size();
-            if (response.scores().size() != documents) {
-                throw new IllegalStateException("The response of this step has "
-                        + Script.counted(response.scores().size(), "score") + ", but the request has "
-                        + Script.counted(documents, "document") + ". A provider returns one score per document, so"
-                        + " give a response with " + Script.counted(documents, "score") + ".");
-            }
-            return response;
-        };
+        return request -> response;
     }
 
     private static Step failing(RuntimeException exception) {
