@@ -492,7 +492,7 @@ caches.deleteCache(cache.name().orElseThrow());
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
-You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
+You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, `"HIGH"`, and `"XHIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()

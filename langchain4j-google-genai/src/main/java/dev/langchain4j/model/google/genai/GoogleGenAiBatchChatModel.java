@@ -362,7 +362,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
          * The thinking level to use. This is the recommended parameter for Gemini 3.x
          * models.
          * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"},
-         * {@code "HIGH"}.
+         * {@code "HIGH"}, {@code "XHIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
         public Builder thinkingLevel(String thinkingLevel) {
