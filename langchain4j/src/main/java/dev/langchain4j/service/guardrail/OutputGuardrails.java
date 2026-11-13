@@ -53,9 +53,11 @@ public @interface OutputGuardrails {
     Class<? extends OutputGuardrail>[] value();
 
     /**
-     * The maximum number of retries to perform when an output guardrail forces a retry or reprompt.
+     * The maximum number of times the output guardrails validate a response of the model, including the first one:
+     * the model is called again at most {@code maxRetries - 1} times when an output guardrail forces a retry or
+     * reprompt.
      * <p>
-     *     Set to {@code 0} to disable retries
+     *     Set to {@code 0} or {@code 1} to disable retries.
      * </p>
      * @see dev.langchain4j.guardrail.config.OutputGuardrailsConfig#maxRetries()
      */

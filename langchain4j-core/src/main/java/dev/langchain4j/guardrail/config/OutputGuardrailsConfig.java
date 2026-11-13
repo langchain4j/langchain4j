@@ -13,16 +13,17 @@ import java.util.ServiceLoader;
 @JacocoIgnoreCoverageGenerated
 public interface OutputGuardrailsConfig extends GuardrailsConfig {
     /**
-     * Default maximum number of retries for the guardrail.
+     * Default value of {@link #maxRetries()}: the first response of the model plus one retry or reprompt.
      */
     int MAX_RETRIES_DEFAULT = 2;
 
     /**
-     * Configures the maximum number of retries for the guardrail.
+     * Configures the maximum number of times the output guardrails validate a response of the model, including the
+     * first one: the model is called again at most {@code maxRetries - 1} times for a retry or reprompt.
      * <p>
-     *     Defaults to {@link #MAX_RETRIES_DEFAULT} if not set.
+     *     Defaults to {@link #MAX_RETRIES_DEFAULT} (one retry or reprompt) if not set.
      * </p>
-     * Set to {@code 0} to disable retries.
+     * Set to {@code 0} or {@code 1} to disable retries.
      */
     int maxRetries();
 
@@ -46,12 +47,13 @@ public interface OutputGuardrailsConfig extends GuardrailsConfig {
      */
     interface OutputGuardrailsConfigBuilder extends GuardrailsConfigBuilder<OutputGuardrailsConfig> {
         /**
-         * Sets the maximum number of retries for output guardrails.
+         * Sets the maximum number of times the output guardrails validate a response of the model, including the
+         * first one.
          * <p>
-         *     Defaults to {@link OutputGuardrailsConfig#maxRetries()} if not set.
+         *     Defaults to {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} if not set.
          * </p>
-         * @param maxRetries The maximum number of retries for output guardrails
-         * @return The maximum number of retries for output guardrails
+         * @param maxRetries The maximum number of times a response is validated, including the first one
+         * @return This builder
          * @see OutputGuardrailsConfig#maxRetries()
          */
         OutputGuardrailsConfigBuilder maxRetries(int maxRetries);

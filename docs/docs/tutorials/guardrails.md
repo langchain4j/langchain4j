@@ -401,7 +401,7 @@ Output guardrails have the following additional configuration that can be suppli
 
 | Configuration | Description                                                                                                                                                |
 |:--------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `maxRetries`  | - The maximum number of retries for an output guardrail when performing a retry or reprompt.<br/> - Defaults to `2`.<br/> - Set to `0` to disable retries. |
+| `maxRetries`  | - The maximum number of times the output guardrails validate a response of the model, including the first one: the model is called again at most `maxRetries - 1` times for a retry or reprompt.<br/> - Defaults to `2` (one retry or reprompt).<br/> - Set to `0` or `1` to disable retries. |
 
 The configuration is resolved independently of the guardrails themselves, following the same order of precedence: an `OutputGuardrailsConfig` set on the `AiServices` builder, then the `@OutputGuardrails` annotation on the AI Service method, then the one on the AI Service class. For example, output guardrails set on the `AiServices` builder still use the `maxRetries` of an `@OutputGuardrails` annotation when no `OutputGuardrailsConfig` is set on the builder. An `@OutputGuardrails` annotation on a method replaces the one on the class as a whole: when it does not set `maxRetries`, the default applies, not the `maxRetries` of the annotation on the class.
 
