@@ -95,6 +95,19 @@
             "allowedVersions": "/^0\\.4\\.\\d+-jdk25$/"
         },
         {
+            // 5.6.0 has no jar: it only relocates to io.weaviate:client6, a new client with a different API,
+            // so moving to it is a migration of the module, not a version update
+            "matchPackageNames": ["io.weaviate:client"],
+            "allowedVersions": "(,5.6)"
+        },
+        {
+            // because of that relocation, Renovate also proposes replacing it with io.weaviate:client6 5.6.0,
+            // a version that client6 does not have
+            "matchPackageNames": ["io.weaviate:client"],
+            "matchUpdateTypes": ["replacement"],
+            "enabled": false
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
