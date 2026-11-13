@@ -11,6 +11,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.Map;
@@ -563,5 +565,28 @@ class ConfidenceCascadePlannerTest {
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .isInstanceOf(ContentFilteredException.class);
         assertThat(expertAgent.calls).hasValue(0);
+    }
+
+    // ── Token usage ──
+
+    @Test
+    void shouldCountEveryGradingCallOnTheCascadeAndNoneForTheLastTier() {
+        DecisionModelMock model =
+                modelGrading(0.1).withModelName("decision-model").withTokenUsage(new TokenUsage(40, 2));
+        AgentMonitor monitor = new AgentMonitor();
+        SupportCascade cascade = AgenticServices.plannerBuilder(SupportCascade.class)
+                .subAgents(faqAgent, expertAgent, seniorExpertAgent)
+                .outputKey("answer")
+                .planner(() -> new ConfidenceCascadePlanner(model, 0.5))
+                .listener(monitor)
+                .build();
+
+        assertThat(cascade.ask(REQUEST)).isEqualTo("senior answer");
+
+        // the first two tiers are graded, the last one is not
+        assertThat(model.requests()).hasSize(2);
+        var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(80, 4));
+        assertThat(invocation.modelName()).contains("decision-model");
     }
 }

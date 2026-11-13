@@ -2,6 +2,7 @@ package dev.langchain4j.invocation;
 
 import java.util.Map;
 import dev.langchain4j.Internal;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A marker interface for components that are managed by LangChain4j framework.
@@ -31,5 +32,23 @@ public interface LangChain4jManaged {
 
     static void removeCurrent() {
         CURRENT.remove();
+    }
+
+    /**
+     * Binds to the current thread the managed components it had before they were replaced, or none if it had none.
+     * A component replacing them with its own for the time of a call can itself be called from inside another AI
+     * service call, for instance by one of its tools: so it reads the ones of its caller first, with
+     * {@link #current()}, and puts them back with this method when it is done, instead of leaving the thread
+     * without any.
+     *
+     * @param previous the components returned by {@link #current()} before the replacement, or {@code null} if it
+     * returned none, in which case the thread is left without any
+     */
+    static void restore(@Nullable Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> previous) {
+        if (previous == null) {
+            removeCurrent();
+        } else {
+            setCurrent(previous);
+        }
     }
 }

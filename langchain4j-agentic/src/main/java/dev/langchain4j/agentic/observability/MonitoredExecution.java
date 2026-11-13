@@ -185,6 +185,13 @@ public class MonitoredExecution {
         }
     }
 
+    void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+        AgentInvocation invocation = ongoingInvocations.get(plannerModelResponse.agentId());
+        if (invocation != null) {
+            invocation.addPlannerModelResponse(plannerModelResponse);
+        }
+    }
+
     public Collection<AgentInvocation> ongoingInvocations() {
         return ongoingInvocations.values();
     }

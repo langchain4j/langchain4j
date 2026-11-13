@@ -18,6 +18,7 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -41,6 +42,7 @@ import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.time.Duration;
@@ -1068,5 +1070,29 @@ class DecisionSchedulerPlannerTest {
         assertThatThrownBy(() -> scheduler(model, tracker(), writer()).handle(TICKET))
                 .isInstanceOf(ContentFilteredException.class);
         assertThat(invoked).isEmpty();
+    }
+
+    // ── Token usage ──
+
+    @Test
+    void shouldCountEveryDecisionCallOnTheScheduler() {
+        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6))
+                .withModelName("decision-model")
+                .withTokenUsage(new TokenUsage(40, 2));
+        AgentMonitor monitor = new AgentMonitor();
+        SupportDesk desk = AgenticServices.plannerBuilder(SupportDesk.class)
+                .subAgents(tracker(), advisor(), writer())
+                .outputKey("reply")
+                .planner(() -> planner(model).build())
+                .listener(monitor)
+                .build();
+
+        desk.handle(TICKET);
+
+        // one decision before each of the two invocations, and the one finding the goal reached
+        assertThat(model.requests()).hasSize(3);
+        var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(120, 6));
+        assertThat(invocation.modelName()).contains("decision-model");
     }
 }

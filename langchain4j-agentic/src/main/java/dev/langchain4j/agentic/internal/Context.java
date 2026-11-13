@@ -1,14 +1,17 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.IllegalConfigurationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Context {
@@ -36,6 +39,25 @@ public class Context {
             throw new IllegalConfigurationException("A ChatModel is required to summarize agentic context.");
         }
         return conversation -> chatModel.chat(summarizationPrompt(conversation));
+    }
+
+    /**
+     * Creates a new stateless summarizer that sends the summarization prompt to the given {@link ChatModel}, passes
+     * the response of the model to the given consumer, for instance to report its token usage, and returns the text
+     * of its answer.
+     *
+     * @throws IllegalConfigurationException if {@code chatModel} is {@code null}
+     */
+    public static ContextSummarizer createSummarizer(ChatModel chatModel, Consumer<ChatResponse> responseConsumer) {
+        if (chatModel == null) {
+            throw new IllegalConfigurationException("A ChatModel is required to summarize agentic context.");
+        }
+        ensureNotNull(responseConsumer, "responseConsumer");
+        return conversation -> {
+            ChatResponse response = chatModel.chat(UserMessage.from(summarizationPrompt(conversation)));
+            responseConsumer.accept(response);
+            return response.aiMessage().text();
+        };
     }
 
     /**

@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.AgenticScopeFunction;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.V;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -673,5 +675,43 @@ class DecisionRouterPlannerTest {
                 .contains("<span class=\"agent-name\">medical</span>")
                 .contains("<span class=\"agent-name\">legal</span>")
                 .contains("<span class=\"agent-name\">technical</span>");
+    }
+
+    // ── Token usage ──
+
+    private <T> T monitoredRouter(Class<T> routerType, DecisionModelMock model, AgentMonitor monitor, Object... experts) {
+        return AgenticServices.plannerBuilder(routerType)
+                .subAgents(experts)
+                .outputKey("response")
+                .planner(() -> new DecisionRouterPlanner(model))
+                .listener(monitor)
+                .build();
+    }
+
+    @Test
+    void shouldCountTheDecisionCallOnTheRouter() {
+        DecisionModelMock model = modelAnswering(choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
+                .withModelName("decision-model")
+                .withTokenUsage(new TokenUsage(40, 2));
+        AgentMonitor monitor = new AgentMonitor();
+
+        monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert, legalExpert, technicalExpert)
+                .ask(REQUEST);
+
+        var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(40, 2));
+        assertThat(invocation.modelName()).contains("decision-model");
+    }
+
+    @Test
+    void shouldCountNoTokensWhenTheOnlyCandidateIsInvokedWithoutAskingTheModel() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of())).withTokenUsage(new TokenUsage(40, 2));
+        AgentMonitor monitor = new AgentMonitor();
+
+        monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert).ask(REQUEST);
+
+        assertThat(model.requests()).isEmpty();
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().tokenUsage())
+                .isEmpty();
     }
 }

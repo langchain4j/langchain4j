@@ -13,6 +13,7 @@ import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServices;
 import java.util.Collection;
 import java.util.List;
@@ -79,8 +80,8 @@ public class P2PPlanner implements Planner {
                     .distinct()
                     .toList();
 
-            Map<String, String> vars =
-                    createVariablesExtractorAgent(chatModel).extractVariables(request, variableNames);
+            Map<String, String> vars = createVariablesExtractorAgent(chatModel, planningContext)
+                    .extractVariables(request, variableNames);
             LOG.info("Variables extracted from user's prompt: {}", vars);
             vars.forEach(planningContext.agenticScope()::writeState);
         }
@@ -179,13 +180,18 @@ public class P2PPlanner implements Planner {
         }
     }
 
-    private static VariablesExtractorAgent createVariablesExtractorAgent(ChatModel chatModel) {
+    private static VariablesExtractorAgent createVariablesExtractorAgent(
+            ChatModel chatModel, PlanningContext planningContext) {
         if (chatModel == null) {
             throw new IllegalArgumentException(
                     "ChatModel must be provided for P2PAgent to extract variables from user's prompt.");
         }
+        // each response of the model is reported as soon as it is received, so also when it cannot be parsed
+        AiServiceResponseReceivedListener responseListener =
+                event -> planningContext.reportChatModelResponse(event.response());
         return AiServices.builder(VariablesExtractorAgent.class)
                 .chatModel(chatModel)
+                .registerListener(responseListener)
                 .build();
     }
 

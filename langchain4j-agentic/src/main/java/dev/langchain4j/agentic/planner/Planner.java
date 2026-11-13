@@ -13,6 +13,13 @@ import java.util.Map;
  * {@link PlanningContext#isActive(AgentInstance)} to avoid selecting inactive agents, but it must handle skipped
  * invocations anyway, because the condition is evaluated again when the agent is invoked and the state can change in
  * between.
+ * <p>
+ * A planner that calls a model itself to decide what to do reports each response it receives through
+ * {@link PlanningContext#reportChatModelResponse} or {@link PlanningContext#reportDecisionModelResponse}, so that
+ * the listeners of its agent are notified of it and its token usage is counted on the invocation of that agent.
+ * These calls belong in {@link #firstAction(PlanningContext)} and {@link #nextAction(PlanningContext)}: a model
+ * called in {@link #init(InitPlanningContext)} cannot be reported, because the {@link InitPlanningContext} has no
+ * such methods.
  */
 public interface Planner {
 

@@ -96,6 +96,9 @@ public class DecisionOracleSupervisorIT {
 
         assertThat(invocations(monitor))
                 .anyMatch(invocation -> invocation.agent().type() == CreditEligibility.class);
+        // the tokens of the planning calls of the supervisor itself, without the ones of its subagents
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().totalTokenCount())
+                .isPositive();
         assertThat(result.agenticScope().readState("eligible")).isEqualTo(true);
         assertThat(bankTool.getBalance("Mario")).isEqualTo(2000.0);
     }

@@ -568,6 +568,7 @@ class DeclarativeDecisionAgentTest {
             DecisionAgentBuilder<?> builder = context.decisionAgentBuilder();
             if (builder != null) {
                 assertThat(context.agentBuilder()).isNull();
+                assertThat(context.agenticService()).isNull();
                 builder.outputKey("decision");
             }
         });

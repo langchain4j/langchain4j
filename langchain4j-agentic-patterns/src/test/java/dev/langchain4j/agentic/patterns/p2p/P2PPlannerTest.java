@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.patterns.p2p;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.agentic.Agent;
@@ -8,8 +9,12 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.output.OutputParsingException;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -182,5 +187,67 @@ class P2PPlannerTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // ── Token usage ──
+
+    @Test
+    void should_count_the_variables_extraction_call_on_the_p2p_agent() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("{\"pong\": \"seed\"}")
+                .withModelNames("extraction-model")
+                .withTokenUsage(new TokenUsage(50, 8));
+        AgentMonitor monitor = new AgentMonitor();
+        P2PAgent system = AgenticServices.plannerBuilder(P2PAgent.class)
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(model, 2, scope -> false))
+                .listener(monitor)
+                .build();
+
+        system.invoke("Start from the pong 'seed'");
+
+        assertThat(invocations).hasValue(2);
+        assertThat(model.requests()).hasSize(1);
+        var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
+        assertThat(invocation.tokenUsage()).contains(new TokenUsage(50, 8));
+        assertThat(invocation.modelName()).contains("extraction-model");
+    }
+
+    @Test
+    void should_count_the_variables_extraction_call_also_when_its_reply_cannot_be_parsed() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("these are not variables")
+                .withModelNames("extraction-model")
+                .withTokenUsage(new TokenUsage(50, 8));
+        AgentMonitor monitor = new AgentMonitor();
+        P2PAgent system = AgenticServices.plannerBuilder(P2PAgent.class)
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(model, 2, scope -> false))
+                .listener(monitor)
+                .build();
+
+        assertThatThrownBy(() -> system.invoke("Start from the pong 'seed'"))
+                .isInstanceOf(OutputParsingException.class);
+
+        // the model answered and was billed, even if the planner could not read its reply
+        assertThat(invocations).hasValue(0);
+        var failed = monitor.failedExecutions().get(0).topLevelInvocations();
+        assertThat(failed.tokenUsage()).contains(new TokenUsage(50, 8));
+        assertThat(failed.modelName()).contains("extraction-model");
+    }
+
+    @Test
+    void should_count_no_tokens_when_there_is_no_request_to_extract_the_variables_from() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("unused").withTokenUsage(new TokenUsage(50, 8));
+        AgentMonitor monitor = new AgentMonitor();
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(model, 2, scope -> false))
+                .listener(monitor)
+                .build();
+
+        invokeWithTimeout(system, Map.of("pong", "seed"));
+
+        assertThat(model.requests()).isEmpty();
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().tokenUsage())
+                .isEmpty();
     }
 }

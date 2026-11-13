@@ -47,6 +47,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
 
     private Object internalInvoke(DefaultAgenticScope agenticScope, AgentListener listener, Object agent, AgentInvocationArguments args,
                                   AgentModelResponse modelResponse) {
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
         LangChain4jManaged.setCurrent(
                 Map.of(AgenticScope.class, agenticScope, AgentModelResponse.class, modelResponse));
         try {
@@ -60,7 +61,7 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
             agentError(listener, agenticScope, this, args.namedArgs(), invocationException);
             throw invocationException;
         } finally {
-            LangChain4jManaged.removeCurrent();
+            LangChain4jManaged.restore(callerParameters);
         }
     }
 

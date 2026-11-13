@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
@@ -38,6 +40,18 @@ public interface AgentListener {
      * It is not called for the {@code AiServiceInvocationSummaryEvent}, which only aggregates these same events.
      */
     default void onAgentAiServiceEvent(AgentAiServiceEvent agentAiServiceEvent) {}
+
+    /**
+     * Called each time the planner of an agent, like a supervisor, a decision router or a custom {@link Planner},
+     * receives the response of a model that it called itself to decide what to do, as reported by the planner through
+     * the {@link PlanningContext#reportChatModelResponse reportChatModelResponse} or
+     * {@link PlanningContext#reportDecisionModelResponse reportDecisionModelResponse} method of its
+     * {@code PlanningContext}. The notification carries the token usage and the model name of that
+     * response. The model calls of the subagents are not notified here, but by their own invocations.
+     * It is called on the thread running the planner, before the planner acts on the response, so also when the
+     * invocation of the agent later fails.
+     */
+    default void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {}
 
     /**
      * Indicates whether this listener should be used only to the agent where it is registered (default)

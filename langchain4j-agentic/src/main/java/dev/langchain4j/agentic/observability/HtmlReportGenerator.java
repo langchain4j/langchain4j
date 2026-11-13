@@ -569,16 +569,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Model column
+        // Model column, also for an invocation that failed or is still in progress, when its planner called a model
         html.append("<td class=\"wf-dur\">");
-        if (inv.done()) {
-            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
-        }
+        inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
         html.append("</td>");
 
-        // Tokens column
+        // Tokens column, with what the planner of a failed or still in progress invocation spent so far
         html.append("<td class=\"wf-dur\">");
-        if (inv.done() && inv.totalTokenCount() > 0) {
+        if (inv.totalTokenCount() > 0) {
             html.append(fmtTokens(inv.totalTokenCount()));
         }
         html.append("</td>");

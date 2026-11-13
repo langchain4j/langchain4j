@@ -351,20 +351,40 @@ public class AgenticServices {
         Class<T> agentServiceClass();
 
         /**
-         * The builder of the AI agent being created, or {@code null} when it is a decision agent.
+         * The builder of the AI agent being created, or {@code null} when it is another kind of agent.
          */
         AgentBuilder<T, ?> agentBuilder();
 
         /**
-         * The builder of the decision agent being created, or {@code null} when it is an AI agent.
+         * The builder of the decision agent being created, or {@code null} when it is another kind of agent.
          */
         default DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return null;
+        }
+
+        /**
+         * The builder of the agent being created when it orchestrates subagents through a planner, like a sequence
+         * or any other workflow, a supervisor or a planner agent, or {@code null} when it is another kind of agent.
+         */
+        default AgenticService<?, T> agenticService() {
             return null;
         }
     }
 
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
+
+    /**
+     * The creation context of an agent orchestrating subagents through a planner.
+     */
+    private record AgenticServiceCreationContext<T>(Class<T> agentServiceClass, AgenticService<?, T> agenticService)
+            implements DeclarativeAgentCreationContext<T> {
+
+        @Override
+        public AgentBuilder<T, ?> agentBuilder() {
+            return null;
+        }
+    }
 
     @Internal
     public static final class DefaultDeclarativeDecisionAgentCreationContext<T>
@@ -398,11 +418,20 @@ public class AgenticServices {
     /**
      * The hooks through which an integration takes part in the creation of a declarative agentic system.
      * <p>
-     * The {@code configurator} is called for every agent of the system, AI agents and decision agents alike, with
-     * a {@link DeclarativeAgentCreationContext}. For an AI agent its {@code agentBuilder()} is set and its
-     * {@code decisionAgentBuilder()} is {@code null}, for a decision agent it is the other way round, so a
-     * configurator must check which builder it received before using it. The {@code agentInstanceFactory} is
-     * applied to both kinds of agents.
+     * The {@code configurator} is called for every AI agent and decision agent of the system, and for every agent
+     * orchestrating subagents through a planner: a sequence, a loop, a conditional, a parallel or a parallel mapper
+     * agent, a supervisor and a planner agent. It is called with a {@link DeclarativeAgentCreationContext}, after the
+     * declarative configuration of the agent has been applied and before the agent is built. The context provides
+     * the builder of the agent through one of three methods, and the other two return {@code null}:
+     * {@code agentBuilder()} for an AI agent, {@code decisionAgentBuilder()} for a decision agent and
+     * {@code agenticService()} for an agent orchestrating subagents. So a configurator must check which builder it
+     * received before using it, and do nothing with a context providing none of the builders it knows, since other
+     * kinds of agents can be added to these. The {@code agentInstanceFactory} is applied to the same agents.
+     * <p>
+     * It is how an integration registers something on every such agent, like an {@code AgentListener}: a listener
+     * is notified of the events of the agent it is registered on, and of the agents below it when it is inherited,
+     * but never of the events of the agents containing it, like the model calls that a supervisor makes to choose
+     * its subagents.
      * <p>
      * The {@code helperObjectsResolver} is called with the type of every agent of the system, the root agent and
      * each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated with
@@ -688,6 +717,15 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * Hands the builder of an agent orchestrating subagents to the configurator, once its declarative configuration
+     * has been applied.
+     */
+    private static <T> void applyConfigurator(
+            Class<T> agentServiceClass, AgenticService<?, T> builder, AgentConfigurator agentConfigurator) {
+        agentConfigurator.configurator().accept(new AgenticServiceCreationContext<>(agentServiceClass, builder));
+    }
+
     private static void buildAgentSpecs(
             Method agentMethod,
             String name,
@@ -728,6 +766,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -749,6 +788,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -784,6 +824,7 @@ public class AgenticServices {
                             createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -804,6 +845,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -825,6 +867,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -845,6 +888,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -874,6 +918,7 @@ public class AgenticServices {
             builder.compensateOnError(true);
         }
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
