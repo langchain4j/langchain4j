@@ -92,7 +92,8 @@ public class AnthropicResponseMapper {
 
         return switch (stopReason) {
             case "end_turn" -> FinishReason.STOP;
-            case "max_tokens" -> FinishReason.LENGTH;
+            case "max_tokens", "model_context_window_exceeded" -> FinishReason.LENGTH;
+            case "refusal" -> FinishReason.CONTENT_FILTER;
             case "stop_sequence" -> FinishReason.STOP;
             case "tool_use" -> FinishReason.TOOL_EXECUTION;
             default -> FinishReason.OTHER;
