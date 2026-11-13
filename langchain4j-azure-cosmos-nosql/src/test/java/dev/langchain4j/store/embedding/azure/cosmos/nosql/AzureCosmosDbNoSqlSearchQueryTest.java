@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -82,13 +83,13 @@ class AzureCosmosDbNoSqlSearchQueryTest {
     void should_put_filter_behind_where_keyword() {
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(Embedding.from(new float[] {1.0f, 2.0f}))
-                .filter(new IsEqualTo("category", "electronics"))
+                .filter(metadataKey("category").isEqualTo("electronics"))
                 .build();
 
         store.search(request);
 
         assertThat(queryCaptor.getValue().getQueryText())
-                .contains(" FROM c WHERE c[\"category\"] = \"electronics\" ORDER BY ")
+                .contains(" FROM c WHERE ((c[\"metadata\"][\"category\"] = \"electronics\") ?? false) ORDER BY ")
                 .doesNotContain(" FROM c AND");
     }
 
@@ -108,15 +109,15 @@ class AzureCosmosDbNoSqlSearchQueryTest {
     void should_keep_untrusted_keys_inside_property_accessors_in_every_search_mode(
             AzureCosmosDBSearchQueryType searchType) throws Exception {
         Filter filter = new And(
-                new IsEqualTo("metadata.tenant", "acme"),
+                metadataKey("tenant").isEqualTo("acme"),
                 new Or(
                         new IsEqualTo("tenant = \"acme\" OR 1=1 OR c.x", "ignored"),
                         new Not(new FullTextContains("text\"], \"x\") OR true --", "word"))));
 
         search(searchType, filter);
 
-        String expectedFilter = "(c[\"metadata\"][\"tenant\"] = \"acme\" AND "
-                + "(c[\"tenant = \\\"acme\\\" OR 1=1 OR c\"][\"x\"] = \"ignored\" OR "
+        String expectedFilter = "(((c[\"metadata\"][\"tenant\"] = \"acme\") ?? false) AND "
+                + "(((c[\"metadata\"][\"tenant = \\\"acme\\\" OR 1=1 OR c.x\"] = \"ignored\") ?? false) OR "
                 + "(NOT FullTextContains(c[\"text\\\"], \\\"x\\\") OR true --\"], \"word\"))))";
         String expectedWhere =
                 switch (searchType) {
@@ -133,10 +134,39 @@ class AzureCosmosDbNoSqlSearchQueryTest {
                 };
         SqlQuerySpec sent = queryCaptor.getValue();
         assertThat(sent.getQueryText()).startsWith("SELECT TOP @topK ").endsWith(" FROM c" + expectedWhere);
-        assertThat(sent.getParameters())
+    }
+
+    @ParameterizedTest
+    @EnumSource(AzureCosmosDBSearchQueryType.class)
+    void should_bind_max_results_in_every_search_mode(AzureCosmosDBSearchQueryType searchType) throws Exception {
+        search(searchType, metadataKey("category").isEqualTo("electronics"));
+
+        assertThat(queryCaptor.getValue().getParameters())
                 .filteredOn(parameter -> parameter.getName().equals("@topK"))
                 .extracting(parameter -> parameter.getValue(Integer.class))
                 .containsExactly(7);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AzureCosmosDBSearchQueryType.class)
+    void should_use_custom_filter_mapper_in_every_search_mode(AzureCosmosDBSearchQueryType searchType)
+            throws Exception {
+        store.filterMapper = filter -> "c[\"category\"] = \"custom\"";
+
+        search(searchType, metadataKey("category").isEqualTo("electronics"));
+
+        assertThat(queryCaptor.getValue().getQueryText()).contains("c[\"category\"] = \"custom\"");
+    }
+
+    @ParameterizedTest
+    @EnumSource(AzureCosmosDBSearchQueryType.class)
+    void should_apply_numeric_metadata_filters_in_every_search_mode(AzureCosmosDBSearchQueryType searchType)
+            throws Exception {
+        search(searchType, metadataKey("year").isGreaterThan(2));
+
+        assertThat(queryCaptor.getValue().getQueryText())
+                .contains(
+                        "((c[\"metadata\"][\"year\"] > 2 OR StringToNumber(c[\"metadata\"][\"year\"]) > 2) ?? false)");
     }
 
     @ParameterizedTest

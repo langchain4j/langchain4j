@@ -149,16 +149,27 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
     @ParameterizedTest
     @MethodSource("supportedValues")
     void preserves_safe_scalar_literals_in_every_comparison(Object value, String literal) {
+        String equal = comparison("=", literal, value instanceof Number);
+        String in = comparison("IN", "(" + literal + ")", value instanceof Number);
         assertThat(comparisonFilters(value).map(mapper::map))
                 .containsExactly(
-                        "c[\"key\"] = " + literal,
-                        "(NOT c[\"key\"] = " + literal + ")",
-                        "c[\"key\"] IN (" + literal + ")",
-                        "(NOT c[\"key\"] IN (" + literal + "))",
-                        "c[\"key\"] > " + literal,
-                        "c[\"key\"] >= " + literal,
-                        "c[\"key\"] < " + literal,
-                        "c[\"key\"] <= " + literal);
+                        equal,
+                        "(NOT " + equal + ")",
+                        in,
+                        "(NOT " + in + ")",
+                        comparison(">", literal, value instanceof Number),
+                        comparison(">=", literal, value instanceof Number),
+                        comparison("<", literal, value instanceof Number),
+                        comparison("<=", literal, value instanceof Number));
+    }
+
+    private static String comparison(String operator, String literal, boolean numeric) {
+        String direct = "c[\"metadata\"][\"key\"] " + operator + " " + literal;
+        if (numeric) {
+            return "((" + direct + " OR StringToNumber(c[\"metadata\"][\"key\"]) " + operator + " " + literal
+                    + ") ?? false)";
+        }
+        return "((" + direct + ") ?? false)";
     }
 
     @Test
@@ -234,10 +245,12 @@ class DefaultAzureCosmosDBNoSqlFilterMapperValueTest {
         // The mapper maps IsNotEqualTo and IsNotIn by negating a new IsEqualTo or IsIn,
         // so for these two the filter classes reject the value before the mapper's own check
         if (filter instanceof IsNotEqualTo) {
-            return "Unsupported type of comparisonValue with key 'key': " + value.getClass().getName();
+            return "Unsupported type of comparisonValue with key 'key': "
+                    + value.getClass().getName();
         }
         if (filter instanceof IsNotIn) {
-            return "Unsupported type of a value in comparisonValues with key 'key': " + value.getClass().getName();
+            return "Unsupported type of a value in comparisonValues with key 'key': "
+                    + value.getClass().getName();
         }
         return "Unsupported comparison value type: " + value.getClass().getName();
     }
