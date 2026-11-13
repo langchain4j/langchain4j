@@ -3,16 +3,29 @@ package dev.langchain4j.agentic.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AgentUtilTest {
+
+    static class DescribedArguments {
+        void invoke(@P(name = "query", description = "Text to search for") String query) {}
+    }
 
     record Address(String street, String city) {}
 
     record Person(String name, int age, Address address) {}
+
+    enum Category {
+        LEGAL,
+        MEDICAL
+    }
 
     @Test
     void should_pass_string_argument_as_is() throws Exception {
@@ -97,6 +110,52 @@ class AgentUtilTest {
     }
 
     @Test
+    void should_coerce_string_to_enum() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", "LEGAL");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.LEGAL);
+    }
+
+    @Test
+    void should_coerce_string_to_enum_ignoring_case_and_surrounding_whitespace() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", " medical ");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.MEDICAL);
+    }
+
+    @Test
+    void should_still_read_json_string_as_enum() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", "\"LEGAL\"");
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Category.class, "category")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo(Category.LEGAL);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SPORTS", "\"SPORTS\""})
+    void should_list_the_enum_constants_when_string_is_not_one_of_them(String value) {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("category", value);
+
+        assertThatThrownBy(() -> AgentUtil.agentInvocationArguments(
+                        scope, List.of(new AgentArgument(Category.class, "category"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Cannot read agent argument 'category' as " + Category.class.getName()
+                        + ". It must be the name of one of its constants: LEGAL, MEDICAL.");
+    }
+
+    @Test
     void should_throw_when_json_string_is_invalid_for_target_type() {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         scope.writeState("person", "not-valid-json");
@@ -104,5 +163,15 @@ class AgentUtilTest {
         assertThatThrownBy(() ->
                         AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Person.class, "person"))))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_preserve_parameter_description_for_agent_planner() throws Exception {
+        Method method = DescribedArguments.class.getDeclaredMethod("invoke", String.class);
+
+        AgentArgument argument = AgentUtil.argumentFromParameter(method.getParameters()[0]);
+
+        assertThat(argument.name()).isEqualTo("query");
+        assertThat(argument.description()).isEqualTo("Text to search for");
     }
 }

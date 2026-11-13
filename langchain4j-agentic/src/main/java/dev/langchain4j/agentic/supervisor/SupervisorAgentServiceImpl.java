@@ -2,21 +2,27 @@ package dev.langchain4j.agentic.supervisor;
 
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopeFunction;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
-import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureOutput;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
-import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.AgentHelpers;
+import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.List;
 import java.util.function.Function;
 
 public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, SupervisorAgentServiceImpl<T>>
@@ -33,26 +39,49 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
 
     private Function<AgenticScope, String> requestGenerator;
     private String supervisorContext;
+    private ChatModel contextSummarizerModel;
+    private Context.ContextSummarizer contextSummarizer;
 
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         this(agentServiceClass, agenticMethod, null);
     }
 
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, ChatModel chatModel) {
+        this(agentServiceClass, agenticMethod, chatModel, List.of());
+    }
+
+    /**
+     * @param chatModel the chat model of the supervisor, unless a {@link ChatModelSupplier} helper provides one
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public SupervisorAgentServiceImpl(
+            Class<T> agentServiceClass, Method agenticMethod, ChatModel chatModel, List<Object> helperObjects) {
         super(agentServiceClass, agenticMethod);
-        configureSupervisor(agentServiceClass, chatModel);
+        if (!configureSupervisor(AgentHelpers.of(agentServiceClass, helperObjects))) {
+            this.chatModel(chatModel);
+        }
     }
 
     public T build() {
         if (supervisorContext != null) {
             this.beforeCall(this.beforeCall.andThen(agenticScope ->
-                    agenticScope.writeStateIfAbsent(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext)
-            ));
+                    agenticScope.writeStateIfAbsent(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext)));
         }
 
-        return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,
-                contextStrategy, responseStrategy, requestGenerator,
-                outputKey, output));
+        Context.ContextSummarizer summarizer = contextSummarizer();
+        AtomicBoolean subagentsDescriptionsChecked = new AtomicBoolean();
+        return build(() -> new SupervisorPlanner(
+                chatModel,
+                chatMemoryProvider,
+                maxAgentsInvocations,
+                contextStrategy,
+                responseStrategy,
+                requestGenerator,
+                outputKey,
+                output,
+                summarizer,
+                subagentsDescriptionsChecked));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
@@ -115,34 +144,54 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         return "Supervisor";
     }
 
-    private void configureSupervisor(Class<T> agentServiceClass, ChatModel chatModel) {
-        selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(SupervisorRequest.class)
-                        && method.getReturnType() == String.class)
-                .map(m -> agenticScopeFunction(m, String.class))
+    private synchronized Context.ContextSummarizer contextSummarizer() {
+        if (contextStrategy == SupervisorContextStrategy.CHAT_MEMORY) {
+            return null;
+        }
+        if (contextSummarizer == null || contextSummarizerModel != chatModel) {
+            if (chatModel == null) {
+                throw new IllegalConfigurationException(
+                        "A ChatModel is required to summarize context for a supervisor agent.");
+            }
+            contextSummarizerModel = chatModel;
+            contextSummarizer = Context.createSummarizer(chatModel);
+        }
+        return contextSummarizer;
+    }
+
+    /**
+     * Applies the helpers of the supervisor to this builder.
+     *
+     * @return whether a chat model supplier has been applied
+     */
+    private boolean configureSupervisor(AgentHelpers helpers) {
+        Class<?> agentServiceClass = helpers.agentType();
+        helpers.select(SupervisorRequest.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), String.class);
+                    return agenticScopeFunction(agentServiceClass, helper, String.class);
+                })
                 .ifPresent(this::requestGenerator);
 
-        selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                        && method.getReturnType() == ChatModel.class
-                        && method.getParameterCount() == 0)
-                .map(method -> (ChatModel) invokeStatic(method))
-                .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
+        boolean chatModelSupplied = helpers.select(ChatModelSupplier.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), ChatModel.class);
+                    return invokeSupplierWithResolvers(agentServiceClass, helper, ChatModel.class);
+                })
+                .map(this::chatModel)
+                .isPresent();
 
-        selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
-                        && method.getReturnType() == ChatMemory.class
-                        && method.getParameterCount() == 1)
-                .map(method -> (ChatMemoryProvider) memoryId -> invokeStatic(method, memoryId))
+        helpers.select(ChatMemoryProviderSupplier.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), ChatMemory.class);
+                    ResolvedParameters parameters =
+                            ResolvedParameters.of(agentServiceClass, helper).checkFrameworkParameters(Object.class);
+                    return (ChatMemoryProvider) memoryId -> parameters.invoke(memoryId);
+                })
                 .ifPresent(this::chatMemoryProvider);
 
-        selectMethod(agentServiceClass, method -> method.isAnnotationPresent(Output.class))
-                .map(m -> agenticScopeFunction(m, Object.class))
-                .ifPresent(this::output);
-
-        buildAgentFeatures(agentServiceClass, this);
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
+        return chatModelSupplied;
     }
 }

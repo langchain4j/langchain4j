@@ -1,49 +1,39 @@
 package dev.langchain4j.model.googleai;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
+import java.lang.reflect.Type;
 
 @Internal
 class Json {
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
+            .prettyPrint(true)
+            .build());
 
-    static final ObjectMapper OBJECT_MAPPER_WITHOUT_INDENT = new ObjectMapper().disable(INDENT_OUTPUT);
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC_WITHOUT_INDENT =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     static String toJson(Object o) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(o);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.toJson(o);
     }
 
     static String toJsonWithoutIndent(Object o) {
-        try {
-            return OBJECT_MAPPER_WITHOUT_INDENT.writeValueAsString(o);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC_WITHOUT_INDENT.toJson(o);
     }
 
     static <T> T fromJson(String json, Class<T> type) {
-        try {
-            return OBJECT_MAPPER.readValue(json, type);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.fromJson(json, type);
     }
 
-    static <T> T convertValue(Object fromValue, TypeReference<T> toValue) {
-        return OBJECT_MAPPER.convertValue(fromValue, toValue);
+    /**
+     * Re-reads an already-parsed value as {@code type}. The codec has no in-memory conversion, so
+     * this goes through JSON; the batch paths that use it convert one response at a time.
+     */
+    static <T> T convertValue(Object fromValue, Type type) {
+        return CODEC.fromJson(CODEC.toJson(fromValue), type);
     }
+
 }

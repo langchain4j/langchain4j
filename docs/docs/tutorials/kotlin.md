@@ -4,6 +4,26 @@ sidebar_position: 29
 
 # Kotlin Support
 
+:::warning
+**Breaking change for Kotlin users.** `ChatModel` now declares a Java member
+`chatAsync(ChatRequest): CompletableFuture<ChatResponse>`. In Kotlin a same-signature member wins over an
+extension, so a bare single-argument call that previously resolved to the `suspend` extension (returning
+`ChatResponse`) now resolves to the member (returning `CompletableFuture<ChatResponse>`):
+
+```kotlin
+// Before - resolved to the suspend extension, returned ChatResponse:
+val response: ChatResponse = model.chatAsync(request)
+
+// After - the bare single-arg call resolves to the Java member (a CompletableFuture):
+val future: CompletableFuture<ChatResponse> = model.chatAsync(request)
+
+// Migration - await the future...
+val response: ChatResponse = model.chatAsync(request).await()
+// ...or supply a coroutineContext, which still selects the suspend extension:
+val response: ChatResponse = model.chatAsync(request, Dispatchers.IO)
+```
+:::
+
 [Kotlin](https://kotlinlang.org) is a statically-typed language targeting the JVM (and other platforms), enabling concise and elegant code with seamless [interoperability](https://kotlinlang.org/docs/reference/java-interop.html) with Java libraries.
 LangChain4j utilizes Kotlin [extensions](https://kotlinlang.org/docs/extensions.html) and [type-safe builders](https://kotlinlang.org/docs/type-safe-builders.html) to enhance Java APIs with Kotlin-specific conveniences. This allows users to extend existing Java classes with additional functionality tailored for Kotlin.
     

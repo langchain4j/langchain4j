@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.event.DefaultToolExecutedEvent;
-
 import java.util.List;
 
 /**
@@ -40,6 +39,27 @@ public interface ToolExecutedEvent extends AiServiceEvent {
     List<Content> resultContents();
 
     /**
+     * Returns whether the tool execution failed, for example because the tool threw an exception
+     * and the error was sent to the LLM. It is also {@code true} when the tool error failed the AI Service invocation
+     * (for example with {@code ToolExecutionErrorHandler.failInvocation()}): then the result is the error text, which
+     * was not sent to the LLM, and an {@link AiServiceErrorEvent} follows. AI Services created with
+     * {@code AiServices} always report it. Integrations that create their own events should report it too: code that
+     * reads events reflectively, for example a JSON serializer that serializes this event or an
+     * {@link AiServiceInvocationSummaryEvent} containing it, fails with {@link UnsupportedOperationException} when it
+     * is not reported.
+     *
+     * @return {@code true} if the tool execution failed, {@code false} if it succeeded
+     * @throws UnsupportedOperationException if the integration that created this event does not report it
+     * @since 1.23.0
+     */
+    @Experimental
+    default boolean isError() {
+        throw new UnsupportedOperationException(
+                "This ToolExecutedEvent does not report whether the tool execution failed: "
+                        + "the integration that created it does not set it");
+    }
+
+    /**
      * Creates a new builder instance for constructing a {@link ToolExecutedEvent}.
      */
     static ToolExecutedEventBuilder builder() {
@@ -61,6 +81,7 @@ public interface ToolExecutedEvent extends AiServiceEvent {
         private ToolExecutionRequest request;
         private String resultText;
         private List<Content> resultContents;
+        private Boolean isError;
 
         protected ToolExecutedEventBuilder() {}
 
@@ -70,8 +91,12 @@ public interface ToolExecutedEvent extends AiServiceEvent {
         protected ToolExecutedEventBuilder(ToolExecutedEvent src) {
             super(src);
             request(src.request());
-            resultText(src.resultText());
             resultContents(src.resultContents());
+            try {
+                isError(src.isError());
+            } catch (UnsupportedOperationException notReported) {
+                // the copy does not report it either
+            }
         }
 
         /**
@@ -103,6 +128,18 @@ public interface ToolExecutedEvent extends AiServiceEvent {
             return this;
         }
 
+        /**
+         * Sets whether the tool execution failed. When it is not set, or set to {@code null},
+         * {@link ToolExecutedEvent#isError()} of the built event throws an {@link UnsupportedOperationException}.
+         *
+         * @since 1.23.0
+         */
+        @Experimental
+        public ToolExecutedEventBuilder isError(Boolean isError) {
+            this.isError = isError;
+            return this;
+        }
+
         public ToolExecutionRequest request() {
             return request;
         }
@@ -113,6 +150,16 @@ public interface ToolExecutedEvent extends AiServiceEvent {
 
         public List<Content> resultContents() {
             return resultContents;
+        }
+
+        /**
+         * Returns whether the tool execution failed, or {@code null} if it was not set.
+         *
+         * @since 1.23.0
+         */
+        @Experimental
+        public Boolean isError() {
+            return isError;
         }
 
         @Override

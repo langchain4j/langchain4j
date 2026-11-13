@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.filter.Filter.and;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
@@ -13,7 +14,9 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -86,5 +89,33 @@ class ChromaEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
         assertThat(relevant).hasSize(2);
         assertThat(relevant.get(0).embeddingId()).isEqualTo(id1);
         assertThat(relevant.get(1).embeddingId()).isEqualTo(id3);
+    }
+
+    @Test
+    void should_not_interpret_map_comparison_value_as_operator() {
+        // given
+        TextSegment segment1 = TextSegment.from("first", metadata("type", "a"));
+        embeddingStore().add(embeddingModel().embed(segment1).content(), segment1);
+
+        TextSegment segment2 = TextSegment.from("second", metadata("type", "b"));
+        embeddingStore().add(embeddingModel().embed(segment2).content(), segment2);
+
+        // when: the map is sent as the operand of an explicit $eq, which Chroma rejects
+        IsEqualTo filter = unvalidatedIsEqualTo("type", Map.of("$ne", "x"));
+        assertThatThrownBy(() -> embeddingStore().removeAll(filter)).isInstanceOf(RuntimeException.class);
+
+        // then
+        assertThat(getAllEmbeddings()).hasSize(2);
+    }
+
+    // The filter classes reject values like these, so they are returned from the overridden accessor
+    // to check that the store handles them safely on its own.
+    private static IsEqualTo unvalidatedIsEqualTo(String key, Object value) {
+        return new IsEqualTo(key, "placeholder") {
+            @Override
+            public Object comparisonValue() {
+                return value;
+            }
+        };
     }
 }

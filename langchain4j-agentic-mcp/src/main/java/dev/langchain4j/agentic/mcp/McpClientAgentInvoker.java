@@ -1,19 +1,25 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
+
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -21,12 +27,9 @@ import java.util.stream.Stream;
 public class McpClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
-    private final String[] inputKeys;
 
     private final McpClientInstance mcpClientInstance;
 
-    private final String toolName;
-    private final String toolDescription;
     private final Method method;
 
     private InternalAgent parent;
@@ -34,23 +37,12 @@ public class McpClientAgentInvoker implements AgentInvoker {
     public McpClientAgentInvoker(McpClientInstance mcpClientInstance, Method method) {
         this.method = method;
         this.mcpClientInstance = mcpClientInstance;
-        this.toolName = mcpClientInstance.toolName();
-        this.toolDescription = mcpClientInstance.toolDescription();
         this.agentId = name();
-        this.inputKeys = inputKeys(mcpClientInstance);
-    }
-
-    private String[] inputKeys(McpClientInstance mcpClientInstance) {
-        return isUntyped()
-                ? mcpClientInstance.inputKeys()
-                : Stream.of(method.getParameters())
-                        .map(AgentInvoker::parameterName)
-                        .toArray(String[]::new);
     }
 
     @Override
     public String name() {
-        return toolName;
+        return mcpClientInstance.name();
     }
 
     @Override
@@ -60,7 +52,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public String description() {
-        return toolDescription;
+        return mcpClientInstance.description();
     }
 
     @Override
@@ -94,10 +86,13 @@ public class McpClientAgentInvoker implements AgentInvoker {
     }
 
     @Override
+    public AgentCondition activationCondition() {
+        return mcpClientInstance.activationCondition();
+    }
+
+    @Override
     public List<AgentArgument> arguments() {
-        return Stream.of(inputKeys)
-                .map(input -> new AgentArgument(Object.class, input))
-                .toList();
+        return mcpClientInstance.arguments();
     }
 
     @Override
@@ -107,25 +102,32 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
-                : agentInvocationArguments(agenticScope);
+        if (isUntyped()) {
+            // the required inputs of an untyped agent are only known from the input schema of its tool
+            resolveTool(agenticScope);
+            for (AgentArgument argument : arguments()) {
+                if (!argument.isOptional() && agenticScope.readState(argument.name()) == null) {
+                    throw new MissingArgumentException(argument.name());
+                }
+            }
+            return untypedAgentInvocationArguments(agenticScope);
+        }
+        return agentInvocationArguments(agenticScope, arguments());
     }
 
-    private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
-        Map<String, Object> namedArgs = new HashMap<>();
-        Object[] positionalArgs = new Object[inputKeys.length];
-
-        int i = 0;
-        for (String argName : inputKeys) {
-            Object argValue = agenticScope.readState(argName);
-            if (argValue == null) {
-                throw new MissingArgumentException(argName);
-            }
-            positionalArgs[i++] = argValue;
-            namedArgs.put(argName, argValue);
+    /**
+     * Resolves the tool before the invocation, reporting a failure as a failed invocation of the agent, so that it
+     * reaches the listeners and the error handler as it does for a typed agent, which resolves it when invoked.
+     */
+    private void resolveTool(AgenticScope agenticScope) {
+        try {
+            mcpClientInstance.toolSpecification();
+        } catch (RuntimeException e) {
+            AgentInvocationException failure =
+                    new AgentInvocationException("Failed to resolve the MCP tool of agent '" + name() + "'", e);
+            agentError(listener(), agenticScope, this, Map.of(), failure);
+            throw failure;
         }
-        return new AgentInvocationArguments(namedArgs, positionalArgs);
     }
 
     private boolean isUntyped() {
@@ -147,9 +149,25 @@ public class McpClientAgentInvoker implements AgentInvoker {
         return parent;
     }
 
+    /**
+     * Gives access to the wrapped MCP client agent, for instance to resolve its tool before the first invocation of
+     * the declarative agentic system containing it: {@code subagent.as(McpClientInstance.class).toolSpecification()}.
+     */
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        if (agentInstanceClass.isInstance(mcpClientInstance)) {
+            return agentInstanceClass.cast(mcpClientInstance);
+        }
+        return AgentInvoker.super.as(agentInstanceClass);
+    }
+
     @Override
     public void setParent(InternalAgent parent) {
         this.parent = parent;
+        if (parent != null) {
+            registerInheritedParentListener(parent.listener());
+        }
+        checkPlaceholderCollision();
     }
 
     @Override
@@ -160,5 +178,38 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public void appendId(String idSuffix) {
         this.agentId = this.agentId + idSuffix;
+        // also called when an ancestor of this agent is attached to a parent, when a wider system is known
+        checkPlaceholderCollision();
+    }
+
+    /**
+     * An agentic system can contain at most one MCP agent named with the placeholder, otherwise those agents could
+     * not be told apart in the events, the reports and the supervisor prompts. Checked whenever this agent or one of
+     * its ancestors is attached to a parent, that is at every step of the construction of the system, over all the
+     * agents of the topmost parent known at that point, so that the agents of different branches are covered too.
+     */
+    private void checkPlaceholderCollision() {
+        if (parent == null || !DefaultMcpClientBuilder.PLACEHOLDER_NAME.equals(name())) {
+            return;
+        }
+        AgentInstance root = parent;
+        while (root.parent() != null) {
+            root = root.parent();
+        }
+        long placeholderAgents = allAgents(root)
+                .filter(agent -> DefaultMcpClientBuilder.PLACEHOLDER_NAME.equals(agent.name()))
+                .count();
+        if (placeholderAgents > 1) {
+            throw new AgenticSystemConfigurationException("The agentic system '" + root.name()
+                    + "' contains more than one MCP client agent named with the placeholder '"
+                    + DefaultMcpClientBuilder.PLACEHOLDER_NAME
+                    + "', the name of an untyped MCP agent with neither a name nor a tool name: give each of them "
+                    + "a name through McpClientBuilder.name(...) or toolName(...)");
+        }
+    }
+
+    private static Stream<AgentInstance> allAgents(AgentInstance agent) {
+        return Stream.concat(
+                Stream.of(agent), agent.subagents().stream().flatMap(McpClientAgentInvoker::allAgents));
     }
 }

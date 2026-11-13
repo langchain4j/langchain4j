@@ -5,25 +5,42 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.19.0-beta29-SNAPSHOT</version>
+        <version>1.24.0-beta34-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-watsonx</artifactId>
     <name>LangChain4j :: Integration :: Watsonx</name>
 
+    <properties>
+        <watsonx-ai.version>0.50.0</watsonx-ai.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.19.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.ibm.watsonx</groupId>
             <artifactId>watsonx-ai</artifactId>
-            <version>0.22.0</version>
+            <version>${watsonx-ai.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- JSON binding of the watsonx.ai SDK, loaded through ServiceLoader; Jackson 3 users swap it for watsonx-ai-jackson3 -->
+        <dependency>
+            <groupId>com.ibm.watsonx</groupId>
+            <artifactId>watsonx-ai-jackson2</artifactId>
+            <version>${watsonx-ai.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -36,6 +53,10 @@
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -52,7 +73,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.19.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -61,14 +82,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.19.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.19.0-SNAPSHOT</version>
+            <version>1.24.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

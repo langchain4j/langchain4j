@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.watsonx.WatsonxDeploymentStreamingChatModel;
 import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -24,7 +25,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_PROJECT_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
-@EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
 public class WatsonxStreamingChatModelThinkingIT {
 
     static final String API_KEY = System.getenv("WATSONX_API_KEY");
@@ -33,6 +33,7 @@ public class WatsonxStreamingChatModelThinkingIT {
     static final String DEPLOYMENT_ID = System.getenv("WATSONX_GRANITE_3_3_DEPLOYMENT_ID");
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     public void should_return_and_send_thinking() {
 
         StreamingChatModel streamingChatModel = createStreamingChatModel().build();
@@ -72,9 +73,10 @@ public class WatsonxStreamingChatModelThinkingIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     void should_return_and_NOT_send_thinking() {
 
-        StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+        StreamingChatModel streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)
@@ -141,16 +143,16 @@ public class WatsonxStreamingChatModelThinkingIT {
             }
         });
 
-        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(10, TimeUnit.SECONDS));
-        assertDoesNotThrow(() -> futureThinking.get(10, TimeUnit.SECONDS));
+        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(30, TimeUnit.SECONDS));
+        assertDoesNotThrow(() -> futureThinking.get(30, TimeUnit.SECONDS));
 
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.text()).isNotBlank();
     }
 
-    private WatsonxStreamingChatModel.Builder createStreamingChatModel() {
-        return WatsonxStreamingChatModel.builder()
+    private WatsonxDeploymentStreamingChatModel.Builder createStreamingChatModel() {
+        return WatsonxDeploymentStreamingChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)

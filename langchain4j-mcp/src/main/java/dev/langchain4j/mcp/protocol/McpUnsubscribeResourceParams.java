@@ -2,6 +2,9 @@ package dev.langchain4j.mcp.protocol;
 
 import java.util.Objects;
 
+/**
+ * Only used with the legacy MCP protocol (versions up to 2025-11-25).
+ */
 public class McpUnsubscribeResourceParams extends McpClientParams {
 
     private String uri;

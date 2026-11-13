@@ -2,17 +2,16 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Objects;
 import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiModelPermission.MistralAiModelPermissionBuilder.class)
 public class MistralAiModelPermission {
     private String id;
@@ -27,6 +26,8 @@ public class MistralAiModelPermission {
     private String organization;
     private String group;
     private Boolean isBlocking;
+
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 
     public static class MistralAiModelPermissionBuilder {
 
@@ -263,6 +264,7 @@ public class MistralAiModelPermission {
                 .toString();
     }
 
+    @JsonCreator
     public MistralAiModelPermission(MistralAiModelPermissionBuilder builder) {
         this.id = builder.id;
         this.object = builder.object;

@@ -2,9 +2,8 @@ package dev.langchain4j.mcp.client.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpJson;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class McpLogMessageTest {
@@ -23,20 +22,12 @@ class McpLogMessageTest {
                 }
                 """;
 
-        JsonNode jsonNode = toJsonNode(json);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = (Map<String, Object>) McpJson.toMap(json).get("params");
 
-        McpLogMessage message = McpLogMessage.fromJson(jsonNode.get("params"));
+        McpLogMessage message = McpLogMessage.fromMap(params);
         assertThat(message.level()).isEqualTo(McpLogLevel.from("info"));
-        assertThat(message.data()).isEqualTo(jsonNode.get("params").get("data"));
+        assertThat(message.dataAsObject()).isEqualTo("Searching DuckDuckGo for: length of pont des arts in meters");
         assertThat(message.logger()).isNull();
-    }
-
-    private static JsonNode toJsonNode(String json) {
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            return mapper.readTree(json);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -38,6 +38,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
     steps:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -48,7 +49,7 @@ jobs:
           token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -66,6 +67,23 @@ jobs:
           echo "Branch to release from: $BRANCH"
           echo "Start from phase: $START_FROM"
 
+      # Guards against releasing from the wrong branch, which is how 1.19.1 was cut from main on
+      # top of 1.20.0. The version being released must be newer than every release already
+      # reachable from the chosen branch.
+      - name: Verify the version is newer than the branch's latest release
+        run: |
+          LATEST=$(git tag --merged HEAD | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "No release tags reachable from $BRANCH; nothing to compare against."
+            exit 0
+          fi
+          NEWEST=$(printf '%s\n%s\n' "$LATEST" "$STABLE_VERSION" | sort -V | tail -1)
+          if [ "$STABLE_VERSION" = "$LATEST" ] || [ "$NEWEST" != "$STABLE_VERSION" ]; then
+            echo "::error::Refusing to release $STABLE_VERSION from $BRANCH: $LATEST is already released and reachable from this branch. A patch must be cut from its release/x.y.x branch, not from a branch that has moved past it."
+            exit 1
+          fi
+          echo "OK: $STABLE_VERSION is newer than $LATEST, the latest release reachable from $BRANCH."
+
       - name: Compute start phase number
         id: phase
         run: |
@@ -80,30 +98,30 @@ jobs:
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
         run: |
-          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
+          REVISION=$(./mvnw help:evaluate -Dexpression=langchain4j.stable.version -q -DforceStdout)
           echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update stable versions
-        run: mvn versions:set -DnewVersion="$STABLE_VERSION" -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: ./mvnw versions:set -DnewVersion="$STABLE_VERSION" -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion="$STABLE_VERSION" -DgenerateBackupPoms=false
+        run: ./mvnw versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion="$STABLE_VERSION" -DgenerateBackupPoms=false
 
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
         run: |
-          REVISION=$(mvn help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
+          REVISION=$(./mvnw help:evaluate -Dexpression=langchain4j.beta.version -q -DforceStdout)
           echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update beta versions
-        run: mvn versions:set -DnewVersion="$BETA_VERSION" -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: ./mvnw versions:set -DnewVersion="$BETA_VERSION" -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
+        run: ./mvnw versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
       - name: Release core and parent modules
         if: ${{ fromJSON(steps.phase.outputs.num) <= 1 }}
-        run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
+        run: ./mvnw -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
@@ -114,7 +132,7 @@ jobs:
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
-          mvn -B -U --fail-at-end \
+          ./mvnw -B -U --fail-at-end \
             -DskipTests -DskipITs \
             -pl "$EMBEDDING_MODULES" \
             -Psign clean deploy
@@ -149,7 +167,7 @@ jobs:
 
           echo "Excluding modules: $EXCLUDES"
     
-          mvn -B -U --fail-at-end \
+          ./mvnw -B -U --fail-at-end \
             -DskipTests -DskipITs \
             -pl "$EXCLUDES" \
             -Psign clean deploy
@@ -211,3 +229,24 @@ jobs:
             -f event_type=trigger-docs-update-version \
             -f "client_payload[stableVersion]=$STABLE_VERSION" \
             -f "client_payload[betaVersion]=$BETA_VERSION"
+
+      # A minor release is the point where its maintenance line starts, so create the branch now
+      # rather than scrambling for one when a patch is needed.
+      - name: Create the maintenance branch for a minor release
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
+        run: |
+          case "$STABLE_VERSION" in
+            *.0)
+              MAINTENANCE_BRANCH="release/${STABLE_VERSION%.*}.x"
+              if git ls-remote --exit-code --heads origin "$MAINTENANCE_BRANCH" >/dev/null 2>&1; then
+                echo "$MAINTENANCE_BRANCH already exists."
+              else
+                git branch "$MAINTENANCE_BRANCH" HEAD
+                git push origin "$MAINTENANCE_BRANCH"
+                echo "Created $MAINTENANCE_BRANCH."
+              fi
+              ;;
+            *)
+              echo "$STABLE_VERSION is a patch release; its maintenance branch already exists."
+              ;;
+          esac

@@ -1,8 +1,8 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.27.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.7.2
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-sse:1.7.2
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-websocket:1.7.2
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.33.2.1}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:2.0.0.Beta3
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-http:2.0.0.Beta3
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-websocket:2.0.0.Beta3
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.quarkiverse.mcp.server.Cancellation;
+import io.quarkiverse.mcp.server.AudioContent;
 import io.quarkiverse.mcp.server.ImageContent;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.Tool;
@@ -101,6 +102,11 @@ public class tools_mcp_server {
 
     @Tool
     public ToolResponse getImage() {
-        return new ToolResponse(false, List.of(new ImageContent("does not matter", "does not matter")));
+        return new ToolResponse(false, List.of(new ImageContent("AQID", "image/png")));
+    }
+
+    @Tool
+    public ToolResponse getAudio() {
+        return new ToolResponse(false, List.of(new AudioContent("AQID", "audio/wav")));
     }
 }

@@ -21,7 +21,7 @@ class GoogleGenAiBatchChatModelIT {
     void test_create_and_cancel_batch() throws InterruptedException {
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .build();
 
         var requests = List.of(
@@ -56,7 +56,7 @@ class GoogleGenAiBatchChatModelIT {
     void test_list_batch_jobs_with_pagination() {
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .build();
 
         var firstPage = batchModel.list(new BatchPagination(1, null));

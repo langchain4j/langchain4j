@@ -4,12 +4,14 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTA
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -32,6 +34,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheControl;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -41,10 +44,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.client.Json;
+import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -52,12 +58,14 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class AnthropicMapperTest {
 
@@ -283,7 +291,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -319,7 +327,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(rootSchema);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -414,7 +422,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -723,6 +731,28 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_serialize_base64_tool_image_as_native_image_block() throws Exception {
+        ToolExecutionResultMessage message = ToolExecutionResultMessage.builder()
+                .id("call_123")
+                .toolName("screenshot")
+                .contents(TextContent.from("diagnostic screenshot"), ImageContent.from("iVBORw0KGgo=", "image/png"))
+                .isError(true)
+                .build();
+        AnthropicToolResultContent toolResult = (AnthropicToolResultContent)
+                toAnthropicMessages(List.of(message)).get(0).content.get(0);
+        com.fasterxml.jackson.databind.JsonNode json = new ObjectMapper().readTree(Json.toJson(toolResult));
+        assertThat(json.get("type").asText()).isEqualTo("tool_result");
+        assertThat(json.get("tool_use_id").asText()).isEqualTo("call_123");
+        assertThat(json.get("is_error").asBoolean()).isTrue();
+        assertThat(json.get("content").get(0).get("text").asText()).isEqualTo("diagnostic screenshot");
+        com.fasterxml.jackson.databind.JsonNode image = json.get("content").get(1);
+        assertThat(image.get("type").asText()).isEqualTo("image");
+        assertThat(image.get("source").get("type").asText()).isEqualTo("base64");
+        assertThat(image.get("source").get("media_type").asText()).isEqualTo("image/png");
+        assertThat(image.get("source").get("data").asText()).isEqualTo("iVBORw0KGgo=");
+    }
+
+    @Test
     void should_map_tool_execution_result_message_with_multiple_content_blocks_and_cache_control_metadata() {
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
@@ -757,6 +787,65 @@ class AnthropicMapperTest {
         AnthropicToolResultContent content =
                 (AnthropicToolResultContent) anthropicMessages.get(0).content.get(0);
         assertThat(content.cacheControl).isNull();
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_tool_when_multiple_tools_present() {
+        // given
+        ToolSpecification firstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+        ToolSpecification secondTool = ToolSpecification.builder()
+                .name("getStockPrice")
+                .description("Gets a stock price")
+                .build();
+
+        // when
+        List<AnthropicTool> tools =
+                toAnthropicTools(List.of(firstTool, secondTool), AnthropicCacheType.EPHEMERAL, false);
+
+        // then
+        assertThat(tools).hasSize(2);
+
+        // first tool should NOT have cache control
+        assertThat(tools.get(0).name).isEqualTo("getWeather");
+        assertThat(tools.get(0).cacheControl).isNull();
+
+        // second (last) tool SHOULD have cache control
+        assertThat(tools.get(1).name).isEqualTo("getStockPrice");
+        assertThat(tools.get(1).cacheControl).isNotNull();
+        assertThat(tools.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_tool_even_when_an_earlier_tool_is_structurally_equal() {
+        // given two structurally identical ToolSpecifications (same name, description, parameters, metadata, strict)
+        ToolSpecification firstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+        ToolSpecification duplicateOfFirstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+
+        // sanity check: these are genuinely equal by value, not by reference, which is what makes the bug reachable
+        assertThat(firstTool).isNotSameAs(duplicateOfFirstTool).isEqualTo(duplicateOfFirstTool);
+
+        // when
+        List<AnthropicTool> tools =
+                toAnthropicTools(List.of(firstTool, duplicateOfFirstTool), AnthropicCacheType.EPHEMERAL, false);
+
+        // then
+        assertThat(tools).hasSize(2);
+
+        // only the tool at the true last index should have cache control...
+        assertThat(tools.get(1).cacheControl).isNotNull();
+        assertThat(tools.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
+
+        // ...even though it is structurally equal to the first one
+        assertThat(tools.get(0).cacheControl).isNull();
     }
 
     @Test
@@ -805,6 +894,25 @@ class AnthropicMapperTest {
                         new AnthropicMessage(USER, singletonList(new AnthropicTextContent("hi"))),
                         new AnthropicMessage(SYSTEM, singletonList(new AnthropicTextContent("mid-conversation"))),
                         new AnthropicMessage(USER, singletonList(new AnthropicTextContent("bye"))));
+    }
+
+    @Test
+    void only_last_system_message_gets_cache_control_when_duplicate_texts_present() {
+        // given two system messages with identical text
+        List<ChatMessage> messages =
+                asList(SystemMessage.from("same"), SystemMessage.from("same"), UserMessage.from("hi"));
+
+        // when
+        List<AnthropicTextContent> systemPrompt =
+                toAnthropicSystemPrompt(messages, AnthropicCacheType.EPHEMERAL, false);
+
+        // then - only the last system message receives the cache_control block, by position not by value
+        assertThat(systemPrompt).hasSize(2);
+        assertThat(systemPrompt.get(0).text).isEqualTo("same");
+        assertThat(systemPrompt.get(0).cacheControl).isNull();
+        assertThat(systemPrompt.get(1).text).isEqualTo("same");
+        assertThat(systemPrompt.get(1).cacheControl).isNotNull();
+        assertThat(systemPrompt.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @Test
@@ -1022,8 +1130,7 @@ class AnthropicMapperTest {
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
 
         // then
-        String json = new ObjectMapper()
-                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
         assertThat(json).isEqualToIgnoringWhitespace("""
                         {
                           "type": "image",
@@ -1043,8 +1150,7 @@ class AnthropicMapperTest {
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
 
         // then
-        String json = new ObjectMapper()
-                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
         assertThat(json).isEqualToIgnoringWhitespace("""
                         {
                           "type": "document",
@@ -1054,9 +1160,206 @@ class AnthropicMapperTest {
                         """.formatted(BASE64_PDF_DATA));
     }
 
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature() {
+        // given an assistant turn whose thinking text is empty and whose reasoning is carried entirely by the
+        // (encrypted) signature: this is what a model returns when "thinking.display" is "omitted",
+        // which is the default for claude-sonnet-5, claude-opus-5 and others
+        String signature = "EoAECpABCBEYAipARsBWFsXRge7q";
+
+        AnthropicContent thinking = AnthropicContent.builder()
+                .type("thinking")
+                .thinking("")
+                .signature(signature)
+                .build();
+
+        AnthropicContent toolUse = AnthropicContent.builder()
+                .type("tool_use")
+                .id("tool-1")
+                .name("getWeather")
+                .input(emptyMap())
+                .build();
+
+        AiMessage aiMessage = toAiMessage(asList(thinking, toolUse), true);
+        // "toAiMessage" turns the empty thinking text into null, so only the signature survives
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class)).isEqualTo(signature);
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // then the block must still be echoed back: Anthropic requires the assistant turn to be sent back unchanged
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        // "" and not null: the field is required by the API and the class is @JsonInclude(NON_NULL)
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo(signature);
+    }
+
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature_when_thinking_text_is_empty() {
+        // given an AiMessage that carries an empty instead of a null thinking text,
+        // for example one restored from a serialized chat memory
+        AiMessage aiMessage = AiMessage.builder()
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .toolExecutionRequests(singletonList(ToolExecutionRequest.builder()
+                        .id("tool-1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // then
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
+    }
+
+    @Test
+    void should_send_thinking_block_with_both_text_and_signature() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("Let me think about this")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        assertThat(thinkingContent.thinking).isEqualTo("Let me think about this");
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void should_not_send_thinking_block_when_there_is_neither_text_nor_signature(String thinking) {
+        AiMessage aiMessage =
+                AiMessage.builder().text("Hello").thinking(thinking).build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
+    }
+
+    @Test
+    void should_not_send_thinking_block_when_sendThinking_is_false() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), false);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
+    }
+
     @SafeVarargs
     private static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
         return Stream.of(entries).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @ParameterizedTest
+    @MethodSource("messagesMarkedForCaching")
+    void should_apply_cache_ttl_to_message_marked_for_caching(ChatMessage message) {
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(message), false, false, "1h");
+
+        // then
+        List<AnthropicCacheControl> cacheControls = anthropicMessages.get(0).content.stream()
+                .map(content -> content.cacheControl)
+                .filter(Objects::nonNull)
+                .toList();
+        assertThat(cacheControls).hasSize(1);
+        assertThat(cacheControls.get(0).getType()).isEqualTo("ephemeral");
+        assertThat(cacheControls.get(0).getTtl()).isEqualTo("1h");
+    }
+
+    static Stream<ChatMessage> messagesMarkedForCaching() {
+        Map<String, Object> cacheControl = singletonMap("cache_control", "ephemeral");
+        UserMessage userText = UserMessage.from("Hello");
+        userText.attributes().putAll(cacheControl);
+        UserMessage userImage = UserMessage.from(ImageContent.from(
+                Image.builder().base64Data("base64data").mimeType("image/jpeg").build()));
+        userImage.attributes().putAll(cacheControl);
+        UserMessage userPdf = UserMessage.from(PdfFileContent.from("base64data", "application/pdf"));
+        userPdf.attributes().putAll(cacheControl);
+        return Stream.of(
+                userText,
+                userImage,
+                userPdf,
+                AiMessage.builder().text("Hi").attributes(cacheControl).build(),
+                AiMessage.builder()
+                        .text("Let me check")
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("12345")
+                                .name("weather")
+                                .arguments("{}")
+                                .build()))
+                        .attributes(cacheControl)
+                        .build(),
+                ToolExecutionResultMessage.builder()
+                        .id("12345")
+                        .toolName("weather")
+                        .text("sunny")
+                        .attributes(cacheControl)
+                        .build(),
+                ToolExecutionResultMessage.builder()
+                        .id("12345")
+                        .toolName("weather")
+                        .contents(TextContent.from("here is the map"), ImageContent.from(DICE_IMAGE_URL))
+                        .attributes(cacheControl)
+                        .build());
+    }
+
+    @Test
+    void should_apply_cache_ttl_to_last_system_message_and_last_tool() {
+        // when
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(
+                List.of(SystemMessage.from("one"), SystemMessage.from("two")),
+                AnthropicCacheType.EPHEMERAL,
+                false,
+                "1h");
+        List<AnthropicTool> tools = AnthropicMapper.toAnthropicTools(
+                List.of(
+                        ToolSpecification.builder().name("one").build(),
+                        ToolSpecification.builder().name("two").build()),
+                AnthropicCacheType.EPHEMERAL,
+                Set.of(),
+                null,
+                "1h");
+
+        // then
+        assertThat(systemPrompt.get(0).cacheControl).isNull();
+        assertThat(systemPrompt.get(1).cacheControl.getTtl()).isEqualTo("1h");
+        assertThat(tools.get(0).cacheControl).isNull();
+        assertThat(tools.get(1).cacheControl.getTtl()).isEqualTo("1h");
+    }
+
+    @Test
+    void should_not_send_ttl_when_cache_ttl_is_not_set() {
+        // given
+        UserMessage userMessage = UserMessage.from("Hello");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage), false, false, null);
+
+        // then
+        assertThat(anthropicMessages.get(0).content.get(0).cacheControl.getTtl())
+                .isNull();
     }
 
     private static <K, V> Map.Entry<K, V> entry(K key, V value) {

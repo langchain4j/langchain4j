@@ -21,6 +21,11 @@ public class McpRootsListResponse extends McpClientResponse {
         result.put("roots", roots);
     }
 
+    public McpRootsListResponse(Object id, List<McpRoot> roots) {
+        super(id);
+        result.put("roots", roots);
+    }
+
     public Map<String, Object> getResult() {
         return result;
     }

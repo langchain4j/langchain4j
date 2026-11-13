@@ -21,6 +21,7 @@ import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -149,6 +150,11 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+        return ChatModel.super.chat(chatRequest); // kept because revapi reports its removal; the logic is in doChat
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);
@@ -170,7 +176,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
     private Response<AiMessage> generate(List<ChatMessage> messages) {
         WorkersAiChatCompletionRequest req = new WorkersAiChatCompletionRequest();
         req.setMessages(messages.stream()
-                .map(this::toMessage)
+                .map(WorkersAiChatModel::toMessage)
                 .collect(Collectors.toList()));
         return new Response<>(new AiMessage(generate(req)), null, FinishReason.STOP);
     }
@@ -181,9 +187,9 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
      * @param message inbound message
      * @return message for request
      */
-    private WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
+    static WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
         return new WorkersAiChatCompletionRequest.Message(
-                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
+                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase(Locale.ROOT)),
                 toText(message)
         );
     }

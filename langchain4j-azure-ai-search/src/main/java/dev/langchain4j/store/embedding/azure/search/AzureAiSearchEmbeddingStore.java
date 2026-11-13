@@ -9,6 +9,8 @@ import com.azure.search.documents.indexes.models.SearchIndex;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Azure AI Search EmbeddingStore Implementation
@@ -78,6 +80,8 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
         private String indexName;
 
         private AzureAiSearchFilterMapper filterMapper;
+
+        private List<String> metadataFieldNames = List.of();
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -168,6 +172,25 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
             return this;
         }
 
+        /**
+         * Sets the names of top-level index fields to copy into the {@link dev.langchain4j.data.document.Metadata} of
+         * each search result. Use this with a pre-existing (bring-your-own) index whose fields are stored at the
+         * document root rather than in the nested {@code metadata} field this store writes. A field is copied only if
+         * its value is a type {@link dev.langchain4j.data.document.Metadata} supports ({@code String}, {@code Integer},
+         * {@code Long}, {@code Float}, {@code Double}, or {@code UUID}); fields that are absent, {@code null} or of
+         * another type are skipped. Each field must be retrievable in the Azure index for its value to be returned.
+         * When a name matches a key already present in the nested {@code metadata} field, the top-level value takes
+         * precedence.
+         *
+         * @param metadataFieldNames The names of the index fields to expose as metadata; {@code null} is treated as no
+         *     configured fields.
+         * @return builder
+         */
+        public Builder metadataFieldNames(Collection<String> metadataFieldNames) {
+            this.metadataFieldNames = metadataFieldNames == null ? List.of() : List.copyOf(metadataFieldNames);
+            return this;
+        }
+
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(
@@ -175,23 +198,26 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
             ensureTrue(
                     !createOrUpdateIndex || dimensions > 0 || index != null,
                     "either dimensions or index must be set when createOrUpdateIndex is true");
+            AzureAiSearchEmbeddingStore store;
             if (keyCredential == null) {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(
+                    store = new AzureAiSearchEmbeddingStore(
                             endpoint, tokenCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(
+                    store = new AzureAiSearchEmbeddingStore(
                             endpoint, tokenCredential, createOrUpdateIndex, index, indexName, filterMapper);
                 }
             } else {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(
+                    store = new AzureAiSearchEmbeddingStore(
                             endpoint, keyCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(
+                    store = new AzureAiSearchEmbeddingStore(
                             endpoint, keyCredential, createOrUpdateIndex, index, indexName, filterMapper);
                 }
             }
+            store.metadataFieldNames = metadataFieldNames;
+            return store;
         }
     }
 }

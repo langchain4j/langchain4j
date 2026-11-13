@@ -13,23 +13,13 @@ class GoogleGenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSche
     protected List<ChatModel> models() {
         return Collections.singletonList(GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .temperature(0.0)
                 .build());
     }
 
     @Override
-    protected void should_extract_list_of_polymorphic_types(ChatModel model) {
-        // Disabled: GoogleGenAiToolMapper does not support JsonAnyOfSchema yet
-    }
-
-    @Override
-    protected void should_extract_polymorphic_type(ChatModel model) {
-        // Disabled: GoogleGenAiToolMapper does not support JsonAnyOfSchema yet
-    }
-
-    @Override
-    protected void should_extract_pojo_with_nested_polymorphic_field(ChatModel model) {
-        // Disabled: GoogleGenAiToolMapper does not support JsonAnyOfSchema yet
+    protected boolean supportsRecursion() {
+        return true;
     }
 }

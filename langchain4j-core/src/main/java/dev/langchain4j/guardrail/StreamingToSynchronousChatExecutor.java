@@ -3,11 +3,15 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.HandlerWithoutInvocation;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -40,9 +44,20 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
         var responseHandler = new StreamingToSyncResponseHandler(this.errorHandler);
-        this.streamingChatModel.chat(chatRequest, responseHandler);
+        CurrentInvocation.runWith(invocationContext, () -> this.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(responseHandler)));
 
         return Optional.ofNullable(responseHandler.getResponse()).orElseGet(ChatResponse.builder()::build);
+    }
+
+    @Override
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        Consumer<Throwable> errorHandlerWithoutInvocation = errorHandler == null
+                ? null
+                : error -> CurrentInvocation.runWithout(() -> errorHandler.accept(error));
+        return CurrentInvocation.callWith(
+                invocationContext,
+                () -> StreamingChatModelHelper.chatAsync(
+                        this.streamingChatModel, chatRequest, errorHandlerWithoutInvocation));
     }
 
     private static class StreamingToSyncResponseHandler implements StreamingChatResponseHandler {
@@ -54,9 +69,6 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
         }
-
-        @Override
-        public void onPartialResponse(String partialResponse) {}
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {

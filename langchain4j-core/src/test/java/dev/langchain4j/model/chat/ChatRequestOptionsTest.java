@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ChatRequestOptionsTest {
@@ -70,5 +71,23 @@ class ChatRequestOptionsTest {
                 .build();
 
         assertThat(options.toString()).contains("tenantId").contains("acme");
+    }
+
+    @Test
+    void should_carry_invocation_id() {
+
+        // given
+        UUID invocationId = UUID.randomUUID();
+
+        // when
+        ChatRequestOptions options =
+                ChatRequestOptions.builder().invocationId(invocationId).build();
+
+        // then
+        assertThat(options.invocationId()).isEqualTo(invocationId);
+        assertThat(options).isEqualTo(ChatRequestOptions.builder().invocationId(invocationId).build());
+        assertThat(options).isNotEqualTo(ChatRequestOptions.EMPTY);
+        assertThat(options.toString()).contains(invocationId.toString());
+        assertThat(ChatRequestOptions.EMPTY.invocationId()).isNull();
     }
 }

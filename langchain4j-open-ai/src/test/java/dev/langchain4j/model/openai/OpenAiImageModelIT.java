@@ -40,6 +40,13 @@ class OpenAiImageModelIT {
         Image image = response.content();
         assertThat(image.base64Data()).isNotNull().isNotBlank();
         assertThat(image.mimeType()).isNotNull();
+
+        OpenAiImageTokenUsage tokenUsage = (OpenAiImageTokenUsage) response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.inputTokensDetails().textTokens()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isPositive();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     @Test

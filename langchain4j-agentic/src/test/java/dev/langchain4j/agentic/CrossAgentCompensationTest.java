@@ -10,7 +10,6 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.AgenticServices.AgentConfigurator;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.data.message.AiMessage;
@@ -18,6 +17,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
@@ -346,8 +346,7 @@ public class CrossAgentCompensationTest {
 
         assertThrows(AgentInvocationException.class, () -> sequenceAgent.run("test"));
 
-        assertThat(compensationLog).containsExactly(
-                "credit:200", "debit:300", "undebit:300", "uncredit:200");
+        assertThat(compensationLog).containsExactly("credit:200", "debit:300", "undebit:300", "uncredit:200");
     }
 
     static class MisconfiguredCompensationService {
@@ -357,8 +356,7 @@ public class CrossAgentCompensationTest {
         }
 
         @CompensateFor("credt") // typo
-        void uncredit(int amount) {
-        }
+        void uncredit(int amount) {}
     }
 
     @Test
@@ -374,12 +372,12 @@ public class CrossAgentCompensationTest {
         }
 
         assertThatThrownBy(() -> AgenticServices.<TestAgent>sequenceBuilder(TestAgent.class)
-                .subAgents(leafAgent)
-                .compensateOnError(true)
-                .name("sequenceAgent")
-                .build())
-                .hasRootCauseInstanceOf(IllegalConfigurationException.class)
-                .rootCause().hasMessageContaining("credt");
+                        .subAgents(leafAgent)
+                        .compensateOnError(true)
+                        .name("sequenceAgent")
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("credt");
     }
 
     static class CreditAndFailService {
@@ -408,9 +406,15 @@ public class CrossAgentCompensationTest {
     static ChatModel modelThatCallsToolsSequentially(String tool1, String args1, String tool2, String args2) {
         Queue<AiMessage> responses = new ConcurrentLinkedQueue<>();
         responses.add(AiMessage.from(ToolExecutionRequest.builder()
-                .id("call-1").name(tool1).arguments(args1).build()));
+                .id("call-1")
+                .name(tool1)
+                .arguments(args1)
+                .build()));
         responses.add(AiMessage.from(ToolExecutionRequest.builder()
-                .id("call-2").name(tool2).arguments(args2).build()));
+                .id("call-2")
+                .name(tool2)
+                .arguments(args2)
+                .build()));
         responses.add(AiMessage.from("done"));
         return new ChatModel() {
             @Override
@@ -482,12 +486,11 @@ public class CrossAgentCompensationTest {
         CreditService creditService = new CreditService();
 
         DeclarativeCompensatingSequence agent = AgenticServices.createAgenticSystem(
-                DeclarativeCompensatingSequence.class,
-                new AgentConfigurator(ctx -> {
+                DeclarativeCompensatingSequence.class, new AgentConfigurator(ctx -> {
                     if (ctx.agentServiceClass() == DeclarativeCreditAgent.class) {
                         ctx.agentBuilder().tools(creditService);
                     }
-                }, null, null));
+                }));
 
         assertThrows(AgentInvocationException.class, () -> agent.run("test"));
 

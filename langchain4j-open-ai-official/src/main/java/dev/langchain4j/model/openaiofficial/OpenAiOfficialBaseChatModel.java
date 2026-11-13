@@ -148,6 +148,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .store(getOrDefault(store, openAiParameters.store()))
                 .metadata(getOrDefault(metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
+                .promptCacheKey(openAiParameters.promptCacheKey())
+                .promptCacheOptions(openAiParameters.promptCacheOptions())
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 

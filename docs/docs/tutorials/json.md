@@ -6,6 +6,9 @@ sidebar_position: 31
 
 LangChain4j ships an internal JSON serializer (defaults to Jackson) that is used by "tools" and "structured output" functionalities.
 
+If all you want is for LangChain4j to use Jackson 3 rather than Jackson 2, you do not need any of
+the below - add one dependency and it is done. See [Using Jackson 3](/tutorials/jackson-3).
+
 The default serializer works for most cases. However, in certain environments the default Jackson serializer might generate errors based on other dependencies. An example has been developers of Jetbrains/IntelliJ plugins.
 
 If you require providing your own JSON serializer (a.k.a. JSON Codec), you can follow these steps:

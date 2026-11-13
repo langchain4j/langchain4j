@@ -22,6 +22,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>A visual tree chart of the agent hierarchy showing topology types, names, and properties</li>
  *   <li>A waterfall timeline of execution traces grouped by memory/session ID</li>
  * </ul>
+ *
+ * <p>An execution suspended by a human-in-the-loop step stays among the ongoing ones, with the invocations of the
+ * root agent and of the workflows containing that step in progress and marked as suspended: when the agentic
+ * system is resumed by invoking the root agent again, those agents continue their recorded invocations instead of
+ * starting new ones. A suspended execution is dropped when its scope is evicted, since nothing can resume it
+ * anymore. A monitor created after the suspension, for instance after a restart, has no record of the suspended
+ * execution and records the resumed invocation as a new execution.
  */
 public class AgentMonitor implements AgentListener {
 
@@ -110,18 +117,28 @@ public class AgentMonitor implements AgentListener {
         }
     }
 
+    /**
+     * Notified by the agentic system when an asynchronous agent is submitted to its executor, on the submitting
+     * thread, before the {@link #beforeAgentInvocation} of the agent is notified on the thread of the executor: the
+     * invocation is nested under its parent, still ongoing at that point, also when the executor starts the agent
+     * after the parent completed.
+     */
+    @Internal
+    public void asyncAgentSubmitted(AgentRequest agentRequest) {
+        MonitoredExecution execution =
+                ongoingExecutions.get(agentRequest.agenticScope().memoryId());
+        if (execution != null) {
+            execution.asyncAgentSubmitted(agentRequest);
+        }
+    }
+
     @Override
     public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
-        execution.afterAgentInvocation(agentResponse);
-        if (execution.done()) {
-            ongoingExecutions.remove(memoryId, execution);
-            synchronized (successfulExecutions) {
-                successfulExecutions
-                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
-                        .add(execution);
-            }
+        if (execution != null) {
+            execution.afterAgentInvocation(agentResponse);
+            finalizeExecution(memoryId, execution);
         }
     }
 
@@ -131,13 +148,83 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            if (execution.ongoingInvocations().isEmpty()) {
-                ongoingExecutions.remove(memoryId, execution);
-                synchronized (failedExecutions) {
-                    failedExecutions
-                            .computeIfAbsent(memoryId, k -> new ArrayList<>())
-                            .add(execution);
-                }
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    /**
+     * Notified by the agentic system when an asynchronous agent submitted with {@link #asyncAgentSubmitted}
+     * completes, after its error handler ran if it failed: the execution stays ongoing until then, since the failure
+     * of the agent is reported to {@link #onAgentInvocationError} before the handler decides whether to recover it.
+     * {@code failed} tells whether a failure was not recovered, which records the execution as failed, whether the
+     * root call already ended or not.
+     */
+    @Internal
+    public void asyncAgentCompleted(AgenticScope agenticScope, String agentId, boolean failed) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null) {
+            execution.asyncAgentCompleted(agentId, failed);
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null) {
+            execution.agenticSystemSuspended();
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    /**
+     * Drops the execution of the evicted scope if it is suspended: nothing can resume it anymore, so the next root
+     * call on that memory id, on a new scope, is a new execution. An execution still running is left alone, its root
+     * call ends it.
+     */
+    @Override
+    public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+        Object memoryId = agenticScope.memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null && execution.suspended()) {
+            ongoingExecutions.remove(memoryId, execution);
+        }
+    }
+
+    @Override
+    public void onAgentSkipped(AgentSkipped agentSkipped) {
+        MonitoredExecution execution =
+                ongoingExecutions.get(agentSkipped.agenticScope().memoryId());
+        if (execution != null) {
+            execution.onAgentSkipped(agentSkipped);
+        }
+    }
+
+    private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+        execution.endSuspendedInvocationsIfRootEnded();
+        if (!execution.ongoingInvocations().isEmpty()
+                || execution.hasRunningAsyncAgents()
+                || (!execution.done() && !execution.hasError())) {
+            return;
+        }
+        if (!ongoingExecutions.remove(memoryId, execution)) {
+            return;
+        }
+        // the root call does not wait for an asynchronous agent whose result nobody reads, so such an agent can fail
+        // for good after the root call completed: the execution is then recorded as failed anyway
+        if (execution.done() && !execution.hasUnrecoveredAsyncFailure()) {
+            synchronized (successfulExecutions) {
+                successfulExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
+        } else {
+            synchronized (failedExecutions) {
+                failedExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
             }
         }
     }

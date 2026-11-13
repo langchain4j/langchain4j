@@ -1,7 +1,13 @@
 package dev.langchain4j.model.watsonx;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
+import com.ibm.watsonx.ai.chat.model.Thinking;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +24,7 @@ class WatsonxChatRequestParametersTest {
                 // watsonx-specific fields
                 .projectId("project-id")
                 .spaceId("space-id")
+                .thinking(Thinking.of(ThinkingEffort.LOW))
                 .logitBias(Map.of("token", 1))
                 .logprobs(true)
                 .topLogprobs(5)
@@ -26,10 +33,7 @@ class WatsonxChatRequestParametersTest {
                 .timeout(Duration.ofSeconds(10))
                 .guidedChoice(Set.of("a", "b"))
                 .guidedRegex("[0-9]+")
-                .guidedGrammar("grammar")
-                .repetitionPenalty(1.1)
-                .lengthPenalty(1.2)
-                .deploymentId("deployment-id");
+                .guidedGrammar("grammar");
     }
 
     @Test
@@ -48,6 +52,10 @@ class WatsonxChatRequestParametersTest {
         assertThat(base).isNotEqualTo(fullyPopulated().projectId("other").build());
         assertThat(base).isNotEqualTo(fullyPopulated().spaceId("other").build());
         assertThat(base)
+                .isNotEqualTo(fullyPopulated()
+                        .thinking(Thinking.of(ThinkingEffort.HIGH))
+                        .build());
+        assertThat(base)
                 .isNotEqualTo(fullyPopulated().logitBias(Map.of("token", 2)).build());
         assertThat(base).isNotEqualTo(fullyPopulated().logprobs(false).build());
         assertThat(base).isNotEqualTo(fullyPopulated().topLogprobs(9).build());
@@ -58,9 +66,30 @@ class WatsonxChatRequestParametersTest {
         assertThat(base).isNotEqualTo(fullyPopulated().guidedChoice(Set.of("c")).build());
         assertThat(base).isNotEqualTo(fullyPopulated().guidedRegex("[a-z]+").build());
         assertThat(base).isNotEqualTo(fullyPopulated().guidedGrammar("other").build());
-        assertThat(base).isNotEqualTo(fullyPopulated().repetitionPenalty(2.0).build());
-        assertThat(base).isNotEqualTo(fullyPopulated().lengthPenalty(2.0).build());
-        assertThat(base).isNotEqualTo(fullyPopulated().deploymentId("other").build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void should_reject_repetition_and_length_penalty() {
+
+        assertThatThrownBy(() -> WatsonxChatRequestParameters.builder()
+                        .repetitionPenalty(1.1)
+                        .build())
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("'repetitionPenalty' is not supported by the watsonx.ai chat API. "
+                        + "Remove it, or use 'frequencyPenalty' or 'presencePenalty' to discourage repetition");
+
+        assertThatThrownBy(() ->
+                        WatsonxChatRequestParameters.builder().lengthPenalty(1.2).build())
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("'lengthPenalty' is not supported by the watsonx.ai chat API. Remove it, there is no replacement");
+
+        WatsonxChatRequestParameters parameters = WatsonxChatRequestParameters.builder()
+                .repetitionPenalty(null)
+                .lengthPenalty(null)
+                .build();
+        assertThat(parameters.repetitionPenalty()).isNull();
+        assertThat(parameters.lengthPenalty()).isNull();
     }
 
     @Test
@@ -72,13 +101,52 @@ class WatsonxChatRequestParametersTest {
     }
 
     @Test
+    void equals_should_reject_null_and_other_types() {
+        WatsonxChatRequestParameters base = fullyPopulated().build();
+
+        assertThat(base).isNotEqualTo(null);
+        assertThat(base).isNotEqualTo("not a parameters object");
+    }
+
+    @Test
+    void overrideWith_and_defaultedBy_should_be_mirror_images() {
+        WatsonxChatRequestParameters base = fullyPopulated().build();
+        WatsonxChatRequestParameters other =
+                WatsonxChatRequestParameters.builder().projectId("other").build();
+
+        // overrideWith lets the argument win (it is declared on the interface, so it returns the interface type)
+        var overridden = (WatsonxChatRequestParameters) base.overrideWith(other);
+        assertThat(overridden.projectId()).isEqualTo("other");
+        // defaultedBy lets the receiver win, and fills the gaps from the argument
+        assertThat(other.defaultedBy(base).projectId()).isEqualTo("other");
+        assertThat(other.defaultedBy(base).spaceId()).isEqualTo("space-id");
+        assertThat(other.defaultedBy(base).seed()).isEqualTo(42);
+    }
+
+    @Test
+    void thinking_should_be_disabled_by_a_null_argument() {
+        assertThat(WatsonxChatRequestParameters.builder()
+                        .thinking(ExtractionTags.of(new Think("<think>", "</think>")))
+                        .thinking((ExtractionTags) null)
+                        .build()
+                        .thinking())
+                .isNull();
+
+        assertThat(WatsonxChatRequestParameters.builder()
+                        .thinking(ThinkingEffort.LOW)
+                        .thinking((ThinkingEffort) null)
+                        .build()
+                        .thinking())
+                .isNull();
+    }
+
+    @Test
     void toString_should_include_watsonx_fields() {
         String text = fullyPopulated().build().toString();
 
         assertThat(text)
                 .contains("projectId=project-id")
                 .contains("spaceId=space-id")
-                .contains("seed=42")
-                .contains("deploymentId=deployment-id");
+                .contains("seed=42");
     }
 }

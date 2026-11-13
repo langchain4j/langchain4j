@@ -29,6 +29,7 @@ class OllamaChatModelTest {
                         .minP(0.05)
                         .keepAlive(300)
                         .think(true)
+                        .truncate(false)
                         .build())
                 .build();
 
@@ -45,6 +46,7 @@ class OllamaChatModelTest {
         assertThat(parameters.minP()).isEqualTo(0.05);
         assertThat(parameters.keepAlive()).isEqualTo(300);
         assertThat(parameters.think()).isTrue();
+        assertThat(parameters.truncate()).isFalse();
 
         // Parameters that were previously dropped by init()
         assertThat(parameters.numThread()).isEqualTo(4);

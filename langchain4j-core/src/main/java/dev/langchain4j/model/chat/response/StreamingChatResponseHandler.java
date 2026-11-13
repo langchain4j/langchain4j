@@ -5,8 +5,14 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
  * Represents a handler for a {@link StreamingChatModel} response.
+ * <p>
+ * To be able to cancel the streaming, implement the callbacks that accept a context,
+ * such as {@link #onPartialResponse(PartialResponse, PartialResponseContext)},
+ * and call {@code context.streamingHandle().cancel()}.
+ * See {@link StreamingHandle} for details.
  *
  * @see StreamingChatModel
+ * @see StreamingHandle
  */
 public interface StreamingChatResponseHandler {
 
@@ -18,6 +24,9 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Either this or the {@link #onPartialResponse(PartialResponse, PartialResponseContext)} method
      * should be implemented if you want to consume tokens as soon as they become available.
+     * <p>
+     * This method does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Implement {@link #onPartialResponse(PartialResponse, PartialResponseContext)} instead if you need to cancel.
      *
      * @param partialResponse A partial textual response, usually a single token.
      * @see #onPartialResponse(PartialResponse, PartialResponseContext)
@@ -52,6 +61,9 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Either this or the {@link #onPartialThinking(PartialThinking, PartialThinkingContext)} method
      * should be implemented if you want to consume thinking tokens as soon as they become available.
+     * <p>
+     * This method does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Implement {@link #onPartialThinking(PartialThinking, PartialThinkingContext)} instead if you need to cancel.
      *
      * @param partialThinking A partial thinking text, usually a single token.
      * @see #onPartialThinking(PartialThinking, PartialThinkingContext)
@@ -107,6 +119,9 @@ public interface StreamingChatResponseHandler {
      * <p>
      * Either this or the {@link #onPartialToolCall(PartialToolCall, PartialToolCallContext)} method
      * should be implemented if you want to consume partial tool calls as soon as they become available.
+     * <p>
+     * This method does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Implement {@link #onPartialToolCall(PartialToolCall, PartialToolCallContext)} instead if you need to cancel.
      *
      * @param partialToolCall A partial tool call that contains
      *                        the index, tool ID, tool name and partial arguments.

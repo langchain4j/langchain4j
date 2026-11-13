@@ -17,6 +17,7 @@ class MistralAiFimModelIT {
     LanguageModel codestral = MistralAiFimModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName(MistralAiFimModelName.CODESTRAL_LATEST)
+            .stop(List.of(")"))
             .logRequests(true)
             .logResponses(true)
             .build();

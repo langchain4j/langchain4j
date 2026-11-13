@@ -1879,9 +1879,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         EnumListExtractor enumListExtractor = AiServices.create(EnumListExtractor.class, model);
 
-        String text =
-                "Klaus is 37 years old, 1.78m height and single. " + "Franny is 35 years old, 1.65m height and married."
-                        + "Staniel is 33 years old, 1.70m height and married.";
+        String text = "List the marital status of each person, in the order they appear: "
+                + "Klaus is 37 years old, 1.78m height and single. "
+                + "Franny is 35 years old, 1.65m height and married. "
+                + "Staniel is 33 years old, 1.70m height and married.";
 
         // when
         List<MaritalStatus> maritalStatuses = enumListExtractor.extractListOfEnumsFrom(text);
@@ -1933,8 +1934,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         EnumSetExtractor enumSetExtractor = AiServices.create(EnumSetExtractor.class, model);
 
-        String text = "The weather in Berlin was sunny and windy." + " Paris experienced rainy and cloudy weather."
-                + " New York had cloudy and windy weather.";
+        String text = "In Berlin the morning was sunny and windy, the afternoon was rainy and cloudy,"
+                + " and the evening was cloudy and windy again.";
 
         // when
         Set<Weather> weatherCharacteristics = enumSetExtractor.extractSetOfEnumsFrom(text);
@@ -2209,7 +2210,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // when
         ArithmeticExpression expression = extractor.extractFrom(
                 "Represent the literal expression 1+2+3 as a syntax tree. Do NOT simplify or evaluate. "
-                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)).");
+                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)). "
+                        + "An Addition has exactly two fields: 'left' and 'right'. "
+                        + "A Constant has exactly one field: 'value'. "
+                        + "Do NOT add any other fields to any node.");
 
         // then
         assertThat(expression).isInstanceOf(Addition.class);

@@ -6,6 +6,7 @@ sidebar_position: 7
 
 - [watsonx.ai API Reference](https://cloud.ibm.com/apidocs/watsonx-ai#text-rerank)
 - [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk)
+- [watsonx.ai Java SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/services/rerank-service)
 
 ## Maven Dependency
 
@@ -13,7 +14,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.23.0-beta33</version>
 </dependency>
 ```
 
@@ -142,6 +143,11 @@ System.out.println(scores);
 ```
 
 > 🔗 [View available rerank model IDs](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx&audience=wdp#rerank)
+
+## Observability
+
+Attach [listeners](/tutorials/observability#scoringmodel-listener) with `WatsonxScoringModel.builder().listeners(...)` to observe
+requests, responses and errors.
 
 ## Examples
 

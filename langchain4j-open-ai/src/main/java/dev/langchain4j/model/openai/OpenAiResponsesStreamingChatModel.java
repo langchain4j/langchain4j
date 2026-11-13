@@ -18,10 +18,13 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
+import java.util.function.Supplier;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -38,6 +41,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .organizationId(builder.organizationId)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .streamingBufferSize(builder.streamingBufferSize)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -72,6 +77,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -96,6 +102,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         client.streamingChat(chatRequest, parameters, handler);
+    }
+
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
+        OpenAiResponsesChatRequestParameters parameters =
+                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+        return client.streamingChatPublisher(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {
@@ -155,6 +169,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private String reasoningSummary;
         private String textVerbosity;
@@ -170,6 +185,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private Integer streamingBufferSize;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -188,6 +205,17 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive streaming path. Defaults to
+         * {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         * @since 1.20.0
+         */
+        @Experimental
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -258,6 +286,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder promptCacheRetention(String promptCacheRetention) {
             this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 
@@ -347,6 +383,30 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        /**
+         * Sets custom HTTP headers to be added to each HTTP request.
+         *
+         * @param customHeaders a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers to be added to each HTTP request.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier a supplier that provides a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
         }
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {

@@ -20,6 +20,9 @@ public interface ChatMemoryAccess {
      *
      * @param memoryId The id of the chat memory to be evicted.
      * @return true if {@link ChatMemory} with the given id existed, and it was successfully evicted, false otherwise.
+     * @throws UnsupportedOperationException if this AI service has a single chat memory, configured with
+     *         {@code chatMemory(...)} and shared by all the memory ids: it cannot be evicted, only a chat memory
+     *         created for a memory id by a {@code chatMemoryProvider(...)} can.
      */
     boolean evictChatMemory(Object memoryId);
 }

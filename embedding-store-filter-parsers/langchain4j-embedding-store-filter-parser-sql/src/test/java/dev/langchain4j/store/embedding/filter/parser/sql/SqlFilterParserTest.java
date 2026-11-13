@@ -7,6 +7,7 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import dev.langchain4j.data.document.Metadata;
@@ -45,7 +46,11 @@ class SqlFilterParserTest {
                 // eq
                 .add(of("name = 'Klaus'", metadataKey("name").isEqualTo("Klaus")))
                 .add(of("age = 18", metadataKey("age").isEqualTo(18L)))
+                .add(of("age = +18", metadataKey("age").isEqualTo(18L)))
+                .add(of("age = -18", metadataKey("age").isEqualTo(-18L)))
                 .add(of("weight = 67.8", metadataKey("weight").isEqualTo(67.8d)))
+                .add(of("weight = +67.8", metadataKey("weight").isEqualTo(67.8d)))
+                .add(of("weight = -67.8", metadataKey("weight").isEqualTo(-67.8d)))
 
                 // ne
                 .add(of("name != 'Klaus'", metadataKey("name").isNotEqualTo("Klaus")))
@@ -75,12 +80,19 @@ class SqlFilterParserTest {
                 // in
                 .add(of("name IN ('Klaus', 'Francine')", metadataKey("name").isIn("Klaus", "Francine")))
                 .add(of("age IN (18, 42)", metadataKey("age").isIn(18L, 42L)))
+                .add(of("age IN (-18, 42)", metadataKey("age").isIn(-18L, 42L)))
+                .add(of("age IN (+18, 42)", metadataKey("age").isIn(18L, 42L)))
+                .add(of("age IN (-9223372036854775808)", metadataKey("age").isIn(Long.MIN_VALUE)))
                 .add(of("weight IN (67.8, 78.9)", metadataKey("weight").isIn(67.8d, 78.9d)))
+                .add(of("weight IN (-67.8, 78.9)", metadataKey("weight").isIn(-67.8d, 78.9d)))
+                .add(of("weight IN (+67.8, 78.9)", metadataKey("weight").isIn(67.8d, 78.9d)))
 
                 // nin
                 .add(of("name NOT IN ('Klaus', 'Francine')", metadataKey("name").isNotIn("Klaus", "Francine")))
                 .add(of("age NOT IN (18, 42)", metadataKey("age").isNotIn(18L, 42L)))
+                .add(of("age NOT IN (-18, -42)", metadataKey("age").isNotIn(-18L, -42L)))
                 .add(of("weight NOT IN (67.8, 78.9)", metadataKey("weight").isNotIn(67.8d, 78.9d)))
+                .add(of("weight NOT IN (-67.8, -78.9)", metadataKey("weight").isNotIn(-67.8d, -78.9d)))
 
                 // and
                 .add(of(
@@ -1489,6 +1501,92 @@ class SqlFilterParserTest {
     }
 
     @Test
+    void should_support_NOT_BETWEEN() {
+
+        // given
+        String sql = "SELECT name FROM movies WHERE year NOT BETWEEN 1990 AND 1999;";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter)
+                .isEqualTo(not(metadataKey("year")
+                        .isGreaterThanOrEqualTo(1990L)
+                        .and(metadataKey("year").isLessThanOrEqualTo(1999L))));
+    }
+
+    /**
+     * Every bound form is exercised against both {@code BETWEEN} and {@code NOT BETWEEN},
+     * so that a bound form supported by one and dropped by the other cannot go unnoticed.
+     */
+    @ParameterizedTest
+    @MethodSource
+    void should_parse_BETWEEN_with_and_without_negation(String sqlWhereExpression, Filter expectedFilter) {
+
+        // when
+        Filter filter = parser.parse(sqlWhereExpression);
+
+        // then
+        assertThat(filter).isEqualTo(expectedFilter);
+    }
+
+    static Stream<Arguments> should_parse_BETWEEN_with_and_without_negation() {
+        return Stream.of(
+                        bothBetweenForms(
+                                "18 AND 42",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(18L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(42L))),
+                        bothBetweenForms(
+                                "-42 AND -18",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-42L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(-18L))),
+                        bothBetweenForms(
+                                "-18 AND 42",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-18L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(42L))),
+                        bothBetweenForms(
+                                "67.8 AND 78.9",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(67.8d)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(78.9d))),
+                        bothBetweenForms(
+                                "-78.9 AND -67.8",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-78.9d)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(-67.8d))),
+                        bothBetweenForms(
+                                "'a' AND 'z'",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo("a")
+                                        .and(metadataKey("key").isLessThanOrEqualTo("z"))),
+                        bothBetweenForms(
+                                "1 + 1 AND 2 + 3",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(2L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(5L))))
+                .flatMap(stream -> stream);
+    }
+
+    private static Stream<Arguments> bothBetweenForms(String bounds, Filter range) {
+        return Stream.of(of("key BETWEEN " + bounds, range), of("key NOT BETWEEN " + bounds, not(range)));
+    }
+
+    @Test
+    void NOT_BETWEEN_should_equal_the_explicit_NOT_form() {
+
+        assertThat(parser.parse("year NOT BETWEEN 1990 AND 1999"))
+                .isEqualTo(parser.parse("NOT (year BETWEEN 1990 AND 1999)"));
+        assertThat(parser.parse("age NOT BETWEEN -20 AND -10"))
+                .isEqualTo(parser.parse("NOT (age BETWEEN -20 AND -10)"));
+        assertThat(parser.parse("name NOT BETWEEN 'a' AND 'z'"))
+                .isEqualTo(parser.parse("NOT (name BETWEEN 'a' AND 'z')"));
+    }
+
+    @Test
     void should_support_YEAR_function_in_WHERE_clause() {
         // given
         String sql = "SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama')";
@@ -1501,6 +1599,29 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("year")
                         .isEqualTo(2024L)
                         .and(metadataKey("genre").isIn("comedy", "drama")));
+    }
+
+    @Test
+    void should_support_arithmetic_and_date_functions_inside_IN_list() {
+
+        assertThat(parser.parse("year IN (YEAR(CURDATE()), YEAR(CURDATE()) - 1)"))
+                .isEqualTo(metadataKey("year").isIn(currentYear(), currentYear() - 1));
+    }
+
+    @Test
+    void should_fail_on_unsupported_expression_inside_IN_list() {
+
+        assertThatThrownBy(() -> parser.parse("age IN (1, NULL)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
+
+        assertThatThrownBy(() -> parser.parse("age IN (SELECT age FROM other_table)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
+
+        assertThatThrownBy(() -> parser.parse("age IN (other_column)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
     }
 
     @Test

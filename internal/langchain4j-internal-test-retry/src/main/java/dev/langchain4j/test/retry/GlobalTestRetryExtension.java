@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
+import org.opentest4j.TestAbortedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,6 +134,9 @@ public class GlobalTestRetryExtension implements InvocationInterceptor {
                 return;
             } catch (Throwable t) {
                 lastThrowable = getActualCause(t);
+                if (lastThrowable instanceof TestAbortedException) {
+                    throw lastThrowable; // a test that aborted itself (e.g. a failed assumption) will abort again
+                }
                 attempt++;
                 LOG.warn("Attempt {}/{} for test {}.{} ({}) failed because of",
                         attempt, MAX_ATTEMPTS,
