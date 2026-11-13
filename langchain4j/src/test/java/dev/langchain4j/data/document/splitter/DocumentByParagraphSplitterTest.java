@@ -285,8 +285,8 @@ class DocumentByParagraphSplitterTest {
                 textSegment(format("%s\n\n%s %s %s %s", s11, s12, s13, s14, s15), metadata("index", "3").put("document", "0")),
                 textSegment(format("%s %s %s %s", s15, s16, s17, s18), metadata("index", "4").put("document", "0")),
                 textSegment(format("%s %s %s %s %s %s", s19, s20, s21, s22, s23, s24), metadata("index", "5").put("document", "0")),
-                textSegment(format("%s %s %s %s %s %s", s22, s23, s24, s25, s26, s27), metadata("index", "6").put("document", "0")),
-                textSegment(format("%s %s %s", s27, s28, s29), metadata("index", "7").put("document", "0"))
+                // The final paragraph fits by itself, so the carried overlap is dropped.
+                textSegment(format("%s %s %s %s %s", s25, s26, s27, s28, s29), metadata("index", "6").put("document", "0"))
         );
     }
 
@@ -410,16 +410,9 @@ class DocumentByParagraphSplitterTest {
                 TextSegment.from(sentences(5, 12), Metadata.from("index", "4").put("document", "0")),
                 TextSegment.from(sentences(7, 15), Metadata.from("index", "5").put("document", "0")),
                 TextSegment.from(sentences(9, 16), Metadata.from("index", "6").put("document", "0")),
-                // TODO fix chopped s18
-                // TODO splitter should prioritize progressing forward instead of maximizing overlap
-                TextSegment.from(sentences(10, 16) + " " + sentences[17].replace(" countless tales.", ""), Metadata.from("index", "7").put("document", "0")),
-                // TODO this segment should not be present, there is s14-s19 below
-                TextSegment.from(sentences(13, 17), Metadata.from("index", "8").put("document", "0")),
-                TextSegment.from(sentences(13, 18), Metadata.from("index", "9").put("document", "0")),
-                TextSegment.from(sentences(14, 23), Metadata.from("index", "10").put("document", "0")),
-                TextSegment.from(sentences(16, 24), Metadata.from("index", "11").put("document", "0")),
-                TextSegment.from(sentences(17, 26), Metadata.from("index", "12").put("document", "0")),
-                TextSegment.from(sentences(18, 28), Metadata.from("index", "13").put("document", "0"))
+                // The next sentence starts a new segment instead of being split to preserve overlap.
+                TextSegment.from(sentences(17, 26), Metadata.from("index", "7").put("document", "0")),
+                TextSegment.from(sentences(18, 28), Metadata.from("index", "8").put("document", "0"))
         );
 
         assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(1, 5))).isLessThanOrEqualTo(maxOverlapSize);
@@ -428,12 +421,6 @@ class DocumentByParagraphSplitterTest {
         assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(5, 10))).isLessThanOrEqualTo(maxOverlapSize);
         assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(7, 12))).isLessThanOrEqualTo(maxOverlapSize);
         assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(9, 15))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(10, 16))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(13, 16))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(13, 17))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(14, 18))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(16, 23))).isLessThanOrEqualTo(maxOverlapSize);
-        assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(17, 24))).isLessThanOrEqualTo(maxOverlapSize);
         assertThat(tokenCountEstimator.estimateTokenCountInText(sentences(18, 26))).isLessThanOrEqualTo(maxOverlapSize);
     }
 
