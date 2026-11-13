@@ -179,11 +179,45 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
         return hasRewrittenResult() ? request.withContents(resultContents(request), isError(request)) : request;
     }
 
+    /**
+     * Composes this result, which a guardrail returned after the one given, into the net result of both, relative
+     * to the request the chain started with. Both results must be successful.
+     * <ul>
+     *     <li>no rewrite here: the earlier rewrite, if any, is kept;</li>
+     *     <li>a contents rewrite here: it replaces the earlier rewrite;</li>
+     *     <li>a text rewrite here: it replaces the text of an earlier contents rewrite, keeping its other contents
+     *     and error flag, and it replaces an earlier text rewrite.</li>
+     * </ul>
+     */
+    ToolOutputGuardrailResult composedAfter(ToolOutputGuardrailResult earlier) {
+        ToolOutputGuardrailResult composed = this;
+
+        if (!hasRewrittenResult()) {
+            composed = earlier.hasRewrittenResult() ? earlier : this;
+        } else if (!hasRewrittenContents() && earlier.hasRewrittenContents()) {
+            composed = successWith(
+                    ToolOutputGuardrailRequest.replaceText(earlier.successfulContents, successfulText),
+                    earlier.successfulIsError);
+        }
+
+        return composed;
+    }
+
     private static String joinText(List<Content> contents) {
         return contents.stream()
                 .filter(TextContent.class::isInstance)
                 .map(content -> ((TextContent) content).text())
                 .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Gets the text of the error tool result that reports the failures of this result to the LLM: the messages of
+     * all the failures, joined with {@code \n} in chain order. No framework text is added.
+     *
+     * @return the joined failure messages, or an empty string if there are no failures
+     */
+    public String failureMessage() {
+        return failures.stream().map(Failure::message).collect(Collectors.joining("\n"));
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * The result of the validation of a {@link ToolInputGuardrail}.
@@ -81,6 +82,16 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
     @Override
     public String successfulText() {
         return successfulText;
+    }
+
+    /**
+     * Gets the text of the error tool result that reports the failures of this result to the LLM: the messages of
+     * all the failures, joined with {@code \n} in chain order. No framework text is added.
+     *
+     * @return the joined failure messages, or an empty string if there are no failures
+     */
+    public String failureMessage() {
+        return failures.stream().map(Failure::message).collect(Collectors.joining("\n"));
     }
 
     @Override

@@ -3,6 +3,13 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.UnaryOperator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
@@ -11,12 +18,6 @@ import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -40,7 +41,8 @@ public abstract sealed class AbstractGuardrailExecutor<
                 G extends Guardrail<P, R>,
                 E extends GuardrailExecutedEvent<P, R, G>,
                 F extends Failure>
-        implements GuardrailExecutor<C, P, R, G, E> permits InputGuardrailExecutor, OutputGuardrailExecutor {
+        implements GuardrailExecutor<C, P, R, G, E>
+        permits InputGuardrailExecutor, OutputGuardrailExecutor, AbstractToolGuardrailExecutor {
 
     private final C config;
     private final List<G> guardrails;
@@ -161,7 +163,7 @@ public abstract sealed class AbstractGuardrailExecutor<
                 }
 
                 if (result.hasRewrittenResult()) {
-                    accumulatedRequest = accumulatedRequest.withText(result.successfulText());
+                    accumulatedRequest = rewriteRequest(accumulatedRequest, result);
                 }
 
                 accumulatedResult = composeResult(accumulatedResult, result);
@@ -209,6 +211,29 @@ public abstract sealed class AbstractGuardrailExecutor<
         return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
     }
 
+    /**
+     * Runs the guardrails like {@link #executeGuardrailsAsync(GuardrailRequest, CancellationChain)} in a single pass,
+     * then applies {@code finisher} to the result, and returns a future that cancels the in-flight guardrail when it
+     * is cancelled. If {@code finisher} throws, the future completes exceptionally with that exception.
+     * <p>
+     *     This is the shared body of the {@code executeAsync} of executors that have no retry loop.
+     * </p>
+     *
+     * @param request The request to validate
+     * @param finisher Applied to the result of the chain, e.g. to throw on a failure the executor does not tolerate
+     * @return A future completing with the result returned by {@code finisher}
+     */
+    protected CompletableFuture<R> executeGuardrailsAsyncAndFinish(P request, UnaryOperator<R> finisher) {
+        var result = new CompletableFuture<R>();
+        executeGuardrailsAsync(request, new CancellationChain(result))
+                .thenApply(finisher)
+                .whenComplete((guardrailResult, error) -> Optional.ofNullable(error)
+                        .ifPresentOrElse(
+                                err -> result.completeExceptionally(unwrapCompletionException(err)),
+                                () -> result.complete(guardrailResult)));
+        return result;
+    }
+
     private CompletableFuture<R> executeGuardrailsAsync(
             P originalRequest, P accumulatedRequest, R accumulatedResult, int index, CancellationChain chain) {
 
@@ -236,11 +261,25 @@ public abstract sealed class AbstractGuardrailExecutor<
                 return CompletableFuture.completedFuture(handleFatalResult(accumulatedResult, result));
             }
 
-            var nextRequest =
-                    result.hasRewrittenResult() ? currentRequest.withText(result.successfulText()) : currentRequest;
+            var nextRequest = result.hasRewrittenResult() ? rewriteRequest(currentRequest, result) : currentRequest;
             var nextResult = composeResult(accumulatedResult, result);
             return executeGuardrailsAsync(originalRequest, nextRequest, nextResult, index + 1, chain);
         });
+    }
+
+    /**
+     * Produces the request the next guardrail of the chain validates, once a guardrail returned a rewrite.
+     * <p>
+     *     The default implementation replaces the text of the request with {@link GuardrailResult#successfulText()}.
+     *     Executors whose results can carry more than text override it.
+     * </p>
+     *
+     * @param request The request the guardrail validated
+     * @param result The successful result of the guardrail, which {@linkplain GuardrailResult#hasRewrittenResult() carries a rewrite}
+     * @return The request for the next guardrail
+     */
+    protected P rewriteRequest(P request, R result) {
+        return request.withText(result.successfulText());
     }
 
     /**
@@ -299,7 +338,9 @@ public abstract sealed class AbstractGuardrailExecutor<
                     E extends GuardrailExecutedEvent<P, R, G>,
                     B extends GuardrailExecutorBuilder<C, R, P, G, E, B>>
             permits InputGuardrailExecutor.InputGuardrailExecutorBuilder,
-                    OutputGuardrailExecutor.OutputGuardrailExecutorBuilder {
+                    OutputGuardrailExecutor.OutputGuardrailExecutorBuilder,
+                    ToolInputGuardrailExecutor.ToolInputGuardrailExecutorBuilder,
+                    ToolOutputGuardrailExecutor.ToolOutputGuardrailExecutorBuilder {
 
         private final C defaultConfig;
         private C config;

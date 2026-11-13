@@ -136,10 +136,18 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     @Override
     public ToolOutputGuardrailRequest withText(String text) {
         ensureNotNull(text, "text");
+        return withContents(replaceText(this.resultContents, text), isError);
+    }
+
+    /**
+     * Replaces the text contents with a single {@link TextContent}, placed where the first text content was (or
+     * first if there was none), keeping the non-text contents.
+     */
+    static List<Content> replaceText(List<Content> contents, String text) {
         var rewritten = new ArrayList<Content>();
         var textAdded = false;
 
-        for (var content : this.resultContents) {
+        for (var content : contents) {
             if (content instanceof TextContent) {
                 if (!textAdded) {
                     rewritten.add(new TextContent(text));
@@ -154,7 +162,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
             rewritten.add(0, new TextContent(text));
         }
 
-        return withContents(rewritten, isError);
+        return rewritten;
     }
 
     ToolOutputGuardrailRequest withContents(List<Content> contents, boolean isError) {
